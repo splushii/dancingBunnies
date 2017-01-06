@@ -5,32 +5,36 @@ import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.RequestHandle;
 import com.loopj.android.http.RequestParams;
 
-import java.util.ArrayList;
-import java.util.concurrent.Semaphore;
-
-import java8.util.Optional;
-import java8.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
 
 public class HTTPClient {
 
-    private static AsyncHttpClient client = new AsyncHttpClient();
-    public static Semaphore lock = new Semaphore(10);
+    private AsyncHttpClient client;
 
-    public static RequestHandle get(
+    public HTTPClient() {
+        client = new AsyncHttpClient();
+        client.setThreadPool(Executors.newFixedThreadPool(3));
+    }
+
+    public RequestHandle get(
             String url,
             RequestParams params,
             AsyncHttpResponseHandler responseHandler) {
         return client.get(url, params, responseHandler);
     }
 
-    public static void post(
+    public void setRetries(int retries, int timeout) {
+        client.setMaxRetriesAndTimeout(retries, timeout);
+    }
+
+    public void post(
             String url,
             RequestParams params,
             AsyncHttpResponseHandler responseHandler) {
         client.post(url, params, responseHandler);
     }
 
-    public static void cancelAllRequests(boolean mayInterruptIfRunning) {
+    public void cancelAllRequests(boolean mayInterruptIfRunning) {
         client.cancelAllRequests(mayInterruptIfRunning);
     }
 }

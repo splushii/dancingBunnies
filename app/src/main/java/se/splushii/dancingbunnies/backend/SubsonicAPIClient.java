@@ -1,11 +1,11 @@
 package se.splushii.dancingbunnies.backend;
 
-import android.os.AsyncTask;
+import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
-import com.loopj.android.http.RequestHandle;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -18,14 +18,13 @@ import java.util.ArrayList;
 import cz.msebera.android.httpclient.Header;
 import java8.util.Optional;
 import java8.util.concurrent.CompletableFuture;
-import java8.util.function.BooleanSupplier;
-import java8.util.function.Consumer;
-import java8.util.function.Supplier;
 import se.splushii.dancingbunnies.musiclibrary.Album;
 import se.splushii.dancingbunnies.musiclibrary.Artist;
+import se.splushii.dancingbunnies.musiclibrary.Song;
 import se.splushii.dancingbunnies.util.Util;
 
 public class SubsonicAPIClient implements APIClient {
+    private Fragment fragment;
     private static final String API_BASE_URL = "https://subsonic.splushii.se/rest/";
 
     static final String LOG_CONTEXT = "SubsonicAPIClient";
@@ -43,6 +42,8 @@ public class SubsonicAPIClient implements APIClient {
     static final String JSON_MESSAGE = "message";
     static final String JSON_ALBUM_COUNT = "albumCount";
     static final String JSON_SONG_COUNT = "songCount";
+    static final String JSON_SONG = "song";
+    static final String JSON_TITLE = "title";
 
     static final String status_ok = "ok";
 
@@ -53,8 +54,10 @@ public class SubsonicAPIClient implements APIClient {
     private static final String format = "json";
 
     private SecureRandom rand;
+    private HTTPClient httpClient;
 
-    public SubsonicAPIClient() {
+    public SubsonicAPIClient(Fragment fragment) {
+        this.fragment = fragment;
         try {
             rand = SecureRandom.getInstance("SHA1PRNG");
         } catch (NoSuchAlgorithmException e) {
@@ -62,6 +65,8 @@ public class SubsonicAPIClient implements APIClient {
             e.printStackTrace();
             // TODO
         }
+        this.httpClient = new HTTPClient();
+        httpClient.setRetries(AsyncHttpClient.DEFAULT_MAX_RETRIES * 10, AsyncHttpClient.DEFAULT_RETRY_SLEEP_TIME_MILLIS);
     }
 
     public void setCredentials(String usr, String pwd) {
@@ -70,50 +75,69 @@ public class SubsonicAPIClient implements APIClient {
     }
 
     public void ping(AsyncHttpResponseHandler handler) {
-        HTTPClient.get(API_BASE_URL + "ping.view" + getBaseQuery(), null, handler);
+        httpClient.get(API_BASE_URL + "ping.view" + getBaseQuery(), null, handler);
     }
 
-
-    public void getAlbum(AsyncHttpResponseHandler handler) {
-        String query = API_BASE_URL + "getAlbum.view" + getBaseQuery();
-        HTTPClient.get(query, null, handler);
+    public CompletableFuture<Optional<ArrayList<Song>>> getSongs(Album album) {
+        return getAlbum(album);
     }
 
-    public CompletableFuture<Optional<ArrayList<Album>>> getArtist(String artistId) {
-        final String query = API_BASE_URL + "getArtist.view" + getBaseQuery() + "&id=" + artistId;
-        final CompletableFuture<Optional<ArrayList<Album>>> req = new CompletableFuture<>();
-        CompletableFuture.runAsync(new Runnable() {
+    private CompletableFuture<Optional<ArrayList<Song>>> getAlbum(final Album album) {
+        final String query = API_BASE_URL + "getAlbum.view" + getBaseQuery() + "&id=" + album.id();
+        final CompletableFuture<Optional<ArrayList<Song>>> req = new CompletableFuture<>();
+
+        httpClient.get(query, null, new AsyncHttpResponseHandler() {
             @Override
-            public void run() {
+            public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
+                String resp = new String(responseBody);
+                String status = statusOK(resp);
+                if (status.isEmpty()) {
+                    req.complete(Optional.of(parseGetAlbum(resp, album)));
+                } else {
+                    Toast.makeText(fragment.getContext(), status, Toast.LENGTH_LONG).show();
+                    req.complete(Optional.<ArrayList<Song>>empty());
+                }
+            }
+            @Override
+            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
+                req.complete(Optional.<ArrayList<Song>>empty());
+            }
 
-                    System.out.println("HTTP kvar: " + HTTPClient.lock.availablePermits());
+            @Override
+            public void onProgress(long bytesWritten, long totalSize) {
+            }
+        });
 
-                    HTTPClient.get(query, null, new AsyncHttpResponseHandler() {
-                        @Override
-                        public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
-                            HTTPClient.lock.release();
-                            System.out.println("HTTP kvar: " + HTTPClient.lock.availablePermits());
-                            String resp = new String(responseBody);
-                            String status = statusOK(resp);
-                            if (status.isEmpty()) {
-                                req.complete(Optional.of(parseGetArtist(resp)));
-                            } else {
-                                Toast.make
-                                req.complete(Optional.<ArrayList<Album>>empty());
-                            }
-                        }
-                        @Override
-                        public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-                            HTTPClient.lock.release();
-                            System.out.println("HTTP kvar: " + HTTPClient.lock.availablePermits());
-                            req.complete(Optional.<ArrayList<Album>>empty());
-                        }
+        return req;
+    }
 
-                        @Override
-                        public void onProgress(long bytesWritten, long totalSize) {
-                        }
-                    });
+    public CompletableFuture<Optional<ArrayList<Album>>> getAlbums(Artist artist) {
+        return getArtist(artist);
+    }
 
+    private CompletableFuture<Optional<ArrayList<Album>>> getArtist(final Artist artist) {
+        final String query = API_BASE_URL + "getArtist.view" + getBaseQuery() + "&id=" + artist.id();
+        final CompletableFuture<Optional<ArrayList<Album>>> req = new CompletableFuture<>();
+
+        httpClient.get(query, null, new AsyncHttpResponseHandler() {
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
+                String resp = new String(responseBody);
+                String status = statusOK(resp);
+                if (status.isEmpty()) {
+                    req.complete(Optional.of(parseGetArtist(resp, artist)));
+                } else {
+                    Toast.makeText(fragment.getContext(), status, Toast.LENGTH_LONG).show();
+                    req.complete(Optional.<ArrayList<Album>>empty());
+                }
+            }
+            @Override
+            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
+                req.complete(Optional.<ArrayList<Album>>empty());
+            }
+
+            @Override
+            public void onProgress(long bytesWritten, long totalSize) {
             }
         });
 
@@ -126,49 +150,33 @@ public class SubsonicAPIClient implements APIClient {
         if (musicFolderId != null && !musicFolderId.isEmpty()) {
             query += "&musicFolderId=" + musicFolderId;
         }
-        CompletableFuture lock = CompletableFuture.supplyAsync(new Supplier<Boolean>() {
-            @Override
-            public Boolean get() {
-                return true;
-            }
-        });
         final String finalQuery = query;
-        lock.thenAccept(new Consumer<Boolean>() {
+        httpClient.get(finalQuery, null, new AsyncHttpResponseHandler() {
             @Override
-            public void accept(Boolean hasLock) {
-                if (hasLock) {
-                    HTTPClient.get(finalQuery, null, new AsyncHttpResponseHandler() {
-                        @Override
-                        public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
-                            String resp = new String(responseBody);
-                            String status = statusOK(resp);
-                            if (status.isEmpty()) {
-                                req.complete(Optional.of(parseGetArtists(resp)));
-                            } else {
-                                req.complete(Optional.<ArrayList<Artist>>empty());
-                            }
-                            HTTPClient.lock.release();
-                        }
-
-                        @Override
-                        public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-                            req.complete(Optional.<ArrayList<Artist>>empty());
-                            HTTPClient.lock.release();
-                        }
-
-                        @Override
-                        public void onProgress(long bytesWritten, long totalSize) {
-                        }
-                    });
+            public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
+                String resp = new String(responseBody);
+                String status = statusOK(resp);
+                if (status.isEmpty()) {
+                    req.complete(Optional.of(parseGetArtists(resp)));
                 } else {
+                    Toast.makeText(fragment.getContext(), status, Toast.LENGTH_LONG).show();
                     req.complete(Optional.<ArrayList<Artist>>empty());
                 }
+            }
+
+            @Override
+            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
+                req.complete(Optional.<ArrayList<Artist>>empty());
+            }
+
+            @Override
+            public void onProgress(long bytesWritten, long totalSize) {
             }
         });
         return req;
     }
 
-    public String statusOK(String resp) {
+    private String statusOK(String resp) {
         String status;
         try {
             JSONObject json = new JSONObject(resp);
@@ -192,13 +200,13 @@ public class SubsonicAPIClient implements APIClient {
         return status;
     }
 
-    public String getBaseQuery() {
+    private String getBaseQuery() {
         String salt = Util.getSalt(rand, 32);
         String token = Util.md5(password + salt);
         return String.format("?u=%s&t=%s&s=%s&v=%s&c=%s&f=%s", username, token, salt, version, clientId, format);
     }
 
-    public ArrayList<Artist> parseGetArtists(String resp) {
+    private ArrayList<Artist> parseGetArtists(String resp) {
         ArrayList<Artist> artists = new ArrayList<>();
         try {
             JSONObject json = new JSONObject(resp);
@@ -222,23 +230,52 @@ public class SubsonicAPIClient implements APIClient {
         return artists;
     }
 
-    public ArrayList<Album> parseGetArtist(String resp) {
+    private ArrayList<Album> parseGetArtist(String resp, Artist artist) {
         ArrayList<Album> albums = new ArrayList<>();
         try {
             JSONObject json = new JSONObject(resp);
             JSONObject jResp = json.getJSONObject(JSON_RESP);
             JSONObject jArtist = jResp.getJSONObject(JSON_ARTIST);
+            int jAlbumCount = jArtist.getInt(JSON_ALBUM_COUNT);
+            if (jAlbumCount == 0) {
+                return albums;
+            }
             JSONArray jAlbums = jArtist.getJSONArray(JSON_ALBUM);
             for (int i = 0; i < jAlbums.length(); i++) {
                 JSONObject jAlbum = jAlbums.getJSONObject(i);
                 String id = jAlbum.getString(JSON_ID);
                 String name = jAlbum.getString(JSON_NAME);
                 int songCount = jAlbum.getInt(JSON_SONG_COUNT);
-                albums.add(new Album(id, name, songCount));
+                albums.add(new Album(id, name, artist, songCount));
             }
         } catch (JSONException e) {
             Log.d(LOG_CONTEXT, "JSON error: " + e.toString());
+            System.out.println(resp);
         }
         return albums;
+    }
+
+    private ArrayList<Song> parseGetAlbum(String resp, Album album) {
+        ArrayList<Song> songs = new ArrayList<>();
+        try {
+            JSONObject json = new JSONObject(resp);
+            JSONObject jResp = json.getJSONObject(JSON_RESP);
+            JSONObject jAlbum = jResp.getJSONObject(JSON_ALBUM);
+            int songCount = jAlbum.getInt(JSON_SONG_COUNT);
+            if (songCount == 0) {
+                return songs;
+            }
+            JSONArray jSongs = jAlbum.getJSONArray(JSON_SONG);
+            for (int i = 0; i < jSongs.length(); i++) {
+                JSONObject jSong = jSongs.getJSONObject(i);
+                String id = jSong.getString(JSON_ID);
+                String name = jSong.getString(JSON_TITLE);
+                songs.add(new Song(id, name, album));
+            }
+        } catch (JSONException e) {
+            Log.d(LOG_CONTEXT, "JSON error: " + e.toString());
+            System.out.println(resp);
+        }
+        return songs;
     }
 }

@@ -1,62 +1,89 @@
 package se.splushii.dancingbunnies.musiclibrary;
 
-import android.app.VoiceInteractor;
+import android.support.v4.app.Fragment;
 
-import com.loopj.android.http.AsyncHttpResponseHandler;
-
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 
-import cz.msebera.android.httpclient.Header;
 import java8.util.Optional;
 import java8.util.concurrent.CompletableFuture;
 
 import java8.util.function.Consumer;
+import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.backend.SubsonicAPIClient;
 
 public class MusicLibrary {
-    SubsonicAPIClient api;
+    private APIClient api;
     private ArrayList<Artist> artists = new ArrayList<>();
+    private ArrayList<Album> albums = new ArrayList<>();
+    private ArrayList<Song> songs = new ArrayList<>();
 
-    public MusicLibrary() {
-        api = new SubsonicAPIClient();
-        api.setCredentials("testor", "testodude1");
+    public MusicLibrary(Fragment fragment) {
+        api = new SubsonicAPIClient(fragment);
+        api.setCredentials("testor", "testodude");
     }
 
     public CompletableFuture<Optional<ArrayList<Artist>>> getAllArtists(String musicFolderId, boolean refresh) {
-        final CompletableFuture<Optional<ArrayList<Artist>>> req = new CompletableFuture<>();
+        final CompletableFuture<Optional<ArrayList<Artist>>> ret = new CompletableFuture<>();
         if (refresh || artists.size() == 0) {
-            api.getArtists(musicFolderId).thenAccept(new Consumer<Optional<ArrayList<Artist>>>() {
+            CompletableFuture<Optional<ArrayList<Artist>>> req = api.getArtists(musicFolderId);
+            req.thenAccept(new Consumer<Optional<ArrayList<Artist>>>() {
+        @Override
+        public void accept(Optional<ArrayList<Artist>> a) {
+                if (a.isPresent()) {
+                    setArtists(a.get());
+                    ret.complete(Optional.of(artists));
+                } else {
+                    ret.complete(Optional.<ArrayList<Artist>>empty());
+                }
+                }
+            });
+        } else {
+            ret.complete(Optional.of(artists));
+        }
+        return ret;
+    }
+
+    public CompletableFuture<String> getAlbums(final Artist artist, boolean refresh) {
+        final CompletableFuture<String> ret = new CompletableFuture<>();
+        if (refresh || albums.size() == 0) {
+            this.albums.clear();
+            CompletableFuture<Optional<ArrayList<Album>>> req = api.getAlbums(artist);
+            req.thenAccept(new Consumer<Optional<ArrayList<Album>>>() {
                 @Override
-                public void accept(Optional<ArrayList<Artist>> a) {
+                public void accept(Optional<ArrayList<Album>> a) {
                     if (a.isPresent()) {
-                        setArtists(a.get());
-                        req.complete(Optional.of(artists));
+                        setAlbums(artist, a.get());
+                        ret.complete("");
                     } else {
-                        req.complete(Optional.<ArrayList<Artist>>empty());
+                        ret.complete("Could not get albums for " + artist.name());
                     }
                 }
             });
         } else {
-            req.complete(Optional.of(artists));
+            ret.complete("");
         }
-        return req;
+        return ret;
     }
 
-    public CompletableFuture<String> getAlbums(final Artist a) {
-        CompletableFuture<Optional<ArrayList<Album>>> req = api.getArtist(a.id());
+    public CompletableFuture<String> getSongs(final Album album, boolean refresh) {
         final CompletableFuture<String> ret = new CompletableFuture<>();
-        req.thenAccept(new Consumer<Optional<ArrayList<Album>>>() {
-            @Override
-            public void accept(Optional<ArrayList<Album>> alba) {
-                if (alba.isPresent()) {
-                    setAlbums(a, alba.get());
-                    ret.complete("");
-                } else {
-                    ret.complete("Could not get albums for " + a.name());
+        if (refresh || songs.size() == 0) {
+            this.songs.clear();
+            CompletableFuture<Optional<ArrayList<Song>>> req = api.getSongs(album);
+            req.thenAccept(new Consumer<Optional<ArrayList<Song>>>() {
+                @Override
+                public void accept(Optional<ArrayList<Song>> a) {
+                    if (a.isPresent()) {
+                        setSongs(album, a.get());
+                        ret.complete("");
+                    } else {
+                        ret.complete("Could not get songs for " + album.name());
+                    }
                 }
-            }
-        });
+            });
+        } else {
+            ret.complete("");
+        }
         return ret;
     }
 
@@ -66,5 +93,23 @@ public class MusicLibrary {
 
     private void setAlbums(Artist artist, ArrayList<Album> albums) {
         artist.setAlbums(albums);
+        this.albums.addAll(albums);
+    }
+
+    private void setSongs(Album album, ArrayList<Song> songs) {
+        album.setSongs(songs);
+        this.songs.addAll(songs);
+    }
+
+    public ArrayList<Artist> artists() {
+        return artists;
+    }
+
+    public ArrayList<Album> albums() {
+        return albums;
+    }
+
+    public ArrayList<Song> songs() {
+        return songs;
     }
 }

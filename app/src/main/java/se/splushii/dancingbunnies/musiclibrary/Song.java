@@ -1,21 +1,19 @@
 package se.splushii.dancingbunnies.musiclibrary;
 
-/**
- * Created by splushii on 2016-09-16.
- */
-public class Song {
-    String id;
-    String name;
-    public Song(String id, String name) {
-        this.id = id;
-        this.name = name;
+import java.util.ArrayList;
+
+public class Song extends LibraryEntry {
+    private Album album;
+    public Song(String id, String name, Album album) {
+        super(id, name);
+        this.album = album;
     }
 
-    public String name() {
-        return name;
+    public Album getAlbum() {
+        return album;
     }
 
-    public String id() {
-        return id;
+    public ArrayList<? extends LibraryEntry> getEntries() {
+        return new ArrayList<>();
     }
 }

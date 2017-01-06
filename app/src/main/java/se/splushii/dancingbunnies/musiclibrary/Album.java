@@ -2,30 +2,31 @@ package se.splushii.dancingbunnies.musiclibrary;
 
 import java.util.ArrayList;
 
-/**
- * Created by splushii on 2016-09-16.
- */
-public class Album {
-    String id;
-    String name;
+public class Album extends LibraryEntry {
     int songCount;
+    Artist artist;
     ArrayList<Song> songs;
-    public Album(String id, String name, int songCount) {
-        this.id = id;
-        this.name = name;
+    public Album(String id, String name, Artist artist, int songCount) {
+        super(id, name);
         this.songCount = songCount;
+        this.artist = artist;
         songs = new ArrayList<>(songCount);
     }
 
-    public String name() {
-        return name;
-    }
-
-    public String id() {
-        return id;
+    protected void setSongs(ArrayList<Song> songs) {
+        this.songs = songs;
+        songCount = songs.size();
     }
 
     public ArrayList<Song> getSongs() {
+        return songs;
+    }
+
+    public Artist getArtist() {
+        return artist;
+    }
+
+    public ArrayList<? extends LibraryEntry> getEntries() {
         return songs;
     }
 }

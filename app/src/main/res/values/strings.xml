@@ -3,4 +3,7 @@
     <string name="action_settings">Settings</string>
     <string name="subsonic_ping">Ping</string>
     <string name="subsonic_artists">Get artists</string>
+    <string name="sort_by_artist">Sort by artist</string>
+    <string name="sort_by_song">Sort by song</string>
+    <string name="refresh">Refresh</string>
 </resources>

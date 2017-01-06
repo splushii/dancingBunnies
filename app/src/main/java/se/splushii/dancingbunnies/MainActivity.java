@@ -1,8 +1,6 @@
 package se.splushii.dancingbunnies;
 
 import android.support.design.widget.TabLayout;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
    
@@ -36,6 +34,9 @@ public final class MainActivity extends AppCompatActivity {
      */
     private ViewPager mViewPager;
 
+    private MusicLibraryFragment musicLibraryFragment;
+    private NowPlayingFragment nowPlayingFragment;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,15 +55,8 @@ public final class MainActivity extends AppCompatActivity {
         TabLayout tabLayout = (TabLayout) findViewById(R.id.tabs);
         tabLayout.setupWithViewPager(mViewPager);
 
-      /*FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-      fab.setOnClickListener(new View.OnClickListener() {
-          @Override
-          public void onClick(View view) {
-              Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                      .setAction("Action", null).show();
-          }
-      });*/
-      
+        musicLibraryFragment = new MusicLibraryFragment();
+        nowPlayingFragment = new NowPlayingFragment();
     }
 
     @Override
@@ -92,8 +86,12 @@ public final class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    
-  
+    @Override
+    public void onBackPressed() {
+        if (!musicLibraryFragment.onBackPressed()) {
+            super.onBackPressed();
+        }
+    }
 
     /**
      * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
@@ -111,7 +109,10 @@ public final class MainActivity extends AppCompatActivity {
             // Return a PlaceholderFragment (defined as a static inner class below).
             switch (position) {
                 case 0:
-                    return new BunnyFragment();
+                    return musicLibraryFragment;
+                case 1:
+                    return nowPlayingFragment;
+                case 2:
                 default:
                     return PlaceholderFragment.newInstance(position + 1);
             }
