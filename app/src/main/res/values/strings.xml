@@ -6,4 +6,12 @@
     <string name="sort_by_artist">Sort by artist</string>
     <string name="sort_by_song">Sort by song</string>
     <string name="refresh">Refresh</string>
+    <string name="pref_subsonic">Subsonic</string>
+    <string name="pref_subsonic_usr">Subsonic username</string>
+    <string name="pref_subsonic_pwd">Subsonic password</string>
+    <string name="title_activity_settings">Settings</string>
+    <string name="pref_subsonic_url">Subsonic URL</string>
+    <string name="pref_key_subsonic_url">pref_subsonic_url</string>
+    <string name="pref_key_subsonic_usr">pref_subsonic_usr</string>
+    <string name="pref_key_subsonic_pwd">pref_subsonic_pwd</string>
 </resources>

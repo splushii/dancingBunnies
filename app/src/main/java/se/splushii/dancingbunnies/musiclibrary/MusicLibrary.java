@@ -1,13 +1,13 @@
 package se.splushii.dancingbunnies.musiclibrary;
 
-import android.support.v4.app.Fragment;
+import android.content.Context;
 
 import java.util.ArrayList;
 
 import java8.util.Optional;
 import java8.util.concurrent.CompletableFuture;
-
 import java8.util.function.Consumer;
+
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.backend.SubsonicAPIClient;
 
@@ -17,28 +17,28 @@ public class MusicLibrary {
     private ArrayList<Album> albums = new ArrayList<>();
     private ArrayList<Song> songs = new ArrayList<>();
 
-    public MusicLibrary(Fragment fragment) {
-        api = new SubsonicAPIClient(fragment);
-        api.setCredentials("testor", "testodude");
+    public MusicLibrary(Context context) {
+        api = new SubsonicAPIClient(context);
+        api.loadSettings(context);
     }
 
-    public CompletableFuture<Optional<ArrayList<Artist>>> getAllArtists(String musicFolderId, boolean refresh) {
-        final CompletableFuture<Optional<ArrayList<Artist>>> ret = new CompletableFuture<>();
+    public CompletableFuture<String> getAllArtists(String musicFolderId, boolean refresh) {
+        final CompletableFuture<String> ret = new CompletableFuture<>();
         if (refresh || artists.size() == 0) {
             CompletableFuture<Optional<ArrayList<Artist>>> req = api.getArtists(musicFolderId);
             req.thenAccept(new Consumer<Optional<ArrayList<Artist>>>() {
-        @Override
-        public void accept(Optional<ArrayList<Artist>> a) {
-                if (a.isPresent()) {
-                    setArtists(a.get());
-                    ret.complete(Optional.of(artists));
-                } else {
-                    ret.complete(Optional.<ArrayList<Artist>>empty());
-                }
+                @Override
+                public void accept(Optional<ArrayList<Artist>> a) {
+                    if (a.isPresent()) {
+                        setArtists(a.get());
+                        ret.complete("");
+                    } else {
+                        ret.complete("Could not get all artists");
+                    }
                 }
             });
         } else {
-            ret.complete(Optional.of(artists));
+            ret.complete("");
         }
         return ret;
     }
@@ -87,7 +87,7 @@ public class MusicLibrary {
         return ret;
     }
 
-    public void setArtists(ArrayList<Artist> artists) {
+    private void setArtists(ArrayList<Artist> artists) {
         this.artists = artists;
     }
 
@@ -111,5 +111,9 @@ public class MusicLibrary {
 
     public ArrayList<Song> songs() {
         return songs;
+    }
+
+    public void loadSettings(Context context) {
+        api.loadSettings(context);
     }
 }

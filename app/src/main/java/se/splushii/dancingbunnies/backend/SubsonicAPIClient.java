@@ -1,6 +1,8 @@
 package se.splushii.dancingbunnies.backend;
 
-import android.support.v4.app.Fragment;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -18,14 +20,15 @@ import java.util.ArrayList;
 import cz.msebera.android.httpclient.Header;
 import java8.util.Optional;
 import java8.util.concurrent.CompletableFuture;
+import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.Album;
 import se.splushii.dancingbunnies.musiclibrary.Artist;
 import se.splushii.dancingbunnies.musiclibrary.Song;
 import se.splushii.dancingbunnies.util.Util;
 
 public class SubsonicAPIClient implements APIClient {
-    private Fragment fragment;
-    private static final String API_BASE_URL = "https://subsonic.splushii.se/rest/";
+    private Context context;
+    private static final String API_BASE_URL = "/rest/";
 
     static final String LOG_CONTEXT = "SubsonicAPIClient";
 
@@ -47,8 +50,9 @@ public class SubsonicAPIClient implements APIClient {
 
     static final String status_ok = "ok";
 
-    private String username;
-    private String password;
+    private String username = "";
+    private String password = "";
+    private String baseURL = "";
     private static final String version = "1.14.0";
     private static final String clientId = "dancingbunnies";
     private static final String format = "json";
@@ -56,8 +60,8 @@ public class SubsonicAPIClient implements APIClient {
     private SecureRandom rand;
     private HTTPClient httpClient;
 
-    public SubsonicAPIClient(Fragment fragment) {
-        this.fragment = fragment;
+    public SubsonicAPIClient(Context context) {
+        this.context = context;
         try {
             rand = SecureRandom.getInstance("SHA1PRNG");
         } catch (NoSuchAlgorithmException e) {
@@ -69,23 +73,36 @@ public class SubsonicAPIClient implements APIClient {
         httpClient.setRetries(AsyncHttpClient.DEFAULT_MAX_RETRIES * 10, AsyncHttpClient.DEFAULT_RETRY_SLEEP_TIME_MILLIS);
     }
 
-    public void setCredentials(String usr, String pwd) {
-        username = usr;
-        password = pwd;
-    }
-
     public void ping(AsyncHttpResponseHandler handler) {
-        httpClient.get(API_BASE_URL + "ping.view" + getBaseQuery(), null, handler);
+        httpClient.get(baseURL + "ping.view" + getBaseQuery(), null, handler);
     }
 
     public CompletableFuture<Optional<ArrayList<Song>>> getSongs(Album album) {
         return getAlbum(album);
     }
 
-    private CompletableFuture<Optional<ArrayList<Song>>> getAlbum(final Album album) {
-        final String query = API_BASE_URL + "getAlbum.view" + getBaseQuery() + "&id=" + album.id();
-        final CompletableFuture<Optional<ArrayList<Song>>> req = new CompletableFuture<>();
+    @Override
+    public void loadSettings(Context context) {
+        SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
+        boolean useSubsonic = settings.getBoolean("pref_subsonic", false);
+        if (useSubsonic) {
+            String url = settings.getString(context.getResources()
+                    .getString(R.string.pref_key_subsonic_url), "");
+            String usr = settings.getString(context.getResources()
+                    .getString(R.string.pref_key_subsonic_usr), "");
+            String pwd = settings.getString(context.getResources()
+                    .getString(R.string.pref_key_subsonic_pwd), "");
+            System.out.println("Subsonic backend enabled.\nbaseURL: " + url + "\nusr: " + usr
+                    + "\npwd: " + pwd + "\n");
+            baseURL = url + API_BASE_URL;
+            username = usr;
+            password = pwd;
+        }
+    }
 
+    private CompletableFuture<Optional<ArrayList<Song>>> getAlbum(final Album album) {
+        final String query = baseURL + "getAlbum.view" + getBaseQuery() + "&id=" + album.id();
+        final CompletableFuture<Optional<ArrayList<Song>>> req = new CompletableFuture<>();
         httpClient.get(query, null, new AsyncHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
@@ -94,12 +111,15 @@ public class SubsonicAPIClient implements APIClient {
                 if (status.isEmpty()) {
                     req.complete(Optional.of(parseGetAlbum(resp, album)));
                 } else {
-                    Toast.makeText(fragment.getContext(), status, Toast.LENGTH_LONG).show();
+                    Toast.makeText(context, status, Toast.LENGTH_LONG).show();
                     req.complete(Optional.<ArrayList<Song>>empty());
                 }
             }
             @Override
-            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
+            public void onFailure(int statusCode,
+                                  Header[] headers,
+                                  byte[] responseBody,
+                                  Throwable error) {
                 req.complete(Optional.<ArrayList<Song>>empty());
             }
 
@@ -116,7 +136,7 @@ public class SubsonicAPIClient implements APIClient {
     }
 
     private CompletableFuture<Optional<ArrayList<Album>>> getArtist(final Artist artist) {
-        final String query = API_BASE_URL + "getArtist.view" + getBaseQuery() + "&id=" + artist.id();
+        final String query = baseURL + "getArtist.view" + getBaseQuery() + "&id=" + artist.id();
         final CompletableFuture<Optional<ArrayList<Album>>> req = new CompletableFuture<>();
 
         httpClient.get(query, null, new AsyncHttpResponseHandler() {
@@ -127,7 +147,7 @@ public class SubsonicAPIClient implements APIClient {
                 if (status.isEmpty()) {
                     req.complete(Optional.of(parseGetArtist(resp, artist)));
                 } else {
-                    Toast.makeText(fragment.getContext(), status, Toast.LENGTH_LONG).show();
+                    Toast.makeText(context, status, Toast.LENGTH_LONG).show();
                     req.complete(Optional.<ArrayList<Album>>empty());
                 }
             }
@@ -145,7 +165,7 @@ public class SubsonicAPIClient implements APIClient {
     }
 
     public CompletableFuture<Optional<ArrayList<Artist>>> getArtists(String musicFolderId) {
-        String query = API_BASE_URL + "getArtists.view" + getBaseQuery();
+        String query = baseURL + "getArtists.view" + getBaseQuery();
         final CompletableFuture<Optional<ArrayList<Artist>>> req = new CompletableFuture<>();
         if (musicFolderId != null && !musicFolderId.isEmpty()) {
             query += "&musicFolderId=" + musicFolderId;
@@ -159,7 +179,7 @@ public class SubsonicAPIClient implements APIClient {
                 if (status.isEmpty()) {
                     req.complete(Optional.of(parseGetArtists(resp)));
                 } else {
-                    Toast.makeText(fragment.getContext(), status, Toast.LENGTH_LONG).show();
+                    Toast.makeText(context, status, Toast.LENGTH_LONG).show();
                     req.complete(Optional.<ArrayList<Artist>>empty());
                 }
             }

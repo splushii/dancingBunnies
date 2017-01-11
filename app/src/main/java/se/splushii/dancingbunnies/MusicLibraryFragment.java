@@ -1,5 +1,6 @@
 package se.splushii.dancingbunnies;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -21,27 +22,24 @@ public class MusicLibraryFragment extends Fragment {
     MusicLibrary lib;
     private RecyclerView recView;
     private MusicLibraryAdapter recViewAdapter;
-    private RecyclerView.LayoutManager recViewLayoutManager;
     private int numBackStack;
 
-    public MusicLibraryFragment() {
-        lib = new MusicLibrary(this);
-    }
-
     @Override
-    public void onStart() {
-        super.onStart();
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        lib = new MusicLibrary(getContext());
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        final View rootView = inflater.inflate(R.layout.bunny_fragment_layout, container, false);
+        final View rootView = inflater.inflate(R.layout.musiclibrary_fragment_layout, container, false);
         final ProgressBar progressBar = (ProgressBar) rootView.findViewById(R.id.progress_bar);
+        final TextView progressText = (TextView) rootView.findViewById(R.id.progress_bar_text);
 
-        recView = (RecyclerView) rootView.findViewById(R.id.recycler_view);
+        recView = (RecyclerView) rootView.findViewById(R.id.musiclibrary_recyclerview);
         recView.setHasFixedSize(true);
-        recViewLayoutManager = new LinearLayoutManager(this.getContext());
+        RecyclerView.LayoutManager recViewLayoutManager = new LinearLayoutManager(this.getContext());
         recView.setLayoutManager(recViewLayoutManager);
         recViewAdapter = new MusicLibraryAdapter(this, lib);
         recViewAdapter.setView(MusicLibraryAdapter.LibraryView.ARTIST);
@@ -64,19 +62,28 @@ public class MusicLibraryFragment extends Fragment {
                     @Override
                     public void onStart() {
                         recView.setVisibility(View.GONE);
+                        progressText.setText("");
+                        progressText.setVisibility(View.VISIBLE);
                         progressBar.setVisibility(View.VISIBLE);
                     }
 
                     @Override
                     public void onSuccess() {
                         progressBar.setVisibility(View.GONE);
+                        progressText.setVisibility(View.GONE);
                         recView.setVisibility(View.VISIBLE);
                     }
 
                     @Override
                     public void onFailure(String status) {
                         progressBar.setVisibility(View.GONE);
+                        progressText.setVisibility(View.GONE);
                         Toast.makeText(getContext(), status, Toast.LENGTH_LONG).show();
+                    }
+
+                    @Override
+                    public void onProgress(String s) {
+                        progressText.setText(s);
                     }
                 });
                 fab_sort_artist.setVisibility(View.GONE);
@@ -138,7 +145,6 @@ public class MusicLibraryFragment extends Fragment {
                 }
             }
         });
-
         return rootView;
     }
 
@@ -152,5 +158,9 @@ public class MusicLibraryFragment extends Fragment {
             return true;
         }
         return false;
+    }
+
+    public void loadSettings(Context context) {
+        recViewAdapter.loadSettings(context);
     }
 }
