@@ -15,6 +15,7 @@ import java.util.LinkedList;
 
 import java8.util.concurrent.CompletableFuture;
 import java8.util.function.Consumer;
+import java8.util.function.Function;
 import se.splushii.dancingbunnies.MusicLibraryFragment;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.events.PlaySongEvent;
@@ -90,9 +91,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     public void getAllLibraryEntries(final MusicLibraryRequestHandler handler) {
         handler.onStart();
         System.out.println("Getting all artists...");
-        final CompletableFuture artistReq = new CompletableFuture();
-        final CompletableFuture albumReq = new CompletableFuture();
-        getAllArtists("", true, new MusicLibraryRequestHandler() {
+        final CompletableFuture<Void> artistReq = new CompletableFuture<>();
+        final CompletableFuture<Void> albumReq = new CompletableFuture<>();
+        getAllArtists(true, new MusicLibraryRequestHandler() {
             @Override
             public void onStart() {}
             @Override
@@ -104,7 +105,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 artistReq.complete(null);
             }
         });
-        artistReq.thenAccept(new Consumer() {
+        artistReq.thenAccept(new Consumer<Object>() {
             @Override
             public void accept(Object o) {
                 System.out.println("Getting all artists done.");
@@ -130,7 +131,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 });
             }
         });
-        albumReq.thenAccept(new Consumer() {
+        albumReq.thenAccept(new Consumer<Object>() {
             @Override
             public void accept(Object o) {
                 System.out.println("Getting all albums done.");
@@ -164,9 +165,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         });
     }
 
-    private void getAllArtists(String dir, boolean refresh, final MusicLibraryRequestHandler handler) {
+    private void getAllArtists(boolean refresh, final MusicLibraryRequestHandler handler) {
         handler.onStart();
-        CompletableFuture<String> req = library.getAllArtists(dir, refresh);
+        CompletableFuture<String> req = library.fetchAllArtists(refresh);
         req.thenAccept(new Consumer<String>() {
             @Override
             public void accept(String status) {
@@ -179,7 +180,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         });
     }
 
-    private void getAlbums(final ArrayList<Artist> artists, final boolean refresh, final MusicLibraryRequestHandler handler) {
+    private void getAlbums(final ArrayList<Artist> artists, final boolean refresh,
+                           final MusicLibraryRequestHandler handler) {
         handler.onStart();
         final LinkedList<Artist> queue = new LinkedList<>(artists);
         final LinkedList<Artist> done = new LinkedList<>();
@@ -187,7 +189,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         final int max = queue.size();
         while (!queue.isEmpty()) {
             final Artist a = queue.remove();
-            CompletableFuture<String> albumReq = library.getAlbums(a, refresh);
+            CompletableFuture<String> albumReq = library.fetchAlbums(a, refresh);
             albumReq.thenAccept(new Consumer<String>() {
                 @Override
                 public void accept(String status) {
@@ -201,8 +203,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             });
             futures.add(albumReq);
         }
-        CompletableFuture req = CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]));
-        req.thenAccept(new Consumer() {
+        CompletableFuture<Void> req =
+                CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]));
+        req.thenAccept(new Consumer<Object>() {
             @Override
             public void accept(Object o) {
                 handler.onSuccess();
@@ -210,7 +213,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         });
     }
 
-    private void getSongs(final ArrayList<Album> albums, boolean refresh, final MusicLibraryRequestHandler handler) {
+    private void getSongs(final ArrayList<Album> albums, boolean refresh,
+                          final MusicLibraryRequestHandler handler) {
         handler.onStart();
         final LinkedList<Album> queue = new LinkedList<>(albums);
         final LinkedList<Album> done = new LinkedList<>();
@@ -218,7 +222,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         ArrayList<CompletableFuture<String>> futures = new ArrayList<>();
         while (!queue.isEmpty()) {
             final Album a = queue.remove();
-            CompletableFuture<String> songReq = library.getSongs(a, refresh);
+            CompletableFuture<String> songReq = library.fetchSongs(a, refresh);
             songReq.thenAccept(new Consumer<String>() {
                 @Override
                 public void accept(String status) {
@@ -232,8 +236,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             });
             futures.add(songReq);
         }
-        CompletableFuture req = CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]));
-        req.thenAccept(new Consumer() {
+        CompletableFuture<Void> req =
+                CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]));
+        req.thenAccept(new Consumer<Object>() {
             @Override
             public void accept(Object o) {
                 handler.onSuccess();
@@ -259,7 +264,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         // - get element from your dataset at this position
         // - replace the contents of the view with that element
         final int n = position;
-        RecyclerView rv = (RecyclerView) fragment.getView().findViewById(R.id.musiclibrary_recyclerview);
+        RecyclerView rv =
+                (RecyclerView) fragment.getView().findViewById(R.id.musiclibrary_recyclerview);
         LinearLayoutManager llm = (LinearLayoutManager) rv.getLayoutManager();
         final int hPos = llm.findFirstVisibleItemPosition();
         View v = llm.getChildAt(0);
@@ -271,7 +277,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 break;
             case SONG:
                 Song song = (Song) dataset.get(position);
-                holder.butt.setText(song.name() + " " + song.getAlbum().name() + " " + song.getAlbum().getArtist().name());
+                holder.butt.setText(song.name() + " " + song.getAlbum().name() + " " +
+                        song.getAlbum().getArtist().name());
                 break;
             case ALBUM:
                 Album album = (Album) dataset.get(position);
@@ -295,7 +302,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                     case SONG:
                         Song s = (Song) dataset.get(n);
                         System.out.println("Sending play song event with: " + s.name());
-                        EventBus.getDefault().post(new PlaySongEvent(s.name()));
+                        EventBus.getDefault().post(new PlaySongEvent(s));
                         break;
                 }
             }
@@ -316,7 +323,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             int i = historyPosition.pop();
             int pad = historyPositionPadding.pop();
             currentView = historyView.pop();
-            RecyclerView rv = (RecyclerView) fragment.getView().findViewById(R.id.musiclibrary_recyclerview);
+            RecyclerView rv =
+                    (RecyclerView) fragment.getView().findViewById(R.id.musiclibrary_recyclerview);
 //            rv.scrollToPosition(i);
             ((LinearLayoutManager) rv.getLayoutManager()).scrollToPositionWithOffset(i, pad);
         }

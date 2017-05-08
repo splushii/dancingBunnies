@@ -3,24 +3,19 @@ package se.splushii.dancingbunnies.musiclibrary;
 import java.util.ArrayList;
 
 public class Artist extends LibraryEntry {
-    int albumCount;
-    ArrayList<Album> albums;
-    public Artist(String id, String name, int albumCount) {
-        super(id, name);
-        this.albumCount = albumCount;
-        albums = new ArrayList<>(albumCount);
+    public Artist(String src, String id, String name) {
+        super(src, id, EntryType.ARTIST, name);
     }
 
     public ArrayList<Album> getAlbums() {
+        ArrayList<Album> albums = new ArrayList<>();
+        for (LibraryEntry e: getRefs(EntryType.ALBUM)) {
+            albums.add((Album) e);
+        }
         return albums;
-    }
-
-    protected void setAlbums(ArrayList<Album> albums) {
-        this.albums = albums;
-        albumCount = albums.size();
     }
 
     public ArrayList<? extends LibraryEntry> getEntries() {
-        return albums;
+        return getAlbums();
     }
 }

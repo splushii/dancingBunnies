@@ -1,8 +1,10 @@
 package se.splushii.dancingbunnies.events;
 
+import se.splushii.dancingbunnies.musiclibrary.Song;
+
 public class PlaySongEvent {
-    public final String id;
-    public PlaySongEvent(String id) {
-        this.id = id;
+    public final Song song;
+    public PlaySongEvent(Song s) {
+        this.song = s;
     }
 }

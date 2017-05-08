@@ -33,7 +33,8 @@ public class NowPlayingFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        final View rootView = inflater.inflate(R.layout.nowplaying_fragment_layout, container, false);
+        final View rootView = inflater.inflate(R.layout.nowplaying_fragment_layout, container,
+                false);
         TextView nowPlayingText = (TextView) rootView.findViewById(R.id.nowplaying_text);
         nowPlayingText.setText(nowPlaying);
         return rootView;
@@ -41,7 +42,7 @@ public class NowPlayingFragment extends Fragment {
 
     @Subscribe
     public void onMessageEvent(PlaySongEvent pse) {
-        nowPlaying = pse.id;
+        nowPlaying = pse.song.name();
         TextView nowPlayingText;
         try {
             nowPlayingText = (TextView) getView().findViewById(R.id.nowplaying_text);

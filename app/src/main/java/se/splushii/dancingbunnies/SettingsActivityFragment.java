@@ -13,7 +13,8 @@ import android.widget.EditText;
 /**
  * A placeholder fragment containing a simple view.
  */
-public class SettingsActivityFragment extends PreferenceFragment implements SharedPreferences.OnSharedPreferenceChangeListener{
+public class SettingsActivityFragment extends PreferenceFragment
+        implements SharedPreferences.OnSharedPreferenceChangeListener{
 
     public SettingsActivityFragment() {
     }

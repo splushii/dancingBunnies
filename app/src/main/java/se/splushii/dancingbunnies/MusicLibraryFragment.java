@@ -33,25 +33,33 @@ public class MusicLibraryFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        final View rootView = inflater.inflate(R.layout.musiclibrary_fragment_layout, container, false);
+        final View rootView = inflater.inflate(R.layout.musiclibrary_fragment_layout, container,
+                false);
         final ProgressBar progressBar = (ProgressBar) rootView.findViewById(R.id.progress_bar);
         final TextView progressText = (TextView) rootView.findViewById(R.id.progress_bar_text);
 
         recView = (RecyclerView) rootView.findViewById(R.id.musiclibrary_recyclerview);
         recView.setHasFixedSize(true);
-        RecyclerView.LayoutManager recViewLayoutManager = new LinearLayoutManager(this.getContext());
+        RecyclerView.LayoutManager recViewLayoutManager =
+                new LinearLayoutManager(this.getContext());
         recView.setLayoutManager(recViewLayoutManager);
         recViewAdapter = new MusicLibraryAdapter(this, lib);
         recViewAdapter.setView(MusicLibraryAdapter.LibraryView.ARTIST);
         recView.setAdapter(recViewAdapter);
 
         FloatingActionButton fab = (FloatingActionButton) rootView.findViewById(R.id.fab);
-        final FloatingActionButton fab_sort_artist = (FloatingActionButton) rootView.findViewById(R.id.fab_sort_artist);
-        final FloatingActionButton fab_sort_song = (FloatingActionButton) rootView.findViewById(R.id.fab_sort_song);
-        final FloatingActionButton fab_refresh = (FloatingActionButton) rootView.findViewById(R.id.fab_sort_refresh);
-        final TextView text_sort_artist = (TextView) rootView.findViewById(R.id.fab_sort_artist_label);
-        final TextView text_sort_song = (TextView) rootView.findViewById(R.id.fab_sort_song_label);
-        final TextView text_refresh = (TextView) rootView.findViewById(R.id.fab_sort_refresh_label);
+        final FloatingActionButton fab_sort_artist =
+                (FloatingActionButton) rootView.findViewById(R.id.fab_sort_artist);
+        final FloatingActionButton fab_sort_song =
+                (FloatingActionButton) rootView.findViewById(R.id.fab_sort_song);
+        final FloatingActionButton fab_refresh =
+                (FloatingActionButton) rootView.findViewById(R.id.fab_sort_refresh);
+        final TextView text_sort_artist =
+                (TextView) rootView.findViewById(R.id.fab_sort_artist_label);
+        final TextView text_sort_song =
+                (TextView) rootView.findViewById(R.id.fab_sort_song_label);
+        final TextView text_refresh =
+                (TextView) rootView.findViewById(R.id.fab_sort_refresh_label);
 
         fab_refresh.setOnClickListener(new View.OnClickListener() {
             @Override

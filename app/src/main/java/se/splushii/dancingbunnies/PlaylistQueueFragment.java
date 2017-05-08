@@ -19,7 +19,8 @@ public class PlaylistQueueFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.playlistqueue_fragment_layout, container, false);
-        RecyclerView recView = (RecyclerView) rootView.findViewById(R.id.playlistqueue_recyclerview);
+        RecyclerView recView =
+                (RecyclerView) rootView.findViewById(R.id.playlistqueue_recyclerview);
         recView.setHasFixedSize(true);
         LinearLayoutManager recViewLayoutManager = new LinearLayoutManager(this.getContext());
         recView.setLayoutManager(recViewLayoutManager);

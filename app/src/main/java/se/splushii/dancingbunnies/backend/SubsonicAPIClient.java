@@ -9,6 +9,8 @@ import android.widget.Toast;
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
 
+import org.greenrobot.eventbus.EventBus;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -16,39 +18,46 @@ import org.json.JSONObject;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import cz.msebera.android.httpclient.Header;
 import java8.util.Optional;
 import java8.util.concurrent.CompletableFuture;
 import se.splushii.dancingbunnies.R;
+import se.splushii.dancingbunnies.events.AlbumRequestFailEvent;
+import se.splushii.dancingbunnies.events.ArtistRequestFailEvent;
+import se.splushii.dancingbunnies.events.SongRequestFailEvent;
 import se.splushii.dancingbunnies.musiclibrary.Album;
 import se.splushii.dancingbunnies.musiclibrary.Artist;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
 import se.splushii.dancingbunnies.musiclibrary.Song;
 import se.splushii.dancingbunnies.util.Util;
 
 public class SubsonicAPIClient implements APIClient {
     private Context context;
+
+    private static final String API_SRC = "subsonic";
     private static final String API_BASE_URL = "/rest/";
 
-    static final String LOG_CONTEXT = "SubsonicAPIClient";
+    private static final String LOG_CONTEXT = "SubsonicAPIClient";
 
-    static final String JSON_RESP = "subsonic-response";
-    static final String JSON_STATUS = "status";
-    static final String JSON_VERSION = "version";
-    static final String JSON_ARTISTS = "artists";
-    static final String JSON_INDEX = "index";
-    static final String JSON_ARTIST = "artist";
-    static final String JSON_ALBUM = "album";
-    static final String JSON_ID = "id";
-    static final String JSON_NAME = "name";
-    static final String JSON_ERROR = "error";
-    static final String JSON_MESSAGE = "message";
-    static final String JSON_ALBUM_COUNT = "albumCount";
-    static final String JSON_SONG_COUNT = "songCount";
-    static final String JSON_SONG = "song";
-    static final String JSON_TITLE = "title";
+    private static final String JSON_RESP = "subsonic-response";
+    private static final String JSON_STATUS = "status";
+    private static final String JSON_VERSION = "version";
+    private static final String JSON_ARTISTS = "artists";
+    private static final String JSON_INDEX = "index";
+    private static final String JSON_ARTIST = "artist";
+    private static final String JSON_ALBUM = "album";
+    private static final String JSON_ID = "id";
+    private static final String JSON_NAME = "name";
+    private static final String JSON_ERROR = "error";
+    private static final String JSON_MESSAGE = "message";
+    private static final String JSON_ALBUM_COUNT = "albumCount";
+    private static final String JSON_SONG_COUNT = "songCount";
+    private static final String JSON_SONG = "song";
+    private static final String JSON_TITLE = "title";
 
-    static final String status_ok = "ok";
+    private static final String status_ok = "ok";
 
     private String username = "";
     private String password = "";
@@ -60,6 +69,8 @@ public class SubsonicAPIClient implements APIClient {
     private SecureRandom rand;
     private HTTPClient httpClient;
 
+    private HashMap<String, Integer> retries;
+
     public SubsonicAPIClient(Context context) {
         this.context = context;
         try {
@@ -70,7 +81,9 @@ public class SubsonicAPIClient implements APIClient {
             // TODO
         }
         this.httpClient = new HTTPClient();
-        httpClient.setRetries(AsyncHttpClient.DEFAULT_MAX_RETRIES * 10, AsyncHttpClient.DEFAULT_RETRY_SLEEP_TIME_MILLIS);
+        httpClient.setRetries(AsyncHttpClient.DEFAULT_MAX_RETRIES * 10,
+                AsyncHttpClient.DEFAULT_RETRY_SLEEP_TIME_MILLIS);
+        retries = new HashMap<>();
     }
 
     public void ping(AsyncHttpResponseHandler handler) {
@@ -120,14 +133,15 @@ public class SubsonicAPIClient implements APIClient {
                                   Header[] headers,
                                   byte[] responseBody,
                                   Throwable error) {
-                req.complete(Optional.<ArrayList<Song>>empty());
+                String status = error.getMessage();
+                EventBus.getDefault().post(new SongRequestFailEvent(MusicLibrary.API_ID_SUBSONIC,
+                        query, album, req, status));
             }
 
             @Override
             public void onProgress(long bytesWritten, long totalSize) {
             }
         });
-
         return req;
     }
 
@@ -138,7 +152,6 @@ public class SubsonicAPIClient implements APIClient {
     private CompletableFuture<Optional<ArrayList<Album>>> getArtist(final Artist artist) {
         final String query = baseURL + "getArtist.view" + getBaseQuery() + "&id=" + artist.id();
         final CompletableFuture<Optional<ArrayList<Album>>> req = new CompletableFuture<>();
-
         httpClient.get(query, null, new AsyncHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
@@ -152,26 +165,23 @@ public class SubsonicAPIClient implements APIClient {
                 }
             }
             @Override
-            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-                req.complete(Optional.<ArrayList<Album>>empty());
+            public void onFailure(int statusCode, Header[] headers, byte[] responseBody,
+                                  Throwable error) {
+                String status = error.getMessage();
+                EventBus.getDefault().post(new AlbumRequestFailEvent(MusicLibrary.API_ID_SUBSONIC,
+                        query, artist, req, status));
             }
-
             @Override
             public void onProgress(long bytesWritten, long totalSize) {
             }
         });
-
         return req;
     }
 
-    public CompletableFuture<Optional<ArrayList<Artist>>> getArtists(String musicFolderId) {
-        String query = baseURL + "getArtists.view" + getBaseQuery();
+    public CompletableFuture<Optional<ArrayList<Artist>>> getArtists() {
+        final String query = baseURL + "getArtists.view" + getBaseQuery();
         final CompletableFuture<Optional<ArrayList<Artist>>> req = new CompletableFuture<>();
-        if (musicFolderId != null && !musicFolderId.isEmpty()) {
-            query += "&musicFolderId=" + musicFolderId;
-        }
-        final String finalQuery = query;
-        httpClient.get(finalQuery, null, new AsyncHttpResponseHandler() {
+        httpClient.get(query, null, new AsyncHttpResponseHandler() {
             @Override
             public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
                 String resp = new String(responseBody);
@@ -183,12 +193,13 @@ public class SubsonicAPIClient implements APIClient {
                     req.complete(Optional.<ArrayList<Artist>>empty());
                 }
             }
-
             @Override
-            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-                req.complete(Optional.<ArrayList<Artist>>empty());
+            public void onFailure(int statusCode, Header[] headers, byte[] responseBody,
+                                  Throwable error) {
+                String status = error.getMessage();
+                EventBus.getDefault().post(new ArtistRequestFailEvent(MusicLibrary.API_ID_SUBSONIC,
+                        query, req, status));
             }
-
             @Override
             public void onProgress(long bytesWritten, long totalSize) {
             }
@@ -223,7 +234,8 @@ public class SubsonicAPIClient implements APIClient {
     private String getBaseQuery() {
         String salt = Util.getSalt(rand, 32);
         String token = Util.md5(password + salt);
-        return String.format("?u=%s&t=%s&s=%s&v=%s&c=%s&f=%s", username, token, salt, version, clientId, format);
+        return String.format("?u=%s&t=%s&s=%s&v=%s&c=%s&f=%s", username, token, salt, version,
+                clientId, format);
     }
 
     private ArrayList<Artist> parseGetArtists(String resp) {
@@ -241,7 +253,7 @@ public class SubsonicAPIClient implements APIClient {
                     String id = jArtist.getString(JSON_ID);
                     String name = jArtist.getString(JSON_NAME);
                     int albumCount = jArtist.getInt(JSON_ALBUM_COUNT);
-                    artists.add(new Artist(id, name, albumCount));
+                    artists.add(new Artist(API_SRC, id, name));
                 }
             }
         } catch (JSONException e) {
@@ -266,7 +278,7 @@ public class SubsonicAPIClient implements APIClient {
                 String id = jAlbum.getString(JSON_ID);
                 String name = jAlbum.getString(JSON_NAME);
                 int songCount = jAlbum.getInt(JSON_SONG_COUNT);
-                albums.add(new Album(id, name, artist, songCount));
+                albums.add(new Album(API_SRC, id, name, artist));
             }
         } catch (JSONException e) {
             Log.d(LOG_CONTEXT, "JSON error: " + e.toString());
@@ -290,7 +302,7 @@ public class SubsonicAPIClient implements APIClient {
                 JSONObject jSong = jSongs.getJSONObject(i);
                 String id = jSong.getString(JSON_ID);
                 String name = jSong.getString(JSON_TITLE);
-                songs.add(new Song(id, name, album));
+                songs.add(new Song(API_SRC, id, name, album));
             }
         } catch (JSONException e) {
             Log.d(LOG_CONTEXT, "JSON error: " + e.toString());

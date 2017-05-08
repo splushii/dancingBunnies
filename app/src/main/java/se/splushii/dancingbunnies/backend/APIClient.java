@@ -11,7 +11,7 @@ import se.splushii.dancingbunnies.musiclibrary.Artist;
 import se.splushii.dancingbunnies.musiclibrary.Song;
 
 public interface APIClient {
-    CompletableFuture<Optional<ArrayList<Artist>>> getArtists(String musicFolderId);
+    CompletableFuture<Optional<ArrayList<Artist>>> getArtists();
     CompletableFuture<Optional<ArrayList<Album>>> getAlbums(Artist artist);
     CompletableFuture<Optional<ArrayList<Song>>> getSongs(Album album);
 

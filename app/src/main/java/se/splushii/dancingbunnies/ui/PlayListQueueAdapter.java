@@ -16,16 +16,17 @@ import se.splushii.dancingbunnies.musiclibrary.Album;
 import se.splushii.dancingbunnies.musiclibrary.Artist;
 import se.splushii.dancingbunnies.musiclibrary.Song;
 
-public class PlayListQueueAdapter extends RecyclerView.Adapter<PlayListQueueAdapter.SongViewHolder> {
+public class PlayListQueueAdapter
+        extends RecyclerView.Adapter<PlayListQueueAdapter.SongViewHolder> {
     private Fragment fragment;
     private ArrayList<Song> dataset;
 
     public PlayListQueueAdapter(Fragment fragment) {
         this.fragment = fragment;
         dataset = new ArrayList<>();
-        Artist artist = new Artist("TestArtist", "TestArtist", 1);
-        Album album = new Album("TestAlbum", "TestAlbum", artist, 1);
-        Song song = new Song("TestSong", "Test", album);
+        Artist artist = new Artist("TEST","TestArtist", "TestArtist");
+        Album album = new Album("TEST", "TestAlbum", "TestAlbum", artist);
+        Song song = new Song("TEST", "TestSong", "Test", album);
         dataset.add(song);
     }
 
@@ -57,7 +58,8 @@ public class PlayListQueueAdapter extends RecyclerView.Adapter<PlayListQueueAdap
         // - get element from your dataset at this position
         // - replace the contents of the view with that element
         final int n = position;
-        RecyclerView rv = (RecyclerView) fragment.getView().findViewById(R.id.playlistqueue_recyclerview);
+        RecyclerView rv =
+                (RecyclerView) fragment.getView().findViewById(R.id.playlistqueue_recyclerview);
         LinearLayoutManager llm = (LinearLayoutManager) rv.getLayoutManager();
         final int hPos = llm.findFirstVisibleItemPosition();
         View v = llm.getChildAt(0);
