@@ -3,12 +3,10 @@ package se.splushii.dancingbunnies;
 import android.content.SharedPreferences;
 import android.preference.EditTextPreference;
 import android.preference.PreferenceFragment;
-import android.support.v4.app.Fragment;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
 
 /**
  * A placeholder fragment containing a simple view.
@@ -69,6 +67,7 @@ public class SettingsActivityFragment extends PreferenceFragment
                 || key.equals(getResources().getString(R.string.pref_key_subsonic_pwd))) {
             EditTextPreference etp = (EditTextPreference) findPreference(key);
             etp.setSummary(sp.getString(key, ""));
+            etp.setText(sp.getString(key, ""));
         }
     }
 }

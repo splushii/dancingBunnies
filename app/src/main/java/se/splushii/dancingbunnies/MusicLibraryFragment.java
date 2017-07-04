@@ -1,10 +1,17 @@
 package se.splushii.dancingbunnies;
 
+import android.content.ComponentName;
 import android.content.Context;
 import android.os.Bundle;
+import android.os.RemoteException;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
+import android.support.v4.media.MediaBrowserCompat;
+import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaControllerCompat;
+import android.support.v4.media.session.MediaSessionCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -16,6 +23,7 @@ import android.widget.Toast;
 
 import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
 import se.splushii.dancingbunnies.backend.MusicLibraryRequestHandler;
+import se.splushii.dancingbunnies.services.AudioPlayerService;
 import se.splushii.dancingbunnies.ui.MusicLibraryAdapter;
 
 public class MusicLibraryFragment extends Fragment {
@@ -23,11 +31,74 @@ public class MusicLibraryFragment extends Fragment {
     private RecyclerView recView;
     private MusicLibraryAdapter recViewAdapter;
     private int numBackStack;
+    private MediaBrowserCompat mediaBrowser;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         lib = new MusicLibrary(getContext());
+        //
+        mediaBrowser = new MediaBrowserCompat(getActivity(), new ComponentName(getActivity(),
+                AudioPlayerService.class), mediaBrowserConnectionCallback, null);
+    }
+
+    private final MediaBrowserCompat.ConnectionCallback mediaBrowserConnectionCallback =
+            new MediaBrowserCompat.ConnectionCallback() {
+                @Override
+                public void onConnected() {
+                    System.out.println("MediaBrowser connected");
+                    try {
+                        connectMediaController(mediaBrowser.getSessionToken());
+                    } catch (RemoteException e) {
+                        System.out.println("Failed to connect to media controller");
+                    }
+                }
+
+                @Override
+                public void onConnectionFailed() {
+                    System.out.println("MediaBrowser onConnectFailed");
+                }
+
+                @Override
+                public void onConnectionSuspended() {
+                    System.out.println("MediaBrowser onConnectionSuspended");
+                }
+    };
+
+    private void connectMediaController(MediaSessionCompat.Token token) throws RemoteException {
+        MediaControllerCompat mediaController = new MediaControllerCompat(getActivity(), token);
+        getActivity().setSupportMediaController(mediaController); // TODO: use setMediaController?
+        mediaController.registerCallback(mediaControllerCallback);
+    }
+
+    private final MediaControllerCompat.Callback mediaControllerCallback =
+            new MediaControllerCompat.Callback() {
+                @Override
+                public void onPlaybackStateChanged(PlaybackStateCompat state) {
+                    System.out.println("mediacontroller onplaybackstatechanged");
+                }
+
+                @Override
+                public void onMetadataChanged(MediaMetadataCompat metadata) {
+                    System.out.println("mediacontroller onmetadatachanged");
+                }
+
+                @Override
+                public void onSessionEvent(String event, Bundle extras) {
+                    System.out.println("mediacontroller onsessionevent");
+                }
+            };
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        mediaBrowser.connect();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        mediaBrowser.disconnect();
     }
 
     @Override

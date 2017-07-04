@@ -1,14 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 24
-    buildToolsVersion '25.0.0'
+    compileSdkVersion 25
+    buildToolsVersion '25.0.2'
 
     defaultConfig {
         applicationId "se.splushii.dancingbunnies"
-        minSdkVersion 18
-        //minSdkVersion 23
-        targetSdkVersion 24
+        minSdkVersion 23
+        targetSdkVersion 25
         versionCode 1
         versionName "1.0"
     }
@@ -24,15 +23,14 @@ repositories {
     mavenCentral()
 }
 
-
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile 'com.android.support:appcompat-v7:24.2.1'
-    compile 'com.android.support:design:24.2.1'
+    compile 'com.android.support:appcompat-v7:25.3.1'
+    compile 'com.android.support:design:25.3.1'
     compile 'com.loopj.android:android-async-http:1.4.9'
     compile 'net.sourceforge.streamsupport:streamsupport:1.5.1'
     compile 'net.sourceforge.streamsupport:streamsupport-cfuture:1.5.1'
-    compile 'com.android.support:recyclerview-v7:24.2.1'
+    compile 'com.android.support:recyclerview-v7:25.3.1'
     compile 'org.greenrobot:eventbus:3.0.0'
     testCompile 'junit:junit:4.12'
 }

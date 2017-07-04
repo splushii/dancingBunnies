@@ -16,6 +16,7 @@ import java8.util.concurrent.CompletableFuture;
 import java8.util.function.Consumer;
 
 import se.splushii.dancingbunnies.backend.APIClient;
+import se.splushii.dancingbunnies.backend.AudioDataSource;
 import se.splushii.dancingbunnies.backend.SubsonicAPIClient;
 import se.splushii.dancingbunnies.events.AlbumRequestFailEvent;
 import se.splushii.dancingbunnies.events.ArtistRequestFailEvent;
@@ -235,6 +236,15 @@ public class MusicLibrary {
             ret.complete("");
         }
         return ret;
+    }
+
+    public AudioDataSource getAudioData(Song song) {
+        if (apis.containsKey(song.src())) {
+            return apis.get(song.src()).getAudioData(song);
+        } else {
+            System.out.println("Could not find api for song " + song.name());
+            return new AudioDataSource(null);
+        }
     }
 
     public ArrayList<Artist> artists() {

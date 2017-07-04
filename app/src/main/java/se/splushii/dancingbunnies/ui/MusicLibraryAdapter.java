@@ -15,7 +15,6 @@ import java.util.LinkedList;
 
 import java8.util.concurrent.CompletableFuture;
 import java8.util.function.Consumer;
-import java8.util.function.Function;
 import se.splushii.dancingbunnies.MusicLibraryFragment;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.events.PlaySongEvent;
@@ -38,6 +37,20 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
 
     public void loadSettings(Context context) {
         library.loadSettings(context);
+    }
+
+    public void setView(LibraryView view) {
+        switch (view) {
+            case ARTIST:
+                setDataset(library.artists(), LibraryView.ARTIST);
+                break;
+            case SONG:
+                setDataset(library.songs(), LibraryView.SONG);
+                break;
+            case ALBUM:
+                setDataset(library.albums(), LibraryView.ALBUM);
+                break;
+        }
     }
 
     public enum LibraryView {
@@ -68,23 +81,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         }
     }
 
-    public void setView(LibraryView view) {
-        currentView = view;
-        switch (view) {
-            case ARTIST:
-                setDataset(library.artists());
-                break;
-            case SONG:
-                setDataset(library.songs());
-                break;
-            case ALBUM:
-                setDataset(library.albums());
-                break;
-        }
-    }
-
-    private void setDataset(ArrayList<? extends LibraryEntry> dataset) {
+    private void setDataset(ArrayList<? extends LibraryEntry> dataset, LibraryView view) {
         this.dataset = dataset;
+        currentView = view;
         notifyDataSetChanged();
     }
 
@@ -124,9 +123,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                     }
                     @Override
                     public void onProgress(int i, int max) {
-//                        if (i % 100 == 0) {
-                            handler.onProgress("Getting albums for artist " + i + "/" + max);
-//                        }
+                        handler.onProgress("Getting albums for artist " + i + "/" + max);
                     }
                 });
             }
@@ -151,14 +148,12 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                         System.out.println("Artists:\t" + library.artists().size());
                         System.out.println("Albums:\t" + library.albums().size());
                         System.out.println("Songs:\t" + library.songs().size());
-                        setDataset(library.artists()); // TODO: check LibraryView enum
+                        setDataset(library.artists(), LibraryView.ARTIST); // TODO: check LibraryView enum
                         handler.onSuccess();
                     }
                     @Override
                     public void onProgress(int i, int max) {
-//                        if (i % 100 == 0) {
-                            handler.onProgress("Getting songs for album " + i + "/" + max);
-//                        }
+                        handler.onProgress("Getting songs for album " + i + "/" + max);
                     }
                 });
             }
@@ -285,24 +280,30 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 holder.butt.setText(album.name() + " " + album.getArtist().name());
                 break;
         }
+        holder.butt.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                System.out.println("Long click on " + dataset.get(n).name());
+                // TODO: implement popup with queueing, related entries, etc.
+                return true;
+            }
+        });
         holder.butt.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 switch (currentView) {
                     case ARTIST:
                         addBackButtonHistory(currentView, hPos, hPad);
-                        currentView = LibraryView.ALBUM;
-                        setDataset(dataset.get(n).getEntries());
+                        setDataset(dataset.get(n).getEntries(), LibraryView.ALBUM);
                         break;
                     case ALBUM:
                         addBackButtonHistory(currentView, hPos, hPad);
-                        currentView = LibraryView.SONG;
-                        setDataset(dataset.get(n).getEntries());
+                        setDataset(dataset.get(n).getEntries(), LibraryView.SONG);
                         break;
                     case SONG:
                         Song s = (Song) dataset.get(n);
                         System.out.println("Sending play song event with: " + s.name());
-                        EventBus.getDefault().post(new PlaySongEvent(s));
+                        EventBus.getDefault().post(new PlaySongEvent(library, s));
                         break;
                 }
             }
@@ -319,10 +320,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
 
     public void onBackPressed() {
         if (historyDataset.size() > 0) {
-            setDataset(historyDataset.pop());
+            setDataset(historyDataset.pop(), historyView.pop());
             int i = historyPosition.pop();
             int pad = historyPositionPadding.pop();
-            currentView = historyView.pop();
             RecyclerView rv =
                     (RecyclerView) fragment.getView().findViewById(R.id.musiclibrary_recyclerview);
 //            rv.scrollToPosition(i);
