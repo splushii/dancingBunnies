@@ -3,8 +3,8 @@ package se.splushii.dancingbunnies.musiclibrary;
 import java.util.ArrayList;
 
 public class Artist extends LibraryEntry {
-    public Artist(String src, String id, String name) {
-        super(src, id, EntryType.ARTIST, name);
+    public Artist(String name) {
+        super("dancingbunnies", name, EntryType.ARTIST, name);
     }
 
     public ArrayList<Album> getAlbums() {

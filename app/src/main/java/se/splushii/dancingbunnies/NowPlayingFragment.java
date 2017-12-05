@@ -14,7 +14,7 @@ import org.greenrobot.eventbus.Subscribe;
 import se.splushii.dancingbunnies.events.PlaySongEvent;
 import se.splushii.dancingbunnies.events.PlaybackEvent;
 
-public class NowPlayingFragment extends Fragment { // TODO: Refactor MediaPlayer stuff into service
+public class NowPlayingFragment extends Fragment {
     String nowPlaying = "SONG INFO";
 
     public NowPlayingFragment() {
@@ -73,13 +73,9 @@ public class NowPlayingFragment extends Fragment { // TODO: Refactor MediaPlayer
 
     @Subscribe
     public void onMessageEvent(PlaySongEvent pse) {
-        nowPlaying = pse.song.name();
+        nowPlaying = pse.id;
         TextView nowPlayingText;
-        try {
-            nowPlayingText = (TextView) getView().findViewById(R.id.nowplaying_text);
-            nowPlayingText.setText(nowPlaying);
-        } catch (NullPointerException e) {
-            // Do nothing. Wait for onCreateView
-        }
+        nowPlayingText = (TextView) getView().findViewById(R.id.nowplaying_text);
+        nowPlayingText.setText(nowPlaying);
     }
 }

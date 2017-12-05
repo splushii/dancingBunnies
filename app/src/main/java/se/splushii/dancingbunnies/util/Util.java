@@ -9,14 +9,18 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 
 public class Util {
-    static final String LOG_CONTEXT = "Util";
+    private static final String LC = getLogContext(Util.class);
+
+    public static String getLogContext(Class c) {
+        return c.getSimpleName();
+    }
 
     public static String md5(String in) {
         MessageDigest digest;
         try {
             digest = MessageDigest.getInstance("MD5");
         } catch (NoSuchAlgorithmException e) {
-            Log.d(LOG_CONTEXT, "MD5 not supported");
+            Log.e(LC, "MD5 not supported");
             e.printStackTrace();
             return "";
             // TODO
@@ -24,7 +28,7 @@ public class Util {
         try {
             digest.update(in.getBytes("UTF-8"), 0, in.length());
         } catch (UnsupportedEncodingException e) {
-            Log.d(LOG_CONTEXT, "UTF-8 not supported");
+            Log.e(LC, "UTF-8 not supported");
             e.printStackTrace();
             return "";
             // TODO

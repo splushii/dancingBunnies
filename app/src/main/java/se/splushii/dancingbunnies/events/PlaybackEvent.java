@@ -9,7 +9,7 @@ public class PlaybackEvent {
         PREVIOUS,
         SEEK
     }
-    public PlaybackAction action;
+    public final PlaybackAction action;
     public PlaybackEvent(PlaybackAction action) {
         this.action = action;
     }

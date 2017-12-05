@@ -30,6 +30,10 @@ public final class MainActivity extends AppCompatActivity {
      * The {@link ViewPager} that will host the section contents.
      */
     private ViewPager mViewPager;
+    private static final int MUSICLIBRARY = 0;
+    private static final int NOWPLAYING = 1;
+    private static final int QUEUE = 2;
+    private static final int NUM_VIEWS = 3;
 
     private MusicLibraryFragment musicLibraryFragment;
     private NowPlayingFragment nowPlayingFragment;
@@ -42,11 +46,9 @@ public final class MainActivity extends AppCompatActivity {
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        // Create the adapter that will return a fragment for each of the three
-        // primary sections of the activity.
+
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
 
-        // Set up the ViewPager with the sections adapter.
         mViewPager = (ViewPager) findViewById(R.id.container);
         mViewPager.setAdapter(mSectionsPagerAdapter);
 
@@ -65,7 +67,6 @@ public final class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main_activity_menu, menu);
         return true;
     }
@@ -79,23 +80,14 @@ public final class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         switch (requestCode) {
             case SETTINGS_INTENT_REQUEST:
-                // Always reload settings
-                loadSettings();
                 break;
             default:
                 break;
         }
     }
 
-    private void loadSettings() {
-        musicLibraryFragment.loadSettings(this);
-    }
-
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
         switch (item.getItemId()) {
             case R.id.action_settings:
                 showSettings();
@@ -107,7 +99,8 @@ public final class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (!musicLibraryFragment.onBackPressed()) {
+        if (mViewPager.getCurrentItem() != MUSICLIBRARY
+                || !musicLibraryFragment.onBackPressed()) {
             super.onBackPressed();
         }
     }
@@ -124,14 +117,12 @@ public final class MainActivity extends AppCompatActivity {
 
         @Override
         public Fragment getItem(int position) {
-            // getItem is called to instantiate the fragment for the given page.
-            // Return a PlaceholderFragment (defined as a static inner class below).
             switch (position) {
-                case 0:
+                case MUSICLIBRARY:
                     return musicLibraryFragment;
-                case 1:
+                case NOWPLAYING:
                     return nowPlayingFragment;
-                case 2:
+                case QUEUE:
                     return playlistQueueFragment;
             }
             return null;
@@ -139,18 +130,17 @@ public final class MainActivity extends AppCompatActivity {
 
         @Override
         public int getCount() {
-            // Show 3 total pages.
-            return 3;
+            return NUM_VIEWS;
         }
 
         @Override
         public CharSequence getPageTitle(int position) {
             switch (position) {
-                case 0:
+                case MUSICLIBRARY:
                     return "MusicLibrary";
-                case 1:
+                case NOWPLAYING:
                     return "Now Playing";
-                case 2:
+                case QUEUE:
                     return "Playlist/Queue";
             }
             return null;

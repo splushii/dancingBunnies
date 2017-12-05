@@ -3,9 +3,8 @@ package se.splushii.dancingbunnies.musiclibrary;
 import java.util.ArrayList;
 
 public class Album extends LibraryEntry {
-    public Album(String src, String id, String name, Artist artist) {
-        super(src, id, EntryType.ALBUM, name);
-        setParent(artist);
+    public Album(String name, String albumArtist) {
+        super("dancingbunnies", albumArtist + name, EntryType.ALBUM, name);
     }
 
     public ArrayList<Song> getSongs() {
@@ -16,8 +15,12 @@ public class Album extends LibraryEntry {
         return songs;
     }
 
-    public Artist getArtist() {
-        return (Artist) getParent();
+    public ArrayList<Artist> getArtists() {
+        ArrayList<Artist> artists = new ArrayList<>();
+        for (LibraryEntry e: getRefs(EntryType.ARTIST)) {
+            artists.add((Artist) e);
+        }
+        return artists;
     }
 
     public ArrayList<? extends LibraryEntry> getEntries() {

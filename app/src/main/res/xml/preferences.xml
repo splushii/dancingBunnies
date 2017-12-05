@@ -19,5 +19,9 @@
             android:dependency="pref_subsonic"
             android:key="pref_subsonic_pwd"
             android:title="@string/pref_subsonic_pwd" />
+        <Preference
+            android:dependency="pref_subsonic"
+            android:key="pref_subsonic_refresh"
+            android:title="@string/pref_subsonic_refresh" />
     </PreferenceCategory>
 </PreferenceScreen>

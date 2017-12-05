@@ -7,14 +7,22 @@ import java.util.ArrayList;
 
 import java8.util.Optional;
 import java8.util.concurrent.CompletableFuture;
-import se.splushii.dancingbunnies.musiclibrary.Album;
-import se.splushii.dancingbunnies.musiclibrary.Artist;
 import se.splushii.dancingbunnies.musiclibrary.Playlist;
 import se.splushii.dancingbunnies.musiclibrary.Song;
 
 public abstract class APIClient {
     public abstract boolean hasLibrary();
-    public CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> getLibrary() {
+
+    /**
+     * @param handler Optional to call handler methods
+     * @return A future with a list of MediaMetaData
+     * Each MediaMetaData element must include the following entries:
+     *  - MusicLibrary.METADATA_KEY_API
+     *  - MusicLibrary.METADATA_KEY_MEDIA_ROOT
+     *  - MediaMetadataCompat.METADATA_KEY_MEDIA_ID
+     *  - MediaMetadataCompat.METADATA_KEY_TITLE
+     */
+    public CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> getLibrary(APIClientRequestHandler handler) {
         CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> ret = new CompletableFuture<>();
         ret.complete(Optional.<ArrayList<MediaMetadataCompat>>empty());
         return ret;
@@ -25,12 +33,9 @@ public abstract class APIClient {
         ret.complete(Optional.<Playlist>empty());
         return ret;
     }
-    public abstract AudioDataSource getAudioData(Song song);
+    public AudioDataSource getAudioData(Song song) {
+        return getAudioData(song.id());
+    }
+    public abstract AudioDataSource getAudioData(String id);
     public abstract void loadSettings(Context context);
-
-    // TODO: Deprecate
-    public abstract CompletableFuture<Optional<ArrayList<Artist>>> getArtists();
-    public abstract CompletableFuture<Optional<ArrayList<Album>>> getAlbums(Artist artist);
-    public abstract CompletableFuture<Optional<ArrayList<Song>>> getSongs(Album album);
-
 }

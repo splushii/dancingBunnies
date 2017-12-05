@@ -1,15 +1,19 @@
 package se.splushii.dancingbunnies.musiclibrary;
 
+import android.support.v4.media.MediaMetadataCompat;
+
 import java.util.ArrayList;
 
 public class Song extends LibraryEntry {
-    public Song(String src, String id, String name, Album album) {
+    private MediaMetadataCompat meta;
+
+    public Song(String src, String id, String name, MediaMetadataCompat meta) {
         super(src, id, EntryType.SONG, name);
-        setParent(album);
+        this.meta = meta;
     }
 
-    public Album getAlbum() {
-        return (Album) getParent();
+    public MediaMetadataCompat meta() {
+        return meta;
     }
 
     public ArrayList<? extends LibraryEntry> getEntries() {
