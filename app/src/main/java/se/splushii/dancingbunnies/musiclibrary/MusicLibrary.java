@@ -23,18 +23,19 @@ import se.splushii.dancingbunnies.backend.APIClientRequestHandler;
 import se.splushii.dancingbunnies.backend.AudioDataSource;
 import se.splushii.dancingbunnies.backend.MusicLibraryRequestHandler;
 import se.splushii.dancingbunnies.backend.SubsonicAPIClient;
+import se.splushii.dancingbunnies.events.LibraryChangedEvent;
 import se.splushii.dancingbunnies.events.SettingsChangedEvent;
+import se.splushii.dancingbunnies.services.AudioPlayerService;
 import se.splushii.dancingbunnies.storage.Storage;
 import se.splushii.dancingbunnies.util.Util;
 
-// TODO: BIG TIME: Do not hog the main thread. Do heavy stuff in separate threads.
 public class MusicLibrary {
     private static String LC = Util.getLogContext(MusicLibrary.class);
 
     public static final String API_ID_ANY = "any";
     public static final String API_ID_SUBSONIC = "subsonic";
 
-    private final Context context;
+    private final AudioPlayerService context;
     private HashMap<String, APIClient> apis;
     private Storage storage;
     private ArrayList<Artist> artists = new ArrayList<>();
@@ -44,35 +45,39 @@ public class MusicLibrary {
     private HashMap<String, Album> albumMap= new HashMap<>();
     private HashMap<String, Song> songMap = new HashMap<>();
 
-    public MusicLibrary(Context context) {
+    public MusicLibrary(final AudioPlayerService context) {
         this.context = context;
         apis = new HashMap<>();
         loadSettings(context);
         EventBus.getDefault().register(this);
         storage = new Storage(context);
-        fetchLibraryFromStorage();
-    }
-
-    private void fetchLibraryFromStorage() {
-        storage.open();
-        addToLibrary(storage.getAll(), new MusicLibraryRequestHandler() {
+        fetchLibraryFromStorage().thenRun(new Runnable() {
             @Override
-            public void onStart() {
-                Log.i(LC, "Fetching library from storage...");
-            }
-
-            @Override
-            public void onSuccess(String status) {
-                Log.i(LC, "Successfully fetched library from storage: " + status);
-                storage.close();
-            }
-
-            @Override
-            public void onFailure(String status) {
-                Log.e(LC, "Could not fetch library from storage.");
-                storage.close();
+            public void run() {
+                Log.d(LC, "Library fetched from storage!");
+                notifyLibraryChanged();
             }
         });
+    }
+
+    private void notifyLibraryChanged() {
+        // TODO: Notify about ALL changed parents/children?
+        EventBus.getDefault().post(new LibraryChangedEvent());
+        context.notifyChildrenChanged(AudioPlayerService.MEDIA_ID_ROOT);
+    }
+
+    private CompletableFuture<Void> fetchLibraryFromStorage() {
+        final CompletableFuture<Void> ret = new CompletableFuture<>();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                storage.open();
+                addToLibrary(storage.getAll(), null);
+                storage.close();
+                ret.complete(null);
+            }
+        }).start();
+        return ret;
     }
 
     public void onDestroy() {
@@ -90,28 +95,28 @@ public class MusicLibrary {
     }
 
     public ArrayList<Artist> artists() {
-        return artists;
+        return new ArrayList<>(artists);
     }
 
     public ArrayList<Album> albums() {
-        return albums;
+        return new ArrayList<>(albums);
     }
 
     public ArrayList<Song> songs() {
-        return songs;
+        return new ArrayList<>(songs);
     }
 
     public ArrayList<? extends LibraryEntry> getEntries(MusicLibraryQuery q) {
         ArrayList<? extends LibraryEntry> entries;
         switch (q.type) {
             case ARTIST:
-                entries = artists;
+                entries = artists();
                 break;
             case ALBUM:
-                entries = albums;
+                entries = albums();
                 break;
             case SONG:
-                entries = songs;
+                entries = songs();
                 break;
             default:
                 Log.w(LC, "Unhandled LibraryEntry type: " + q.type.name());
@@ -148,7 +153,9 @@ public class MusicLibrary {
         int count = 0;
         int size = data.size();
         for (MediaMetadataCompat meta: data) {
-            handler.onProgress("Adding songs to library: " + count++ + "/" + size + " added...");
+            if (handler != null) {
+                handler.onProgress("Adding songs to library: " + count++ + "/" + size + " added...");
+            }
             // Check required attributes
             if (!meta.containsKey(Meta.METADATA_KEY_API)) {
                 Log.e(LC, "Entry does not contain api. Skipping.");
@@ -221,12 +228,34 @@ public class MusicLibrary {
         }
     }
 
-    private void saveLibraryToStorage() {
-        storage.open();
-        for (Song song: songs) {
-            storage.insertSong(song);
-        }
-        storage.close();
+    private CompletableFuture<Void> saveLibraryToStorage() {
+        final CompletableFuture<Void> ret = new CompletableFuture<>();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                storage.open();
+                for (Song song: songs) {
+                    storage.insertSong(song);
+                }
+                storage.close();
+                ret.complete(null);
+            }
+        }).start();
+        return ret;
+    }
+
+    private CompletableFuture<Void> clearStorageEntries(final String src) {
+        final CompletableFuture<Void> ret = new CompletableFuture<>();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                storage.open();
+                storage.clearAll(src);
+                storage.close();
+                ret.complete(null);
+            }
+        }).start();
+        return ret;
     }
 
     private synchronized void addToSongs(Song song) {
@@ -239,7 +268,7 @@ public class MusicLibrary {
     }
 
     private synchronized void addToAlbum(Song song, Artist artist, String albumArtist, String albumName) {
-        Album album = null;
+        Album album;
         if ((album = albumMap.get(albumName)) == null) {
             album = new Album(albumName, albumArtist);
             albums.add(album);
@@ -251,7 +280,7 @@ public class MusicLibrary {
     }
 
     private synchronized Artist addToArtist(Song song, String artistName) {
-        Artist artist = null;
+        Artist artist;
         if ((artist = artistMap.get(artistName)) == null) {
             artist = new Artist(artistName);
             artists.add(artist);
@@ -286,10 +315,18 @@ public class MusicLibrary {
                 if (opt.isPresent()) {
                     final ArrayList<MediaMetadataCompat> data = opt.get();
                     Log.d(LC, "Fetched library from " + api + ": " + data.size() + " entries.");
-                    // TODO: Do not forget to remove old entries
                     addToLibrary(data, handler);
-                    saveLibraryToStorage();
-                    handler.onSuccess("Successfully fetched " + data.size() + " entries.");
+                    notifyLibraryChanged();
+                    // TODO: Do not remove all entries, only the needed
+                    handler.onProgress("Clearing old entries in storage...");
+                    clearStorageEntries(api);
+                    handler.onProgress("Saving entries to storage...");
+                    saveLibraryToStorage().thenRun(new Runnable() {
+                        @Override
+                        public void run() {
+                            handler.onSuccess("Successfully fetched " + data.size() + " entries.");
+                        }
+                    });
                 } else {
                     handler.onFailure("Could not fetch library.");
                 }

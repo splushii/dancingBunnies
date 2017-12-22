@@ -35,6 +35,7 @@ public class Storage {
             database = db.getWritableDatabase();
         }
         connectedClients++;
+        Log.d(LC, "open(): connected clients: " + connectedClients);
         return this;
     }
 
@@ -42,6 +43,7 @@ public class Storage {
         if (connectedClients > 0) {
             connectedClients--;
         }
+        Log.d(LC, "close(): connected clients: " + connectedClients);
         if (connectedClients == 0) {
             db.close();
             database = null;
@@ -139,5 +141,15 @@ public class Storage {
         }
         cursor.close();
         return list;
+    }
+
+    public void clearAll() {
+        database.delete(DB.SONG_TABLE_NAME, null, null);
+    }
+
+    public void clearAll(String src) {
+        database.delete(DB.SONG_TABLE_NAME,
+                DB.Keyify(Meta.METADATA_KEY_API) + "=?",
+                new String[]{src});
     }
 }

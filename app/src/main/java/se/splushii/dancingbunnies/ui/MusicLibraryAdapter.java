@@ -13,7 +13,6 @@ import android.widget.Button;
 import org.greenrobot.eventbus.EventBus;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 import se.splushii.dancingbunnies.MusicLibraryFragment;
@@ -27,11 +26,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     private static String LC = Util.getLogContext(MusicLibraryAdapter.class);
     private List<MediaBrowserCompat.MediaItem> dataset;
     private MusicLibraryFragment fragment;
-    private LinkedList<String> historySrc;
-    private LinkedList<String> historyParentId;
-    private LinkedList<LibraryEntry.EntryType> historyType;
-    private LinkedList<Integer> historyPosition;
-    private LinkedList<Integer> historyPositionPadding;
     private String currentSrc;
     private String currentParentId;
     private LibraryEntry.EntryType currentType;
@@ -39,11 +33,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     public MusicLibraryAdapter(MusicLibraryFragment fragment) {
         this.dataset = new ArrayList<>();
         this.fragment = fragment;
-        this.historySrc = new LinkedList<>();
-        this.historyParentId = new LinkedList<>();
-        this.historyType = new LinkedList<>();
-        this.historyPosition = new LinkedList<>();
-        this.historyPositionPadding = new LinkedList<>();
     }
 
     static class SongViewHolder extends RecyclerView.ViewHolder {
@@ -97,14 +86,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             @Override
             public void onClick(View view) {
                 if (browsable) {
-                    int hPos = llm.findFirstCompletelyVisibleItemPosition();
-                    View v = llm.getChildAt(0);
-                    int hPad = v == null ? 0 : v.getTop() - llm.getPaddingTop();
-                    if (hPad < 0 && hPos > 0) {
-                        hPos--;
-                    }
-                    addBackButtonHistory(hPos, hPad);
-                    fragment.refreshView(src, id, type, 0, 0);
+                    fragment.addBackButtonHistory(getCurrentView());
+                    fragment.refreshView(new LibraryView(src, id, type, 0, 0));
                 } else {
                     Log.d(LC, "Sending play song event with src: " + src + ", : " + id);
                     EventBus.getDefault().post(new PlaySongEvent(src, id));
@@ -113,24 +96,16 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         });
     }
 
-    private void addBackButtonHistory(int pos, int pad) {
-        historySrc.push(currentSrc);
-        historyParentId.push(currentParentId);
-        historyType.push(currentType);
-        historyPosition.push(pos);
-        historyPositionPadding.push(pad);
-        fragment.pushBackStack();
-    }
-
-    public void onBackPressed() {
-        if (historyParentId.size() > 0) {
-            String src = historySrc.pop();
-            String parentId = historyParentId.pop();
-            LibraryEntry.EntryType type = historyType.pop();
-            int pos = historyPosition.pop();
-            int pad = historyPositionPadding.pop();
-            fragment.refreshView(src, parentId, type, pos, pad);
+    public LibraryView getCurrentView() {
+        RecyclerView rv = fragment.getView().findViewById(R.id.musiclibrary_recyclerview);
+        LinearLayoutManager llm = (LinearLayoutManager) rv.getLayoutManager();
+        int hPos = llm.findFirstCompletelyVisibleItemPosition();
+        View v = llm.getChildAt(0);
+        int hPad = v == null ? 0 : v.getTop() - llm.getPaddingTop();
+        if (hPad < 0 && hPos > 0) {
+            hPos--;
         }
+        return new LibraryView(currentSrc, currentParentId, currentType, hPos, hPad);
     }
 
     @Override

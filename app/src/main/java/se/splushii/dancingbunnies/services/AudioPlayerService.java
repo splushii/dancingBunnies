@@ -86,6 +86,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
         return options;
     }
 
+    public static String getMusicLibraryQueryOptionsString(Bundle options) {
+        String api = options.getString(Meta.METADATA_KEY_API);
+        LibraryEntry.EntryType type = (LibraryEntry.EntryType) options.getSerializable(Meta.METADATA_KEY_TYPE);
+        return "api: " + api + ", type: " + type.name();
+    }
+
     private MusicLibraryQuery generateMusicLibraryQuery(@NonNull String parentId, @NonNull Bundle options) {
         String src = options.getString(Meta.METADATA_KEY_API);
         LibraryEntry.EntryType type =
@@ -310,6 +316,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
         switch (le.action) {
             case FETCH_LIBRARY:
                 musicLibrary.fetchAPILibrary(le.api, le.handler);
+                Log.d(LC, "Library fetched from " + le.api + "!");
                 break;
             case FETCH_PLAYLISTS:
                 musicLibrary.fetchPlayLists(le.api, le.handler);

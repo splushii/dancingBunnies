@@ -20,11 +20,17 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+
+import java.util.LinkedList;
 import java.util.List;
 
+import se.splushii.dancingbunnies.events.LibraryChangedEvent;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
 import se.splushii.dancingbunnies.services.AudioPlayerService;
+import se.splushii.dancingbunnies.ui.LibraryView;
 import se.splushii.dancingbunnies.ui.MusicLibraryAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -32,8 +38,9 @@ public class MusicLibraryFragment extends Fragment {
     private static String LC = Util.getLogContext(MusicLibraryFragment.class);
     private RecyclerView recView;
     private MusicLibraryAdapter recViewAdapter;
-    private int numBackStack;
     private MediaBrowserCompat mediaBrowser;
+    private LibraryView currentLibraryView;
+    private LinkedList<LibraryView> viewBackStack;
 
     // TODO: Add a fastscroller
 
@@ -41,6 +48,7 @@ public class MusicLibraryFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(LC, "onCreate");
+        viewBackStack = new LinkedList<>();
         mediaBrowser = new MediaBrowserCompat(getActivity(), new ComponentName(getActivity(),
                 AudioPlayerService.class), mediaBrowserConnectionCallback, null);
         mediaBrowser.connect();
@@ -56,38 +64,52 @@ public class MusicLibraryFragment extends Fragment {
     @Override
     public void onStart() {
         super.onStart();
-        refreshView(MusicLibrary.API_ID_ANY, AudioPlayerService.MEDIA_ID_ROOT, LibraryEntry.EntryType.ANY, 0, 0);
+        if (currentLibraryView != null) {
+            refreshView(currentLibraryView);
+        } else {
+            refreshView(MusicLibrary.API_ID_ANY, AudioPlayerService.MEDIA_ID_ROOT,
+                    LibraryEntry.EntryType.ANY, 0, 0);
+        }
+        EventBus.getDefault().register(this);
         Log.d(LC, "onStart");
     }
 
     @Override
     public void onStop() {
         Log.d(LC, "onStop");
+        currentLibraryView = recViewAdapter.getCurrentView();
+        EventBus.getDefault().unregister(this);
         super.onStop();
     }
 
+    @Subscribe
+    public void onMessageEvent(LibraryChangedEvent lce) {
+        Log.d(LC, "got LibraryChangedEvent");
+        refreshView(currentLibraryView);
+    }
+
     private final MediaBrowserCompat.ConnectionCallback mediaBrowserConnectionCallback =
-            new MediaBrowserCompat.ConnectionCallback() {
-                @Override
-                public void onConnected() {
-                    Log.d(LC, "MediaBrowser connected");
-                    try {
-                        connectMediaController(mediaBrowser.getSessionToken());
-                    } catch (RemoteException e) {
-                        Log.e(LC, "Failed to connect to media controller");
-                    }
-
+        new MediaBrowserCompat.ConnectionCallback() {
+            @Override
+            public void onConnected() {
+                Log.d(LC, "MediaBrowser connected");
+                try {
+                    connectMediaController(mediaBrowser.getSessionToken());
+                } catch (RemoteException e) {
+                    Log.e(LC, "Failed to connect to media controller");
                 }
 
-                @Override
-                public void onConnectionFailed() {
-                    Log.e(LC, "MediaBrowser onConnectFailed");
-                }
+            }
 
-                @Override
-                public void onConnectionSuspended() {
-                    Log.w(LC, "MediaBrowser onConnectionSuspended");
-                }
+            @Override
+            public void onConnectionFailed() {
+                Log.e(LC, "MediaBrowser onConnectFailed");
+            }
+
+            @Override
+            public void onConnectionSuspended() {
+                Log.w(LC, "MediaBrowser onConnectionSuspended");
+            }
     };
 
     private void connectMediaController(MediaSessionCompat.Token token) throws RemoteException {
@@ -114,18 +136,28 @@ public class MusicLibraryFragment extends Fragment {
                 }
             };
 
-    public void refreshView(final String src, final String parentId, final LibraryEntry.EntryType type, final int pos, final int pad) {
+    public void refreshView(String src, String parentId, LibraryEntry.EntryType type, int pos, int pad) {
+        LibraryView libView = new LibraryView(src, parentId, type, pos, pad);
+        refreshView(libView);
+    }
+
+    public void refreshView(final LibraryView libView) {
         if (!mediaBrowser.isConnected()) {
-            Log.d(LC, "MediaBrowser not connected.");
+            Log.w(LC, "MediaBrowser not connected.");
         }
-        Bundle options = AudioPlayerService.generateMusicLibraryQueryOptions(src, type);
-        mediaBrowser.subscribe(parentId, options, new MediaBrowserCompat.SubscriptionCallback() {
+        if (currentLibraryView != null) {
+            mediaBrowser.unsubscribe(currentLibraryView.parentId);
+        }
+        currentLibraryView = libView;
+        Bundle options = AudioPlayerService.generateMusicLibraryQueryOptions(libView.src, libView.type);
+        mediaBrowser.subscribe(libView.parentId, options, new MediaBrowserCompat.SubscriptionCallback() {
             @Override
             public void onChildrenLoaded(@NonNull String parentId, @NonNull List<MediaBrowserCompat.MediaItem> children, @NonNull Bundle options) {
-                Log.d(LC, "MediaBrowser.subscribe(" + parentId + ", options) onChildrenLoaded");
-                recViewAdapter.setDataset(children, src, parentId, type);
+                String optString = AudioPlayerService.getMusicLibraryQueryOptionsString(options);
+                Log.d(LC, "subscription(" + parentId + ") (" + optString + "): " + children.size());
+                recViewAdapter.setDataset(children, libView.src, parentId, libView.type);
                 LinearLayoutManager llm = (LinearLayoutManager) recView.getLayoutManager();
-                llm.scrollToPositionWithOffset(pos, pad);
+                llm.scrollToPositionWithOffset(libView.pos, libView.pad);
             }
 
             @Override
@@ -160,7 +192,7 @@ public class MusicLibraryFragment extends Fragment {
         fab_refresh.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                refreshView(MusicLibrary.API_ID_ANY, AudioPlayerService.MEDIA_ID_ROOT, LibraryEntry.EntryType.ANY, 0, 0);
+                refreshView(currentLibraryView);
                 setFabVisibility(View.GONE);
             }
         });
@@ -220,13 +252,13 @@ public class MusicLibraryFragment extends Fragment {
         text_sort_song.setVisibility(visibility);
     }
 
-    public void pushBackStack() {
-        numBackStack++;
+    public void addBackButtonHistory(LibraryView libView) {
+        viewBackStack.push(libView);
     }
 
     public boolean onBackPressed() {
-        if (numBackStack-- > 0) {
-            recViewAdapter.onBackPressed();
+        if (viewBackStack.size() > 0) {
+            refreshView(viewBackStack.pop());
             return true;
         }
         return false;
