@@ -33,7 +33,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import cz.msebera.android.httpclient.Header;
 import java8.util.Optional;
 import java8.util.concurrent.CompletableFuture;
-import java8.util.function.Consumer;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.events.SubsonicRequestFailEvent;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
@@ -159,12 +158,7 @@ public class SubsonicAPIClient extends APIClient {
                 req.complete(null);
                 break;
         }
-        req.thenRun(new Runnable() {
-            @Override
-            public void run() {
-                pastReq.complete(null);
-            }
-        });
+        req.thenRun(() -> pastReq.complete(null));
     }
 
     public void ping(AsyncHttpResponseHandler handler) {
@@ -227,38 +221,25 @@ public class SubsonicAPIClient extends APIClient {
             public void onProgress(long bytesWritten, long totalSize) {
             }
         });
-        req.thenAccept(new Consumer<Optional<List<Pair<String, String>>>>() {
-            @Override
-            public void accept(Optional<List<Pair<String, String>>> musicFolders) {
-                if (!musicFolders.isPresent()) {
-                    handler.onFailure("Could not fetch Subsonic music folders.");
-                    ret.complete(null);
-                    return;
-                }
-                handler.onProgress("Fetching music folder indexes...");
-                List<CompletableFuture<String>> indexReqList = new ArrayList<>();
-                for (Pair<String, String> musicFolder: musicFolders.get()) {
-                    final CompletableFuture<String> indexReq = new CompletableFuture<>();
-                    indexReqList.add(indexReq);
-                    getIndexes(musicFolder.first, musicFolder.second, metaList, handler)
-                            .thenRun(new Runnable() {
-                                @Override
-                                public void run() {
-                                    indexReq.complete(null);
-                                }
-                            });
-                }
-                // TODO: how to handle errors? Send with handler
-                // (and collected by MusicLibrary or higher)?
-                CompletableFuture<Void> allOf = CompletableFuture
-                        .allOf(indexReqList.toArray(new CompletableFuture[indexReqList.size()]));
-                allOf.thenRun(new Runnable() {
-                    @Override
-                    public void run() {
-                        ret.complete(null);
-                    }
-                });
+        req.thenAccept(musicFolders -> {
+            if (!musicFolders.isPresent()) {
+                handler.onFailure("Could not fetch Subsonic music folders.");
+                ret.complete(null);
+                return;
             }
+            handler.onProgress("Fetching music folder indexes...");
+            List<CompletableFuture<String>> indexReqList = new ArrayList<>();
+            for (Pair<String, String> musicFolder: musicFolders.get()) {
+                final CompletableFuture<String> indexReq = new CompletableFuture<>();
+                indexReqList.add(indexReq);
+                getIndexes(musicFolder.first, musicFolder.second, metaList, handler)
+                        .thenRun(() -> indexReq.complete(null));
+            }
+            // TODO: how to handle errors? Send with handler
+            // (and collected by MusicLibrary or higher)?
+            CompletableFuture<Void> allOf = CompletableFuture
+                    .allOf(indexReqList.toArray(new CompletableFuture[indexReqList.size()]));
+            allOf.thenRun(() -> ret.complete(null));
         });
         return ret;
     }
@@ -300,12 +281,7 @@ public class SubsonicAPIClient extends APIClient {
                                     final CompletableFuture<Void> req = new CompletableFuture<>();
                                     reqList.add(req);
                                     getMusicDirectory(artistId, musicFolder, metaList, handler)
-                                            .thenRun(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    req.complete(null);
-                                                }
-                                            });
+                                            .thenRun(() -> req.complete(null));
                                 }
                             }
                         }
@@ -320,12 +296,7 @@ public class SubsonicAPIClient extends APIClient {
                                     final CompletableFuture<Void> req = new CompletableFuture<>();
                                     reqList.add(req);
                                     getMusicDirectory(id, musicFolder, metaList, handler)
-                                            .thenRun(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    req.complete(null);
-                                                }
-                                            });
+                                            .thenRun(() -> req.complete(null));
                                 } else {
                                     Optional<MediaMetadataCompat> meta =
                                             handleJSONChild(jChild, musicFolder);
@@ -334,12 +305,7 @@ public class SubsonicAPIClient extends APIClient {
                             }
                         }
                         CompletableFuture<Void> allOf = CompletableFuture.allOf(reqList.toArray(new CompletableFuture[reqList.size()]));
-                        allOf.thenRun(new Runnable() {
-                            @Override
-                            public void run() {
-                                ret.complete(null);
-                            }
-                        });
+                        allOf.thenRun(() -> ret.complete(null));
                     } catch (JSONException e) {
                         Log.e(LC, "JSON error in getIndexes: " + e.getMessage());
                         ret.complete(null);
@@ -526,12 +492,7 @@ public class SubsonicAPIClient extends APIClient {
                                     final CompletableFuture<Void> req = new CompletableFuture<>();
                                     reqList.add(req);
                                     getMusicDirectory(id, musicFolder, metaList, handler)
-                                            .thenRun(new Runnable() {
-                                                @Override
-                                                public void run() {
-                                                    req.complete(null);
-                                                }
-                                            });
+                                            .thenRun(() -> req.complete(null));
                                 } else {
                                     Optional<MediaMetadataCompat> meta =
                                             handleJSONChild(jChild, musicFolder);
@@ -540,12 +501,7 @@ public class SubsonicAPIClient extends APIClient {
                             }
                         }
                         CompletableFuture<Void> allOf = CompletableFuture.allOf(reqList.toArray(new CompletableFuture[reqList.size()]));
-                        allOf.thenRun(new Runnable() {
-                            @Override
-                            public void run() {
-                                ret.complete(null);
-                            }
-                        });
+                        allOf.thenRun(() -> ret.complete(null));
                     } catch (JSONException e) {
                         Log.e(LC, "JSON error in getMusicDirectory: " + e.getMessage());
                         ret.complete(null);
@@ -575,12 +531,8 @@ public class SubsonicAPIClient extends APIClient {
         final CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> ret = new CompletableFuture<>();
         final ConcurrentLinkedQueue<MediaMetadataCompat> metaList = new ConcurrentLinkedQueue<>();
         handler.onProgress("Fetching music folders...");
-        getMusicFolders(metaList, handler).thenRun(new Runnable() {
-            @Override
-            public void run() {
-                ret.complete(Optional.of(new ArrayList<>(metaList)));
-            }
-        });
+        getMusicFolders(metaList, handler).thenRun(() ->
+                ret.complete(Optional.of(new ArrayList<>(metaList))));
         return ret;
     }
 

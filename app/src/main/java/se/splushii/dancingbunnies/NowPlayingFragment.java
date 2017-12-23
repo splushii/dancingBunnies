@@ -37,37 +37,20 @@ public class NowPlayingFragment extends Fragment {
                              Bundle savedInstanceState) {
         final View rootView = inflater.inflate(R.layout.nowplaying_fragment_layout, container,
                 false);
-        TextView nowPlayingText = (TextView) rootView.findViewById(R.id.nowplaying_text);
+        TextView nowPlayingText = rootView.findViewById(R.id.nowplaying_text);
         nowPlayingText.setText(nowPlaying);
-        Button previousBtn = (Button) rootView.findViewById(R.id.nowplaying_previous);
-        previousBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                EventBus.getDefault()
-                        .post(new PlaybackEvent(PlaybackEvent.PlaybackAction.PREVIOUS));
-            }
-        });
-        Button pauseBtn = (Button) rootView.findViewById(R.id.nowplaying_pause);
-        pauseBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                EventBus.getDefault().post(new PlaybackEvent(PlaybackEvent.PlaybackAction.PAUSE));
-            }
-        });
-        Button playBtn = (Button) rootView.findViewById(R.id.nowplaying_play);
-        playBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                EventBus.getDefault().post(new PlaybackEvent(PlaybackEvent.PlaybackAction.PLAY));
-            }
-        });
-        Button nextBtn = (Button) rootView.findViewById(R.id.nowplaying_next);
-        nextBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                EventBus.getDefault().post(new PlaybackEvent(PlaybackEvent.PlaybackAction.NEXT));
-            }
-        });
+        Button previousBtn = rootView.findViewById(R.id.nowplaying_previous);
+        previousBtn.setOnClickListener(view -> EventBus.getDefault()
+                .post(new PlaybackEvent(PlaybackEvent.PlaybackAction.PREVIOUS)));
+        Button pauseBtn = rootView.findViewById(R.id.nowplaying_pause);
+        pauseBtn.setOnClickListener(view ->
+                EventBus.getDefault().post(new PlaybackEvent(PlaybackEvent.PlaybackAction.PAUSE)));
+        Button playBtn = rootView.findViewById(R.id.nowplaying_play);
+        playBtn.setOnClickListener(view ->
+                EventBus.getDefault().post(new PlaybackEvent(PlaybackEvent.PlaybackAction.PLAY)));
+        Button nextBtn = rootView.findViewById(R.id.nowplaying_next);
+        nextBtn.setOnClickListener(view ->
+                EventBus.getDefault().post(new PlaybackEvent(PlaybackEvent.PlaybackAction.NEXT)));
         return rootView;
     }
 
@@ -75,7 +58,7 @@ public class NowPlayingFragment extends Fragment {
     public void onMessageEvent(PlaySongEvent pse) {
         nowPlaying = pse.id;
         TextView nowPlayingText;
-        nowPlayingText = (TextView) getView().findViewById(R.id.nowplaying_text);
+        nowPlayingText = getView().findViewById(R.id.nowplaying_text);
         nowPlayingText.setText(nowPlaying);
     }
 }

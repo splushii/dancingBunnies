@@ -98,44 +98,41 @@ public class SettingsActivityFragment extends PreferenceFragment
                 .getString(R.string.pref_key_subsonic_pwd), ""));
         final Preference SSrefresh = findPreference(getResources()
                 .getString(R.string.pref_key_subsonic_refresh));
-        SSrefresh.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
-            @Override
-            public boolean onPreferenceClick(Preference preference) {
-                Log.d(LC, "refresh onClick!");
-                EventBus.getDefault().post(new LibraryEvent(MusicLibrary.API_ID_SUBSONIC,
-                        LibraryEvent.LibraryAction.FETCH_LIBRARY,
-                        new MusicLibraryRequestHandler() {
-                            @Override
-                            public void onStart() {
-                                Log.d(LC, "subsonic refresh onStart");
-                                SSrefresh.setSummary("Loading...");
-                            }
+        SSrefresh.setOnPreferenceClickListener(preference -> {
+            Log.d(LC, "refresh onClick!");
+            EventBus.getDefault().post(new LibraryEvent(MusicLibrary.API_ID_SUBSONIC,
+                    LibraryEvent.LibraryAction.FETCH_LIBRARY,
+                    new MusicLibraryRequestHandler() {
+                        @Override
+                        public void onStart() {
+                            Log.d(LC, "subsonic refresh onStart");
+                            SSrefresh.setSummary("Loading...");
+                        }
 
-                            @Override
-                            public void onProgress(int i, int max) {
-                                SSrefresh.setSummary("Fetched " + i + " of "
-                                        + (max == 0 ? "?" : String.valueOf(max)));
-                            }
+                        @Override
+                        public void onProgress(int i, int max) {
+                            SSrefresh.setSummary("Fetched " + i + " of "
+                                    + (max == 0 ? "?" : String.valueOf(max)));
+                        }
 
-                            @Override
-                            public void onProgress(String status) {
-                                SSrefresh.setSummary("Status: " + status);
-                            }
+                        @Override
+                        public void onProgress(String status) {
+                            SSrefresh.setSummary("Status: " + status);
+                        }
 
-                            @Override
-                            public void onSuccess(String status) {
-                                Log.d(LC, "subsonic refresh onSuccess");
-                                SSrefresh.setSummary(status);
-                            }
+                        @Override
+                        public void onSuccess(String status) {
+                            Log.d(LC, "subsonic refresh onSuccess");
+                            SSrefresh.setSummary(status);
+                        }
 
-                            @Override
-                            public void onFailure(String status) {
-                                Log.d(LC, "subsonic refresh onFailure: " + status);
-                                SSrefresh.setSummary("Failed to fetch library.");
-                            }
-                        }));
-                return false;
-            }
+                        @Override
+                        public void onFailure(String status) {
+                            Log.d(LC, "subsonic refresh onFailure: " + status);
+                            SSrefresh.setSummary("Failed to fetch library.");
+                        }
+                    }));
+            return false;
         });
     }
 

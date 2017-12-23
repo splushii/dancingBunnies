@@ -8,6 +8,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.RatingCompat;
+import android.util.ArrayMap;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -50,7 +51,19 @@ public class Storage {
         }
     }
 
-    public void insertSong(Song song) {
+    public void insertSongs(ArrayList<Song> songs) {
+        long start = System.currentTimeMillis();
+        Log.d(LC, "insertSongs start");
+        database.beginTransaction();
+        for (Song song: songs) {
+            insertSong(song);
+        }
+        database.setTransactionSuccessful();
+        database.endTransaction();
+        Log.d(LC, "insertSongs finish " + (System.currentTimeMillis() - start));
+    }
+
+    private void insertSong(Song song) {
         ContentValues c = new ContentValues();
         MediaMetadataCompat meta = song.meta();
         for (String key: meta.keySet()) {
@@ -89,7 +102,24 @@ public class Storage {
         database.replace(DB.SONG_TABLE_NAME, null, c);
     }
 
+    private class ColumnIndexCache {
+        private ArrayMap<String, Integer> mMap = new ArrayMap<>();
+
+        private int getColumnIndex(Cursor cursor, String columnName) {
+            if (!mMap.containsKey(columnName))
+                mMap.put(columnName, cursor.getColumnIndex(columnName));
+            return mMap.get(columnName);
+        }
+
+        private void clear() {
+            mMap.clear();
+        }
+    }
+
     public ArrayList<MediaMetadataCompat> getAll() {
+        long start = System.currentTimeMillis();
+        Log.d(LC, "getAll start");
+        ColumnIndexCache cache = new ColumnIndexCache();
         ArrayList<MediaMetadataCompat> list = new ArrayList<>();
         Cursor cursor = database.rawQuery("SELECT * FROM " + DB.SONG_TABLE_NAME, null);
         Log.i(LC, "Entries in 'songs' table: " + cursor.getCount());
@@ -98,7 +128,7 @@ public class Storage {
                 MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder();
                 for (String key: Meta.keys) {
                     Meta.Type type = Meta.getType(key);
-                    int index = cursor.getColumnIndex(DB.Keyify(key));
+                    int index = cache.getColumnIndex(cursor, DB.Keyify(key));
                     if (index == -1 && (type == Meta.Type.STRING || type == Meta.Type.LONG)) {
                         Log.w(LC, "Could not find column: " + DB.Keyify(key));
                         continue;
@@ -139,7 +169,9 @@ public class Storage {
                 cursor.moveToNext();
             }
         }
+        cache.clear();
         cursor.close();
+        Log.d(LC, "getAll finish " + (System.currentTimeMillis() - start));
         return list;
     }
 

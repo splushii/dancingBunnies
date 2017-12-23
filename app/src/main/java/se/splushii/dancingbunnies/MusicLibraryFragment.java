@@ -67,8 +67,9 @@ public class MusicLibraryFragment extends Fragment {
         if (currentLibraryView != null) {
             refreshView(currentLibraryView);
         } else {
-            refreshView(MusicLibrary.API_ID_ANY, AudioPlayerService.MEDIA_ID_ROOT,
-                    LibraryEntry.EntryType.ANY, 0, 0);
+            refreshView(new LibraryView(MusicLibrary.API_ID_ANY,
+                    AudioPlayerService.MEDIA_ID_ROOT,
+                    LibraryEntry.EntryType.ANY, 0, 0));
         }
         EventBus.getDefault().register(this);
         Log.d(LC, "onStart");
@@ -136,11 +137,6 @@ public class MusicLibraryFragment extends Fragment {
                 }
             };
 
-    public void refreshView(String src, String parentId, LibraryEntry.EntryType type, int pos, int pad) {
-        LibraryView libView = new LibraryView(src, parentId, type, pos, pad);
-        refreshView(libView);
-    }
-
     public void refreshView(final LibraryView libView) {
         if (!mediaBrowser.isConnected()) {
             Log.w(LC, "MediaBrowser not connected.");
@@ -173,7 +169,7 @@ public class MusicLibraryFragment extends Fragment {
         final View rootView = inflater.inflate(R.layout.musiclibrary_fragment_layout, container,
                 false);
 
-        recView = (RecyclerView) rootView.findViewById(R.id.musiclibrary_recyclerview);
+        recView = rootView.findViewById(R.id.musiclibrary_recyclerview);
         recView.setHasFixedSize(true);
         RecyclerView.LayoutManager recViewLayoutManager =
                 new LinearLayoutManager(this.getContext());
@@ -181,50 +177,39 @@ public class MusicLibraryFragment extends Fragment {
         recViewAdapter = new MusicLibraryAdapter(this);
         recView.setAdapter(recViewAdapter);
 
-        FloatingActionButton fab = (FloatingActionButton) rootView.findViewById(R.id.fab);
-        final FloatingActionButton fab_sort_artist =
-                (FloatingActionButton) rootView.findViewById(R.id.fab_sort_artist);
-        final FloatingActionButton fab_sort_song =
-                (FloatingActionButton) rootView.findViewById(R.id.fab_sort_song);
-        final FloatingActionButton fab_refresh =
-                (FloatingActionButton) rootView.findViewById(R.id.fab_sort_refresh);
+        FloatingActionButton fab = rootView.findViewById(R.id.fab);
+        final FloatingActionButton fab_sort_artist = rootView.findViewById(R.id.fab_sort_artist);
+        final FloatingActionButton fab_sort_song = rootView.findViewById(R.id.fab_sort_song);
+        final FloatingActionButton fab_refresh = rootView.findViewById(R.id.fab_sort_refresh);
 
-        fab_refresh.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                refreshView(currentLibraryView);
-                setFabVisibility(View.GONE);
-            }
+        fab_refresh.setOnClickListener(view -> {
+            refreshView(currentLibraryView);
+            setFabVisibility(View.GONE);
         });
 
-        fab_sort_artist.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Artist view", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-                refreshView(MusicLibrary.API_ID_ANY, AudioPlayerService.MEDIA_ID_ARTIST_ROOT, LibraryEntry.EntryType.ANY, 0, 0);
-                setFabVisibility(View.GONE);
-            }
+        fab_sort_artist.setOnClickListener(view -> {
+            Snackbar.make(view, "Artist view", Snackbar.LENGTH_LONG)
+                    .setAction("Action", null).show();
+            refreshView(new LibraryView(MusicLibrary.API_ID_ANY,
+                    AudioPlayerService.MEDIA_ID_ARTIST_ROOT,
+                    LibraryEntry.EntryType.ANY, 0, 0));
+            setFabVisibility(View.GONE);
         });
 
-        fab_sort_song.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Song view", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-                refreshView(MusicLibrary.API_ID_ANY, AudioPlayerService.MEDIA_ID_SONG_ROOT, LibraryEntry.EntryType.ANY, 0, 0);
-                setFabVisibility(View.GONE);
-            }
+        fab_sort_song.setOnClickListener(view -> {
+            Snackbar.make(view, "Song view", Snackbar.LENGTH_LONG)
+                    .setAction("Action", null).show();
+            refreshView(new LibraryView(MusicLibrary.API_ID_ANY,
+                    AudioPlayerService.MEDIA_ID_SONG_ROOT,
+                    LibraryEntry.EntryType.ANY, 0, 0));
+            setFabVisibility(View.GONE);
         });
 
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (fab_sort_artist.getVisibility() != View.VISIBLE) {
-                    setFabVisibility(View.VISIBLE);
-                } else {
-                    setFabVisibility(View.GONE);
-                }
+        fab.setOnClickListener(view -> {
+            if (fab_sort_artist.getVisibility() != View.VISIBLE) {
+                setFabVisibility(View.VISIBLE);
+            } else {
+                setFabVisibility(View.GONE);
             }
         });
         return rootView;
@@ -232,18 +217,12 @@ public class MusicLibraryFragment extends Fragment {
 
     private void setFabVisibility(int visibility) {
         View rootView = this.getView();
-        FloatingActionButton fab_sort_artist =
-                (FloatingActionButton) rootView.findViewById(R.id.fab_sort_artist);
-        FloatingActionButton fab_sort_song =
-                (FloatingActionButton) rootView.findViewById(R.id.fab_sort_song);
-        FloatingActionButton fab_refresh =
-                (FloatingActionButton) rootView.findViewById(R.id.fab_sort_refresh);
-        TextView text_sort_artist =
-                (TextView) rootView.findViewById(R.id.fab_sort_artist_label);
-        TextView text_sort_song =
-                (TextView) rootView.findViewById(R.id.fab_sort_song_label);
-        TextView text_refresh =
-                (TextView) rootView.findViewById(R.id.fab_sort_refresh_label);
+        FloatingActionButton fab_sort_artist = rootView.findViewById(R.id.fab_sort_artist);
+        FloatingActionButton fab_sort_song = rootView.findViewById(R.id.fab_sort_song);
+        FloatingActionButton fab_refresh = rootView.findViewById(R.id.fab_sort_refresh);
+        TextView text_sort_artist = rootView.findViewById(R.id.fab_sort_artist_label);
+        TextView text_sort_song = rootView.findViewById(R.id.fab_sort_song_label);
+        TextView text_refresh = rootView.findViewById(R.id.fab_sort_refresh_label);
         fab_sort_artist.setVisibility(visibility);
         fab_sort_song.setVisibility(visibility);
         fab_refresh.setVisibility(visibility);

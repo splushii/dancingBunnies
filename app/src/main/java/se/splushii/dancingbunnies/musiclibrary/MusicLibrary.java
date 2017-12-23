@@ -16,7 +16,6 @@ import java.util.Objects;
 
 import java8.util.Optional;
 import java8.util.concurrent.CompletableFuture;
-import java8.util.function.Consumer;
 
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.backend.APIClientRequestHandler;
@@ -51,12 +50,9 @@ public class MusicLibrary {
         loadSettings(context);
         EventBus.getDefault().register(this);
         storage = new Storage(context);
-        fetchLibraryFromStorage().thenRun(new Runnable() {
-            @Override
-            public void run() {
-                Log.d(LC, "Library fetched from storage!");
-                notifyLibraryChanged();
-            }
+        fetchLibraryFromStorage().thenRun(() -> {
+            Log.d(LC, "Library fetched from storage!");
+            notifyLibraryChanged();
         });
     }
 
@@ -68,14 +64,11 @@ public class MusicLibrary {
 
     private CompletableFuture<Void> fetchLibraryFromStorage() {
         final CompletableFuture<Void> ret = new CompletableFuture<>();
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                storage.open();
-                addToLibrary(storage.getAll(), null);
-                storage.close();
-                ret.complete(null);
-            }
+        new Thread(() -> {
+            storage.open();
+            addToLibrary(storage.getAll(), null);
+            storage.close();
+            ret.complete(null);
         }).start();
         return ret;
     }
@@ -150,6 +143,8 @@ public class MusicLibrary {
 
     private void addToLibrary(final ArrayList<MediaMetadataCompat> data,
                               final MusicLibraryRequestHandler handler) {
+        long start = System.currentTimeMillis();
+        Log.d(LC, "addToLibrary start");
         int count = 0;
         int size = data.size();
         for (MediaMetadataCompat meta: data) {
@@ -226,34 +221,38 @@ public class MusicLibrary {
             //   Add to songs
             addToSongs(song);
         }
+        Collections.sort(artists);
+        Collections.sort(albums);
+        Collections.sort(songs);
+        Log.d(LC, "addToLibrary finish " + (System.currentTimeMillis() - start));
     }
 
     private CompletableFuture<Void> saveLibraryToStorage() {
         final CompletableFuture<Void> ret = new CompletableFuture<>();
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                storage.open();
-                for (Song song: songs) {
-                    storage.insertSong(song);
-                }
-                storage.close();
-                ret.complete(null);
-            }
+        new Thread(() -> {
+            long start = System.currentTimeMillis();
+            Log.d(LC, "saveLibraryToStorage start");
+            storage.open();
+            // TODO: Do not remove all entries, only the needed
+            storage.clearAll();
+            storage.insertSongs(songs());
+            storage.close();
+            Log.d(LC, "saveLibraryToStorage finish " + (System.currentTimeMillis() - start));
+            ret.complete(null);
         }).start();
         return ret;
     }
 
     private CompletableFuture<Void> clearStorageEntries(final String src) {
         final CompletableFuture<Void> ret = new CompletableFuture<>();
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                storage.open();
-                storage.clearAll(src);
-                storage.close();
-                ret.complete(null);
-            }
+        new Thread(() -> {
+            long start = System.currentTimeMillis();
+            Log.d(LC, "clearStorageEntries start");
+            storage.open();
+            storage.clearAll(src);
+            storage.close();
+            Log.d(LC, "clearStorageEntries finish " + (System.currentTimeMillis() - start));
+            ret.complete(null);
         }).start();
         return ret;
     }
@@ -263,7 +262,6 @@ public class MusicLibrary {
             return;
         }
         songs.add(song);
-        Collections.sort(songs);
         songMap.put(song.key(), song);
     }
 
@@ -272,7 +270,6 @@ public class MusicLibrary {
         if ((album = albumMap.get(albumName)) == null) {
             album = new Album(albumName, albumArtist);
             albums.add(album);
-            Collections.sort(albums);
             albumMap.put(albumName, album);
         }
         album.addRef(song);
@@ -284,7 +281,6 @@ public class MusicLibrary {
         if ((artist = artistMap.get(artistName)) == null) {
             artist = new Artist(artistName);
             artists.add(artist);
-            Collections.sort(artists);
             artistMap.put(artistName, artist);
         }
         artist.addRef(song);
@@ -309,27 +305,17 @@ public class MusicLibrary {
                         handler.onProgress(s);
                     }
                 });
-        req.thenAccept(new Consumer<Optional<ArrayList<MediaMetadataCompat>>>() {
-            @Override
-            public void accept(Optional<ArrayList<MediaMetadataCompat>> opt) {
-                if (opt.isPresent()) {
-                    final ArrayList<MediaMetadataCompat> data = opt.get();
-                    Log.d(LC, "Fetched library from " + api + ": " + data.size() + " entries.");
-                    addToLibrary(data, handler);
-                    notifyLibraryChanged();
-                    // TODO: Do not remove all entries, only the needed
-                    handler.onProgress("Clearing old entries in storage...");
-                    clearStorageEntries(api);
-                    handler.onProgress("Saving entries to storage...");
-                    saveLibraryToStorage().thenRun(new Runnable() {
-                        @Override
-                        public void run() {
-                            handler.onSuccess("Successfully fetched " + data.size() + " entries.");
-                        }
-                    });
-                } else {
-                    handler.onFailure("Could not fetch library.");
-                }
+        req.thenAccept(opt -> {
+            if (opt.isPresent()) {
+                final ArrayList<MediaMetadataCompat> data = opt.get();
+                Log.d(LC, "Fetched library from " + api + ": " + data.size() + " entries.");
+                addToLibrary(data, handler);
+                notifyLibraryChanged();
+                handler.onProgress("Saving entries to storage...");
+                saveLibraryToStorage().thenRun(() -> handler.onSuccess("Successfully fetched "
+                        + data.size() + " entries."));
+            } else {
+                handler.onFailure("Could not fetch library.");
             }
         });
     }

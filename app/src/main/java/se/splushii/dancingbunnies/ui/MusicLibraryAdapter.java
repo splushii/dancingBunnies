@@ -39,7 +39,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         Button butt;
         SongViewHolder(View v) {
             super(v);
-            butt = (Button) v.findViewById(R.id.song_title);
+            butt = v.findViewById(R.id.song_title);
         }
     }
 
@@ -62,9 +62,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     @Override
     public void onBindViewHolder(final SongViewHolder holder, int position) {
         final int n = position;
-        RecyclerView rv =
-                (RecyclerView) fragment.getView().findViewById(R.id.musiclibrary_recyclerview);
-        final LinearLayoutManager llm = (LinearLayoutManager) rv.getLayoutManager();
         final MediaBrowserCompat.MediaItem item = dataset.get(position);
         final String title = item.getDescription().getTitle() + "";
         Bundle b = item.getDescription().getExtras();
@@ -74,24 +71,18 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         final String id = item.getMediaId();
         final boolean browsable = item.isBrowsable();
         holder.butt.setText(title);
-        holder.butt.setOnLongClickListener(new View.OnLongClickListener() {
-            @Override
-            public boolean onLongClick(View view) {
-                Log.d(LC, "Long click on " + title);
-                // TODO: implement popup with queueing, related entries, etc.
-                return true;
-            }
+        holder.butt.setOnLongClickListener(view -> {
+            Log.d(LC, "Long click on " + title);
+            // TODO: implement popup with queueing, related entries, etc.
+            return true;
         });
-        holder.butt.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (browsable) {
-                    fragment.addBackButtonHistory(getCurrentView());
-                    fragment.refreshView(new LibraryView(src, id, type, 0, 0));
-                } else {
-                    Log.d(LC, "Sending play song event with src: " + src + ", : " + id);
-                    EventBus.getDefault().post(new PlaySongEvent(src, id));
-                }
+        holder.butt.setOnClickListener(view -> {
+            if (browsable) {
+                fragment.addBackButtonHistory(getCurrentView());
+                fragment.refreshView(new LibraryView(src, id, type, 0, 0));
+            } else {
+                Log.d(LC, "Sending play song event with src: " + src + ", : " + id);
+                EventBus.getDefault().post(new PlaySongEvent(src, id));
             }
         });
     }

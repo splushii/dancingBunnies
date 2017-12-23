@@ -30,36 +30,33 @@ public class AudioDataSource extends MediaDataSource {
             return;
         }
         isDownloading = true;
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                handler.onStart();
-                try {
-                    ByteArrayOutputStream arrayOutputStream = new ByteArrayOutputStream();
-                    InputStream in = new BufferedInputStream(conn.getInputStream());
-                    int contentLength = conn.getContentLength(); // TODO: use getContentLengthLong
-                    int b = in.read();
-                    int bytesRead = 0;
-                    while(b != -1) {
-                        arrayOutputStream.write(b);
-                        if (bytesRead % 1000 == 0) {
-                            handler.onProgress(bytesRead, contentLength);
-                        }
-                        bytesRead++;
-                        b = in.read();
+        new Thread(() -> {
+            handler.onStart();
+            try {
+                ByteArrayOutputStream arrayOutputStream = new ByteArrayOutputStream();
+                InputStream in = new BufferedInputStream(conn.getInputStream());
+                int contentLength = conn.getContentLength(); // TODO: use getContentLengthLong
+                int b = in.read();
+                int bytesRead = 0;
+                while(b != -1) {
+                    arrayOutputStream.write(b);
+                    if (bytesRead % 1000 == 0) {
+                        handler.onProgress(bytesRead, contentLength);
                     }
-                    in.close();
-                    conn.disconnect();
-                    arrayOutputStream.flush();
-                    buffer = arrayOutputStream.toByteArray();
-                    arrayOutputStream.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    handler.onFailure("Error: " + e.getMessage());
-                } finally {
-                    isDownloading = false;
-                    handler.onSuccess();
+                    bytesRead++;
+                    b = in.read();
                 }
+                in.close();
+                conn.disconnect();
+                arrayOutputStream.flush();
+                buffer = arrayOutputStream.toByteArray();
+                arrayOutputStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+                handler.onFailure("Error: " + e.getMessage());
+            } finally {
+                isDownloading = false;
+                handler.onSuccess();
             }
         }).start();
     }

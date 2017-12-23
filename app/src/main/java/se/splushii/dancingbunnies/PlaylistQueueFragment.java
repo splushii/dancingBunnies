@@ -1,6 +1,7 @@
 package se.splushii.dancingbunnies;
 
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -16,11 +17,10 @@ public class PlaylistQueueFragment extends Fragment {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.playlistqueue_fragment_layout, container, false);
-        RecyclerView recView =
-                (RecyclerView) rootView.findViewById(R.id.playlistqueue_recyclerview);
+        RecyclerView recView = rootView.findViewById(R.id.playlistqueue_recyclerview);
         recView.setHasFixedSize(true);
         LinearLayoutManager recViewLayoutManager = new LinearLayoutManager(this.getContext());
         recView.setLayoutManager(recViewLayoutManager);

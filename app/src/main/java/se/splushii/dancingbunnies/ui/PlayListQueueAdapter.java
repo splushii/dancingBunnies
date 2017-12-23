@@ -27,7 +27,7 @@ public class PlayListQueueAdapter
         Button butt;
         SongViewHolder(View v) {
             super(v);
-            butt = (Button) v.findViewById(R.id.song_title);
+            butt = v.findViewById(R.id.song_title);
         }
     }
 
@@ -42,12 +42,8 @@ public class PlayListQueueAdapter
     @Override
     public void onBindViewHolder(final PlayListQueueAdapter.SongViewHolder holder, int position) {
         holder.butt.setText(dataset.get(position).name());
-        holder.butt.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(fragment.getView(), "Clickety click!", Snackbar.LENGTH_SHORT);
-            }
-        });
+        holder.butt.setOnClickListener(view ->
+                Snackbar.make(fragment.getView(), "Clickety click!", Snackbar.LENGTH_SHORT));
     }
 
     @Override
