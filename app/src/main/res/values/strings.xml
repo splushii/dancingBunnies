@@ -16,4 +16,6 @@
     <string name="pref_key_subsonic_usr">pref_subsonic_usr</string>
     <string name="pref_key_subsonic_pwd">pref_subsonic_pwd</string>
     <string name="pref_key_subsonic_refresh">pref_subsonic_refresh</string>
+    <string name="fastscroller_handle">Fastscroller handle</string>
+    <string name="fastscroller_bubble">Fastscroller bubble</string>
 </resources>

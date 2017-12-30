@@ -33,15 +33,25 @@
     <android.support.v7.widget.RecyclerView
         android:id="@+id/musiclibrary_recyclerview"
         android:visibility="visible"
-        android:scrollbars="vertical"
-        android:scrollbarThumbVertical="@drawable/recviewscrollbar"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:layout_marginEnd="20dp" />
+    <se.splushii.dancingbunnies.ui.FastScrollerBubble
+        android:id="@+id/musiclibrary_fastscroller_bubble"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="30dp"
+        android:layout_gravity="end" />
+    <se.splushii.dancingbunnies.ui.FastScroller
+        android:id="@+id/musiclibrary_fastscroller"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="end" />
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/fab"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
+        android:layout_gravity="bottom|start"
         android:layout_margin="@dimen/fab_margin"
         android:src="@android:drawable/ic_dialog_email" />
     <TextView
@@ -49,9 +59,9 @@
         android:visibility="gone"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
+        android:layout_gravity="bottom|start"
         android:layout_marginBottom="108dp"
-        android:layout_marginRight="80dp"
+        android:layout_marginStart="80dp"
         android:text="@string/sort_by_artist"
         />
     <android.support.design.widget.FloatingActionButton
@@ -59,18 +69,18 @@
         android:visibility="gone"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
+        android:layout_gravity="bottom|start"
         android:layout_marginBottom="86dp"
-        android:layout_marginRight="@dimen/fab_margin"
+        android:layout_marginStart="@dimen/fab_margin"
         android:src="@android:drawable/ic_dialog_alert" />
     <TextView
         android:id="@+id/fab_sort_song_label"
         android:visibility="gone"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
+        android:layout_gravity="bottom|start"
         android:layout_marginBottom="178dp"
-        android:layout_marginRight="80dp"
+        android:layout_marginStart="80dp"
         android:text="@string/sort_by_song"
         />
     <android.support.design.widget.FloatingActionButton
@@ -78,18 +88,18 @@
         android:visibility="gone"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
+        android:layout_gravity="bottom|start"
         android:layout_marginBottom="156dp"
-        android:layout_marginRight="@dimen/fab_margin"
+        android:layout_marginStart="@dimen/fab_margin"
         android:src="@android:drawable/ic_dialog_info" />
     <TextView
         android:id="@+id/fab_sort_refresh_label"
         android:visibility="gone"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
+        android:layout_gravity="bottom|start"
         android:layout_marginBottom="248dp"
-        android:layout_marginRight="80dp"
+        android:layout_marginStart="80dp"
         android:text="@string/refresh"
         />
     <android.support.design.widget.FloatingActionButton
@@ -97,8 +107,8 @@
         android:visibility="gone"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
+        android:layout_gravity="bottom|start"
         android:layout_marginBottom="226dp"
-        android:layout_marginRight="@dimen/fab_margin"
+        android:layout_marginStart="@dimen/fab_margin"
         android:src="@android:drawable/ic_dialog_dialer" />
 </android.support.design.widget.CoordinatorLayout>

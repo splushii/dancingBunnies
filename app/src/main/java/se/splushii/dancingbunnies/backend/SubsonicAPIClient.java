@@ -291,7 +291,7 @@ public class SubsonicAPIClient extends APIClient {
                                 JSONObject jChild = jChildArray.getJSONObject(i);
                                 // Required attributes
                                 String id = jChild.getString(JSON_ID);
-                                boolean isDir = jChild.getBoolean(JSON_IS_DIR); // TODO: handle this!
+                                boolean isDir = jChild.getBoolean(JSON_IS_DIR);
                                 if (isDir) {
                                     final CompletableFuture<Void> req = new CompletableFuture<>();
                                     reqList.add(req);

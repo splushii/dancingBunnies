@@ -30,6 +30,8 @@ import se.splushii.dancingbunnies.events.LibraryChangedEvent;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
 import se.splushii.dancingbunnies.services.AudioPlayerService;
+import se.splushii.dancingbunnies.ui.FastScroller;
+import se.splushii.dancingbunnies.ui.FastScrollerBubble;
 import se.splushii.dancingbunnies.ui.LibraryView;
 import se.splushii.dancingbunnies.ui.MusicLibraryAdapter;
 import se.splushii.dancingbunnies.util.Util;
@@ -42,7 +44,8 @@ public class MusicLibraryFragment extends Fragment {
     private LibraryView currentLibraryView;
     private LinkedList<LibraryView> viewBackStack;
 
-    // TODO: Add a fastscroller
+    FastScroller fastScroller;
+    FastScrollerBubble fastScrollerBubble;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -164,18 +167,31 @@ public class MusicLibraryFragment extends Fragment {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+    public void onDestroyView() {
+        fastScroller.onDestroy();
+        fastScroller = null;
+        fastScrollerBubble = null;
+        super.onDestroyView();
+    }
+
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         final View rootView = inflater.inflate(R.layout.musiclibrary_fragment_layout, container,
                 false);
 
         recView = rootView.findViewById(R.id.musiclibrary_recyclerview);
         recView.setHasFixedSize(true);
-        RecyclerView.LayoutManager recViewLayoutManager =
+        LinearLayoutManager recViewLayoutManager =
                 new LinearLayoutManager(this.getContext());
         recView.setLayoutManager(recViewLayoutManager);
         recViewAdapter = new MusicLibraryAdapter(this);
         recView.setAdapter(recViewAdapter);
+
+        fastScroller = rootView.findViewById(R.id.musiclibrary_fastscroller);
+        fastScroller.setRecyclerView(recView);
+        fastScrollerBubble = rootView.findViewById(R.id.musiclibrary_fastscroller_bubble);
+        fastScroller.setBubble(fastScrollerBubble);
 
         FloatingActionButton fab = rootView.findViewById(R.id.fab);
         final FloatingActionButton fab_sort_artist = rootView.findViewById(R.id.fab_sort_artist);

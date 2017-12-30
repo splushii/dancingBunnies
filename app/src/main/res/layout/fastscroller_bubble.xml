@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/fastscroller_bubble"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="end">
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/fastscroller_bubble"
+        android:layout_gravity="end"
+        android:src="@drawable/fastscroller_bubble" />
+    <TextView
+        android:id="@+id/fastscroller_bubble_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:fontFamily="monospace"
+        android:textStyle="bold"
+        android:textSize="24sp"
+        android:textColor="#FFF" />
+</FrameLayout>

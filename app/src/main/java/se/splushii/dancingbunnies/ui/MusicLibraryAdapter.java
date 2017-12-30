@@ -35,6 +35,10 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         this.fragment = fragment;
     }
 
+    MediaBrowserCompat.MediaItem getItemData(int childPosition) {
+        return dataset.get(childPosition);
+    }
+
     static class SongViewHolder extends RecyclerView.ViewHolder {
         Button butt;
         SongViewHolder(View v) {
@@ -88,6 +92,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     }
 
     public LibraryView getCurrentView() {
+        if (currentSrc == null || currentParentId == null || currentType == null) {
+            return null;
+        }
         RecyclerView rv = fragment.getView().findViewById(R.id.musiclibrary_recyclerview);
         LinearLayoutManager llm = (LinearLayoutManager) rv.getLayoutManager();
         int hPos = llm.findFirstCompletelyVisibleItemPosition();
