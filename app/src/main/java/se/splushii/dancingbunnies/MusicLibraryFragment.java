@@ -1,17 +1,10 @@
 package se.splushii.dancingbunnies;
 
-import android.content.ComponentName;
 import android.os.Bundle;
-import android.os.RemoteException;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
-import android.support.v4.app.Fragment;
 import android.support.v4.media.MediaBrowserCompat;
-import android.support.v4.media.MediaMetadataCompat;
-import android.support.v4.media.session.MediaControllerCompat;
-import android.support.v4.media.session.MediaSessionCompat;
-import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -26,42 +19,30 @@ import org.greenrobot.eventbus.Subscribe;
 import java.util.LinkedList;
 import java.util.List;
 
+import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.events.LibraryChangedEvent;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
-import se.splushii.dancingbunnies.services.AudioPlayerService;
+import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.FastScrollerBubble;
 import se.splushii.dancingbunnies.ui.LibraryView;
 import se.splushii.dancingbunnies.ui.MusicLibraryAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
-public class MusicLibraryFragment extends Fragment {
+public class MusicLibraryFragment extends AudioBrowserFragment {
     private static String LC = Util.getLogContext(MusicLibraryFragment.class);
     private RecyclerView recView;
     private MusicLibraryAdapter recViewAdapter;
-    private MediaBrowserCompat mediaBrowser;
     private LibraryView currentLibraryView;
     private LinkedList<LibraryView> viewBackStack;
 
     FastScroller fastScroller;
     FastScrollerBubble fastScrollerBubble;
 
-    @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Log.d(LC, "onCreate");
         viewBackStack = new LinkedList<>();
-        mediaBrowser = new MediaBrowserCompat(getActivity(), new ComponentName(getActivity(),
-                AudioPlayerService.class), mediaBrowserConnectionCallback, null);
-        mediaBrowser.connect();
-    }
-
-    @Override
-    public void onDestroy() {
-        Log.d(LC, "onDestroy");
-        mediaBrowser.disconnect();
-        super.onDestroy();
     }
 
     @Override
@@ -91,54 +72,6 @@ public class MusicLibraryFragment extends Fragment {
         Log.d(LC, "got LibraryChangedEvent");
         refreshView(currentLibraryView);
     }
-
-    private final MediaBrowserCompat.ConnectionCallback mediaBrowserConnectionCallback =
-        new MediaBrowserCompat.ConnectionCallback() {
-            @Override
-            public void onConnected() {
-                Log.d(LC, "MediaBrowser connected");
-                try {
-                    connectMediaController(mediaBrowser.getSessionToken());
-                } catch (RemoteException e) {
-                    Log.e(LC, "Failed to connect to media controller");
-                }
-
-            }
-
-            @Override
-            public void onConnectionFailed() {
-                Log.e(LC, "MediaBrowser onConnectFailed");
-            }
-
-            @Override
-            public void onConnectionSuspended() {
-                Log.w(LC, "MediaBrowser onConnectionSuspended");
-            }
-    };
-
-    private void connectMediaController(MediaSessionCompat.Token token) throws RemoteException {
-        MediaControllerCompat mediaController = new MediaControllerCompat(getActivity(), token);
-        MediaControllerCompat.setMediaController(getActivity(), mediaController);
-        mediaController.registerCallback(mediaControllerCallback);
-    }
-
-    private final MediaControllerCompat.Callback mediaControllerCallback =
-            new MediaControllerCompat.Callback() {
-                @Override
-                public void onPlaybackStateChanged(PlaybackStateCompat state) {
-                    Log.d(LC, "mediacontroller onplaybackstatechanged");
-                }
-
-                @Override
-                public void onMetadataChanged(MediaMetadataCompat metadata) {
-                    Log.d(LC, "mediacontroller onmetadatachanged");
-                }
-
-                @Override
-                public void onSessionEvent(String event, Bundle extras) {
-                    Log.d(LC, "mediacontroller onsessionevent: " + event);
-                }
-            };
 
     public void refreshView(final LibraryView libView) {
         if (!mediaBrowser.isConnected()) {

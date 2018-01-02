@@ -10,10 +10,14 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import se.splushii.dancingbunnies.util.Util;
+
 public final class MainActivity extends AppCompatActivity {
+    private static final String LC = Util.getLogContext(MainActivity.class);
 
     private static final int SETTINGS_INTENT_REQUEST = 1;
     private SectionsPagerAdapter mSectionsPagerAdapter;
@@ -89,7 +93,7 @@ public final class MainActivity extends AppCompatActivity {
     public void onBackPressed() {
         if (mViewPager.getCurrentItem() != MUSICLIBRARY
                 || !musicLibraryFragment.onBackPressed()) {
-            super.onBackPressed();
+            Log.w(LC, "Backpress ignored.");
         }
     }
 

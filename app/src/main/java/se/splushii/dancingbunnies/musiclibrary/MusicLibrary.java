@@ -24,7 +24,7 @@ import se.splushii.dancingbunnies.backend.MusicLibraryRequestHandler;
 import se.splushii.dancingbunnies.backend.SubsonicAPIClient;
 import se.splushii.dancingbunnies.events.LibraryChangedEvent;
 import se.splushii.dancingbunnies.events.SettingsChangedEvent;
-import se.splushii.dancingbunnies.services.AudioPlayerService;
+import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.storage.Storage;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -86,6 +86,15 @@ public class MusicLibrary {
             return new AudioDataSource(null);
         }
     }
+
+    public MediaMetadataCompat getSongMetaData(String src, String id) {
+        String key = LibraryEntry.makeKey(src, id, LibraryEntry.EntryType.SONG);
+        if (!songMap.containsKey(key)) {
+            return null;
+        }
+        return songMap.get(key).meta();
+    }
+
 
     public ArrayList<Artist> artists() {
         return new ArrayList<>(artists);
@@ -323,5 +332,4 @@ public class MusicLibrary {
     public void fetchPlayLists(String api, MusicLibraryRequestHandler handler) {
         // TODO: implement
     }
-
 }

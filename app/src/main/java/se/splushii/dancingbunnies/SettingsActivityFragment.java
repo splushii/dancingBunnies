@@ -18,7 +18,7 @@ import se.splushii.dancingbunnies.backend.MusicLibraryRequestHandler;
 import se.splushii.dancingbunnies.events.LibraryEvent;
 import se.splushii.dancingbunnies.events.SettingsChangedEvent;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
-import se.splushii.dancingbunnies.services.AudioPlayerService;
+import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.util.Util;
 
 /**

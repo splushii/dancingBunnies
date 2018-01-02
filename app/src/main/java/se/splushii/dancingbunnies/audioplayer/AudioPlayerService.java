@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies.services;
+package se.splushii.dancingbunnies.audioplayer;
 
 import android.app.PendingIntent;
 import android.content.Context;
@@ -11,6 +11,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaBrowserServiceCompat;
 import android.support.v4.media.MediaDescriptionCompat;
+import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
@@ -25,8 +26,6 @@ import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.backend.AudioDataSource;
 import se.splushii.dancingbunnies.events.LibraryEvent;
-import se.splushii.dancingbunnies.events.PlaySongEvent;
-import se.splushii.dancingbunnies.events.PlaybackEvent;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
@@ -35,6 +34,10 @@ import se.splushii.dancingbunnies.util.Util;
 
 public class AudioPlayerService extends MediaBrowserServiceCompat
         implements MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener {
+    private static final String NOTIFICATION_CHANNEL_ID = "dancingbunnies.notification.channel";
+    private static final int SERVICE_NOTIFICATION_ID = 1337;
+    private static final float PLAYBACK_SPEED_PAUSED = 0f;
+    private static final float PLAYBACK_SPEED_PLAYING = 1f;
     private static String LC = Util.getLogContext(AudioPlayerService.class);
     private MusicLibrary musicLibrary;
     public static final String MEDIA_ID_ROOT = "dancingbunnies.media.id.root";
@@ -56,7 +59,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
     private MediaPlayer mediaPlayer;
     private MediaSessionCompat mediaSession;
     private PlaybackStateCompat.Builder mediaStateBuilder;
-    private AudioDataSource nowPlaying;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -177,7 +179,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
         mediaStateBuilder = new PlaybackStateCompat.Builder()
                 .setActions(
                         PlaybackStateCompat.ACTION_PLAY
-                        | PlaybackStateCompat.ACTION_PLAY_PAUSE);
+                        | PlaybackStateCompat.ACTION_PLAY_PAUSE)
+                .setState(PlaybackStateCompat.STATE_PAUSED, 0, PLAYBACK_SPEED_PAUSED);
         mediaSession.setPlaybackState(mediaStateBuilder.build());
         mediaSession.setCallback(new AudioPlayerSessionCallback());
 
@@ -199,8 +202,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
     @Override
     public void onPrepared(MediaPlayer mediaPlayer) {
         mediaPlayerState = MediaPlayerState.PREPARED;
-        mediaPlayer.start();
-        mediaPlayerState = MediaPlayerState.STARTED;
+        onPlay();
     }
 
     @Override
@@ -215,18 +217,27 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
             case PREPARED:
             case PAUSED:
             case PLAYBACK_COMPLETED:
-                mediaPlayer.start();
                 break;
+            case STARTED:
+                Log.d(LC, "onPlay in STARTED");
+                return;
             default:
                 Log.w(LC, "onPlay in wrong state: " + mediaPlayerState);
-                break;
+                return;
         }
-/*        MediaControllerCompat controller = mediaSession.getController();
+        mediaPlayer.start();
+        mediaPlayerState = MediaPlayerState.STARTED;
+
+        mediaStateBuilder.setState(PlaybackStateCompat.STATE_PLAYING,
+                mediaPlayer.getCurrentPosition(), PLAYBACK_SPEED_PLAYING);
+        mediaSession.setPlaybackState(mediaStateBuilder.build());
+        /*
+        MediaControllerCompat controller = mediaSession.getController();
         MediaMetadataCompat metadata = controller.getMetadata();
         MediaDescriptionCompat description = metadata.getDescription();
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this);
-        builder
+        Notification notification =
+                new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
                 .setContentTitle(description.getTitle())
                 .setContentText(description.getSubtitle())
                 .setSubText(description.getDescription())
@@ -240,22 +251,23 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
         // Add an app icon and set its accent color
         // Be careful about the color
-                .setSmallIcon(R.drawable.notification_icon)
-                .setColor(ContextCompat.getColor(this, R.color.primaryDark))
+//                .setSmallIcon(R.drawable.notification_icon)
+                .setColor(ContextCompat.getColor(this, R.color.colorPrimaryDark))
         // Add a pause button
                 .addAction(new NotificationCompat.Action(
                         R.drawable.ic_play, getString(R.string.pause),
                         MediaButtonReceiver.buildMediaButtonPendingIntent(this,
                                 PlaybackStateCompat.ACTION_PLAY_PAUSE)))
         // Take advantage of MediaStyle features
-                .setStyle(new NotificationCompat.MediaStyle()
-                        .setMediaSession(mediaSession.getSessionToken())
-                        .setShowActionsInCompactView(0)
+//                .setStyle(new NotificationCompat.MediaStyle()
+//                        .setMediaSession(mediaSession.getSessionToken())
+//                        .setShowActionsInCompactView(0)
         // Add a cancel button
-                        .setShowCancelButton(true)
-                        .setCancelButtonIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(this,
-                                PlaybackStateCompat.ACTION_STOP)));
-        startForeground(AUDIO_PLAYER_SERVICE_NOTIFICATION_ID, builder.build());
+//                        .setShowCancelButton(true)
+//                        .setCancelButtonIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(this,
+//                                PlaybackStateCompat.ACTION_STOP)))
+                .build();
+        startForeground(SERVICE_NOTIFICATION_ID, notification);
         */
     }
 
@@ -269,8 +281,22 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
     }
 
     private void onPause() {
+        switch (mediaPlayerState) {
+            case PAUSED:
+            case STARTED:
+                break;
+            default:
+                Log.w(LC, "onPlay in wrong state: " + mediaPlayerState);
+                return;
+        }
+        if (mediaPlayer == null) {
+            return;
+        }
         mediaPlayer.pause();
         mediaPlayerState = MediaPlayerState.PAUSED;
+        mediaStateBuilder.setState(PlaybackStateCompat.STATE_PAUSED,
+                mediaPlayer.getCurrentPosition(), PLAYBACK_SPEED_PAUSED);
+        mediaSession.setPlaybackState(mediaStateBuilder.build());
     }
 
     private void onStop() {
@@ -281,33 +307,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
         mediaPlayerState = MediaPlayerState.NULL;
         stopSelf();
         stopForeground(true);
-    }
-
-    @Subscribe
-    public void onMessageEvent(PlaybackEvent pbe) {
-        Log.d(LC, "got playback event: " + pbe.action.name());
-        switch (pbe.action) {
-            case PAUSE:
-                onPause();
-                break;
-            case PLAY:
-                onPlay();
-                break;
-            case STOP:
-                onStop();
-                break;
-            default:
-                Log.w(LC, "Unhandled PlaybackEvent: " + pbe.action.name());
-                break;
-        }
-    }
-
-    @Subscribe
-    public void onMessageEvent(PlaySongEvent pse) {
-        Log.d(LC, "got play song event with src: " + pse.src + " id: " + pse.id);
-        resetMediaPlayer();
-        onPlay();
-        setCurrentSong(pse.src, pse.id);
     }
 
     @Subscribe
@@ -329,7 +328,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
 
     private void setCurrentSong(final String src, final String id) {
         final AudioDataSource audioDataSource = musicLibrary.getAudioData(src, id);
-        nowPlaying = audioDataSource;
+        MediaMetadataCompat meta = musicLibrary.getSongMetaData(src, id);
+        mediaSession.setMetadata(meta);
         // TODO: Change to audioDataSource.buffer, and use a callback to play when buffered enough
         audioDataSource.download(new AudioDataDownloadHandler() {
             @Override
@@ -366,12 +366,34 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
     private class AudioPlayerSessionCallback extends MediaSessionCompat.Callback {
         @Override
         public void onPlay() {
+            super.onPlay();
             AudioPlayerService.this.onPlay();
         }
 
         @Override
         public void onPause() {
+            super.onPause();
             AudioPlayerService.this.onPause();
+        }
+
+        @Override
+        public void onPlayFromMediaId(String mediaId, Bundle extras) {
+            super.onPlayFromMediaId(mediaId, extras);
+            String src = extras.getString(Meta.METADATA_KEY_API);
+            resetMediaPlayer();
+            setCurrentSong(src, mediaId);
+        }
+
+        @Override
+        public void onSkipToNext() {
+            super.onSkipToNext();
+            // TODO
+        }
+
+        @Override
+        public void onSkipToPrevious() {
+            super.onSkipToPrevious();
+            // TODO
         }
     }
 }

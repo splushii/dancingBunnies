@@ -25,7 +25,7 @@
             android:label="@string/title_activity_settings"
             android:theme="@style/AppTheme.NoActionBar" />
         <service
-            android:name=".services.AudioPlayerService"
+            android:name=".audioplayer.AudioPlayerService"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.media.browse.MediaBrowserService" />

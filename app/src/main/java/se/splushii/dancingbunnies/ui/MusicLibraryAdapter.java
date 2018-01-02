@@ -10,14 +10,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 
-import org.greenrobot.eventbus.EventBus;
-
 import java.util.ArrayList;
 import java.util.List;
 
 import se.splushii.dancingbunnies.MusicLibraryFragment;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.events.PlaySongEvent;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.util.Util;
@@ -65,7 +62,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
 
     @Override
     public void onBindViewHolder(final SongViewHolder holder, int position) {
-        final int n = position;
         final MediaBrowserCompat.MediaItem item = dataset.get(position);
         final String title = item.getDescription().getTitle() + "";
         Bundle b = item.getDescription().getExtras();
@@ -85,8 +81,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 fragment.addBackButtonHistory(getCurrentView());
                 fragment.refreshView(new LibraryView(src, id, type, 0, 0));
             } else {
-                Log.d(LC, "Sending play song event with src: " + src + ", : " + id);
-                EventBus.getDefault().post(new PlaySongEvent(src, id));
+                fragment.play(src, id);
             }
         });
     }

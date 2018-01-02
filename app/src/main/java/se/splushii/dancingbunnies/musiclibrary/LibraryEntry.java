@@ -60,7 +60,10 @@ public abstract class LibraryEntry implements Comparable<LibraryEntry> {
     public String src() { return src; }
     public String id() { return id; }
     public EntryType type() { return type; }
-    public String key() { return src + id + type.name(); }
+    public String key() { return makeKey(src, id, type); }
+    public static String makeKey(String src, String id, EntryType type) {
+        return src + id + type.name();
+    }
     public String name() { return name; }
     void addRef(LibraryEntry e) {
         if (!references.contains(e)) {
