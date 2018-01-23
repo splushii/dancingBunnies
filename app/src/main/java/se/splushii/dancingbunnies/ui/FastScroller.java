@@ -182,7 +182,7 @@ public class FastScroller extends LinearLayout {
                 bubble.setText(String.valueOf(firstChar));
             }
 
-            animateShow(handle, AnimationType.FADE);
+            animateShow(handle, handleHider, AnimationType.FADE);
             animateHide(handleHider, VIEW_HIDE_DELAY);
 
             int scrollOffset = recyclerView.computeVerticalScrollOffset();
@@ -212,9 +212,9 @@ public class FastScroller extends LinearLayout {
         int action = event.getAction();
         if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
             setPosition(event.getY());
-            animateShow(handle, AnimationType.FADE);
+            animateShow(handle, handleHider, AnimationType.FADE);
             if (bubble != null) {
-                animateShow(bubble, AnimationType.SCALE);
+                animateShow(bubble, bubbleHider, AnimationType.SCALE);
             }
             setRecyclerViewPosition();
             return true;
@@ -233,8 +233,8 @@ public class FastScroller extends LinearLayout {
         getHandler().postDelayed(viewHider, handleHideDelay);
     }
 
-    private void animateShow(View v, AnimationType animationType) {
-        getHandler().removeCallbacks(handleHider);
+    private void animateShow(View v, ViewHider viewHider, AnimationType animationType) {
+        getHandler().removeCallbacks(viewHider);
         if (v.getVisibility() == INVISIBLE) {
             showView(v, animationType);
         }

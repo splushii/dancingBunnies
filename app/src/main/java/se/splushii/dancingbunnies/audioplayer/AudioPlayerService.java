@@ -202,6 +202,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
     @Override
     public void onPrepared(MediaPlayer mediaPlayer) {
         mediaPlayerState = MediaPlayerState.PREPARED;
+        // TODO: Only play if it should play (add shouldPlay boolean)
         onPlay();
     }
 
@@ -300,6 +301,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
     }
 
     private void onStop() {
+        // FIXME
         mediaPlayer.stop();
         mediaPlayerState = MediaPlayerState.STOPPED;
         mediaPlayer.release();
