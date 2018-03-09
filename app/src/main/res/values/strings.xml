@@ -18,4 +18,8 @@
     <string name="pref_key_subsonic_refresh">pref_subsonic_refresh</string>
     <string name="fastscroller_handle">Fastscroller handle</string>
     <string name="fastscroller_bubble">Fastscroller bubble</string>
+    <string name="pause">pause</string>
+    <string name="next">next</string>
+    <string name="previous">previous</string>
+    <string name="stop">stop</string>
 </resources>

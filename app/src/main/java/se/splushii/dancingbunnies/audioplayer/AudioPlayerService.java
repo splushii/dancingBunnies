@@ -1,5 +1,8 @@
 package se.splushii.dancingbunnies.audioplayer;
 
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -8,10 +11,13 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaBrowserServiceCompat;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaButtonReceiver;
+import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
@@ -23,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import se.splushii.dancingbunnies.MainActivity;
+import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.backend.AudioDataSource;
 import se.splushii.dancingbunnies.events.LibraryEvent;
@@ -35,6 +42,7 @@ import se.splushii.dancingbunnies.util.Util;
 public class AudioPlayerService extends MediaBrowserServiceCompat
         implements MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener {
     private static final String NOTIFICATION_CHANNEL_ID = "dancingbunnies.notification.channel";
+    private static final String NOTIFICATION_CHANNEL_NAME = "DancingBunnies";
     private static final int SERVICE_NOTIFICATION_ID = 1337;
     private static final float PLAYBACK_SPEED_PAUSED = 0f;
     private static final float PLAYBACK_SPEED_PLAYING = 1f;
@@ -44,6 +52,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
     public static final String MEDIA_ID_ARTIST_ROOT = "dancingbunnies.media.id.root.artist";
     public static final String MEDIA_ID_ALBUM_ROOT = "dancingbunnies.media.id.root.album";
     public static final String MEDIA_ID_SONG_ROOT = "dancingbunnies.media.id.root.song";
+    private boolean playWhenPrepared = false;
+
     private enum MediaPlayerState {
         NULL,
         IDLE,
@@ -91,6 +101,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
     public static String getMusicLibraryQueryOptionsString(Bundle options) {
         String api = options.getString(Meta.METADATA_KEY_API);
         LibraryEntry.EntryType type = (LibraryEntry.EntryType) options.getSerializable(Meta.METADATA_KEY_TYPE);
+        assert type != null;
         return "api: " + api + ", type: " + type.name();
     }
 
@@ -160,7 +171,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.d(LC, "onStartCommand");
+        Log.d(LC, "onStartCommand. flags: " + flags + ". startId: " + startId);
+        MediaButtonReceiver.handleIntent(mediaSession, intent);
         return START_STICKY;
     }
 
@@ -179,7 +191,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
         mediaStateBuilder = new PlaybackStateCompat.Builder()
                 .setActions(
                         PlaybackStateCompat.ACTION_PLAY
-                        | PlaybackStateCompat.ACTION_PLAY_PAUSE)
+                                | PlaybackStateCompat.ACTION_PLAY_PAUSE
+                                | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                                | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
                 .setState(PlaybackStateCompat.STATE_PAUSED, 0, PLAYBACK_SPEED_PAUSED);
         mediaSession.setPlaybackState(mediaStateBuilder.build());
         mediaSession.setCallback(new AudioPlayerSessionCallback());
@@ -189,6 +203,15 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
         PendingIntent pi = PendingIntent.getActivity(context, 99 /*request code*/,
                 intent, PendingIntent.FLAG_UPDATE_CURRENT);
         mediaSession.setSessionActivity(pi);
+
+        NotificationChannel notificationChannel = new NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                NOTIFICATION_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_LOW
+        );
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        assert notificationManager != null;
+        notificationManager.createNotificationChannel(notificationChannel);
     }
 
     @Override
@@ -202,8 +225,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
     @Override
     public void onPrepared(MediaPlayer mediaPlayer) {
         mediaPlayerState = MediaPlayerState.PREPARED;
-        // TODO: Only play if it should play (add shouldPlay boolean)
-        onPlay();
+        if (playWhenPrepared) {
+            onPlay();
+        }
     }
 
     @Override
@@ -212,8 +236,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
     }
 
     private void onPlay() {
-        initializeMediaPlayer();
-        startService(new Intent(this, AudioPlayerService.class));
         switch (mediaPlayerState) {
             case PREPARED:
             case PAUSED:
@@ -226,50 +248,60 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
                 Log.w(LC, "onPlay in wrong state: " + mediaPlayerState);
                 return;
         }
+        initializeMediaPlayer();
+        startService(new Intent(this, AudioPlayerService.class));
         mediaPlayer.start();
         mediaPlayerState = MediaPlayerState.STARTED;
 
         mediaStateBuilder.setState(PlaybackStateCompat.STATE_PLAYING,
                 mediaPlayer.getCurrentPosition(), PLAYBACK_SPEED_PLAYING);
         mediaSession.setPlaybackState(mediaStateBuilder.build());
-        /*
+
         MediaControllerCompat controller = mediaSession.getController();
         MediaMetadataCompat metadata = controller.getMetadata();
         MediaDescriptionCompat description = metadata.getDescription();
 
+        NotificationCompat.Action play_pause_action = new NotificationCompat.Action.Builder(
+                android.R.drawable.ic_media_pause,
+                getString(R.string.pause),
+                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                        this,
+                        PlaybackStateCompat.ACTION_PLAY_PAUSE
+                )
+        ).build();
+        NotificationCompat.Action next_action= new NotificationCompat.Action.Builder(
+                android.R.drawable.ic_media_next,
+                getString(R.string.next),
+                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                        this,
+                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                )
+        ).build();
+        NotificationCompat.Action prev_action = new NotificationCompat.Action.Builder(
+                android.R.drawable.ic_media_previous,
+                getString(R.string.previous),
+                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                        this,
+                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+                )
+        ).build();
         Notification notification =
                 new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-                .setContentTitle(description.getTitle())
-                .setContentText(description.getSubtitle())
-                .setSubText(description.getDescription())
-                .setLargeIcon(description.getIconBitmap())
-        // Enable launching the player by clicking the notification
-                .setContentIntent(controller.getSessionActivity())
-        // Stop the service when the notification is swiped away
-                .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(this,
-                        PlaybackStateCompat.ACTION_STOP))
-        // Make the transport controls visible on the lockscreen
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-        // Add an app icon and set its accent color
-        // Be careful about the color
-//                .setSmallIcon(R.drawable.notification_icon)
-                .setColor(ContextCompat.getColor(this, R.color.colorPrimaryDark))
-        // Add a pause button
-                .addAction(new NotificationCompat.Action(
-                        R.drawable.ic_play, getString(R.string.pause),
-                        MediaButtonReceiver.buildMediaButtonPendingIntent(this,
-                                PlaybackStateCompat.ACTION_PLAY_PAUSE)))
-        // Take advantage of MediaStyle features
-//                .setStyle(new NotificationCompat.MediaStyle()
-//                        .setMediaSession(mediaSession.getSessionToken())
-//                        .setShowActionsInCompactView(0)
-        // Add a cancel button
-//                        .setShowCancelButton(true)
-//                        .setCancelButtonIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(this,
-//                                PlaybackStateCompat.ACTION_STOP)))
+                        .setContentTitle(description.getTitle())
+                        .setSmallIcon(R.drawable.ic_play)
+                        // Enable launching the player by clicking the notification
+                        .setContentIntent(controller.getSessionActivity())
+                        // Stop the service when the notification is swiped away
+                        .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(
+                                this,
+                                PlaybackStateCompat.ACTION_STOP
+                                )
+                        )
+                        .addAction(play_pause_action)
+                        .addAction(next_action)
+                        .addAction(prev_action)
                 .build();
         startForeground(SERVICE_NOTIFICATION_ID, notification);
-        */
     }
 
     private void initializeMediaPlayer() {
@@ -287,7 +319,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
             case STARTED:
                 break;
             default:
-                Log.w(LC, "onPlay in wrong state: " + mediaPlayerState);
+                Log.w(LC, "onPause in wrong state: " + mediaPlayerState);
                 return;
         }
         if (mediaPlayer == null) {
@@ -301,7 +333,16 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
     }
 
     private void onStop() {
-        // FIXME
+        switch (mediaPlayerState) {
+            case PREPARED:
+            case STARTED:
+            case PAUSED:
+            case PLAYBACK_COMPLETED:
+            case STOPPED:
+                break;
+            default:
+                Log.w(LC, "onStop in wrong state: " + mediaPlayerState);
+        }
         mediaPlayer.stop();
         mediaPlayerState = MediaPlayerState.STOPPED;
         mediaPlayer.release();
@@ -309,6 +350,14 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
         mediaPlayerState = MediaPlayerState.NULL;
         stopSelf();
         stopForeground(true);
+    }
+
+    private void onSkipToNext() {
+        Log.e(LC, "onSkipToNext not implemented.");
+    }
+
+    private void onSkipToPrevious() {
+        Log.e(LC, "onSkipToPrevious not implemented.");
     }
 
     @Subscribe
@@ -383,19 +432,35 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
             super.onPlayFromMediaId(mediaId, extras);
             String src = extras.getString(Meta.METADATA_KEY_API);
             resetMediaPlayer();
+            playWhenPrepared = true;
+            setCurrentSong(src, mediaId);
+        }
+
+        @Override
+        public void onPrepareFromMediaId(String mediaId, Bundle extras) {
+            super.onPrepareFromMediaId(mediaId, extras);
+            String src = extras.getString(Meta.METADATA_KEY_API);
+            resetMediaPlayer();
+            playWhenPrepared = false;
             setCurrentSong(src, mediaId);
         }
 
         @Override
         public void onSkipToNext() {
             super.onSkipToNext();
-            // TODO
+            AudioPlayerService.this.onSkipToNext();
         }
 
         @Override
         public void onSkipToPrevious() {
             super.onSkipToPrevious();
-            // TODO
+            AudioPlayerService.this.onSkipToPrevious();
+        }
+
+        @Override
+        public void onStop() {
+            super.onStop();
+            AudioPlayerService.this.onStop();
         }
     }
 }

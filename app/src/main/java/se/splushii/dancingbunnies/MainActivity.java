@@ -74,6 +74,7 @@ public final class MainActivity extends AppCompatActivity {
             case SETTINGS_INTENT_REQUEST:
                 break;
             default:
+                Log.d(LC, "Unhandled intent code: " + requestCode);
                 break;
         }
     }
