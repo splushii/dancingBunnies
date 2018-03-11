@@ -11,6 +11,7 @@ import android.widget.Button;
 import android.widget.TextView;
 
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.util.Util;
 
 public class NowPlayingFragment extends AudioBrowserFragment {
@@ -57,8 +58,9 @@ public class NowPlayingFragment extends AudioBrowserFragment {
 
     @Override
     protected void onMetadataChanged(MediaMetadataCompat metadata) {
-        Log.d(LC, "meta: " + String.valueOf(metadata.getDescription().getTitle()));
-        nowPlayingText.setText(String.valueOf(metadata.getDescription().getTitle()));
+        String description = Meta.getLongDescription(metadata);
+        Log.d(LC, "meta: " + description);
+        nowPlayingText.setText(description);
     }
 
     @Override

@@ -22,4 +22,5 @@
     <string name="next">next</string>
     <string name="previous">previous</string>
     <string name="stop">stop</string>
+    <string name="play">play</string>
 </resources>

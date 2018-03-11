@@ -22,9 +22,10 @@ public final class MainActivity extends AppCompatActivity {
     private static final int SETTINGS_INTENT_REQUEST = 1;
     private SectionsPagerAdapter mSectionsPagerAdapter;
     private ViewPager mViewPager;
-    private static final int MUSICLIBRARY = 0;
-    private static final int NOWPLAYING = 1;
-    private static final int QUEUE = 2;
+    public static final String PAGER_SELECTION = "dancingbunnies.mainactivity.pagerselection";
+    public static final int PAGER_MUSICLIBRARY = 0;
+    public static final int PAGER_NOWPLAYING = 1;
+    public static final int PAGER_QUEUE = 2;
     private static final int NUM_VIEWS = 3;
 
     private MusicLibraryFragment musicLibraryFragment;
@@ -50,6 +51,11 @@ public final class MainActivity extends AppCompatActivity {
         musicLibraryFragment = new MusicLibraryFragment();
         nowPlayingFragment = new NowPlayingFragment();
         playlistQueueFragment = new PlaylistQueueFragment();
+
+        int page_id = getIntent().getIntExtra(PAGER_SELECTION, -1);
+        if (page_id != -1) {
+            mViewPager.setCurrentItem(page_id);
+        }
     }
 
     @Override
@@ -92,7 +98,7 @@ public final class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (mViewPager.getCurrentItem() != MUSICLIBRARY
+        if (mViewPager.getCurrentItem() != PAGER_MUSICLIBRARY
                 || !musicLibraryFragment.onBackPressed()) {
             Log.w(LC, "Backpress ignored.");
         }
@@ -111,11 +117,11 @@ public final class MainActivity extends AppCompatActivity {
         @Override
         public Fragment getItem(int position) {
             switch (position) {
-                case MUSICLIBRARY:
+                case PAGER_MUSICLIBRARY:
                     return musicLibraryFragment;
-                case NOWPLAYING:
+                case PAGER_NOWPLAYING:
                     return nowPlayingFragment;
-                case QUEUE:
+                case PAGER_QUEUE:
                     return playlistQueueFragment;
             }
             return null;
@@ -129,11 +135,11 @@ public final class MainActivity extends AppCompatActivity {
         @Override
         public CharSequence getPageTitle(int position) {
             switch (position) {
-                case MUSICLIBRARY:
+                case PAGER_MUSICLIBRARY:
                     return "MusicLibrary";
-                case NOWPLAYING:
+                case PAGER_NOWPLAYING:
                     return "Now Playing";
-                case QUEUE:
+                case PAGER_QUEUE:
                     return "Playlist/Queue";
             }
             return null;

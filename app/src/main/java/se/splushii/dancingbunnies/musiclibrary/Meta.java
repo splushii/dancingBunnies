@@ -15,6 +15,13 @@ import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.STRING;
 public class Meta {
     private static String LC = Util.getLogContext(Meta.class);
 
+    public static String getLongDescription(MediaMetadataCompat metadata) {
+        String artist = metadata.getString(Meta.METADATA_KEY_ARTIST);
+        String album = metadata.getString(Meta.METADATA_KEY_ALBUM);
+        String title = metadata.getString(Meta.METADATA_KEY_TITLE);
+        return title + " - " + artist + " [" + album + "]";
+    }
+
     public enum Type {
         STRING, BITMAP, RATING, LONG
     }
