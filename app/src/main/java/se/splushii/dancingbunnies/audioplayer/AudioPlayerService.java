@@ -6,7 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.media.MediaPlayer;
+import android.media.session.PlaybackState;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
@@ -40,8 +40,7 @@ import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.util.Util;
 
-public class AudioPlayerService extends MediaBrowserServiceCompat
-        implements MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener {
+public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static final String NOTIFICATION_CHANNEL_ID = "dancingbunnies.notification.channel";
     private static final String NOTIFICATION_CHANNEL_NAME = "DancingBunnies";
     private static final int SERVICE_NOTIFICATION_ID = 1337;
@@ -53,23 +52,11 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
     public static final String MEDIA_ID_ARTIST_ROOT = "dancingbunnies.media.id.root.artist";
     public static final String MEDIA_ID_ALBUM_ROOT = "dancingbunnies.media.id.root.album";
     public static final String MEDIA_ID_SONG_ROOT = "dancingbunnies.media.id.root.song";
-    private boolean playWhenPrepared = false;
 
-    private enum MediaPlayerState {
-        NULL,
-        IDLE,
-        INITIALIZED,
-        PREPARING,
-        STARTED,
-        PAUSED,
-        STOPPED,
-        PLAYBACK_COMPLETED,
-        PREPARED
-    }
-    private MediaPlayerState mediaPlayerState = MediaPlayerState.NULL;
-    private MediaPlayer mediaPlayer;
+    private AudioPlayer audioPlayer;
     private MediaSessionCompat mediaSession;
-    private PlaybackStateCompat.Builder mediaStateBuilder;
+    private PlaybackStateCompat.Builder playbackStateBuilder;
+    private PlaybackStateCompat playbackState;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -184,19 +171,24 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
         Log.d(LC, "onCreate");
         EventBus.getDefault().register(this);
 
+        audioPlayer = new LocalAudioPlayer();
+
         // TODO: handle play queue
+//        playQueue = new PlayQueue();
+
         mediaSession = new MediaSessionCompat(this, "AudioPlayerService");
         setSessionToken(mediaSession.getSessionToken());
         mediaSession.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS
                 | MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
-        mediaStateBuilder = new PlaybackStateCompat.Builder()
-                .setActions(
-                        PlaybackStateCompat.ACTION_PLAY
-                                | PlaybackStateCompat.ACTION_PLAY_PAUSE
-                                | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                                | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
-                .setState(PlaybackStateCompat.STATE_PAUSED, 0, PLAYBACK_SPEED_PAUSED);
-        mediaSession.setPlaybackState(mediaStateBuilder.build());
+        playbackStateBuilder = new PlaybackStateCompat.Builder()
+                .setActions(PlaybackStateCompat.ACTION_PLAY
+                        | PlaybackStateCompat.ACTION_PLAY_PAUSE
+                        | PlaybackStateCompat.ACTION_STOP
+                        | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                        | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
+                .setState(PlaybackStateCompat.STATE_NONE, 0, PLAYBACK_SPEED_PAUSED);
+        playbackState = playbackStateBuilder.build();
+        mediaSession.setPlaybackState(playbackState);
         mediaSession.setCallback(new AudioPlayerSessionCallback());
 
         Context context = getApplicationContext();
@@ -224,52 +216,31 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
         super.onDestroy();
     }
 
-    @Override
-    public void onPrepared(MediaPlayer mediaPlayer) {
-        mediaPlayerState = MediaPlayerState.PREPARED;
-        if (playWhenPrepared) {
-            onPlay();
-        }
-    }
-
-    @Override
-    public void onCompletion(MediaPlayer mediaPlayer) {
-        mediaPlayerState = MediaPlayerState.PLAYBACK_COMPLETED;
-    }
-
     private void onPlay() {
-        switch (mediaPlayerState) {
-            case PREPARED:
-            case PAUSED:
-            case PLAYBACK_COMPLETED:
-                break;
-            case STARTED:
-                Log.d(LC, "onPlay in STARTED");
-                return;
-            default:
-                Log.w(LC, "onPlay in wrong state: " + mediaPlayerState);
-                return;
-        }
-        initializeMediaPlayer();
+        audioPlayer.play();
         startService(new Intent(this, AudioPlayerService.class));
-        mediaPlayer.start();
-        mediaPlayerState = MediaPlayerState.STARTED;
-
-        mediaStateBuilder.setState(
+        playbackState = playbackStateBuilder.setState(
                 PlaybackStateCompat.STATE_PLAYING,
-                mediaPlayer.getCurrentPosition(),
+                audioPlayer.getCurrentPosition(),
                 PLAYBACK_SPEED_PLAYING
-        );
-        mediaSession.setPlaybackState(mediaStateBuilder.build());
-
+        ).build();
+        mediaSession.setPlaybackState(playbackState);
         setNotification();
     }
 
     private void setNotification() {
-        String play_pause_string = mediaPlayerState == MediaPlayerState.STARTED ?
-                getString(R.string.pause) : getString(R.string.play);
-        int play_pause_drawable = mediaPlayerState == MediaPlayerState.STARTED ?
-                android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play;
+        String play_pause_string;
+        int play_pause_drawable;
+        switch (playbackState.getState()) {
+            case PlaybackState.STATE_PLAYING:
+                play_pause_string = getString(R.string.pause);
+                play_pause_drawable = android.R.drawable.ic_media_pause;
+                break;
+            default:
+                play_pause_string = getString(R.string.play);
+                play_pause_drawable = android.R.drawable.ic_media_play;
+                break;
+        }
         NotificationCompat.Action action_play_pause = new NotificationCompat.Action.Builder(
                 play_pause_drawable,
                 play_pause_string,
@@ -324,65 +295,37 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
         startForeground(SERVICE_NOTIFICATION_ID, notification);
     }
 
-    private void initializeMediaPlayer() {
-        if (mediaPlayer == null) {
-            mediaPlayer = new MediaPlayer();
-            mediaPlayer.setOnPreparedListener(this);
-            mediaPlayer.setOnCompletionListener(this);
-            mediaPlayerState = MediaPlayerState.IDLE;
-        }
-    }
-
     private void onPause() {
-        switch (mediaPlayerState) {
-            case PAUSED:
-            case STARTED:
-                break;
-            default:
-                Log.w(LC, "onPause in wrong state: " + mediaPlayerState);
-                return;
-        }
-        if (mediaPlayer == null) {
-            return;
-        }
-        mediaPlayer.pause();
-        mediaPlayerState = MediaPlayerState.PAUSED;
-        mediaStateBuilder.setState(
+        audioPlayer.pause();
+        playbackState = playbackStateBuilder.setState(
                 PlaybackStateCompat.STATE_PAUSED,
-                mediaPlayer.getCurrentPosition(),
-                PLAYBACK_SPEED_PAUSED);
-        mediaSession.setPlaybackState(mediaStateBuilder.build());
+                audioPlayer.getCurrentPosition(),
+                PLAYBACK_SPEED_PAUSED).build();
+        mediaSession.setPlaybackState(playbackState);
         setNotification();
     }
 
     private void onStop() {
-        switch (mediaPlayerState) {
-            case PREPARED:
-            case STARTED:
-            case PAUSED:
-            case PLAYBACK_COMPLETED:
-            case STOPPED:
-                break;
-            default:
-                Log.w(LC, "onStop in wrong state: " + mediaPlayerState);
-        }
-        mediaPlayer.stop();
-        mediaPlayerState = MediaPlayerState.STOPPED;
-        mediaStateBuilder.setState(
+        audioPlayer.stop();
+        playbackState = playbackStateBuilder.setState(
                 PlaybackStateCompat.STATE_STOPPED,
-                mediaPlayer.getCurrentPosition(),
-                PLAYBACK_SPEED_PAUSED);
-        mediaSession.setPlaybackState(mediaStateBuilder.build());
-        mediaPlayer.release();
-        mediaPlayer = null;
-        mediaPlayerState = MediaPlayerState.NULL;
-        mediaStateBuilder.setState(
-                PlaybackStateCompat.STATE_NONE,
-                0,
-                PLAYBACK_SPEED_PAUSED);
-        mediaSession.setPlaybackState(mediaStateBuilder.build());
+                audioPlayer.getCurrentPosition(),
+                PLAYBACK_SPEED_PAUSED).build();
+        mediaSession.setPlaybackState(playbackState);
         stopSelf();
         stopForeground(true);
+    }
+
+    private void prepareMedia(String mediaId, Bundle extras, boolean playWhenReady) {
+        String src = extras.getString(Meta.METADATA_KEY_API);
+        final AudioDataSource audioDataSource = musicLibrary.getAudioData(src, mediaId);
+        MediaMetadataCompat meta = musicLibrary.getSongMetaData(src, mediaId);
+        mediaSession.setMetadata(meta);
+        audioPlayer.setSource(audioDataSource, () -> {
+            if (playWhenReady) {
+                onPlay();
+            }
+        });
     }
 
     private void onSkipToNext() {
@@ -410,43 +353,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
         }
     }
 
-    private void setCurrentSong(final String src, final String id) {
-        final AudioDataSource audioDataSource = musicLibrary.getAudioData(src, id);
-        MediaMetadataCompat meta = musicLibrary.getSongMetaData(src, id);
-        mediaSession.setMetadata(meta);
-        // TODO: Change to audioDataSource.buffer, and use a callback to play when buffered enough
-        audioDataSource.download(new AudioDataDownloadHandler() {
-            @Override
-            public void onStart() {
-                Log.d(LC, "Download of src: " + src + ", id: " + id + " started.");
-            }
-
-            @Override
-            public void onSuccess() {
-                Log.d(LC, "Download succeeded\nsize: " + audioDataSource.getSize());
-                setNewSource(audioDataSource);
-            }
-
-            @Override
-            public void onFailure(String status) {
-                Log.e(LC,  "Download of src: " + src + ", id: " + id + " failed: " + status);
-            }
-        });
-    }
-
-    private void resetMediaPlayer() {
-        initializeMediaPlayer();
-        mediaPlayer.reset();
-        mediaPlayerState = MediaPlayerState.IDLE;
-    }
-
-    private void setNewSource(AudioDataSource audioDataSource) {
-        mediaPlayer.setDataSource(audioDataSource);
-        mediaPlayerState = MediaPlayerState.INITIALIZED;
-        mediaPlayer.prepareAsync();
-        mediaPlayerState = MediaPlayerState.PREPARING;
-    }
-
     private class AudioPlayerSessionCallback extends MediaSessionCompat.Callback {
         @Override
         public void onPlay() {
@@ -463,19 +369,13 @@ public class AudioPlayerService extends MediaBrowserServiceCompat
         @Override
         public void onPlayFromMediaId(String mediaId, Bundle extras) {
             super.onPlayFromMediaId(mediaId, extras);
-            String src = extras.getString(Meta.METADATA_KEY_API);
-            resetMediaPlayer();
-            playWhenPrepared = true;
-            setCurrentSong(src, mediaId);
+            AudioPlayerService.this.prepareMedia(mediaId, extras, true);
         }
 
         @Override
         public void onPrepareFromMediaId(String mediaId, Bundle extras) {
             super.onPrepareFromMediaId(mediaId, extras);
-            String src = extras.getString(Meta.METADATA_KEY_API);
-            resetMediaPlayer();
-            playWhenPrepared = false;
-            setCurrentSong(src, mediaId);
+            AudioPlayerService.this.prepareMedia(mediaId, extras, false);
         }
 
         @Override

@@ -35,9 +35,9 @@ public class AudioDataSource extends MediaDataSource {
             try {
                 ByteArrayOutputStream arrayOutputStream = new ByteArrayOutputStream();
                 InputStream in = new BufferedInputStream(conn.getInputStream());
-                int contentLength = conn.getContentLength(); // TODO: use getContentLengthLong
+                long contentLength = conn.getContentLengthLong();
                 int b = in.read();
-                int bytesRead = 0;
+                long bytesRead = 0;
                 while(b != -1) {
                     arrayOutputStream.write(b);
                     if (bytesRead % 1000 == 0) {
