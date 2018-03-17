@@ -31,9 +31,9 @@ import java.util.List;
 
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.backend.AudioDataSource;
 import se.splushii.dancingbunnies.events.LibraryEvent;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
@@ -41,19 +41,20 @@ import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.util.Util;
 
 public class AudioPlayerService extends MediaBrowserServiceCompat {
+    private static String LC = Util.getLogContext(AudioPlayerService.class);
     private static final String NOTIFICATION_CHANNEL_ID = "dancingbunnies.notification.channel";
     private static final String NOTIFICATION_CHANNEL_NAME = "DancingBunnies";
     private static final int SERVICE_NOTIFICATION_ID = 1337;
     private static final float PLAYBACK_SPEED_PAUSED = 0f;
     private static final float PLAYBACK_SPEED_PLAYING = 1f;
-    private static String LC = Util.getLogContext(AudioPlayerService.class);
-    private MusicLibrary musicLibrary;
     public static final String MEDIA_ID_ROOT = "dancingbunnies.media.id.root";
     public static final String MEDIA_ID_ARTIST_ROOT = "dancingbunnies.media.id.root.artist";
     public static final String MEDIA_ID_ALBUM_ROOT = "dancingbunnies.media.id.root.album";
     public static final String MEDIA_ID_SONG_ROOT = "dancingbunnies.media.id.root.song";
 
+    private MusicLibrary musicLibrary;
     private AudioPlayer audioPlayer;
+    private PlayQueue playQueue;
     private MediaSessionCompat mediaSession;
     private PlaybackStateCompat.Builder playbackStateBuilder;
     private PlaybackStateCompat playbackState;
@@ -79,24 +80,17 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         onLoadChildren(parentId, result, options);
     }
 
-    public static Bundle generateMusicLibraryQueryOptions(String src, LibraryEntry.EntryType type) {
-        Bundle options = new Bundle();
-        options.putString(Meta.METADATA_KEY_API, src);
-        options.putSerializable(Meta.METADATA_KEY_TYPE, type);
-        return options;
-    }
-
     public static String getMusicLibraryQueryOptionsString(Bundle options) {
         String api = options.getString(Meta.METADATA_KEY_API);
-        LibraryEntry.EntryType type = (LibraryEntry.EntryType) options.getSerializable(Meta.METADATA_KEY_TYPE);
-        assert type != null;
+        LibraryEntry.EntryType type =
+                LibraryEntry.EntryType.valueOf(options.getString(Meta.METADATA_KEY_TYPE));
         return "api: " + api + ", type: " + type.name();
     }
 
     private MusicLibraryQuery generateMusicLibraryQuery(@NonNull String parentId, @NonNull Bundle options) {
         String src = options.getString(Meta.METADATA_KEY_API);
         LibraryEntry.EntryType type =
-                (LibraryEntry.EntryType) options.getSerializable(Meta.METADATA_KEY_TYPE);
+                LibraryEntry.EntryType.valueOf(options.getString(Meta.METADATA_KEY_TYPE));
         return new MusicLibraryQuery(src, parentId, type);
     }
 
@@ -134,9 +128,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private MediaBrowserCompat.MediaItem generateMediaItem(LibraryEntry e) {
-        Bundle b = new Bundle();
-        b.putString(Meta.METADATA_KEY_API, e.src());
-        b.putSerializable(Meta.METADATA_KEY_TYPE, e.type());
+        Bundle b = EntryID.from(e).toBundle();
         MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
                 .setMediaId(e.id())
                 .setExtras(b)
@@ -159,7 +151,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.d(LC, "onStartCommand. flags: " + flags + ". startId: " + startId);
         MediaButtonReceiver.handleIntent(mediaSession, intent);
         return START_STICKY;
     }
@@ -167,25 +158,27 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     @Override
     public void onCreate() {
         super.onCreate();
+
         musicLibrary = new MusicLibrary(this);
         Log.d(LC, "onCreate");
         EventBus.getDefault().register(this);
 
         audioPlayer = new LocalAudioPlayer();
 
-        // TODO: handle play queue
-//        playQueue = new PlayQueue();
+        playQueue = new PlayQueue();
 
         mediaSession = new MediaSessionCompat(this, "AudioPlayerService");
         setSessionToken(mediaSession.getSessionToken());
         mediaSession.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS
-                | MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
+                | MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
+                | MediaSessionCompat.FLAG_HANDLES_QUEUE_COMMANDS);
         playbackStateBuilder = new PlaybackStateCompat.Builder()
                 .setActions(PlaybackStateCompat.ACTION_PLAY
                         | PlaybackStateCompat.ACTION_PLAY_PAUSE
                         | PlaybackStateCompat.ACTION_STOP
                         | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                        | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
+                        | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+                        | PlaybackStateCompat.ACTION_SKIP_TO_QUEUE_ITEM)
                 .setState(PlaybackStateCompat.STATE_NONE, 0, PLAYBACK_SPEED_PAUSED);
         playbackState = playbackStateBuilder.build();
         mediaSession.setPlaybackState(playbackState);
@@ -197,6 +190,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         PendingIntent pi = PendingIntent.getActivity(context, 99 /*request code*/,
                 intent, PendingIntent.FLAG_UPDATE_CURRENT);
         mediaSession.setSessionActivity(pi);
+        mediaSession.setMetadata(Meta.UNKNOWN_ENTRY);
 
         NotificationChannel notificationChannel = new NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
@@ -217,7 +211,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void onPlay() {
-        audioPlayer.play();
+        Log.d(LC, "onPlay");
+        if (!audioPlayer.play()) {
+            Log.w(LC, "AudioPlayer (" + audioPlayer.getClass().getSimpleName()
+                    + ") could not play. ");
+            return;
+        }
         startService(new Intent(this, AudioPlayerService.class));
         playbackState = playbackStateBuilder.setState(
                 PlaybackStateCompat.STATE_PLAYING,
@@ -296,7 +295,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void onPause() {
-        audioPlayer.pause();
+        Log.d(LC, "onPause");
+        if (!audioPlayer.pause()) {
+            Log.w(LC, "AudioPlayer (" + audioPlayer.getClass().getSimpleName()
+                    + ") could not pause. ");
+            return;
+        }
         playbackState = playbackStateBuilder.setState(
                 PlaybackStateCompat.STATE_PAUSED,
                 audioPlayer.getCurrentPosition(),
@@ -306,34 +310,66 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void onStop() {
-        audioPlayer.stop();
+        Log.d(LC, "onStop");
+        if (!audioPlayer.stop()) {
+            Log.w(LC, "AudioPlayer (" + audioPlayer.getClass().getSimpleName()
+                    + ") could not stop. ");
+            return;
+        }
         playbackState = playbackStateBuilder.setState(
                 PlaybackStateCompat.STATE_STOPPED,
                 audioPlayer.getCurrentPosition(),
                 PLAYBACK_SPEED_PAUSED).build();
         mediaSession.setPlaybackState(playbackState);
+        mediaSession.setMetadata(Meta.UNKNOWN_ENTRY);
         stopSelf();
         stopForeground(true);
     }
 
-    private void prepareMedia(String mediaId, Bundle extras, boolean playWhenReady) {
-        String src = extras.getString(Meta.METADATA_KEY_API);
-        final AudioDataSource audioDataSource = musicLibrary.getAudioData(src, mediaId);
-        MediaMetadataCompat meta = musicLibrary.getSongMetaData(src, mediaId);
+    private void prepareMedia(EntryID entryID, boolean playWhenReady) {
+        Log.d(LC, "prepareMedia");
+        final AudioDataSource audioDataSource = musicLibrary.getAudioData(entryID);
+        MediaMetadataCompat meta = musicLibrary.getSongMetaData(entryID);
         mediaSession.setMetadata(meta);
-        audioPlayer.setSource(audioDataSource, () -> {
-            if (playWhenReady) {
-                onPlay();
-            }
-        });
+        audioPlayer.setSource(
+                audioDataSource,
+                () -> { if (playWhenReady) { onPlay(); } },
+                this::onSkipToNext
+        );
     }
 
     private void onSkipToNext() {
-        Log.e(LC, "onSkipToNext not implemented.");
+        Log.d(LC, "onSkipToNext");
+        EntryID entryID = playQueue.next();
+        if (entryID == null) {
+            onStop();
+        } else {
+            prepareMedia(entryID, true);
+        }
     }
 
     private void onSkipToPrevious() {
-        Log.e(LC, "onSkipToPrevious not implemented.");
+        Log.d(LC, "onSkipToPrevious");
+        EntryID entryID = playQueue.previous();
+        if (entryID == null) {
+            onStop();
+        } else {
+            prepareMedia(entryID, true);
+        }
+    }
+
+    private void onSkipToQueueItem(long queueItemId) {
+        Log.d(LC, "onSkipToQueueItem");
+        EntryID entryID = playQueue.skipTo(queueItemId);
+        prepareMedia(entryID, true);
+    }
+
+    private void onAddQueueItem(MediaDescriptionCompat description) {
+        Log.d(LC, "onAddQueueItem");
+        EntryID entryID = EntryID.from(description);
+        MediaMetadataCompat meta = musicLibrary.getSongMetaData(entryID);
+        MediaDescriptionCompat desc = meta.getDescription();
+        playQueue.addToQueue(entryID, desc, mediaSession);
     }
 
     @Subscribe
@@ -369,13 +405,19 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onPlayFromMediaId(String mediaId, Bundle extras) {
             super.onPlayFromMediaId(mediaId, extras);
-            AudioPlayerService.this.prepareMedia(mediaId, extras, true);
+            AudioPlayerService.this.prepareMedia(EntryID.from(extras), true);
         }
 
         @Override
         public void onPrepareFromMediaId(String mediaId, Bundle extras) {
             super.onPrepareFromMediaId(mediaId, extras);
-            AudioPlayerService.this.prepareMedia(mediaId, extras, false);
+            AudioPlayerService.this.prepareMedia(EntryID.from(extras), false);
+        }
+
+        @Override
+        public void onAddQueueItem(MediaDescriptionCompat description) {
+            super.onAddQueueItem(description);
+            AudioPlayerService.this.onAddQueueItem(description);
         }
 
         @Override
@@ -388,6 +430,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         public void onSkipToPrevious() {
             super.onSkipToPrevious();
             AudioPlayerService.this.onSkipToPrevious();
+        }
+
+        @Override
+        public void onSkipToQueueItem(long id) {
+            super.onSkipToQueueItem(id);
+            AudioPlayerService.this.onSkipToQueueItem(id);
         }
 
         @Override

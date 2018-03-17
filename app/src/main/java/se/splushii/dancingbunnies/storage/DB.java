@@ -29,7 +29,7 @@ public class DB extends SQLiteOpenHelper {
 
     private void createSongsTable(SQLiteDatabase db) {
         StringBuilder query = new StringBuilder("CREATE TABLE " + SONG_TABLE_NAME + "(");
-        for (String metaKey: Meta.keys) {
+        for (String metaKey: Meta.db_keys) {
             Meta.Type type = Meta.getType(metaKey);
             switch (type) {
                 case STRING:

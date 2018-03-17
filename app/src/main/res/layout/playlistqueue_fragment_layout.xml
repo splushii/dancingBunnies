@@ -1,19 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <android.support.design.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
     <android.support.v7.widget.RecyclerView
         android:id="@+id/playlistqueue_recyclerview"
-        android:name="se.splushii.dancingbunnies.PlayListQueueFragment"
+        android:visibility="visible"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginLeft="16dp"
-        android:layout_marginRight="16dp"
-        app:layoutManager="LinearLayoutManager"
-        tools:context="se.splushii.dancingbunnies.PlaylistQueueFragment"
-        tools:listitem="@layout/playlistqueue_fragment_item" />
+        android:layout_marginEnd="20dp" />
 </android.support.design.widget.CoordinatorLayout>

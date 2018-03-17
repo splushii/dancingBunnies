@@ -21,6 +21,7 @@ import java.util.List;
 
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.events.LibraryChangedEvent;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
 import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
@@ -51,9 +52,12 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         if (currentLibraryView != null) {
             refreshView(currentLibraryView);
         } else {
-            refreshView(new LibraryView(MusicLibrary.API_ID_ANY,
+            EntryID entryID = new EntryID(
+                    MusicLibrary.API_ID_ANY,
                     AudioPlayerService.MEDIA_ID_ROOT,
-                    LibraryEntry.EntryType.ANY, 0, 0));
+                    LibraryEntry.EntryType.ANY
+            );
+            refreshView(new LibraryView(entryID, 0, 0));
         }
         EventBus.getDefault().register(this);
         Log.d(LC, "onStart");
@@ -74,20 +78,33 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     }
 
     public void refreshView(final LibraryView libView) {
+        if (libView == null) {
+            EntryID entryID = new EntryID(
+                    MusicLibrary.API_ID_ANY,
+                    AudioPlayerService.MEDIA_ID_ROOT,
+                    LibraryEntry.EntryType.ANY
+            );
+            refreshView(new LibraryView(entryID, 0, 0));
+            return;
+        }
         if (!mediaBrowser.isConnected()) {
             Log.w(LC, "MediaBrowser not connected.");
+            return;
         }
         if (currentLibraryView != null) {
-            mediaBrowser.unsubscribe(currentLibraryView.parentId);
+            mediaBrowser.unsubscribe(currentLibraryView.entryID.id);
         }
         currentLibraryView = libView;
-        Bundle options = AudioPlayerService.generateMusicLibraryQueryOptions(libView.src, libView.type);
-        mediaBrowser.subscribe(libView.parentId, options, new MediaBrowserCompat.SubscriptionCallback() {
+        Bundle options = libView.entryID.toBundle();
+        MediaBrowserCompat.SubscriptionCallback subCb = new MediaBrowserCompat.SubscriptionCallback() {
             @Override
-            public void onChildrenLoaded(@NonNull String parentId, @NonNull List<MediaBrowserCompat.MediaItem> children, @NonNull Bundle options) {
+            public void onChildrenLoaded(@NonNull String parentId,
+                                         @NonNull List<MediaBrowserCompat.MediaItem> children,
+                                         @NonNull Bundle options) {
                 String optString = AudioPlayerService.getMusicLibraryQueryOptionsString(options);
-                Log.d(LC, "subscription(" + parentId + ") (" + optString + "): " + children.size());
-                recViewAdapter.setDataset(children, libView.src, parentId, libView.type);
+                Log.d(LC, "subscription(" + parentId + ") (" + optString + "): "
+                        + children.size());
+                recViewAdapter.setDataset(children, libView.entryID);
                 LinearLayoutManager llm = (LinearLayoutManager) recView.getLayoutManager();
                 llm.scrollToPositionWithOffset(libView.pos, libView.pad);
             }
@@ -96,7 +113,9 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             public void onError(@NonNull String parentId) {
                 Log.d(LC, "MediaBrowser.subscribe(" + parentId + ") onError");
             }
-        });
+        };
+        Log.d(LC, libView.entryID.toString());
+        mediaBrowser.subscribe(libView.entryID.id, options, subCb);
     }
 
     @Override
@@ -139,18 +158,24 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         fab_sort_artist.setOnClickListener(view -> {
             Snackbar.make(view, "Artist view", Snackbar.LENGTH_LONG)
                     .setAction("Action", null).show();
-            refreshView(new LibraryView(MusicLibrary.API_ID_ANY,
-                    AudioPlayerService.MEDIA_ID_ARTIST_ROOT,
-                    LibraryEntry.EntryType.ANY, 0, 0));
+            refreshView(new LibraryView(
+                    new EntryID(
+                            MusicLibrary.API_ID_ANY,
+                            AudioPlayerService.MEDIA_ID_ARTIST_ROOT,
+                            LibraryEntry.EntryType.ANY
+                    ), 0, 0));
             setFabVisibility(View.GONE);
         });
 
         fab_sort_song.setOnClickListener(view -> {
             Snackbar.make(view, "Song view", Snackbar.LENGTH_LONG)
                     .setAction("Action", null).show();
-            refreshView(new LibraryView(MusicLibrary.API_ID_ANY,
-                    AudioPlayerService.MEDIA_ID_SONG_ROOT,
-                    LibraryEntry.EntryType.ANY, 0, 0));
+            refreshView(new LibraryView(
+                    new EntryID(
+                            MusicLibrary.API_ID_ANY,
+                            AudioPlayerService.MEDIA_ID_SONG_ROOT,
+                            LibraryEntry.EntryType.ANY
+                    ), 0, 0));
             setFabVisibility(View.GONE);
         });
 

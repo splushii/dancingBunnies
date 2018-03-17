@@ -11,7 +11,7 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
-import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.util.Util;
 
 public abstract class AudioBrowserFragment extends Fragment {
@@ -46,16 +46,21 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController = new MediaControllerCompat(getActivity(), token);
         mediaController.registerCallback(mediaControllerCallback);
         Log.d(LC, "connecting mediacontroller. Session ready: " + mediaController.isSessionReady());
+        if (mediaController.isSessionReady()) {
+            onSessionReady();
+        }
     }
 
     public void play() {
         mediaController.getTransportControls().play();
     }
 
-    public void play(String src, String id) {
-        Bundle options = new Bundle();
-        options.putString(Meta.METADATA_KEY_API, src);
-        mediaController.getTransportControls().playFromMediaId(id, options);
+    public void play(EntryID entryID) {
+        mediaController.getTransportControls().playFromMediaId(entryID.id, entryID.toBundle());
+    }
+
+    public void queue(EntryID entryID) {
+        mediaController.addQueueItem(entryID.toMediaDescriptionCompat());
     }
 
     public void pause() {
@@ -68,6 +73,10 @@ public abstract class AudioBrowserFragment extends Fragment {
 
     public void next() {
         mediaController.getTransportControls().skipToNext();
+    }
+
+    public void skipTo(long queueItemId) {
+        mediaController.getTransportControls().skipToQueueItem(queueItemId);
     }
 
     private final MediaBrowserCompat.ConnectionCallback mediaBrowserConnectionCallback =
@@ -139,7 +148,7 @@ public abstract class AudioBrowserFragment extends Fragment {
         Log.w(LC, "mediacontroller session destroyed");
     }
 
-    private void onSessionReady() {
+    protected void onSessionReady() {
         Log.d(LC, "mediacontroller session ready");
     }
 }

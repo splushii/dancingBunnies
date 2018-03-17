@@ -7,7 +7,7 @@ import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.backend.AudioDataSource;
 import se.splushii.dancingbunnies.util.Util;
 
-class LocalAudioPlayer implements AudioPlayer, MediaPlayer.OnCompletionListener  {
+class LocalAudioPlayer implements AudioPlayer {
     private static final String LC = Util.getLogContext(LocalAudioPlayer.class);
     private enum MediaPlayerState {
         NULL,
@@ -22,16 +22,11 @@ class LocalAudioPlayer implements AudioPlayer, MediaPlayer.OnCompletionListener 
     }
     private MediaPlayerState mediaPlayerState = MediaPlayerState.NULL;
     private MediaPlayer mediaPlayer;
-
-    @Override
-    public void onCompletion(MediaPlayer mediaPlayer) {
-        mediaPlayerState = MediaPlayerState.PLAYBACK_COMPLETED;
-    }
+    private AudioDataSource currentAudioDataSource;
 
     private void initializeMediaPlayer() {
         if (mediaPlayer == null) {
             mediaPlayer = new MediaPlayer();
-            mediaPlayer.setOnCompletionListener(this);
             mediaPlayerState = MediaPlayerState.IDLE;
         }
     }
@@ -43,9 +38,21 @@ class LocalAudioPlayer implements AudioPlayer, MediaPlayer.OnCompletionListener 
     }
 
     @Override
-    public void setSource(AudioDataSource audioDataSource, Runnable runWhenReady) {
+    public void setSource(AudioDataSource audioDataSource,
+                          Runnable runWhenReady,
+                          Runnable runWhenEnded) {
+        currentAudioDataSource = audioDataSource;
+        resetMediaPlayer();
+        mediaPlayer.setOnPreparedListener(mediaPlayer -> {
+            mediaPlayerState = MediaPlayerState.PREPARED;
+            runWhenReady.run();
+        });
+        mediaPlayer.setOnCompletionListener(mediaPlayer -> {
+            mediaPlayerState = MediaPlayerState.PLAYBACK_COMPLETED;
+            runWhenEnded.run();
+        });
         // TODO: Change to audioDataSource.buffer, and use a callback to play when buffered enough
-        audioDataSource.download(new AudioDataDownloadHandler() {
+        currentAudioDataSource.download(new AudioDataDownloadHandler() {
             @Override
             public void onStart() {
                 Log.d(LC, "Download started.");
@@ -53,8 +60,8 @@ class LocalAudioPlayer implements AudioPlayer, MediaPlayer.OnCompletionListener 
 
             @Override
             public void onSuccess() {
-                Log.d(LC, "Download succeeded\nsize: " + audioDataSource.getSize());
-                LocalAudioPlayer.this.prepareMediaPlayer(audioDataSource, runWhenReady);
+                Log.d(LC, "Download succeeded\nsize: " + currentAudioDataSource.getSize());
+                LocalAudioPlayer.this.prepareMediaPlayer();
             }
 
             @Override
@@ -64,26 +71,24 @@ class LocalAudioPlayer implements AudioPlayer, MediaPlayer.OnCompletionListener 
         });
     }
 
-    private void prepareMediaPlayer(AudioDataSource audioDataSource, Runnable runWhenReady) {
+    private void prepareMediaPlayer() {
         Log.d(LC, "prepareMediaPlayer");
-        resetMediaPlayer();
-        mediaPlayer.setDataSource(audioDataSource);
+        mediaPlayer.setDataSource(currentAudioDataSource);
         mediaPlayerState = MediaPlayerState.INITIALIZED;
-        mediaPlayer.setOnPreparedListener(mediaPlayer -> {
-            mediaPlayerState = MediaPlayerState.PREPARED;
-            runWhenReady.run();
-        });
         mediaPlayer.prepareAsync();
         mediaPlayerState = MediaPlayerState.PREPARING;
     }
 
     @Override
     public long getCurrentPosition() {
+        if (mediaPlayer == null) {
+            return 0;
+        }
         return mediaPlayer.getCurrentPosition();
     }
 
     @Override
-    public void play() {
+    public boolean play() {
         switch (mediaPlayerState) {
             case PREPARED:
             case PAUSED:
@@ -91,35 +96,37 @@ class LocalAudioPlayer implements AudioPlayer, MediaPlayer.OnCompletionListener 
                 break;
             case STARTED:
                 Log.d(LC, "onPlay in STARTED");
-                return;
+                return false;
             default:
                 Log.w(LC, "onPlay in wrong state: " + mediaPlayerState);
-                return;
+                return false;
         }
         initializeMediaPlayer();
         mediaPlayer.start();
         mediaPlayerState = MediaPlayerState.STARTED;
+        return true;
     }
 
     @Override
-    public void pause() {
+    public boolean pause() {
         switch (mediaPlayerState) {
             case PAUSED:
             case STARTED:
                 break;
             default:
                 Log.w(LC, "onPause in wrong state: " + mediaPlayerState);
-                return;
+                return false;
         }
         if (mediaPlayer == null) {
-            return;
+            return false;
         }
         mediaPlayer.pause();
         mediaPlayerState = MediaPlayerState.PAUSED;
+        return true;
     }
 
     @Override
-    public void stop() {
+    public boolean stop() {
         switch (mediaPlayerState) {
             case PREPARED:
             case STARTED:
@@ -129,11 +136,13 @@ class LocalAudioPlayer implements AudioPlayer, MediaPlayer.OnCompletionListener 
                 break;
             default:
                 Log.w(LC, "onStop in wrong state: " + mediaPlayerState);
+                return false;
         }
         mediaPlayer.stop();
         mediaPlayerState = MediaPlayerState.STOPPED;
         mediaPlayer.release();
         mediaPlayer = null;
         mediaPlayerState = MediaPlayerState.NULL;
+        return true;
     }
 }

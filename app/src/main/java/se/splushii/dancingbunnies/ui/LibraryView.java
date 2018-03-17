@@ -1,18 +1,14 @@
 package se.splushii.dancingbunnies.ui;
 
-import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 
 public class LibraryView {
-    public final String src;
-    public final String parentId;
-    public final LibraryEntry.EntryType type;
+    public final EntryID entryID;
     public final int pos;
     public final int pad;
-    public LibraryView(String src, String parentId, LibraryEntry.EntryType type,
+    public LibraryView(EntryID entryID,
                        int pos, int pad) {
-        this.src = src;
-        this.parentId = parentId;
-        this.type = type;
+        this.entryID = entryID;
         this.pos = pos;
         this.pad = pad;
     }

@@ -78,23 +78,23 @@ public class MusicLibrary {
         EventBus.getDefault().unregister(this);
     }
 
-    public AudioDataSource getAudioData(String src, String id) {
-        if (apis.containsKey(src)) {
-            return apis.get(src).getAudioData(id);
+    public AudioDataSource getAudioData(EntryID entryID) {
+        if (apis.containsKey(entryID.src)) {
+            return apis.get(entryID.src).getAudioData(entryID.id);
         } else {
-            Log.d(LC, "Could not find api for song with src: " + src + ", id: " + id);
+            Log.d(LC, "Could not find api for song with src: " + entryID.src
+                    + ", id: " + entryID.id);
             return new AudioDataSource(null);
         }
     }
 
-    public MediaMetadataCompat getSongMetaData(String src, String id) {
-        String key = LibraryEntry.makeKey(src, id, LibraryEntry.EntryType.SONG);
+    public MediaMetadataCompat getSongMetaData(EntryID entryID) {
+        String key = LibraryEntry.makeKey(entryID.src, entryID.id, LibraryEntry.EntryType.SONG);
         if (!songMap.containsKey(key)) {
             return null;
         }
         return songMap.get(key).meta();
     }
-
 
     public ArrayList<Artist> artists() {
         return new ArrayList<>(artists);
@@ -198,7 +198,7 @@ public class MusicLibrary {
             } else if (albumArtist != null) {
                 artistName = albumArtist;
             } else {
-                artistName = Meta.METADATA_VALUE_UNKOWN_ARTIST;
+                artistName = Meta.METADATA_VALUE_UNKNOWN_ARTIST;
             }
             Artist artist = addToArtist(song, artistName);
 
@@ -221,7 +221,7 @@ public class MusicLibrary {
                 if (artistName != null) {
                     albumArtist = artistName;
                 } else {
-                    albumArtist = Meta.METADATA_VALUE_UNKOWN_ARTIST;
+                    albumArtist = Meta.METADATA_VALUE_UNKNOWN_ARTIST;
                 }
             }
             addToAlbum(song, artist, albumArtist, albumName);

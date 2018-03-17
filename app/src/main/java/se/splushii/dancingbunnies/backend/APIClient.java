@@ -24,13 +24,13 @@ public abstract class APIClient {
      */
     public CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> getLibrary(APIClientRequestHandler handler) {
         CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> ret = new CompletableFuture<>();
-        ret.complete(Optional.<ArrayList<MediaMetadataCompat>>empty());
+        ret.complete(Optional.empty());
         return ret;
     }
     public abstract boolean hasPlaylists();
     public CompletableFuture<Optional<Playlist>> getPlaylists() {
         CompletableFuture<Optional<Playlist>> ret = new CompletableFuture<>();
-        ret.complete(Optional.<Playlist>empty());
+        ret.complete(Optional.empty());
         return ret;
     }
     public AudioDataSource getAudioData(Song song) {

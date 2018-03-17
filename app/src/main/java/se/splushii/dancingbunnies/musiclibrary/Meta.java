@@ -26,11 +26,19 @@ public class Meta {
         STRING, BITMAP, RATING, LONG
     }
 
-    // Special values
-    public static final String METADATA_VALUE_UNKOWN_ARTIST =
+    public static final MediaMetadataCompat UNKNOWN_ENTRY = new MediaMetadataCompat.Builder()
+            .putString(Meta.METADATA_KEY_ALBUM, Meta.METADATA_VALUE_UNKNOWN_ALBUM)
+            .putString(Meta.METADATA_KEY_ARTIST, Meta.METADATA_VALUE_UNKNOWN_ARTIST)
+            .putString(Meta.METADATA_KEY_TITLE, Meta.METADATA_VALUE_UNKNOWN_TITLE)
+            .build();
+
+    // Special keys/values
+    public static final String METADATA_VALUE_UNKNOWN_ARTIST =
             "dancingbunnies.metadata.value.UNKNOWN_ARTIST";
     public static final String METADATA_VALUE_UNKNOWN_ALBUM =
             "dancingbunnies.metadata.value.UNKNOWN_ALBUM";
+    public static final String METADATA_VALUE_UNKNOWN_TITLE =
+            "dancingbunnies.metadata.value.UNKNOWN_TITLE";
 
     // All metadata keys
     // When adding a new key, do not forget to:
@@ -136,7 +144,7 @@ public class Meta {
     public static final String METADATA_KEY_AVERAGE_RATING =
             "dancingbunnies.metadata.AVERAGE_RATING";
 
-    public static final String[] keys = {
+    public static final String[] db_keys = {
         // DancingBunnies keys
         METADATA_KEY_ALBUM_ID,
         METADATA_KEY_API,

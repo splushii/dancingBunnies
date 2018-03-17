@@ -206,7 +206,7 @@ public class SubsonicAPIClient extends APIClient {
                     req.complete(Optional.of(folders));
                 } else {
                     Log.e(LC, "getMusicFolders: " + status);
-                    req.complete(Optional.<List<Pair<String,String>>>empty());
+                    req.complete(Optional.empty());
                 }
             }
             @Override

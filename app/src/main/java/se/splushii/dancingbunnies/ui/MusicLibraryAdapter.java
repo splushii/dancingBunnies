@@ -1,6 +1,5 @@
 package se.splushii.dancingbunnies.ui;
 
-import android.os.Bundle;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -15,17 +14,14 @@ import java.util.List;
 
 import se.splushii.dancingbunnies.MusicLibraryFragment;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
-import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapter.SongViewHolder> {
     private static String LC = Util.getLogContext(MusicLibraryAdapter.class);
     private List<MediaBrowserCompat.MediaItem> dataset;
     private MusicLibraryFragment fragment;
-    private String currentSrc;
-    private String currentParentId;
-    private LibraryEntry.EntryType currentType;
+    private EntryID currentEntryID;
 
     public MusicLibraryAdapter(MusicLibraryFragment fragment) {
         this.dataset = new ArrayList<>();
@@ -52,11 +48,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         return new SongViewHolder(v);
     }
 
-    public void setDataset(List<MediaBrowserCompat.MediaItem> items, String src, String parentId, LibraryEntry.EntryType type) {
+    public void setDataset(List<MediaBrowserCompat.MediaItem> items, EntryID entryID) {
         this.dataset = items;
-        this.currentSrc = src;
-        this.currentParentId = parentId;
-        this.currentType = type;
+        this.currentEntryID = entryID;
         notifyDataSetChanged();
     }
 
@@ -64,30 +58,31 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     public void onBindViewHolder(final SongViewHolder holder, int position) {
         final MediaBrowserCompat.MediaItem item = dataset.get(position);
         final String title = item.getDescription().getTitle() + "";
-        Bundle b = item.getDescription().getExtras();
-        final String src = b.getString(Meta.METADATA_KEY_API);
-        final LibraryEntry.EntryType type =
-                (LibraryEntry.EntryType) b.getSerializable(Meta.METADATA_KEY_TYPE);
-        final String id = item.getMediaId();
+        EntryID entryID = EntryID.from(item);
+        Log.d(LC, entryID.toString());
         final boolean browsable = item.isBrowsable();
         holder.butt.setText(title);
         holder.butt.setOnLongClickListener(view -> {
             Log.d(LC, "Long click on " + title);
             // TODO: implement popup with queueing, related entries, etc.
+            // TODO: Support queueing browsable items
+            if (!browsable) {
+                fragment.queue(entryID);
+            }
             return true;
         });
         holder.butt.setOnClickListener(view -> {
             if (browsable) {
                 fragment.addBackButtonHistory(getCurrentView());
-                fragment.refreshView(new LibraryView(src, id, type, 0, 0));
+                fragment.refreshView(new LibraryView(entryID, 0, 0));
             } else {
-                fragment.play(src, id);
+                fragment.play(entryID);
             }
         });
     }
 
     public LibraryView getCurrentView() {
-        if (currentSrc == null || currentParentId == null || currentType == null) {
+        if (currentEntryID == null) {
             return null;
         }
         RecyclerView rv = fragment.getView().findViewById(R.id.musiclibrary_recyclerview);
@@ -98,7 +93,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         if (hPad < 0 && hPos > 0) {
             hPos--;
         }
-        return new LibraryView(currentSrc, currentParentId, currentType, hPos, hPad);
+        return new LibraryView(currentEntryID, hPos, hPad);
     }
 
     @Override

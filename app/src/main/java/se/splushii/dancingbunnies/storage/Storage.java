@@ -14,6 +14,7 @@ import android.util.Log;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
+import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.Song;
 import se.splushii.dancingbunnies.util.Util;
@@ -126,7 +127,7 @@ public class Storage {
         if (cursor.moveToFirst()) {
             while (!cursor.isAfterLast()) {
                 MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder();
-                for (String key: Meta.keys) {
+                for (String key: Meta.db_keys) {
                     Meta.Type type = Meta.getType(key);
                     int index = cache.getColumnIndex(cursor, DB.Keyify(key));
                     if (index == -1 && (type == Meta.Type.STRING || type == Meta.Type.LONG)) {
@@ -165,6 +166,7 @@ public class Storage {
                             break;
                     }
                 }
+                b.putString(Meta.METADATA_KEY_TYPE, LibraryEntry.EntryType.SONG.name());
                 list.add(b.build());
                 cursor.moveToNext();
             }
