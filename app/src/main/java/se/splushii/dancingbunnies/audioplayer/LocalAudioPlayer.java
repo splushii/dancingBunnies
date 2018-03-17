@@ -21,7 +21,10 @@ class LocalAudioPlayer implements AudioPlayer {
         PREPARED
     }
     private MediaPlayerState mediaPlayerState = MediaPlayerState.NULL;
+    // TODO: Use multiple MediaPlayers to cache next track(s).
     private MediaPlayer mediaPlayer;
+    // TODO: FIX: Bind datasource to mediaplayer. Cancel AudioDataSource when not needed anymore.
+    // TODO: FIX: Bug when going next/previous fast multiple times.
     private AudioDataSource currentAudioDataSource;
 
     private void initializeMediaPlayer() {

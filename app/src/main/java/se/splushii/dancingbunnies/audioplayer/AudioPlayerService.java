@@ -20,6 +20,7 @@ import android.support.v4.media.app.NotificationCompat.MediaStyle;
 import android.support.v4.media.session.MediaButtonReceiver;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
+import android.support.v4.media.session.MediaSessionCompat.QueueItem;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
@@ -27,6 +28,7 @@ import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import se.splushii.dancingbunnies.MainActivity;
@@ -56,6 +58,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private AudioPlayer audioPlayer;
     private PlayQueue playQueue;
     private MediaSessionCompat mediaSession;
+    private List<QueueItem> mediaSessionQueue;
     private PlaybackStateCompat.Builder playbackStateBuilder;
     private PlaybackStateCompat playbackState;
 
@@ -191,6 +194,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 intent, PendingIntent.FLAG_UPDATE_CURRENT);
         mediaSession.setSessionActivity(pi);
         mediaSession.setMetadata(Meta.UNKNOWN_ENTRY);
+
+        mediaSessionQueue = new LinkedList<>();
+        mediaSession.setQueue(mediaSessionQueue);
 
         NotificationChannel notificationChannel = new NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
@@ -364,12 +370,15 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         prepareMedia(entryID, true);
     }
 
-    private void onAddQueueItem(MediaDescriptionCompat description) {
+    private void onAddQueueItem(EntryID entryID, PlayQueue.QueueOp op) {
         Log.d(LC, "onAddQueueItem");
-        EntryID entryID = EntryID.from(description);
+        long id = playQueue.addToQueue(entryID, op);
         MediaMetadataCompat meta = musicLibrary.getSongMetaData(entryID);
-        MediaDescriptionCompat desc = meta.getDescription();
-        playQueue.addToQueue(entryID, desc, mediaSession);
+        MediaDescriptionCompat description = meta.getDescription();
+        QueueItem queueItem = new QueueItem(description, id);
+        mediaSessionQueue.add((int) id, queueItem);
+        mediaSession.setQueue(mediaSessionQueue);
+        Log.d(LC, "Added " + description.getTitle() + " to mediaSessionQueue.");
     }
 
     @Subscribe
@@ -405,19 +414,24 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onPlayFromMediaId(String mediaId, Bundle extras) {
             super.onPlayFromMediaId(mediaId, extras);
+            AudioPlayerService.this.onAddQueueItem(EntryID.from(extras), PlayQueue.QueueOp.CURRENT);
             AudioPlayerService.this.prepareMedia(EntryID.from(extras), true);
         }
 
         @Override
         public void onPrepareFromMediaId(String mediaId, Bundle extras) {
             super.onPrepareFromMediaId(mediaId, extras);
+            AudioPlayerService.this.onAddQueueItem(EntryID.from(extras), PlayQueue.QueueOp.CURRENT);
             AudioPlayerService.this.prepareMedia(EntryID.from(extras), false);
         }
 
         @Override
         public void onAddQueueItem(MediaDescriptionCompat description) {
             super.onAddQueueItem(description);
-            AudioPlayerService.this.onAddQueueItem(description);
+            AudioPlayerService.this.onAddQueueItem(
+                    EntryID.from(description),
+                    PlayQueue.QueueOp.LAST
+            );
         }
 
         @Override
@@ -433,9 +447,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         }
 
         @Override
-        public void onSkipToQueueItem(long id) {
-            super.onSkipToQueueItem(id);
-            AudioPlayerService.this.onSkipToQueueItem(id);
+        public void onSkipToQueueItem(long queueItemId) {
+            super.onSkipToQueueItem(queueItemId);
+            AudioPlayerService.this.onSkipToQueueItem(queueItemId);
         }
 
         @Override
