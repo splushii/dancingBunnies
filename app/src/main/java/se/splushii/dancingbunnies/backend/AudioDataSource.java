@@ -1,17 +1,24 @@
 package se.splushii.dancingbunnies.backend;
 
 import android.media.MediaDataSource;
+import android.util.Log;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.net.HttpURLConnection;
 
+import se.splushii.dancingbunnies.util.Util;
+
 public class AudioDataSource extends MediaDataSource {
+    private static final String LC = Util.getLogContext(AudioDataSource.class);
     private HttpURLConnection conn;
     private volatile byte[] buffer;
     private volatile boolean isDownloading = false;
+    private volatile boolean isFinished = false;
+    private Thread downloadThread;
 
     public AudioDataSource(HttpURLConnection conn) {
         if (conn == null) {
@@ -28,9 +35,12 @@ public class AudioDataSource extends MediaDataSource {
         } else if (isDownloading) {
             handler.onFailure("Already downloading");
             return;
+        } else if (isFinished) {
+            Log.d(LC, "download() when already finished.");
+            return;
         }
         isDownloading = true;
-        new Thread(() -> {
+        downloadThread = new Thread(() -> {
             handler.onStart();
             try {
                 ByteArrayOutputStream arrayOutputStream = new ByteArrayOutputStream();
@@ -38,7 +48,7 @@ public class AudioDataSource extends MediaDataSource {
                 long contentLength = conn.getContentLengthLong();
                 int b = in.read();
                 long bytesRead = 0;
-                while(b != -1) {
+                while (b != -1) {
                     arrayOutputStream.write(b);
                     if (bytesRead % 1000 == 0) {
                         handler.onProgress(bytesRead, contentLength);
@@ -51,14 +61,19 @@ public class AudioDataSource extends MediaDataSource {
                 arrayOutputStream.flush();
                 buffer = arrayOutputStream.toByteArray();
                 arrayOutputStream.close();
+                isFinished = true;
+                handler.onSuccess();
+            } catch (InterruptedIOException e) {
+                Log.d(LC, "download interrupted");
+                handler.onFailure("interrupted");
             } catch (IOException e) {
                 e.printStackTrace();
                 handler.onFailure("Error: " + e.getMessage());
             } finally {
                 isDownloading = false;
-                handler.onSuccess();
             }
-        }).start();
+        });
+        downloadThread.start();
     }
 
     @Override
@@ -83,7 +98,9 @@ public class AudioDataSource extends MediaDataSource {
     }
 
     @Override
-    public void close() throws IOException {
-        // TODO: close download/stream
+    public void close() {
+        if (isDownloading) {
+            downloadThread.interrupt();
+        }
     }
 }

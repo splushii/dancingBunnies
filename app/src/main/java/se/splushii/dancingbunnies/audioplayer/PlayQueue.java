@@ -1,14 +1,19 @@
 package se.splushii.dancingbunnies.audioplayer;
 
+import android.support.v4.media.MediaDescriptionCompat;
+import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaSessionCompat.QueueItem;
 import android.util.Log;
 
 import java.util.LinkedList;
 
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
 import se.splushii.dancingbunnies.util.Util;
 
 class PlayQueue {
     private static final String LC = Util.getLogContext(PlayQueue.class);
+    private final MusicLibrary musicLibrary;
     private LinkedList<EntryID> entryQueue;
     private int currentId;
     enum QueueOp {
@@ -17,12 +22,13 @@ class PlayQueue {
         LAST
     }
 
-    PlayQueue() {
+    PlayQueue(MusicLibrary musicLibrary) {
+        this.musicLibrary = musicLibrary;
         entryQueue = new LinkedList<>();
         currentId = 0;
     }
 
-    long addToQueue(EntryID entryID, QueueOp op) {
+    LinkedList<QueueItem> addToQueue(EntryID entryID, QueueOp op) {
         long id;
         switch (op) {
             case CURRENT:
@@ -38,7 +44,18 @@ class PlayQueue {
         }
         entryQueue.add((int) id, entryID);
         Log.d(LC, entryQueue.toString());
-        return id;
+        Log.d(LC, "Added " + musicLibrary
+                .getSongMetaData(entryID)
+                .getDescription()
+                .getTitle() + " to queue.");
+        LinkedList<QueueItem> mediaSessionQueue = new LinkedList<>();
+        for (int i = 0; i < entryQueue.size(); i++) {
+            MediaMetadataCompat meta = musicLibrary.getSongMetaData(entryQueue.get(i));
+            MediaDescriptionCompat description = meta.getDescription();
+            QueueItem queueItem = new QueueItem(description, i);
+            mediaSessionQueue.add(queueItem);
+        }
+        return mediaSessionQueue;
     }
 
     EntryID next() {

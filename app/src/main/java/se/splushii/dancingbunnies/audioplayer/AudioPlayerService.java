@@ -168,7 +168,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         audioPlayer = new LocalAudioPlayer();
 
-        playQueue = new PlayQueue();
+        playQueue = new PlayQueue(musicLibrary);
 
         mediaSession = new MediaSessionCompat(this, "AudioPlayerService");
         setSessionToken(mediaSession.getSessionToken());
@@ -365,20 +365,14 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void onSkipToQueueItem(long queueItemId) {
-        Log.d(LC, "onSkipToQueueItem");
+        Log.d(LC, "onSkipToQueueItem: " + queueItemId);
         EntryID entryID = playQueue.skipTo(queueItemId);
         prepareMedia(entryID, true);
     }
 
     private void onAddQueueItem(EntryID entryID, PlayQueue.QueueOp op) {
         Log.d(LC, "onAddQueueItem");
-        long id = playQueue.addToQueue(entryID, op);
-        MediaMetadataCompat meta = musicLibrary.getSongMetaData(entryID);
-        MediaDescriptionCompat description = meta.getDescription();
-        QueueItem queueItem = new QueueItem(description, id);
-        mediaSessionQueue.add((int) id, queueItem);
-        mediaSession.setQueue(mediaSessionQueue);
-        Log.d(LC, "Added " + description.getTitle() + " to mediaSessionQueue.");
+        mediaSession.setQueue(playQueue.addToQueue(entryID, op));
     }
 
     @Subscribe
