@@ -83,19 +83,29 @@ class LocalAudioPlayer implements AudioPlayer {
                 case STARTED:
                 case PAUSED:
                 case PLAYBACK_COMPLETED:
-                case STOPPED:
                     break;
+                case STOPPED:
+                case NULL:
+                    return true;
                 default:
                     Log.w(LC, "onStop in wrong state: " + state);
                     return false;
             }
             mediaPlayer.stop();
             state = MediaPlayerState.STOPPED;
-            mediaPlayer.release();
-            audioDataSource = null;
-            mediaPlayer = null;
-            state = MediaPlayerState.NULL;
             return true;
+        }
+
+        void release() {
+            if (audioDataSource != null) {
+                audioDataSource.close();
+                audioDataSource = null;
+            }
+            if (mediaPlayer != null) {
+                mediaPlayer.release();
+                mediaPlayer = null;
+            }
+            state = MediaPlayerState.NULL;
         }
     }
 
@@ -104,20 +114,14 @@ class LocalAudioPlayer implements AudioPlayer {
                           Runnable runWhenReady,
                           Runnable runWhenEnded) {
         if (nextPlayer != null) {
-            nextPlayer.audioDataSource.close();
-            nextPlayer.mediaPlayer.setOnPreparedListener(null);
-            nextPlayer.mediaPlayer.setOnCompletionListener(null);
-            nextPlayer.mediaPlayer.release();
+            nextPlayer.release();
             nextPlayer = null;
         }
         nextPlayer = new MediaPlayerInstance(audioDataSource);
         nextPlayer.mediaPlayer.setOnPreparedListener(mediaPlayer -> {
             nextPlayer.state = MediaPlayerState.PREPARED;
             if (player != null) {
-                player.audioDataSource.close();
-                player.mediaPlayer.setOnPreparedListener(null);
-                player.mediaPlayer.setOnCompletionListener(null);
-                player.mediaPlayer.release();
+                player.release();
                 player = null;
             }
             player = nextPlayer;
@@ -149,7 +153,7 @@ class LocalAudioPlayer implements AudioPlayer {
 
     @Override
     public long getCurrentPosition() {
-        if (player == null) {
+        if (player == null || player.mediaPlayer == null) {
             return 0;
         }
         return player.mediaPlayer.getCurrentPosition();
@@ -167,6 +171,10 @@ class LocalAudioPlayer implements AudioPlayer {
 
     @Override
     public boolean stop() {
+        if (nextPlayer != null) {
+            nextPlayer.release();
+            nextPlayer = null;
+        }
         return player != null && player.stop();
     }
 }

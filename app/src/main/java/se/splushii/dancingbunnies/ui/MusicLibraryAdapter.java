@@ -1,5 +1,6 @@
 package se.splushii.dancingbunnies.ui;
 
+import android.support.annotation.NonNull;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -22,13 +23,14 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     private List<MediaBrowserCompat.MediaItem> dataset;
     private MusicLibraryFragment fragment;
     private EntryID currentEntryID;
+    private RecyclerView.ViewHolder contextMenuHolder;
 
     public MusicLibraryAdapter(MusicLibraryFragment fragment) {
         this.dataset = new ArrayList<>();
         this.fragment = fragment;
     }
 
-    MediaBrowserCompat.MediaItem getItemData(int childPosition) {
+    public MediaBrowserCompat.MediaItem getItemData(int childPosition) {
         return dataset.get(childPosition);
     }
 
@@ -40,8 +42,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         }
     }
 
+    @NonNull
     @Override
-    public SongViewHolder onCreateViewHolder(ViewGroup parent,
+    public SongViewHolder onCreateViewHolder(@NonNull ViewGroup parent,
                                              int viewType) {
         View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.musiclibrary_item, parent, false);
@@ -54,8 +57,12 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         notifyDataSetChanged();
     }
 
+    public RecyclerView.ViewHolder getContextMenuHolder() {
+        return contextMenuHolder;
+    }
+
     @Override
-    public void onBindViewHolder(final SongViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull final SongViewHolder holder, int position) {
         final MediaBrowserCompat.MediaItem item = dataset.get(position);
         final String title = item.getDescription().getTitle() + "";
         EntryID entryID = EntryID.from(item);
@@ -64,10 +71,10 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         holder.butt.setText(title);
         holder.butt.setOnLongClickListener(view -> {
             Log.d(LC, "Long click on " + title);
-            // TODO: implement popup with queueing, related entries, etc.
-            // TODO: Support queueing browsable items
-            if (!browsable) {
-                fragment.queue(entryID);
+            if (browsable) {
+                // TODO: Support context menu for browsable items
+            } else {
+                fragment.play(entryID);
             }
             return true;
         });
@@ -76,7 +83,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 fragment.addBackButtonHistory(getCurrentView());
                 fragment.refreshView(new LibraryView(entryID, 0, 0));
             } else {
-                fragment.play(entryID);
+                contextMenuHolder = holder;
+                view.showContextMenu();
             }
         });
     }

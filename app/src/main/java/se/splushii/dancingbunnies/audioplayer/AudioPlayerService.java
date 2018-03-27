@@ -324,7 +324,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         }
         playbackState = playbackStateBuilder.setState(
                 PlaybackStateCompat.STATE_STOPPED,
-                audioPlayer.getCurrentPosition(),
+                0,
                 PLAYBACK_SPEED_PAUSED).build();
         mediaSession.setPlaybackState(playbackState);
         mediaSession.setMetadata(Meta.UNKNOWN_ENTRY);

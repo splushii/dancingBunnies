@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 27
-    buildToolsVersion '27.0.2'
+    buildToolsVersion '27.0.3'
 
     defaultConfig {
         applicationId "se.splushii.dancingbunnies"
@@ -28,11 +28,12 @@ repositories {
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
-    compile 'com.android.support:design:27.1.0'
-    compile 'com.loopj.android:android-async-http:1.4.9'
-    compile 'net.sourceforge.streamsupport:streamsupport:1.5.1'
-    compile 'net.sourceforge.streamsupport:streamsupport-cfuture:1.5.1'
-    compile 'org.greenrobot:eventbus:3.0.0'
-    testCompile 'junit:junit:4.12'
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.android.support:design:27.1.0'
+    implementation 'com.loopj.android:android-async-http:1.4.9'
+    implementation 'net.sourceforge.streamsupport:streamsupport:1.5.1'
+    implementation 'net.sourceforge.streamsupport:streamsupport-cfuture:1.5.1'
+    implementation 'org.greenrobot:eventbus:3.0.0'
+    testImplementation 'junit:junit:4.12'
+    implementation 'com.android.support:mediarouter-v7:27.1.0'
 }

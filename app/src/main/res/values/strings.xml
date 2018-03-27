@@ -23,4 +23,6 @@
     <string name="previous">previous</string>
     <string name="stop">stop</string>
     <string name="play">play</string>
+    <string name="song_context_play">Play</string>
+    <string name="song_context_queue">Queue</string>
 </resources>

@@ -2,13 +2,17 @@ package se.splushii.dancingbunnies;
 
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.view.ContextMenu;
 import android.view.LayoutInflater;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
@@ -124,6 +128,40 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         fastScroller = null;
         fastScrollerBubble = null;
         super.onDestroyView();
+    }
+
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+        MenuInflater menuInflater = getActivity().getMenuInflater();
+        menuInflater.inflate(R.menu.song_menu, menu);
+    }
+
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        int position = recViewAdapter.getContextMenuHolder().getAdapterPosition();
+        EntryID entryID = EntryID.from(recViewAdapter.getItemData(position));
+        Log.d(LC, "info pos: " + position);
+        switch (item.getItemId()) {
+            case R.id.song_context_play:
+                play(entryID);
+                Log.d(LC, "song context play");
+                return true;
+            case R.id.song_context_queue:
+                queue(entryID);
+                Log.d(LC, "song context queue");
+                return true;
+            default:
+                Log.d(LC, "song context unknown");
+                return super.onContextItemSelected(item);
+        }
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        registerForContextMenu(recView);
     }
 
     @Override
