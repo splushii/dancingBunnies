@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 public class Artist extends LibraryEntry {
     public Artist(String name) {
-        super("dancingbunnies", name, EntryType.ARTIST, name);
+        super(new EntryID("dancingbunnies", name, EntryType.ARTIST), name);
     }
 
     public ArrayList<Album> getAlbums() {

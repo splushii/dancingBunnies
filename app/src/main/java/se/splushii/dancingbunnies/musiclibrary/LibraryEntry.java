@@ -14,17 +14,13 @@ public abstract class LibraryEntry implements Comparable<LibraryEntry> {
         SONG
     }
     // Uniquely identifies a LibraryEntry
-    private String src;
-    private String id;
-    private EntryType type;
+    private final EntryID entryID;
 
     private String name;
     private HashSet<LibraryEntry> references;
 
-    LibraryEntry(String src, String id, EntryType type, String name) {
-        this.src = src;
-        this.id = id;
-        this.type = type;
+    LibraryEntry(EntryID entryID, String name) {
+        this.entryID = entryID;
         this.name = name;
         references = new HashSet<>();
     }
@@ -46,9 +42,7 @@ public abstract class LibraryEntry implements Comparable<LibraryEntry> {
             return false;
         }
         LibraryEntry e = (LibraryEntry) obj;
-        return Objects.equals(this.src, e.src)
-                && Objects.equals(this.id, e.id)
-                && this.type == e.type;
+        return this.entryID.equals(e.entryID);
     }
 
     @Override
@@ -57,13 +51,10 @@ public abstract class LibraryEntry implements Comparable<LibraryEntry> {
         return nameVal != 0 ? nameVal : key().compareTo(o.key());
     }
 
-    public String src() { return src; }
-    public String id() { return id; }
-    public EntryType type() { return type; }
-    public String key() { return makeKey(src, id, type); }
-    public static String makeKey(String src, String id, EntryType type) {
-        return src + id + type.name();
-    }
+    public String src() { return entryID.src; }
+    public String id() { return entryID.id; }
+    public EntryType type() { return entryID.type; }
+    public String key() { return entryID.key(); }
     public String name() { return name; }
     void addRef(LibraryEntry e) {
         if (!references.contains(e)) {
@@ -93,7 +84,7 @@ public abstract class LibraryEntry implements Comparable<LibraryEntry> {
         }
         HashSet<LibraryEntry> ret = new HashSet<>();
         for (LibraryEntry e: references) {
-            if (e.type == type) {
+            if (e.type() == type) {
                 ret.add(e);
             }
         }

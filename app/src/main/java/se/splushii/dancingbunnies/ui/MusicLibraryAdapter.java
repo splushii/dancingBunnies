@@ -5,6 +5,7 @@ import android.support.v4.media.MediaBrowserCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,7 +23,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     private static String LC = Util.getLogContext(MusicLibraryAdapter.class);
     private List<MediaBrowserCompat.MediaItem> dataset;
     private MusicLibraryFragment fragment;
-    private EntryID currentEntryID;
     private RecyclerView.ViewHolder contextMenuHolder;
 
     public MusicLibraryAdapter(MusicLibraryFragment fragment) {
@@ -51,9 +51,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         return new SongViewHolder(v);
     }
 
-    public void setDataset(List<MediaBrowserCompat.MediaItem> items, EntryID entryID) {
+    public void setDataset(List<MediaBrowserCompat.MediaItem> items) {
         this.dataset = items;
-        this.currentEntryID = entryID;
         notifyDataSetChanged();
     }
 
@@ -80,8 +79,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         });
         holder.butt.setOnClickListener(view -> {
             if (browsable) {
-                fragment.addBackButtonHistory(getCurrentView());
-                fragment.refreshView(new LibraryView(entryID, 0, 0));
+                fragment.browse(entryID);
             } else {
                 contextMenuHolder = holder;
                 view.showContextMenu();
@@ -89,10 +87,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         });
     }
 
-    public LibraryView getCurrentView() {
-        if (currentEntryID == null) {
-            return null;
-        }
+    public Pair<Integer, Integer> getCurrentPosition() {
         RecyclerView rv = fragment.getView().findViewById(R.id.musiclibrary_recyclerview);
         LinearLayoutManager llm = (LinearLayoutManager) rv.getLayoutManager();
         int hPos = llm.findFirstCompletelyVisibleItemPosition();
@@ -101,7 +96,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         if (hPad < 0 && hPos > 0) {
             hPos--;
         }
-        return new LibraryView(currentEntryID, hPos, hPad);
+        return new Pair<>(hPos, hPad);
     }
 
     @Override

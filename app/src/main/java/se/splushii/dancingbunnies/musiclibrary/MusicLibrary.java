@@ -89,7 +89,7 @@ public class MusicLibrary {
     }
 
     public MediaMetadataCompat getSongMetaData(EntryID entryID) {
-        String key = LibraryEntry.makeKey(entryID.src, entryID.id, LibraryEntry.EntryType.SONG);
+        String key = entryID.key();
         if (!songMap.containsKey(key)) {
             return null;
         }

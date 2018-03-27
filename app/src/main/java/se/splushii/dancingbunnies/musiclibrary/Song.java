@@ -8,7 +8,7 @@ public class Song extends LibraryEntry {
     private MediaMetadataCompat meta;
 
     public Song(String src, String id, String name, MediaMetadataCompat meta) {
-        super(src, id, EntryType.SONG, name);
+        super(new EntryID(src, id, EntryType.SONG), name);
         this.meta = meta;
     }
 

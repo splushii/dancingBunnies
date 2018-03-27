@@ -6,7 +6,8 @@ import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.session.MediaSessionCompat.QueueItem;
 import android.util.Log;
 
-// TODO: Create EntryQuery class as well?
+import java.util.Objects;
+
 public class EntryID {
     private static final String LC = "EntryID";
     public final String src;
@@ -22,6 +23,27 @@ public class EntryID {
     @Override
     public String toString() {
         return "{src: " + src + ", id: " + id + ", type: " + type.name() + "}";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        EntryID e = (EntryID) obj;
+        return Objects.equals(this.src, e.src)
+                && Objects.equals(this.id, e.id)
+                && this.type == e.type;
+    }
+
+    public String key() {
+        return src + id + type.name();
     }
 
     public MediaDescriptionCompat toMediaDescriptionCompat() {
@@ -53,8 +75,6 @@ public class EntryID {
         String id = b.getString(Meta.METADATA_KEY_MEDIA_ID);
         LibraryEntry.EntryType type =
                 LibraryEntry.EntryType.valueOf(b.getString(Meta.METADATA_KEY_TYPE));
-//        LibraryEntry.EntryType type =
-//                (LibraryEntry.EntryType) b.getSerializable(Meta.METADATA_KEY_TYPE);
         return new EntryID(src, id, type);
     }
 

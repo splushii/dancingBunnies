@@ -20,7 +20,6 @@ import android.support.v4.media.app.NotificationCompat.MediaStyle;
 import android.support.v4.media.session.MediaButtonReceiver;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
-import android.support.v4.media.session.MediaSessionCompat.QueueItem;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
@@ -58,7 +57,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private AudioPlayer audioPlayer;
     private PlayQueue playQueue;
     private MediaSessionCompat mediaSession;
-    private List<QueueItem> mediaSessionQueue;
     private PlaybackStateCompat.Builder playbackStateBuilder;
     private PlaybackStateCompat playbackState;
 
@@ -83,20 +81,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         onLoadChildren(parentId, result, options);
     }
 
-    public static String getMusicLibraryQueryOptionsString(Bundle options) {
-        String api = options.getString(Meta.METADATA_KEY_API);
-        LibraryEntry.EntryType type =
-                LibraryEntry.EntryType.valueOf(options.getString(Meta.METADATA_KEY_TYPE));
-        return "api: " + api + ", type: " + type.name();
-    }
-
-    private MusicLibraryQuery generateMusicLibraryQuery(@NonNull String parentId, @NonNull Bundle options) {
-        String src = options.getString(Meta.METADATA_KEY_API);
-        LibraryEntry.EntryType type =
-                LibraryEntry.EntryType.valueOf(options.getString(Meta.METADATA_KEY_TYPE));
-        return new MusicLibraryQuery(src, parentId, type);
-    }
-
     @Override
     public void onLoadChildren(@NonNull String parentId, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result, @NonNull Bundle options) {
         List<MediaBrowserCompat.MediaItem> mediaItems = new ArrayList<>();
@@ -117,7 +101,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 libraryEntries = musicLibrary.artists();
                 break;
             default:
-                MusicLibraryQuery query = generateMusicLibraryQuery(parentId, options);
+                MusicLibraryQuery query = MusicLibraryQuery.generateMusicLibraryQuery(parentId, options);
                 libraryEntries = musicLibrary.getEntries(query);
                 break;
         }
@@ -195,8 +179,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         mediaSession.setSessionActivity(pi);
         mediaSession.setMetadata(Meta.UNKNOWN_ENTRY);
 
-        mediaSessionQueue = new LinkedList<>();
-        mediaSession.setQueue(mediaSessionQueue);
+        mediaSession.setQueue(new LinkedList<>());
 
         NotificationChannel notificationChannel = new NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
