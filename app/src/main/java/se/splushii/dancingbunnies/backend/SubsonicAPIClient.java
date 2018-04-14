@@ -100,6 +100,7 @@ public class SubsonicAPIClient extends APIClient {
     private String password = "";
     private String baseURL = "";
     private static final String version = "1.15.0";
+    private static final String[] supported_versions = {"1.15.0", "1.16.0"};
     private static final String clientId = "dancingbunnies";
     private static final String format = "json";
 
@@ -590,11 +591,12 @@ public class SubsonicAPIClient extends APIClient {
             String respStatus = jResp.getString(JSON_STATUS);
             String respVersion = jResp.getString(JSON_VERSION);
             if (respStatus.equals(status_ok)) {
-                if (respVersion.equals(version)) {
-                    status = "";
-                } else {
-                    status = "request/response API version mismatch ("
-                            + version + "/" + respVersion + ")";
+                status = "Unsupported Subsonic API version: " + respVersion;
+                for (String supported_version: supported_versions) {
+                    if (respVersion.equals(supported_version)) {
+                        status = "";
+                        break;
+                    }
                 }
             } else {
                 JSONObject jError = jResp.getJSONObject(JSON_ERROR);
