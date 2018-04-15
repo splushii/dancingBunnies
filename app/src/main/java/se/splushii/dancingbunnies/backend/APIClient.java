@@ -17,10 +17,10 @@ public abstract class APIClient {
      * @param handler Optional to call handler methods
      * @return A future with a list of MediaMetaData
      * Each MediaMetaData element must include the following entries:
-     *  - MusicLibrary.METADATA_KEY_API
-     *  - MusicLibrary.METADATA_KEY_MEDIA_ROOT
-     *  - MediaMetadataCompat.METADATA_KEY_MEDIA_ID
-     *  - MediaMetadataCompat.METADATA_KEY_TITLE
+     *  - Meta.METADATA_KEY_API
+     *  - Meta.METADATA_KEY_MEDIA_ROOT
+     *  - Meta.METADATA_KEY_MEDIA_ID
+     *  - Meta.METADATA_KEY_TITLE
      */
     public CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> getLibrary(APIClientRequestHandler handler) {
         CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> ret = new CompletableFuture<>();

@@ -18,6 +18,8 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private static final String LC = Util.getLogContext(NowPlayingFragment.class);
 
     private TextView nowPlayingText;
+    private Button playPauseBtn;
+    private boolean isPlaying = false;
 
     public NowPlayingFragment() {
     }
@@ -31,10 +33,18 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         nowPlayingText.setText("");
         Button previousBtn = rootView.findViewById(R.id.nowplaying_previous);
         previousBtn.setOnClickListener(view -> previous());
-        Button pauseBtn = rootView.findViewById(R.id.nowplaying_pause);
-        pauseBtn.setOnClickListener(view -> pause());
-        Button playBtn = rootView.findViewById(R.id.nowplaying_play);
-        playBtn.setOnClickListener(view -> play());
+        if (mediaController != null && mediaController.isSessionReady()) {
+            onPlaybackStateChanged(mediaController.getPlaybackState());
+        } else {
+            isPlaying = false;
+        }
+        playPauseBtn = rootView.findViewById(R.id.nowplaying_play_pause);
+        playPauseBtn.setOnClickListener(view -> {
+            if (isPlaying)
+                pause();
+            else
+                play();
+        });
         Button nextBtn = rootView.findViewById(R.id.nowplaying_next);
         nextBtn.setOnClickListener(view -> next());
         return rootView;
@@ -43,16 +53,19 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     @Override
     protected void onPlaybackStateChanged(PlaybackStateCompat state) {
         switch (state.getState()) {
-            case PlaybackStateCompat.STATE_PAUSED:
-                Log.d(LC, "state: paused");
-                break;
             case PlaybackStateCompat.STATE_PLAYING:
                 Log.d(LC, "state: playing");
+                playPauseBtn.setText("||");
+                isPlaying = true;
                 break;
             default:
                 Log.w(LC, "Unknown playbackstate.\n"
                         + "contents: " + state.describeContents() + " actions: " + state.getActions()
                         + " queue id: " + state.getActiveQueueItemId() + " state: " + state.getState());
+            case PlaybackStateCompat.STATE_PAUSED:
+                playPauseBtn.setText(">");
+                isPlaying = false;
+                break;
         }
     }
 

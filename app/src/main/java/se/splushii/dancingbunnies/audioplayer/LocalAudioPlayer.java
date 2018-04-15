@@ -35,6 +35,13 @@ class LocalAudioPlayer implements AudioPlayer {
         }
 
         void prepareMediaPlayer() {
+            switch(state) {
+                case IDLE:
+                    break;
+                default:
+                    Log.w(LC, "prepare in wrong state: " + state);
+                    return;
+            }
             Log.d(LC, "prepareMediaPlayer");
             mediaPlayer.setDataSource(audioDataSource);
             state = MediaPlayerState.INITIALIZED;

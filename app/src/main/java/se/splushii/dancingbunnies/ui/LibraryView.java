@@ -8,8 +8,7 @@ public class LibraryView {
     public final MusicLibraryQuery query;
     public final int pos;
     public final int pad;
-    public LibraryView(MusicLibraryQuery query,
-                       int pos, int pad) {
+    public LibraryView(MusicLibraryQuery query, int pos, int pad) {
         this.query = query;
         this.pos = pos;
         this.pad = pad;

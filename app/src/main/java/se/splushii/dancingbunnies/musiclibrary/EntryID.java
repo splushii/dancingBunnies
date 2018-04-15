@@ -4,9 +4,12 @@ import android.os.Bundle;
 import android.support.v4.media.MediaBrowserCompat.MediaItem;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.session.MediaSessionCompat.QueueItem;
-import android.util.Log;
+
+import org.apache.lucene.document.Document;
 
 import java.util.Objects;
+
+import se.splushii.dancingbunnies.search.Indexer;
 
 public class EntryID {
     private static final String LC = "EntryID";
@@ -70,7 +73,6 @@ public class EntryID {
     }
 
     public static EntryID from(Bundle b) {
-        Log.d(LC, b.toString());
         String src = b.getString(Meta.METADATA_KEY_API);
         String id = b.getString(Meta.METADATA_KEY_MEDIA_ID);
         LibraryEntry.EntryType type =
@@ -88,5 +90,12 @@ public class EntryID {
 
     public static EntryID from(LibraryEntry e) {
         return new EntryID(e.src(), e.id(), e.type());
+    }
+
+    public static EntryID from(Document doc) {
+        String src = doc.get(Indexer.meta2fieldNameMap.get(Meta.METADATA_KEY_API));
+        String id = doc.get(Indexer.meta2fieldNameMap.get(Meta.METADATA_KEY_MEDIA_ID));
+        LibraryEntry.EntryType type = LibraryEntry.EntryType.SONG;
+        return new EntryID(src, id, type);
     }
 }

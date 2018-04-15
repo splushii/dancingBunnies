@@ -77,7 +77,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     @Override
     public void onLoadChildren(@NonNull String parentId, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
         Bundle options = new Bundle();
-        options.putString(Meta.METADATA_KEY_API, MusicLibrary.API_ID_ANY);
+        options.putString(Meta.METADATA_KEY_API, MusicLibraryQuery.API_ANY);
         onLoadChildren(parentId, result, options);
     }
 
@@ -102,7 +102,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 break;
             default:
                 MusicLibraryQuery query = MusicLibraryQuery.generateMusicLibraryQuery(parentId, options);
-                libraryEntries = musicLibrary.getEntries(query);
+                libraryEntries = musicLibrary.getSubscriptionEntries(query);
                 break;
         }
         Log.d(LC, "onLoadChildren entries: " + libraryEntries.size());
@@ -111,6 +111,17 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             mediaItems.add(item);
         }
         Log.d(LC, "onLoadChildren mediaItems: " + mediaItems.size());
+        result.sendResult(mediaItems);
+    }
+
+    @Override
+    public void onSearch(@NonNull String query, Bundle extras, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
+        List<MediaBrowserCompat.MediaItem> mediaItems = new ArrayList<>();
+        ArrayList<? extends LibraryEntry> libraryEntries = musicLibrary.getSearchEntries(query);
+        for (LibraryEntry e: libraryEntries) {
+            MediaBrowserCompat.MediaItem item = generateMediaItem(e);
+            mediaItems.add(item);
+        }
         result.sendResult(mediaItems);
     }
 

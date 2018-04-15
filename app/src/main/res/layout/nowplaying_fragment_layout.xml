@@ -13,7 +13,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:text="SONG INFO"/>
+            android:text="@string/song_info"/>
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -23,21 +23,19 @@
                 android:id="@+id/nowplaying_previous"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                style="?android:buttonBarButtonStyle"
                 android:text="|&lt;"/>
             <Button
-                android:id="@+id/nowplaying_pause"
+                android:id="@+id/nowplaying_play_pause"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="||"/>
-            <Button
-                android:id="@+id/nowplaying_play"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text=">"/>
+                style="?android:buttonBarButtonStyle"
+                android:text="|| >"/>
             <Button
                 android:id="@+id/nowplaying_next"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                style="?android:buttonBarButtonStyle"
                 android:text=">|"/>
         </LinearLayout>
     </LinearLayout>

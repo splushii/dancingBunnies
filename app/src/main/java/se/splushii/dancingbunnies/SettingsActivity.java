@@ -10,11 +10,8 @@ public class SettingsActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.settings_activity_layout);
-        Toolbar toolbar = findViewById(R.id.toolbar);
+        Toolbar toolbar = findViewById(R.id.settings_toolbar);
         setSupportActionBar(toolbar);
-        getFragmentManager().beginTransaction()
-                .replace(android.R.id.content, new SettingsActivityFragment())
-                .commit();
     }
 
 }

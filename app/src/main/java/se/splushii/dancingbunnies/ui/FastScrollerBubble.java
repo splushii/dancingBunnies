@@ -4,14 +4,12 @@ import android.content.Context;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
-import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import se.splushii.dancingbunnies.R;
 
 public class FastScrollerBubble extends LinearLayout {
-    private View bubble;
     private TextView text;
 
     public FastScrollerBubble(Context context) {
@@ -30,7 +28,6 @@ public class FastScrollerBubble extends LinearLayout {
         LayoutInflater inflater = LayoutInflater.from(context);
         inflater.inflate(R.layout.fastscroller_bubble, this);
 
-        bubble = findViewById(R.id.fastscroller_bubble);
         text = findViewById(R.id.fastscroller_bubble_text);
     }
 

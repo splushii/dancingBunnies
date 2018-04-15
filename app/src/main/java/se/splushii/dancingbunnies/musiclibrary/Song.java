@@ -7,9 +7,13 @@ import java.util.ArrayList;
 public class Song extends LibraryEntry {
     private MediaMetadataCompat meta;
 
-    public Song(String src, String id, String name, MediaMetadataCompat meta) {
-        super(new EntryID(src, id, EntryType.SONG), name);
+    private Song(EntryID entryID, String name, MediaMetadataCompat meta) {
+        super(entryID, name);
         this.meta = meta;
+    }
+
+    Song(String src, String id, String name, MediaMetadataCompat meta) {
+        this(new EntryID(src, id, EntryType.SONG), name, meta);
     }
 
     public MediaMetadataCompat meta() {

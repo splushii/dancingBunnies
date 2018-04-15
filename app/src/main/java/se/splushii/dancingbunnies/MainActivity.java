@@ -1,8 +1,10 @@
 package se.splushii.dancingbunnies;
 
+import android.app.SearchManager;
 import android.content.Intent;
 import android.support.design.widget.TabLayout;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
    
 import android.support.v4.app.Fragment;
@@ -12,15 +14,17 @@ import android.support.v4.view.ViewPager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
+import se.splushii.dancingbunnies.ui.LibraryView;
 import se.splushii.dancingbunnies.util.Util;
 
 public final class MainActivity extends AppCompatActivity {
     private static final String LC = Util.getLogContext(MainActivity.class);
 
     private static final int SETTINGS_INTENT_REQUEST = 1;
-    private SectionsPagerAdapter mSectionsPagerAdapter;
     private ViewPager mViewPager;
     public static final String PAGER_SELECTION = "dancingbunnies.mainactivity.pagerselection";
     public static final int PAGER_MUSICLIBRARY = 0;
@@ -37,24 +41,44 @@ public final class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity_layout);
 
-        Toolbar toolbar = findViewById(R.id.toolbar);
+        Toolbar toolbar = findViewById(R.id.main_toolbar);
         setSupportActionBar(toolbar);
 
-        mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
+        SectionsPagerAdapter mSectionsPagerAdapter =
+                new SectionsPagerAdapter(getSupportFragmentManager());
 
-        mViewPager = findViewById(R.id.container);
+        mViewPager = findViewById(R.id.main_container);
         mViewPager.setAdapter(mSectionsPagerAdapter);
 
-        TabLayout tabLayout = findViewById(R.id.tabs);
+        TabLayout tabLayout = findViewById(R.id.main_tabs);
         tabLayout.setupWithViewPager(mViewPager);
 
         musicLibraryFragment = new MusicLibraryFragment();
         nowPlayingFragment = new NowPlayingFragment();
         playlistQueueFragment = new PlaylistQueueFragment();
 
+        handleIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        setIntent(intent);
+        handleIntent(intent);
+    }
+
+    private void handleIntent(Intent intent) {
         int page_id = getIntent().getIntExtra(PAGER_SELECTION, -1);
         if (page_id != -1) {
             mViewPager.setCurrentItem(page_id);
+        }
+        if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
+            mViewPager.setCurrentItem(PAGER_MUSICLIBRARY);
+            String query = intent.getStringExtra(SearchManager.QUERY);
+            musicLibraryFragment.refreshView(
+                    new LibraryView(
+                            new MusicLibraryQuery(query), 0, 0
+                    )
+            );
         }
     }
 
@@ -65,7 +89,25 @@ public final class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.main_activity_menu, menu);
+        MenuInflater menuInflater = getMenuInflater();
+        menuInflater.inflate(R.menu.main_activity_menu, menu);
+        SearchManager searchManager = (SearchManager) getSystemService(SEARCH_SERVICE);
+        MenuItem searchMenuItem = menu.findItem(R.id.action_search);
+        searchMenuItem.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
+            @Override
+            public boolean onMenuItemActionExpand(MenuItem menuItem) {
+                return true;
+            }
+
+            @Override
+            public boolean onMenuItemActionCollapse(MenuItem menuItem) {
+                onBackPressed();
+                return true;
+            }
+        });
+        SearchView searchView = (SearchView) searchMenuItem.getActionView();
+        searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
+        searchView.setIconifiedByDefault(false);
         return true;
     }
 

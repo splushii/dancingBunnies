@@ -6,11 +6,16 @@ import android.preference.PreferenceManager;
 import android.support.v4.media.MediaMetadataCompat;
 import android.util.Log;
 
+import org.apache.lucene.document.Document;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Objects;
 
@@ -25,14 +30,16 @@ import se.splushii.dancingbunnies.backend.SubsonicAPIClient;
 import se.splushii.dancingbunnies.events.LibraryChangedEvent;
 import se.splushii.dancingbunnies.events.SettingsChangedEvent;
 import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
+import se.splushii.dancingbunnies.search.Indexer;
+import se.splushii.dancingbunnies.search.Searcher;
 import se.splushii.dancingbunnies.storage.Storage;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibrary {
     private static String LC = Util.getLogContext(MusicLibrary.class);
 
-    public static final String API_ID_ANY = "any";
     public static final String API_ID_SUBSONIC = "subsonic";
+    private static final String LUCENE_INDEX_PATH = "lucene_index";
 
     private final AudioPlayerService context;
     private HashMap<String, APIClient> apis;
@@ -43,6 +50,8 @@ public class MusicLibrary {
     private HashMap<String, Artist> artistMap = new HashMap<>();
     private HashMap<String, Album> albumMap= new HashMap<>();
     private HashMap<String, Song> songMap = new HashMap<>();
+    private Indexer indexer;
+    private Searcher searcher;
 
     public MusicLibrary(final AudioPlayerService context) {
         this.context = context;
@@ -50,8 +59,25 @@ public class MusicLibrary {
         loadSettings(context);
         EventBus.getDefault().register(this);
         storage = new Storage(context);
+        File indexDirectoryPath = new File(context.getFilesDir(), LUCENE_INDEX_PATH);
+        if (!indexDirectoryPath.mkdirs()) {
+            Log.w(LC, "Could not create lucene index dir " + indexDirectoryPath.toPath());
+        }
+        indexer = new Indexer(indexDirectoryPath);
+        searcher = new Searcher(indexDirectoryPath);
+        Date storageStart = new Date();
         fetchLibraryFromStorage().thenRun(() -> {
-            Log.d(LC, "Library fetched from storage!");
+            long time = new Date().getTime() - storageStart.getTime();
+            Log.d(LC, "Library fetched from storage! Took " + time + "ms");
+            Date indexStart = new Date();
+            int numDocs = 0;
+            Log.d(LC, "Songs: " + songs.size());
+            for (Song s: songs) {
+                numDocs = indexer.indexSong(s);
+            }
+            indexer.close();
+            time = new Date().getTime() - indexStart.getTime();
+            Log.d(LC, "Library indexed (" + numDocs + " docs)! Took " + time + "ms");
             notifyLibraryChanged();
         });
     }
@@ -108,9 +134,10 @@ public class MusicLibrary {
         return new ArrayList<>(songs);
     }
 
-    public ArrayList<? extends LibraryEntry> getEntries(MusicLibraryQuery q) {
+    public ArrayList<? extends LibraryEntry> getSubscriptionEntries(MusicLibraryQuery q) {
         ArrayList<? extends LibraryEntry> entries;
-        switch (q.type) {
+        EntryID entryID = q.entryID();
+        switch (entryID.type) {
             case ARTIST:
                 entries = artists();
                 break;
@@ -121,16 +148,27 @@ public class MusicLibrary {
                 entries = songs();
                 break;
             default:
-                Log.w(LC, "Unhandled LibraryEntry type: " + q.type.name());
+                Log.w(LC, "Unhandled LibraryEntry type: " + entryID.type.name());
                 entries = new ArrayList<>();
                 break;
         }
         for (LibraryEntry e: entries) {
-            if (Objects.equals(q.src, e.src()) && Objects.equals(q.id, e.id())) {
+            if (Objects.equals(entryID.src, e.src()) && Objects.equals(entryID.id, e.id())) {
                 return e.getEntries();
             }
         }
         return new ArrayList<>();
+    }
+
+    public ArrayList<? extends LibraryEntry> getSearchEntries(String query) {
+        ArrayList<Song> entries = new ArrayList<>();
+        TopDocs topDocs = searcher.search(query);
+        for (ScoreDoc scoreDoc: topDocs.scoreDocs) {
+            Document doc = searcher.getDocument(scoreDoc);
+            Song song = songMap.get(EntryID.from(doc).key());
+            entries.add(song);
+        }
+        return entries;
     }
 
     @Subscribe
