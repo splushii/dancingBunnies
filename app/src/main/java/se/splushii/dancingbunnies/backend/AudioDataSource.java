@@ -9,27 +9,41 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.util.Util;
 
 public class AudioDataSource extends MediaDataSource {
     private static final String LC = Util.getLogContext(AudioDataSource.class);
-    private HttpURLConnection conn;
+    private final String url;
+    private final EntryID entryID;
     private volatile byte[] buffer;
     private volatile boolean isDownloading = false;
     private volatile boolean isFinished = false;
     private Thread downloadThread;
 
-    public AudioDataSource(HttpURLConnection conn) {
-        if (conn == null) {
-            buffer = new byte[0];
-        } else {
-            this.conn = conn;
-        }
+    public AudioDataSource(String url, EntryID entryID) {
+        this.url = url;
+        this.entryID = entryID;
+        buffer = new byte[0];
     }
 
     public void download(final AudioDataDownloadHandler handler) {
-        if (conn == null) {
+        HttpURLConnection conn = null;
+        if (url != null) {
+            try {
+                conn = (HttpURLConnection) new URL(url).openConnection();
+            } catch (MalformedURLException e) {
+                Log.d(LC, "Malformed URL for song with id " + entryID.id + ": " + e.getMessage());
+            } catch (IOException e) {
+                handler.onFailure("Exception when opening connection: " + e.getMessage());
+                return;
+            }
+        }
+        final HttpURLConnection connection = conn;
+        if (null == conn) {
             handler.onFailure("No HttpURLConnection");
             return;
         } else if (isDownloading) {
@@ -44,8 +58,8 @@ public class AudioDataSource extends MediaDataSource {
             handler.onStart();
             try {
                 ByteArrayOutputStream arrayOutputStream = new ByteArrayOutputStream();
-                InputStream in = new BufferedInputStream(conn.getInputStream());
-                long contentLength = conn.getContentLengthLong();
+                InputStream in = new BufferedInputStream(connection.getInputStream());
+                long contentLength = connection.getContentLengthLong();
                 int b = in.read();
                 long bytesRead = 0;
                 while (b != -1) {
@@ -57,7 +71,7 @@ public class AudioDataSource extends MediaDataSource {
                     b = in.read();
                 }
                 in.close();
-                conn.disconnect();
+                connection.disconnect();
                 arrayOutputStream.flush();
                 buffer = arrayOutputStream.toByteArray();
                 arrayOutputStream.close();
@@ -102,5 +116,24 @@ public class AudioDataSource extends MediaDataSource {
         if (isDownloading) {
             downloadThread.interrupt();
         }
+    }
+
+    public String getURL() {
+        return url;
+    }
+
+    public String getContentType() {
+        // TODO: Actually use the MIME from the APIClient
+        return "audio/mp3";
+    }
+
+    public long getDuration() {
+        // TODO: FIXME
+//        MediaMetadataRetriever metaRetriever = new MediaMetadataRetriever();
+//        metaRetriever.setDataSource(this);
+//        String durationString =
+//                metaRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+//        return Long.parseLong(durationString);
+        return 0L;
     }
 }

@@ -4,6 +4,7 @@ import android.app.SearchManager;
 import android.content.Intent;
 import android.support.design.widget.TabLayout;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.app.MediaRouteButton;
 import android.support.v7.widget.SearchView;
 import android.support.v7.widget.Toolbar;
    
@@ -16,6 +17,8 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+
+import com.google.android.gms.cast.framework.CastButtonFactory;
 
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.ui.LibraryView;
@@ -56,6 +59,9 @@ public final class MainActivity extends AppCompatActivity {
         musicLibraryFragment = new MusicLibraryFragment();
         nowPlayingFragment = new NowPlayingFragment();
         playlistQueueFragment = new PlaylistQueueFragment();
+
+        MediaRouteButton mediaRouteButton = findViewById(R.id.media_route_button);
+        CastButtonFactory.setUpMediaRouteButton(getApplicationContext(), mediaRouteButton);
 
         handleIntent(getIntent());
     }
@@ -108,6 +114,12 @@ public final class MainActivity extends AppCompatActivity {
         SearchView searchView = (SearchView) searchMenuItem.getActionView();
         searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
         searchView.setIconifiedByDefault(false);
+
+        CastButtonFactory.setUpMediaRouteButton(
+                getApplicationContext(),
+                menu,
+                R.id.media_route_menu_item);
+
         return true;
     }
 

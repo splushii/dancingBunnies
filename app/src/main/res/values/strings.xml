@@ -29,4 +29,5 @@
     <string name="app_label">Dancing Bunnies</string>
     <string name="action_search">Search</string>
     <string name="song_info" />
+    <string name="media_route_menu_title">Cast</string>
 </resources>

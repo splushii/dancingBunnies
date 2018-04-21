@@ -106,20 +106,18 @@ public class MusicLibrary {
 
     public AudioDataSource getAudioData(EntryID entryID) {
         if (apis.containsKey(entryID.src)) {
-            return apis.get(entryID.src).getAudioData(entryID.id);
+            return apis.get(entryID.src).getAudioData(entryID);
         } else {
             Log.d(LC, "Could not find api for song with src: " + entryID.src
                     + ", id: " + entryID.id);
-            return new AudioDataSource(null);
+            return new AudioDataSource(null, entryID);
         }
     }
 
     public MediaMetadataCompat getSongMetaData(EntryID entryID) {
-        String key = entryID.key();
-        if (!songMap.containsKey(key)) {
-            return null;
-        }
-        return songMap.get(key).meta();
+        if (entryID.type == LibraryEntry.EntryType.SONG)
+            return songMap.get(entryID.key()).meta();
+        return null;
     }
 
     public ArrayList<Artist> artists() {

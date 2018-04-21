@@ -16,6 +16,7 @@ class PlayQueue {
     private final MusicLibrary musicLibrary;
     private LinkedList<EntryID> entryQueue;
     private int currentId;
+
     enum QueueOp {
         CURRENT,
         NEXT,
@@ -56,6 +57,13 @@ class PlayQueue {
             mediaSessionQueue.add(queueItem);
         }
         return mediaSessionQueue;
+    }
+
+    EntryID current() {
+        if (currentId < 0 || currentId >= entryQueue.size()) {
+            return null;
+        }
+        return entryQueue.get(currentId);
     }
 
     EntryID next() {

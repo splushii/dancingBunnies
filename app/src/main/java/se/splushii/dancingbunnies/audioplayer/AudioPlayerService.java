@@ -23,6 +23,8 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
+import com.google.android.gms.cast.framework.CastContext;
+
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 
@@ -42,6 +44,10 @@ import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.util.Util;
 
 public class AudioPlayerService extends MediaBrowserServiceCompat {
+    private enum AudioPlayerType {
+        LOCAL,
+        CAST
+    }
     private static String LC = Util.getLogContext(AudioPlayerService.class);
     private static final String NOTIFICATION_CHANNEL_ID = "dancingbunnies.notification.channel";
     private static final String NOTIFICATION_CHANNEL_NAME = "DancingBunnies";
@@ -55,10 +61,13 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private MusicLibrary musicLibrary;
     private AudioPlayer audioPlayer;
+    private LocalAudioPlayer localAudioPlayer;
+    private CastAudioPlayer castAudioPlayer;
     private PlayQueue playQueue;
     private MediaSessionCompat mediaSession;
     private PlaybackStateCompat.Builder playbackStateBuilder;
     private PlaybackStateCompat playbackState;
+    private boolean playWhenReady;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -161,7 +170,22 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         Log.d(LC, "onCreate");
         EventBus.getDefault().register(this);
 
-        audioPlayer = new LocalAudioPlayer();
+        localAudioPlayer = new LocalAudioPlayer();
+        audioPlayer = localAudioPlayer;
+
+        CastContext castContext = CastContext.getSharedInstance(this);
+        castAudioPlayer = new CastAudioPlayer(castContext, new CastAudioPlayer.CastConnectionListener() {
+            @Override
+            void onConnected() {
+                setAudioPlayer(AudioPlayerType.CAST);
+            }
+
+            @Override
+            void onDisconnected() {
+                setAudioPlayer(AudioPlayerType.LOCAL);
+            }
+        });
+        castAudioPlayer.onCreate();
 
         playQueue = new PlayQueue(musicLibrary);
 
@@ -202,9 +226,50 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         notificationManager.createNotificationChannel(notificationChannel);
     }
 
+    private void setAudioPlayer(AudioPlayerType audioPlayerType) {
+        AudioPlayer currentAudioPlayer = audioPlayer;
+        switch (audioPlayerType) {
+            case LOCAL:
+                if (audioPlayer instanceof LocalAudioPlayer) {
+                    break;
+                }
+                audioPlayer = localAudioPlayer;
+                break;
+            case CAST:
+                if (audioPlayer instanceof CastAudioPlayer) {
+                    break;
+                }
+                audioPlayer = castAudioPlayer;
+                break;
+        }
+        if (currentAudioPlayer != null) {
+            currentAudioPlayer.stop();
+        }
+        EntryID entryID = playQueue.current();
+        if (entryID == null) {
+            return;
+        }
+        audioPlayer.setSource(
+                musicLibrary.getAudioData(entryID),
+                musicLibrary.getSongMetaData(entryID),
+                this::onAudioPlayerReady,
+                this::onAudioPlayerEnded
+        );
+
+        switch (playbackState.getState()) {
+            case PlaybackState.STATE_PLAYING:
+                // TODO: Seek to current position
+                audioPlayer.play();
+                break;
+            default:
+                break;
+        }
+    }
+
     @Override
     public void onDestroy() {
         Log.d(LC, "onDestroy");
+        castAudioPlayer.onDestroy();
         musicLibrary.onDestroy();
         EventBus.getDefault().unregister(this);
         super.onDestroy();
@@ -212,19 +277,21 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void onPlay() {
         Log.d(LC, "onPlay");
-        if (!audioPlayer.play()) {
-            Log.w(LC, "AudioPlayer (" + audioPlayer.getClass().getSimpleName()
-                    + ") could not play. ");
-            return;
-        }
-        startService(new Intent(this, AudioPlayerService.class));
-        playbackState = playbackStateBuilder.setState(
-                PlaybackStateCompat.STATE_PLAYING,
-                audioPlayer.getCurrentPosition(),
-                PLAYBACK_SPEED_PLAYING
-        ).build();
-        mediaSession.setPlaybackState(playbackState);
-        setNotification();
+        audioPlayer.play().thenAccept(success -> {
+            if (success) {
+                startService(new Intent(this, AudioPlayerService.class));
+                playbackState = playbackStateBuilder.setState(
+                        PlaybackStateCompat.STATE_PLAYING,
+                        audioPlayer.getCurrentPosition(),
+                        PLAYBACK_SPEED_PLAYING
+                ).build();
+                mediaSession.setPlaybackState(playbackState);
+                setNotification();
+            } else {
+                Log.w(LC, "AudioPlayer (" + audioPlayer.getClass().getSimpleName()
+                        + ") could not play. ");
+            }
+        });
     }
 
     private void setNotification() {
@@ -296,46 +363,64 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void onPause() {
         Log.d(LC, "onPause");
-        if (!audioPlayer.pause()) {
-            Log.w(LC, "AudioPlayer (" + audioPlayer.getClass().getSimpleName()
-                    + ") could not pause. ");
-            return;
-        }
-        playbackState = playbackStateBuilder.setState(
-                PlaybackStateCompat.STATE_PAUSED,
-                audioPlayer.getCurrentPosition(),
-                PLAYBACK_SPEED_PAUSED).build();
-        mediaSession.setPlaybackState(playbackState);
-        setNotification();
+        audioPlayer.pause().thenAccept(success -> {
+            if (success) {
+                playbackState = playbackStateBuilder.setState(
+                        PlaybackStateCompat.STATE_PAUSED,
+                        audioPlayer.getCurrentPosition(),
+                        PLAYBACK_SPEED_PAUSED).build();
+                mediaSession.setPlaybackState(playbackState);
+                setNotification();
+            } else {
+                Log.w(LC, "AudioPlayer (" + audioPlayer.getClass().getSimpleName()
+                        + ") could not pause. ");
+            }
+        });
     }
 
     private void onStop() {
         Log.d(LC, "onStop");
-        if (!audioPlayer.stop()) {
+        audioPlayer.stop().thenAccept(success -> {
+            if (success) {
+                playbackState = playbackStateBuilder.setState(
+                        PlaybackStateCompat.STATE_STOPPED,
+                        0,
+                        PLAYBACK_SPEED_PAUSED).build();
+                mediaSession.setPlaybackState(playbackState);
+                mediaSession.setMetadata(Meta.UNKNOWN_ENTRY);
+                stopSelf();
+                stopForeground(true);
+            } else {
             Log.w(LC, "AudioPlayer (" + audioPlayer.getClass().getSimpleName()
                     + ") could not stop. ");
-            return;
-        }
-        playbackState = playbackStateBuilder.setState(
-                PlaybackStateCompat.STATE_STOPPED,
-                0,
-                PLAYBACK_SPEED_PAUSED).build();
-        mediaSession.setPlaybackState(playbackState);
-        mediaSession.setMetadata(Meta.UNKNOWN_ENTRY);
-        stopSelf();
-        stopForeground(true);
+            }
+        });
     }
 
-    private void prepareMedia(EntryID entryID, boolean playWhenReady) {
+    private void prepareMedia(EntryID entryID, boolean forcePlayWhenReady) {
+        if (forcePlayWhenReady) {
+            this.playWhenReady = true;
+        }
         Log.d(LC, "prepareMedia");
         final AudioDataSource audioDataSource = musicLibrary.getAudioData(entryID);
         MediaMetadataCompat meta = musicLibrary.getSongMetaData(entryID);
         mediaSession.setMetadata(meta);
         audioPlayer.setSource(
                 audioDataSource,
-                () -> { if (playWhenReady) { onPlay(); } },
-                this::onSkipToNext
+                meta,
+                this::onAudioPlayerReady,
+                this::onAudioPlayerEnded
         );
+    }
+
+    private void onAudioPlayerReady() {
+        if (playWhenReady) {
+            onPlay();
+        }
+    }
+
+    private void onAudioPlayerEnded() {
+        onSkipToNext();
     }
 
     private void onSkipToNext() {
@@ -361,6 +446,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private void onSkipToQueueItem(long queueItemId) {
         Log.d(LC, "onSkipToQueueItem: " + queueItemId);
         EntryID entryID = playQueue.skipTo(queueItemId);
+        if (entryID == null) {
+            return;
+        }
         prepareMedia(entryID, true);
     }
 

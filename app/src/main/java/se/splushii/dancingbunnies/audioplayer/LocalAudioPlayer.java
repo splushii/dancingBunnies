@@ -1,7 +1,10 @@
 package se.splushii.dancingbunnies.audioplayer;
 
 import android.media.MediaPlayer;
+import android.support.v4.media.MediaMetadataCompat;
 import android.util.Log;
+
+import java.util.concurrent.CompletableFuture;
 
 import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.backend.AudioDataSource;
@@ -118,6 +121,7 @@ class LocalAudioPlayer implements AudioPlayer {
 
     @Override
     public void setSource(AudioDataSource audioDataSource,
+                          MediaMetadataCompat meta,
                           Runnable runWhenReady,
                           Runnable runWhenEnded) {
         if (nextPlayer != null) {
@@ -167,21 +171,27 @@ class LocalAudioPlayer implements AudioPlayer {
     }
 
     @Override
-    public boolean play() {
-        return player != null && player.play();
+    public CompletableFuture<Boolean> play() {
+        CompletableFuture<Boolean> ret = new CompletableFuture<>();
+        ret.complete(player != null && player.play());
+        return ret;
     }
 
     @Override
-    public boolean pause() {
-        return player != null && player.pause();
+    public CompletableFuture<Boolean> pause() {
+        CompletableFuture<Boolean> ret = new CompletableFuture<>();
+        ret.complete(player != null && player.pause());
+        return ret;
     }
 
     @Override
-    public boolean stop() {
+    public CompletableFuture<Boolean> stop() {
         if (nextPlayer != null) {
             nextPlayer.release();
             nextPlayer = null;
         }
-        return player != null && player.stop();
+        CompletableFuture<Boolean> ret = new CompletableFuture<>();
+        ret.complete(player != null && player.stop());
+        return ret;
     }
 }

@@ -35,6 +35,7 @@ import java8.util.Optional;
 import java8.util.concurrent.CompletableFuture;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.events.SubsonicRequestFailEvent;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
 import se.splushii.dancingbunnies.util.Util;
@@ -543,23 +544,10 @@ public class SubsonicAPIClient extends APIClient {
         return false;
     }
 
-    public AudioDataSource getAudioData(String id) {
-        String query = baseURL + "stream" + getBaseQuery() + "&id=" + id +
+    public AudioDataSource getAudioData(EntryID entryID) {
+        String query = baseURL + "stream" + getBaseQuery() + "&id=" + entryID.id +
                 "&estimateContentLength=true";
-        URL url;
-        try {
-            url = new URL(query);
-        } catch (MalformedURLException e) {
-            Log.d(LC, "Malformed URL for song with id " + id + ": " + e.getMessage());
-            return new AudioDataSource(null);
-        }
-        try {
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            return new AudioDataSource(conn);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return new AudioDataSource(null);
-        }
+        return new AudioDataSource(query, entryID);
         // TODO: add subsonic setting for max bitrate and format
     }
 

@@ -7,8 +7,8 @@ import java.util.ArrayList;
 
 import java8.util.Optional;
 import java8.util.concurrent.CompletableFuture;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Playlist;
-import se.splushii.dancingbunnies.musiclibrary.Song;
 
 public abstract class APIClient {
     public abstract boolean hasLibrary();
@@ -33,9 +33,6 @@ public abstract class APIClient {
         ret.complete(Optional.empty());
         return ret;
     }
-    public AudioDataSource getAudioData(Song song) {
-        return getAudioData(song.id());
-    }
-    public abstract AudioDataSource getAudioData(String id);
+    public abstract AudioDataSource getAudioData(EntryID entryID);
     public abstract void loadSettings(Context context);
 }
