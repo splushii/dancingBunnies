@@ -61,6 +61,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private MusicLibrary musicLibrary;
     private AudioPlayer audioPlayer;
+    private AudioPlayer.AudioPlayerCallback audioPlayerCallback;
     private LocalAudioPlayer localAudioPlayer;
     private CastAudioPlayer castAudioPlayer;
     private PlayQueue playQueue;
@@ -172,6 +173,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         localAudioPlayer = new LocalAudioPlayer();
         audioPlayer = localAudioPlayer;
+        audioPlayerCallback = new AudioPlayerCallback();
+        audioPlayer.setListener(audioPlayerCallback);
 
         CastContext castContext = CastContext.getSharedInstance(this);
         castAudioPlayer = new CastAudioPlayer(castContext, new CastAudioPlayer.CastConnectionListener() {
@@ -182,7 +185,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
             @Override
             void onDisconnected() {
+                playWhenReady = false;
                 setAudioPlayer(AudioPlayerType.LOCAL);
+                setNotification();
             }
         });
         castAudioPlayer.onCreate();
@@ -227,35 +232,35 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void setAudioPlayer(AudioPlayerType audioPlayerType) {
-        AudioPlayer currentAudioPlayer = audioPlayer;
+        AudioPlayer newAudioPlayer;
         switch (audioPlayerType) {
             case LOCAL:
                 if (audioPlayer instanceof LocalAudioPlayer) {
-                    break;
+                    return;
                 }
-                audioPlayer = localAudioPlayer;
+                newAudioPlayer = localAudioPlayer;
                 break;
             case CAST:
                 if (audioPlayer instanceof CastAudioPlayer) {
-                    break;
+                    return;
                 }
-                audioPlayer = castAudioPlayer;
+                newAudioPlayer = castAudioPlayer;
                 break;
+            default:
+                return;
         }
-        if (currentAudioPlayer != null) {
-            currentAudioPlayer.stop();
-        }
+        audioPlayer.removeListener();
+        audioPlayer.stop();
+        newAudioPlayer.setListener(audioPlayerCallback);
+        audioPlayer = newAudioPlayer;
         EntryID entryID = playQueue.current();
         if (entryID == null) {
             return;
         }
         audioPlayer.setSource(
                 musicLibrary.getAudioData(entryID),
-                musicLibrary.getSongMetaData(entryID),
-                this::onAudioPlayerReady,
-                this::onAudioPlayerEnded
+                musicLibrary.getSongMetaData(entryID)
         );
-
         switch (playbackState.getState()) {
             case PlaybackState.STATE_PLAYING:
                 // TODO: Seek to current position
@@ -277,34 +282,25 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void onPlay() {
         Log.d(LC, "onPlay");
-        audioPlayer.play().thenAccept(success -> {
-            if (success) {
-                startService(new Intent(this, AudioPlayerService.class));
-                playbackState = playbackStateBuilder.setState(
-                        PlaybackStateCompat.STATE_PLAYING,
-                        audioPlayer.getCurrentPosition(),
-                        PLAYBACK_SPEED_PLAYING
-                ).build();
-                mediaSession.setPlaybackState(playbackState);
-                setNotification();
-            } else {
-                Log.w(LC, "AudioPlayer (" + audioPlayer.getClass().getSimpleName()
-                        + ") could not play. ");
-            }
-        });
+        playWhenReady = true;
+        audioPlayer.play();
     }
 
     private void setNotification() {
+        if (audioPlayer instanceof CastAudioPlayer) {
+            stopForeground(true);
+            return;
+        }
         String play_pause_string;
         int play_pause_drawable;
         switch (playbackState.getState()) {
             case PlaybackState.STATE_PLAYING:
                 play_pause_string = getString(R.string.pause);
-                play_pause_drawable = android.R.drawable.ic_media_pause;
+                play_pause_drawable = R.drawable.ic_pause;
                 break;
             default:
                 play_pause_string = getString(R.string.play);
-                play_pause_drawable = android.R.drawable.ic_media_play;
+                play_pause_drawable = R.drawable.ic_play;
                 break;
         }
         NotificationCompat.Action action_play_pause = new NotificationCompat.Action.Builder(
@@ -316,7 +312,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 )
         ).build();
         NotificationCompat.Action action_stop = new NotificationCompat.Action.Builder(
-                android.R.drawable.ic_delete,
+                R.drawable.ic_stop,
                 getString(R.string.stop),
                 MediaButtonReceiver.buildMediaButtonPendingIntent(
                         this,
@@ -324,7 +320,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 )
         ).build();
         NotificationCompat.Action action_next = new NotificationCompat.Action.Builder(
-                android.R.drawable.ic_media_next,
+                R.drawable.ic_next,
                 getString(R.string.next),
                 MediaButtonReceiver.buildMediaButtonPendingIntent(
                         this,
@@ -332,7 +328,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 )
         ).build();
         NotificationCompat.Action action_previous = new NotificationCompat.Action.Builder(
-                android.R.drawable.ic_media_previous,
+                R.drawable.ic_prev,
                 getString(R.string.previous),
                 MediaButtonReceiver.buildMediaButtonPendingIntent(
                         this,
@@ -350,7 +346,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                         .setContentText(description)
                         .setLargeIcon(controller.getMetadata().getDescription().getIconBitmap())
                         .setSmallIcon(R.drawable.ic_play)
-                        // Enable launching the player by clicking the notification
                         .setContentIntent(controller.getSessionActivity())
                         .addAction(action_previous)
                         .addAction(action_play_pause)
@@ -363,38 +358,14 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void onPause() {
         Log.d(LC, "onPause");
-        audioPlayer.pause().thenAccept(success -> {
-            if (success) {
-                playbackState = playbackStateBuilder.setState(
-                        PlaybackStateCompat.STATE_PAUSED,
-                        audioPlayer.getCurrentPosition(),
-                        PLAYBACK_SPEED_PAUSED).build();
-                mediaSession.setPlaybackState(playbackState);
-                setNotification();
-            } else {
-                Log.w(LC, "AudioPlayer (" + audioPlayer.getClass().getSimpleName()
-                        + ") could not pause. ");
-            }
-        });
+        playWhenReady = false;
+        audioPlayer.pause();
     }
 
     private void onStop() {
         Log.d(LC, "onStop");
-        audioPlayer.stop().thenAccept(success -> {
-            if (success) {
-                playbackState = playbackStateBuilder.setState(
-                        PlaybackStateCompat.STATE_STOPPED,
-                        0,
-                        PLAYBACK_SPEED_PAUSED).build();
-                mediaSession.setPlaybackState(playbackState);
-                mediaSession.setMetadata(Meta.UNKNOWN_ENTRY);
-                stopSelf();
-                stopForeground(true);
-            } else {
-            Log.w(LC, "AudioPlayer (" + audioPlayer.getClass().getSimpleName()
-                    + ") could not stop. ");
-            }
-        });
+        playWhenReady = false;
+        audioPlayer.stop();
     }
 
     private void prepareMedia(EntryID entryID, boolean forcePlayWhenReady) {
@@ -404,23 +375,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         Log.d(LC, "prepareMedia");
         final AudioDataSource audioDataSource = musicLibrary.getAudioData(entryID);
         MediaMetadataCompat meta = musicLibrary.getSongMetaData(entryID);
-        mediaSession.setMetadata(meta);
-        audioPlayer.setSource(
-                audioDataSource,
-                meta,
-                this::onAudioPlayerReady,
-                this::onAudioPlayerEnded
-        );
-    }
-
-    private void onAudioPlayerReady() {
-        if (playWhenReady) {
-            onPlay();
-        }
-    }
-
-    private void onAudioPlayerEnded() {
-        onSkipToNext();
+        audioPlayer.setSource(audioDataSource, meta);
     }
 
     private void onSkipToNext() {
@@ -429,7 +384,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         if (entryID == null) {
             onStop();
         } else {
-            prepareMedia(entryID, true);
+            prepareMedia(entryID, false);
         }
     }
 
@@ -439,7 +394,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         if (entryID == null) {
             onStop();
         } else {
-            prepareMedia(entryID, true);
+            prepareMedia(entryID, false);
         }
     }
 
@@ -449,7 +404,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         if (entryID == null) {
             return;
         }
-        prepareMedia(entryID, true);
+        prepareMedia(entryID, false);
     }
 
     private void onAddQueueItem(EntryID entryID, PlayQueue.QueueOp op) {
@@ -532,6 +487,80 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         public void onStop() {
             super.onStop();
             AudioPlayerService.this.onStop();
+        }
+    }
+
+    private class AudioPlayerCallback implements AudioPlayer.AudioPlayerCallback {
+        @Override
+        public void onReady() {
+            if (playWhenReady) {
+                onPlay();
+            }
+        }
+
+        @Override
+        public void onEnded() {
+            onSkipToNext();
+        }
+
+        @Override
+        public void onStateChanged(int playBackState) {
+            switch (playBackState) {
+                case PlaybackStateCompat.STATE_NONE:
+                    break;
+                case PlaybackStateCompat.STATE_STOPPED:
+                    playbackState = playbackStateBuilder.setState(
+                            PlaybackStateCompat.STATE_STOPPED,
+                            0,
+                            PLAYBACK_SPEED_PAUSED).build();
+                    mediaSession.setPlaybackState(playbackState);
+                    mediaSession.setMetadata(Meta.UNKNOWN_ENTRY);
+                    stopSelf();
+                    stopForeground(true);
+                    break;
+                case PlaybackStateCompat.STATE_PAUSED:
+                    playbackState = playbackStateBuilder.setState(
+                            PlaybackStateCompat.STATE_PAUSED,
+                            audioPlayer.getCurrentPosition(),
+                            PLAYBACK_SPEED_PAUSED).build();
+                    mediaSession.setPlaybackState(playbackState);
+                    setNotification();
+                    break;
+                case PlaybackStateCompat.STATE_PLAYING:
+                    startService(new Intent(
+                            AudioPlayerService.this,
+                            AudioPlayerService.class));
+                    playbackState = playbackStateBuilder.setState(
+                            PlaybackStateCompat.STATE_PLAYING,
+                            audioPlayer.getCurrentPosition(),
+                            PLAYBACK_SPEED_PLAYING
+                    ).build();
+                    mediaSession.setPlaybackState(playbackState);
+                    setNotification();
+                    break;
+                case PlaybackStateCompat.STATE_FAST_FORWARDING:
+                    break;
+                case PlaybackStateCompat.STATE_REWINDING:
+                    break;
+                case PlaybackStateCompat.STATE_BUFFERING:
+                    break;
+                case PlaybackStateCompat.STATE_ERROR:
+                    break;
+                case PlaybackStateCompat.STATE_CONNECTING:
+                    break;
+                case PlaybackStateCompat.STATE_SKIPPING_TO_PREVIOUS:
+                    break;
+                case PlaybackStateCompat.STATE_SKIPPING_TO_NEXT:
+                    break;
+                case PlaybackStateCompat.STATE_SKIPPING_TO_QUEUE_ITEM:
+                    break;
+            }
+        }
+
+        @Override
+        public void onMetaChanged(EntryID entryID) {
+            MediaMetadataCompat meta = musicLibrary.getSongMetaData(entryID);
+            mediaSession.setMetadata(meta);
         }
     }
 }

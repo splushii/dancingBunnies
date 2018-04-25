@@ -3,6 +3,8 @@ package se.splushii.dancingbunnies.musiclibrary;
 import android.support.v4.media.MediaMetadataCompat;
 import android.util.Log;
 
+import com.google.android.gms.cast.MediaMetadata;
+
 import java.util.HashMap;
 
 import se.splushii.dancingbunnies.util.Util;
@@ -20,6 +22,17 @@ public class Meta {
         String album = metadata.getString(Meta.METADATA_KEY_ALBUM);
         String title = metadata.getString(Meta.METADATA_KEY_TITLE);
         return title + " - " + artist + " [" + album + "]";
+    }
+
+    public static MediaMetadata from(MediaMetadataCompat meta) {
+        MediaMetadata castMeta = new MediaMetadata();
+        castMeta.putString(MediaMetadata.KEY_TITLE, meta.getString(Meta.METADATA_KEY_TITLE));
+        castMeta.putString(MediaMetadata.KEY_ALBUM_TITLE, meta.getString(Meta.METADATA_KEY_ALBUM));
+        castMeta.putString(MediaMetadata.KEY_ARTIST, meta.getString(Meta.METADATA_KEY_ARTIST));
+        castMeta.putString(Meta.METADATA_KEY_API, meta.getString(Meta.METADATA_KEY_API));
+        castMeta.putString(Meta.METADATA_KEY_MEDIA_ID, meta.getString(Meta.METADATA_KEY_MEDIA_ID));
+        castMeta.putString(Meta.METADATA_KEY_TYPE, meta.getString(Meta.METADATA_KEY_TYPE));
+        return castMeta;
     }
 
     public enum Type {

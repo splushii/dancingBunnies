@@ -46,6 +46,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     FastScroller fastScroller;
     FastScrollerBubble fastScrollerBubble;
 
+    @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         viewBackStack = new LinkedList<>();

@@ -2,15 +2,15 @@ package se.splushii.dancingbunnies.audioplayer;
 
 import android.media.MediaPlayer;
 import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
-
-import java.util.concurrent.CompletableFuture;
 
 import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.backend.AudioDataSource;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.util.Util;
 
-class LocalAudioPlayer implements AudioPlayer {
+class LocalAudioPlayer extends AudioPlayer {
     private static final String LC = Util.getLogContext(LocalAudioPlayer.class);
 
     private enum MediaPlayerState {
@@ -121,9 +121,7 @@ class LocalAudioPlayer implements AudioPlayer {
 
     @Override
     public void setSource(AudioDataSource audioDataSource,
-                          MediaMetadataCompat meta,
-                          Runnable runWhenReady,
-                          Runnable runWhenEnded) {
+                          MediaMetadataCompat meta) {
         if (nextPlayer != null) {
             nextPlayer.release();
             nextPlayer = null;
@@ -136,11 +134,12 @@ class LocalAudioPlayer implements AudioPlayer {
                 player = null;
             }
             player = nextPlayer;
-            runWhenReady.run();
+            audioPlayerCallback.onMetaChanged(EntryID.from(meta));
+            audioPlayerCallback.onReady();
         });
         nextPlayer.mediaPlayer.setOnCompletionListener(mediaPlayer -> {
             nextPlayer.state = MediaPlayerState.PLAYBACK_COMPLETED;
-            runWhenEnded.run();
+            audioPlayerCallback.onEnded();
         });
         // TODO: Change to audioDataSource.buffer, and use a callback to play when buffered enough
         nextPlayer.audioDataSource.download(new AudioDataDownloadHandler() {
@@ -160,6 +159,7 @@ class LocalAudioPlayer implements AudioPlayer {
                 Log.e(LC, "nextPlayer download error: " + status);
             }
         });
+        audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_BUFFERING);
     }
 
     @Override
@@ -171,27 +171,27 @@ class LocalAudioPlayer implements AudioPlayer {
     }
 
     @Override
-    public CompletableFuture<Boolean> play() {
-        CompletableFuture<Boolean> ret = new CompletableFuture<>();
-        ret.complete(player != null && player.play());
-        return ret;
+    public void play() {
+        if (player != null && player.play()) {
+            audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_PLAYING);
+        }
     }
 
     @Override
-    public CompletableFuture<Boolean> pause() {
-        CompletableFuture<Boolean> ret = new CompletableFuture<>();
-        ret.complete(player != null && player.pause());
-        return ret;
+    public void pause() {
+        if (player != null && player.pause()) {
+            audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_PAUSED);
+        }
     }
 
     @Override
-    public CompletableFuture<Boolean> stop() {
+    public void stop() {
         if (nextPlayer != null) {
             nextPlayer.release();
             nextPlayer = null;
         }
-        CompletableFuture<Boolean> ret = new CompletableFuture<>();
-        ret.complete(player != null && player.stop());
-        return ret;
+        if (player != null && player.stop()) {
+            audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_STOPPED);
+        }
     }
 }

@@ -3,7 +3,10 @@ package se.splushii.dancingbunnies.musiclibrary;
 import android.os.Bundle;
 import android.support.v4.media.MediaBrowserCompat.MediaItem;
 import android.support.v4.media.MediaDescriptionCompat;
+import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat.QueueItem;
+
+import com.google.android.gms.cast.MediaMetadata;
 
 import org.apache.lucene.document.Document;
 
@@ -97,5 +100,17 @@ public class EntryID {
         String id = doc.get(Indexer.meta2fieldNameMap.get(Meta.METADATA_KEY_MEDIA_ID));
         LibraryEntry.EntryType type = LibraryEntry.EntryType.SONG;
         return new EntryID(src, id, type);
+    }
+
+    public static EntryID from(MediaMetadata castMeta) {
+        String src = castMeta.getString(Meta.METADATA_KEY_API);
+        String id = castMeta.getString(Meta.METADATA_KEY_MEDIA_ID);
+        LibraryEntry.EntryType type =
+                LibraryEntry.EntryType.valueOf(castMeta.getString(Meta.METADATA_KEY_TYPE));
+        return new EntryID(src, id, type);
+    }
+
+    public static EntryID from(MediaMetadataCompat meta) {
+        return EntryID.from(meta.getBundle());
     }
 }
