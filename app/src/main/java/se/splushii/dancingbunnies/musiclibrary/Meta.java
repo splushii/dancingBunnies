@@ -1,5 +1,7 @@
 package se.splushii.dancingbunnies.musiclibrary;
 
+import android.os.Bundle;
+import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.util.Log;
 
@@ -33,6 +35,14 @@ public class Meta {
         castMeta.putString(Meta.METADATA_KEY_MEDIA_ID, meta.getString(Meta.METADATA_KEY_MEDIA_ID));
         castMeta.putString(Meta.METADATA_KEY_TYPE, meta.getString(Meta.METADATA_KEY_TYPE));
         return castMeta;
+    }
+
+    public static MediaDescriptionCompat meta2desc(MediaMetadataCompat meta) {
+        MediaDescriptionCompat description = meta.getDescription();
+        Bundle extras = description.getExtras();
+        assert extras != null;
+        extras.putAll(EntryID.from(meta).toBundle());
+        return description;
     }
 
     public enum Type {

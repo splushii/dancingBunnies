@@ -25,9 +25,11 @@
     <string name="play">play</string>
     <string name="song_context_play">Play</string>
     <string name="song_context_queue">Queue</string>
-    <string name="search_hint">...</string>
+    <string name="search_hint">…</string>
     <string name="app_label">Dancing Bunnies</string>
     <string name="action_search">Search</string>
     <string name="song_info" />
     <string name="media_route_menu_title">Cast</string>
+    <string name="playlist_context_play">Play</string>
+    <string name="playlist_context_dequeue">Dequeue</string>
 </resources>

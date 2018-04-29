@@ -11,6 +11,8 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
+import java.util.List;
+
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -63,6 +65,10 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.addQueueItem(entryID.toMediaDescriptionCompat());
     }
 
+    public void dequeue(EntryID entryID) {
+        mediaController.removeQueueItem(entryID.toMediaDescriptionCompat());
+    }
+
     public void pause() {
         mediaController.getTransportControls().pause();
     }
@@ -75,8 +81,8 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.getTransportControls().skipToNext();
     }
 
-    public void skipTo(long queueItemId) {
-        mediaController.getTransportControls().skipToQueueItem(queueItemId);
+    public void skipTo(long position) {
+        mediaController.getTransportControls().skipToQueueItem(position);
     }
 
     private final MediaBrowserCompat.ConnectionCallback mediaBrowserConnectionCallback =
@@ -129,8 +135,12 @@ public abstract class AudioBrowserFragment extends Fragment {
                 public void onSessionReady() {
                     AudioBrowserFragment.this.onSessionReady();
                 }
-            };
 
+                @Override
+                public void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {
+                    AudioBrowserFragment.this.onQueueChanged(queue);
+                }
+            };
 
     protected void onPlaybackStateChanged(PlaybackStateCompat state) {
         Log.d(LC, "mediacontroller onplaybackstatechanged");
@@ -150,5 +160,9 @@ public abstract class AudioBrowserFragment extends Fragment {
 
     protected void onSessionReady() {
         Log.d(LC, "mediacontroller session ready");
+    }
+
+    protected void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {
+        Log.d(LC, "mediacontroller onQueueChanged");
     }
 }

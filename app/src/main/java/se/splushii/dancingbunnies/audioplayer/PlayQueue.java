@@ -5,17 +5,21 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat.QueueItem;
 import android.util.Log;
 
+import java.util.HashMap;
 import java.util.LinkedList;
 
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
 import se.splushii.dancingbunnies.util.Util;
 
 class PlayQueue {
     private static final String LC = Util.getLogContext(PlayQueue.class);
     private final MusicLibrary musicLibrary;
+    private HashMap<EntryID, QueueItem> itemMap;
+    private LinkedList<QueueItem> queue;
     private LinkedList<EntryID> entryQueue;
-    private int currentId;
+    private int currentPos;
 
     enum QueueOp {
         CURRENT,
@@ -25,56 +29,66 @@ class PlayQueue {
 
     PlayQueue(MusicLibrary musicLibrary) {
         this.musicLibrary = musicLibrary;
+        itemMap = new HashMap<>();
         entryQueue = new LinkedList<>();
-        currentId = 0;
+        queue = new LinkedList<>();
+        currentPos = 0;
     }
 
     LinkedList<QueueItem> addToQueue(EntryID entryID, QueueOp op) {
-        long id;
+        int pos;
         switch (op) {
             case CURRENT:
-                id = currentId;
+                pos = currentPos;
                 break;
             case NEXT:
-                id = currentId + 1;
+                pos = currentPos + 1;
                 break;
             default:
             case LAST:
-                id = entryQueue.size();
+                pos = entryQueue.size();
                 break;
         }
-        entryQueue.add((int) id, entryID);
-        Log.d(LC, entryQueue.toString());
+        MediaMetadataCompat meta = musicLibrary.getSongMetaData(entryID);
+        MediaDescriptionCompat description = Meta.meta2desc(meta);
+        QueueItem queueItem = new QueueItem(description, entryID.hashCode());
+        itemMap.put(entryID, queueItem);
+        queue.add(pos, queueItem);
+        entryQueue.add(pos, entryID);
+        Log.d(LC, queue.toString());
         Log.d(LC, "Added " + musicLibrary
                 .getSongMetaData(entryID)
                 .getDescription()
                 .getTitle() + " to queue.");
-        LinkedList<QueueItem> mediaSessionQueue = new LinkedList<>();
-        for (int i = 0; i < entryQueue.size(); i++) {
-            MediaMetadataCompat meta = musicLibrary.getSongMetaData(entryQueue.get(i));
-            MediaDescriptionCompat description = meta.getDescription();
-            QueueItem queueItem = new QueueItem(description, i);
-            mediaSessionQueue.add(queueItem);
+        return queue;
+    }
+
+    LinkedList<QueueItem> removeFromQueue(EntryID entryID) {
+        QueueItem queueItem = itemMap.remove(entryID);
+        if (queueItem == null) {
+            Log.w(LC, "Tried to remove queue item not in play queue.");
         }
-        return mediaSessionQueue;
+        queue.remove(queueItem);
+        entryQueue.remove(entryID);
+        return queue;
     }
 
     EntryID current() {
-        if (currentId < 0 || currentId >= entryQueue.size()) {
+        if (currentPos < 0 || currentPos >= entryQueue.size()) {
             return null;
         }
-        return entryQueue.get(currentId);
+        return entryQueue.get(currentPos);
     }
 
     EntryID next() {
         int maxId = entryQueue.size() - 1;
-        if (currentId <= maxId) {
-            currentId++;
+        if (currentPos <= maxId) {
+            currentPos++;
         }
-        if (currentId > maxId) {
+        if (currentPos > maxId) {
             return null;
         }
-        return entryQueue.get(currentId);
+        return entryQueue.get(currentPos);
     }
 
     EntryID skipTo(long queueItemId) {
@@ -83,17 +97,17 @@ class PlayQueue {
         if (qSize == 0 || queueItemId < 0 || queueItemId >= qSize) {
             return null;
         }
-        currentId = (int) queueItemId;
-        return entryQueue.get(currentId);
+        currentPos = (int) queueItemId;
+        return entryQueue.get(currentPos);
     }
 
     EntryID previous() {
-        if (currentId >= 0) {
-            currentId--;
+        if (currentPos >= 0) {
+            currentPos--;
         }
-        if (entryQueue.size() == 0 || currentId < 0) {
+        if (entryQueue.size() == 0 || currentPos < 0) {
             return null;
         }
-        return entryQueue.get(currentId);
+        return entryQueue.get(currentPos);
     }
 }

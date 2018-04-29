@@ -29,6 +29,7 @@ public class FastScrollerBubble extends LinearLayout {
         inflater.inflate(R.layout.fastscroller_bubble, this);
 
         text = findViewById(R.id.fastscroller_bubble_text);
+        setVisibility(INVISIBLE);
     }
 
     public void setText(String s) {

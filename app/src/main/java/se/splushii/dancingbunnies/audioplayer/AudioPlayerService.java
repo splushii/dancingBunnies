@@ -412,6 +412,11 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         mediaSession.setQueue(playQueue.addToQueue(entryID, op));
     }
 
+    private void onRemoveQueueItem(EntryID entryID) {
+        Log.d(LC, "onRemoveQueueItem");
+        mediaSession.setQueue(playQueue.removeFromQueue(entryID));
+    }
+
     @Subscribe
     public void onMessageEvent(LibraryEvent le) {
         Log.d(LC, "got library event");
@@ -432,33 +437,28 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private class AudioPlayerSessionCallback extends MediaSessionCompat.Callback {
         @Override
         public void onPlay() {
-            super.onPlay();
             AudioPlayerService.this.onPlay();
         }
 
         @Override
         public void onPause() {
-            super.onPause();
             AudioPlayerService.this.onPause();
         }
 
         @Override
         public void onPlayFromMediaId(String mediaId, Bundle extras) {
-            super.onPlayFromMediaId(mediaId, extras);
             AudioPlayerService.this.onAddQueueItem(EntryID.from(extras), PlayQueue.QueueOp.CURRENT);
             AudioPlayerService.this.prepareMedia(EntryID.from(extras), true);
         }
 
         @Override
         public void onPrepareFromMediaId(String mediaId, Bundle extras) {
-            super.onPrepareFromMediaId(mediaId, extras);
             AudioPlayerService.this.onAddQueueItem(EntryID.from(extras), PlayQueue.QueueOp.CURRENT);
             AudioPlayerService.this.prepareMedia(EntryID.from(extras), false);
         }
 
         @Override
         public void onAddQueueItem(MediaDescriptionCompat description) {
-            super.onAddQueueItem(description);
             AudioPlayerService.this.onAddQueueItem(
                     EntryID.from(description),
                     PlayQueue.QueueOp.LAST
@@ -466,26 +466,27 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         }
 
         @Override
+        public void onRemoveQueueItem(MediaDescriptionCompat description) {
+            AudioPlayerService.this.onRemoveQueueItem(EntryID.from(description));
+        }
+
+        @Override
         public void onSkipToNext() {
-            super.onSkipToNext();
             AudioPlayerService.this.onSkipToNext();
         }
 
         @Override
         public void onSkipToPrevious() {
-            super.onSkipToPrevious();
             AudioPlayerService.this.onSkipToPrevious();
         }
 
         @Override
         public void onSkipToQueueItem(long queueItemId) {
-            super.onSkipToQueueItem(queueItemId);
             AudioPlayerService.this.onSkipToQueueItem(queueItemId);
         }
 
         @Override
         public void onStop() {
-            super.onStop();
             AudioPlayerService.this.onStop();
         }
     }

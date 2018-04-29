@@ -32,6 +32,11 @@ public class EntryID {
     }
 
     @Override
+    public int hashCode() {
+        return key().hashCode();
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;
