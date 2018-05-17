@@ -10,12 +10,10 @@ import java.util.LinkedList;
 
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
 import se.splushii.dancingbunnies.util.Util;
 
 class PlayQueue {
     private static final String LC = Util.getLogContext(PlayQueue.class);
-    private final MusicLibrary musicLibrary;
     private HashMap<EntryID, QueueItem> itemMap;
     private LinkedList<QueueItem> queue;
     private LinkedList<EntryID> entryQueue;
@@ -27,15 +25,14 @@ class PlayQueue {
         LAST
     }
 
-    PlayQueue(MusicLibrary musicLibrary) {
-        this.musicLibrary = musicLibrary;
+    PlayQueue() {
         itemMap = new HashMap<>();
         entryQueue = new LinkedList<>();
         queue = new LinkedList<>();
         currentPos = 0;
     }
 
-    LinkedList<QueueItem> addToQueue(EntryID entryID, QueueOp op) {
+    LinkedList<QueueItem> addToQueue(EntryID entryID, MediaMetadataCompat meta, QueueOp op) {
         int pos;
         switch (op) {
             case CURRENT:
@@ -49,24 +46,26 @@ class PlayQueue {
                 pos = entryQueue.size();
                 break;
         }
-        MediaMetadataCompat meta = musicLibrary.getSongMetaData(entryID);
         MediaDescriptionCompat description = Meta.meta2desc(meta);
         QueueItem queueItem = new QueueItem(description, entryID.hashCode());
         itemMap.put(entryID, queueItem);
         queue.add(pos, queueItem);
         entryQueue.add(pos, entryID);
         Log.d(LC, queue.toString());
-        Log.d(LC, "Added " + musicLibrary
-                .getSongMetaData(entryID)
-                .getDescription()
-                .getTitle() + " to queue.");
+        Log.d(LC, "Added " + meta.getDescription().getTitle() + " to queue.");
         return queue;
     }
 
     LinkedList<QueueItem> removeFromQueue(EntryID entryID) {
         QueueItem queueItem = itemMap.remove(entryID);
         if (queueItem == null) {
-            Log.w(LC, "Tried to remove queue item not in play queue.");
+            Log.w(LC, "Tried to remove queue item not in play queue: " + entryID.toString());
+            for(EntryID e: itemMap.keySet()) {
+                Log.w(LC, e.toString());
+            }
+            if (itemMap.containsKey(entryID)) {
+                Log.w(LC, "but contains key...");
+            }
         }
         queue.remove(queueItem);
         entryQueue.remove(entryID);

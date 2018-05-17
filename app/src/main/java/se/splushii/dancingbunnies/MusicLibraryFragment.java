@@ -17,17 +17,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
-
 import java.util.LinkedList;
 import java.util.List;
 
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
-import se.splushii.dancingbunnies.events.LibraryChangedEvent;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
-import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.FastScrollerBubble;
@@ -56,7 +51,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     public void onStart() {
         super.onStart();
         refreshView(currentLibraryView);
-        EventBus.getDefault().register(this);
         Log.d(LC, "onStart");
     }
 
@@ -68,24 +62,18 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                     currentLibraryView.query,
                     recViewAdapter.getCurrentPosition());
         }
-        EventBus.getDefault().unregister(this);
         super.onStop();
     }
 
-    @Subscribe
-    public void onMessageEvent(LibraryChangedEvent lce) {
-        Log.d(LC, "got LibraryChangedEvent");
+    @Override
+    protected void onMediaBrowserConnected() {
         refreshView(currentLibraryView);
     }
 
     public void refreshView(final LibraryView libView) {
         if (libView == null) {
-            EntryID entryID = new EntryID(
-                    MusicLibraryQuery.API_ANY,
-                    AudioPlayerService.MEDIA_ID_ROOT,
-                    LibraryEntry.EntryType.ANY
-            );
-            MusicLibraryQuery query = new MusicLibraryQuery(entryID);
+            MusicLibraryQuery query = new MusicLibraryQuery();
+            query.addToQuery(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_ARTIST);
             refreshView(new LibraryView(query, 0, 0));
             return;
         }
@@ -180,28 +168,18 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         fab_sort_artist.setOnClickListener(view -> {
             Snackbar.make(view, "Artist view", Snackbar.LENGTH_LONG)
                     .setAction("Action", null).show();
-            refreshView(new LibraryView(
-                    new MusicLibraryQuery(
-                            new EntryID(
-                                    MusicLibraryQuery.API_ANY,
-                                    AudioPlayerService.MEDIA_ID_ARTIST_ROOT,
-                                    LibraryEntry.EntryType.ANY
-                            )
-                    ), 0, 0));
+            MusicLibraryQuery query = new MusicLibraryQuery();
+            query.addToQuery(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_ARTIST);
+            refreshView(new LibraryView(query, 0, 0));
             setFabVisibility(View.GONE);
         });
 
         fab_sort_song.setOnClickListener(view -> {
             Snackbar.make(view, "Song view", Snackbar.LENGTH_LONG)
                     .setAction("Action", null).show();
-            refreshView(new LibraryView(
-                    new MusicLibraryQuery(
-                            new EntryID(
-                                    MusicLibraryQuery.API_ANY,
-                                    AudioPlayerService.MEDIA_ID_SONG_ROOT,
-                                    LibraryEntry.EntryType.ANY
-                            )
-                    ), 0, 0));
+            MusicLibraryQuery query = new MusicLibraryQuery();
+            query.addToQuery(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_MEDIA_ID);
+            refreshView(new LibraryView(query, 0, 0));
             setFabVisibility(View.GONE);
         });
 
@@ -251,7 +229,24 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                         recViewAdapter.getCurrentPosition()
                 )
         );
-        MusicLibraryQuery query = new MusicLibraryQuery(entryID);
+        MusicLibraryQuery query;
+        switch (entryID.type) {
+            case Meta.METADATA_KEY_ARTIST:
+                query = new MusicLibraryQuery();
+                query.addToQuery(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_ALBUM);
+                query.addToQuery(Meta.METADATA_KEY_ARTIST, entryID.id);
+                break;
+            case Meta.METADATA_KEY_ALBUM:
+                query = new MusicLibraryQuery(currentLibraryView.query);
+                query.addToQuery(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_MEDIA_ID);
+                if (entryID.id != null) {
+                    query.addToQuery(Meta.METADATA_KEY_ALBUM, entryID.id);
+                }
+                break;
+            default:
+                query = new MusicLibraryQuery();
+                break;
+        }
         refreshView(new LibraryView(query, 0, 0));
     }
 }

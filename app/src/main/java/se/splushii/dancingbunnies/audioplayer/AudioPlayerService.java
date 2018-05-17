@@ -4,11 +4,14 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.media.session.PlaybackState;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.ResultReceiver;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
@@ -25,21 +28,18 @@ import android.util.Log;
 
 import com.google.android.gms.cast.framework.CastContext;
 
-import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
-
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.backend.AudioDataSource;
-import se.splushii.dancingbunnies.events.LibraryEvent;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -55,11 +55,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static final float PLAYBACK_SPEED_PAUSED = 0f;
     private static final float PLAYBACK_SPEED_PLAYING = 1f;
     public static final String MEDIA_ID_ROOT = "dancingbunnies.media.id.root";
-    public static final String MEDIA_ID_ARTIST_ROOT = "dancingbunnies.media.id.root.artist";
-    public static final String MEDIA_ID_ALBUM_ROOT = "dancingbunnies.media.id.root.album";
-    public static final String MEDIA_ID_SONG_ROOT = "dancingbunnies.media.id.root.song";
 
-    private MusicLibrary musicLibrary;
     private AudioPlayer audioPlayer;
     private AudioPlayer.AudioPlayerCallback audioPlayerCallback;
     private LocalAudioPlayer localAudioPlayer;
@@ -69,6 +65,25 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private PlaybackStateCompat.Builder playbackStateBuilder;
     private PlaybackStateCompat playbackState;
     private boolean playWhenReady;
+    private String currentParentId = MEDIA_ID_ROOT;
+
+    private MusicLibraryService musicLibraryService;
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.d(LC, "Connected MusicLibraryService");
+            MusicLibraryService.MusicLibraryBinder binder = (MusicLibraryService.MusicLibraryBinder) service;
+            musicLibraryService = binder.getService();
+            setupMediaSession();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            musicLibraryService = null;
+            Log.d(LC, "Disconnected from MusicLibraryService");
+        }
+    };
+
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -87,37 +102,22 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     @Override
     public void onLoadChildren(@NonNull String parentId, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
         Bundle options = new Bundle();
-        options.putString(Meta.METADATA_KEY_API, MusicLibraryQuery.API_ANY);
         onLoadChildren(parentId, result, options);
     }
 
     @Override
     public void onLoadChildren(@NonNull String parentId, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result, @NonNull Bundle options) {
         List<MediaBrowserCompat.MediaItem> mediaItems = new ArrayList<>();
-        ArrayList<? extends LibraryEntry> libraryEntries;
-        Log.d(LC, "Total songs: " + musicLibrary.songs().size()
-                + ", albums: " + musicLibrary.albums().size()
-                + ", artists: " + musicLibrary.artists().size());
+        // TODO: Put EntryID.key() in parentId. Make a EntryID.from(key).
+        // Make a EntryID.toMusicLibraryQueryOptions()
+        // parentId is now usable!
         Log.d(LC, "onLoadChildren parentId: " + parentId);
-        switch(parentId) {
-            case MEDIA_ID_SONG_ROOT:
-                libraryEntries = musicLibrary.songs();
-                break;
-            case MEDIA_ID_ALBUM_ROOT:
-                libraryEntries = musicLibrary.albums();
-                break;
-            case MEDIA_ID_ARTIST_ROOT:
-            case MEDIA_ID_ROOT:
-                libraryEntries = musicLibrary.artists();
-                break;
-            default:
-                MusicLibraryQuery query = MusicLibraryQuery.generateMusicLibraryQuery(parentId, options);
-                libraryEntries = musicLibrary.getSubscriptionEntries(query);
-                break;
-        }
-        Log.d(LC, "onLoadChildren entries: " + libraryEntries.size());
-        for (LibraryEntry e: libraryEntries) {
-            MediaBrowserCompat.MediaItem item = generateMediaItem(e);
+        currentParentId = parentId;
+        List<LibraryEntry> entries = musicLibraryService.getSubscriptionEntries(new MusicLibraryQuery(options));
+        Log.d(LC, "onLoadChildren entries: " + entries.size());
+        Collections.sort(entries);
+        for (LibraryEntry entry: entries) {
+            MediaBrowserCompat.MediaItem item = generateMediaItem(entry);
             mediaItems.add(item);
         }
         Log.d(LC, "onLoadChildren mediaItems: " + mediaItems.size());
@@ -127,31 +127,28 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     @Override
     public void onSearch(@NonNull String query, Bundle extras, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
         List<MediaBrowserCompat.MediaItem> mediaItems = new ArrayList<>();
-        ArrayList<? extends LibraryEntry> libraryEntries = musicLibrary.getSearchEntries(query);
-        for (LibraryEntry e: libraryEntries) {
-            MediaBrowserCompat.MediaItem item = generateMediaItem(e);
+        List<LibraryEntry> entries = musicLibraryService.getSearchEntries(query);
+        Collections.sort(entries);
+        for (LibraryEntry entry: entries) {
+            MediaBrowserCompat.MediaItem item = generateMediaItem(entry);
             mediaItems.add(item);
         }
         result.sendResult(mediaItems);
     }
 
-    private MediaBrowserCompat.MediaItem generateMediaItem(LibraryEntry e) {
-        Bundle b = EntryID.from(e).toBundle();
+    private MediaBrowserCompat.MediaItem generateMediaItem(LibraryEntry entry) {
+        EntryID entryID = entry.entryID;
         MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
-                .setMediaId(e.id())
-                .setExtras(b)
-                .setTitle(e.name())
+                .setMediaId(entryID.key())
+                .setExtras(entryID.toBundle())
+                .setTitle(entry.name())
                 .build();
         int flags = MediaBrowserCompat.MediaItem.FLAG_PLAYABLE;
-        switch(e.type()) {
-            case ALBUM:
-            case ARTIST:
-                flags |= MediaBrowserCompat.MediaItem.FLAG_BROWSABLE;
-                break;
-            case SONG:
+        switch(entryID.type) {
+            case Meta.METADATA_KEY_MEDIA_ID:
                 break;
             default:
-                Log.w(LC, "onLoadChildren: unhandled LibraryEntry type: " + e.type());
+                flags |= MediaBrowserCompat.MediaItem.FLAG_BROWSABLE;
                 break;
         }
         return new MediaBrowserCompat.MediaItem(desc, flags);
@@ -167,9 +164,13 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public void onCreate() {
         super.onCreate();
 
-        musicLibrary = new MusicLibrary(this);
+        bindService(
+                new Intent(this, MusicLibraryService.class),
+                serviceConnection,
+                Context.BIND_AUTO_CREATE
+        );
+
         Log.d(LC, "onCreate");
-        EventBus.getDefault().register(this);
 
         localAudioPlayer = new LocalAudioPlayer();
         audioPlayer = localAudioPlayer;
@@ -192,8 +193,19 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         });
         castAudioPlayer.onCreate();
 
-        playQueue = new PlayQueue(musicLibrary);
+        playQueue = new PlayQueue();
 
+        NotificationChannel notificationChannel = new NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                NOTIFICATION_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_LOW
+        );
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        assert notificationManager != null;
+        notificationManager.createNotificationChannel(notificationChannel);
+    }
+
+    private void setupMediaSession() {
         mediaSession = new MediaSessionCompat(this, "AudioPlayerService");
         setSessionToken(mediaSession.getSessionToken());
         mediaSession.setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS
@@ -211,24 +223,14 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         mediaSession.setPlaybackState(playbackState);
         mediaSession.setCallback(new AudioPlayerSessionCallback());
 
-        Context context = getApplicationContext();
-        Intent intent = new Intent(context, MainActivity.class);
+        Intent intent = new Intent(this, MainActivity.class);
         intent.putExtra(MainActivity.PAGER_SELECTION, MainActivity.PAGER_NOWPLAYING);
-        PendingIntent pi = PendingIntent.getActivity(context, 99 /*request code*/,
+        PendingIntent pi = PendingIntent.getActivity(this, 99 /*request code*/,
                 intent, PendingIntent.FLAG_UPDATE_CURRENT);
         mediaSession.setSessionActivity(pi);
         mediaSession.setMetadata(Meta.UNKNOWN_ENTRY);
 
         mediaSession.setQueue(new LinkedList<>());
-
-        NotificationChannel notificationChannel = new NotificationChannel(
-                NOTIFICATION_CHANNEL_ID,
-                NOTIFICATION_CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW
-        );
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        assert notificationManager != null;
-        notificationManager.createNotificationChannel(notificationChannel);
     }
 
     private void setAudioPlayer(AudioPlayerType audioPlayerType) {
@@ -258,8 +260,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             return;
         }
         audioPlayer.setSource(
-                musicLibrary.getAudioData(entryID),
-                musicLibrary.getSongMetaData(entryID)
+                musicLibraryService.getAudioData(entryID),
+                musicLibraryService.getSongMetaData(entryID)
         );
         switch (playbackState.getState()) {
             case PlaybackState.STATE_PLAYING:
@@ -275,8 +277,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public void onDestroy() {
         Log.d(LC, "onDestroy");
         castAudioPlayer.onDestroy();
-        musicLibrary.onDestroy();
-        EventBus.getDefault().unregister(this);
+        unbindService(serviceConnection);
+        musicLibraryService = null;
+        mediaSession.release();
         super.onDestroy();
     }
 
@@ -373,8 +376,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             this.playWhenReady = true;
         }
         Log.d(LC, "prepareMedia");
-        final AudioDataSource audioDataSource = musicLibrary.getAudioData(entryID);
-        MediaMetadataCompat meta = musicLibrary.getSongMetaData(entryID);
+        final AudioDataSource audioDataSource = musicLibraryService.getAudioData(entryID);
+        MediaMetadataCompat meta = musicLibraryService.getSongMetaData(entryID);
         audioPlayer.setSource(audioDataSource, meta);
     }
 
@@ -409,29 +412,13 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void onAddQueueItem(EntryID entryID, PlayQueue.QueueOp op) {
         Log.d(LC, "onAddQueueItem");
-        mediaSession.setQueue(playQueue.addToQueue(entryID, op));
+        MediaMetadataCompat meta = musicLibraryService.getSongMetaData(entryID);
+        mediaSession.setQueue(playQueue.addToQueue(entryID, meta, op));
     }
 
     private void onRemoveQueueItem(EntryID entryID) {
         Log.d(LC, "onRemoveQueueItem");
         mediaSession.setQueue(playQueue.removeFromQueue(entryID));
-    }
-
-    @Subscribe
-    public void onMessageEvent(LibraryEvent le) {
-        Log.d(LC, "got library event");
-        switch (le.action) {
-            case FETCH_LIBRARY:
-                musicLibrary.fetchAPILibrary(le.api, le.handler);
-                Log.d(LC, "Library fetched from " + le.api + "!");
-                break;
-            case FETCH_PLAYLISTS:
-                musicLibrary.fetchPlayLists(le.api, le.handler);
-                break;
-            default:
-                Log.w(LC, "Unhandled LibraryEvent action: " + le.action);
-                break;
-        }
     }
 
     private class AudioPlayerSessionCallback extends MediaSessionCompat.Callback {
@@ -488,6 +475,11 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onStop() {
             AudioPlayerService.this.onStop();
+        }
+
+        @Override
+        public void onCommand(String command, Bundle extras, ResultReceiver cb) {
+            cb.send(0, null);
         }
     }
 
@@ -560,7 +552,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         @Override
         public void onMetaChanged(EntryID entryID) {
-            MediaMetadataCompat meta = musicLibrary.getSongMetaData(entryID);
+            MediaMetadataCompat meta = musicLibraryService.getSongMetaData(entryID);
             mediaSession.setMetadata(meta);
         }
     }

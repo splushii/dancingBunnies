@@ -1,5 +1,7 @@
 package se.splushii.dancingbunnies.search;
 
+import android.util.Log;
+
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -18,18 +20,30 @@ import org.apache.lucene.util.Version;
 import java.io.File;
 import java.io.IOException;
 
+import se.splushii.dancingbunnies.util.Util;
+
 // TODO: Properly handle exceptions
 public class Searcher {
+    private static final String LC = Util.getLogContext(Searcher.class);
+    private final File indexDirectoryPath;
+
     private QueryParser queryParser;
     private IndexSearcher indexSearcher;
 
     public Searcher(File indexDirectoryPath) {
+        this.indexDirectoryPath = indexDirectoryPath;
+    }
+
+    public boolean initialize() {
+        if (indexSearcher != null && queryParser != null) {
+            return true;
+        }
         IndexReader indexReader;
         try {
             indexReader = DirectoryReader.open(FSDirectory.open(indexDirectoryPath));
         } catch (IOException e) {
-            e.printStackTrace();
-            return;
+            Log.e(LC, e.getMessage());
+            return false;
         }
         indexSearcher = new IndexSearcher(indexReader);
         Analyzer analyzer = new StandardAnalyzer(Indexer.LUCENE_VERSION);
@@ -43,14 +57,18 @@ public class Searcher {
                 defaultFields,
                 analyzer
         );
+        return true;
     }
 
     public TopDocs search(String queryString) {
+        if (queryParser == null || indexSearcher == null) {
+            return null;
+        }
         Query query;
         try {
             query = queryParser.parse(queryString);
         } catch (ParseException e) {
-            e.printStackTrace();
+            Log.e(LC, e.getMessage());
             return null;
         }
         TopDocs topDocs;
@@ -58,17 +76,20 @@ public class Searcher {
             // TODO: Add possibility to drag for more results than 100
             topDocs = indexSearcher.search(query, 100);
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e(LC, e.getMessage());
             return null;
         }
         return topDocs;
     }
 
     public Document getDocument(ScoreDoc sd) {
+        if (indexSearcher == null) {
+            return null;
+        }
         try {
             return indexSearcher.doc(sd.doc);
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e(LC, e.getMessage());
         }
         return null;
     }

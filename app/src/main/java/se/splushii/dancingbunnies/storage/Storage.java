@@ -6,6 +6,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.Bundle;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.RatingCompat;
 import android.util.ArrayMap;
@@ -13,10 +14,13 @@ import android.util.Log;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.Song;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.util.Util;
 
 public class Storage {
@@ -52,21 +56,20 @@ public class Storage {
         }
     }
 
-    public void insertSongs(ArrayList<Song> songs) {
+    public void insertSongs(List<MediaMetadataCompat> metaList) {
         long start = System.currentTimeMillis();
         Log.d(LC, "insertSongs start");
         database.beginTransaction();
-        for (Song song: songs) {
-            insertSong(song);
+        for (MediaMetadataCompat meta: metaList) {
+            insertSong(meta);
         }
         database.setTransactionSuccessful();
         database.endTransaction();
         Log.d(LC, "insertSongs finish " + (System.currentTimeMillis() - start));
     }
 
-    private void insertSong(Song song) {
+    private void insertSong(MediaMetadataCompat meta) {
         ContentValues c = new ContentValues();
-        MediaMetadataCompat meta = song.meta();
         for (String key: meta.keySet()) {
             Meta.Type type = Meta.getType(key);
             switch (type) {
@@ -103,6 +106,152 @@ public class Storage {
         database.replace(DB.SONG_TABLE_NAME, null, c);
     }
 
+    public MediaMetadataCompat getMetadataEntry(EntryID entryID) {
+        long start = System.currentTimeMillis();
+        Log.d(LC, "getMetadataEntry start");
+        Cursor cursor = getBundleQueryCursor(entryID.toBundleQuery());
+        List<MediaMetadataCompat> list = getMetaFromCursor(cursor);
+        cursor.close();
+        Log.d(LC, "getMetadataEntry finish " + (System.currentTimeMillis() - start));
+        if (list.isEmpty()) {
+            return null;
+        }
+        if (list.size() > 1) {
+            Log.e(LC, "getMetadataEntry returned more than one result!");
+        }
+        return list.get(0);
+    }
+
+    private Cursor getBundleQueryCursor(Bundle bundleQuery) {
+        if (bundleQuery == null || bundleQuery.isEmpty()) {
+            return database.rawQuery("SELECT * FROM " + DB.SONG_TABLE_NAME, null);
+        }
+        StringBuilder query = new StringBuilder("SELECT * FROM " + DB.SONG_TABLE_NAME + " WHERE ");
+        String args[] = new String[bundleQuery.size()];
+        int index = 0;
+        for (String key: bundleQuery.keySet()) {
+            if (Meta.METADATA_KEY_TYPE.equals(key)) {
+
+            }
+            switch (Meta.getType(key)) {
+                case LONG:
+                    args[index] = Long.toString(bundleQuery.getLong(key));
+                    break;
+                case STRING:
+                    args[index] = bundleQuery.getString(key);
+                    break;
+                case BITMAP:
+                case RATING:
+                    Log.e(LC, "Unsupported bundleQuery type: " + Meta.getType(key).name());
+                    continue;
+            }
+            if (index != 0) {
+                query.append(" AND ");
+            }
+            query.append(DB.Keyify(key)).append("=?");
+            index++;
+        }
+        return database.rawQuery(query.toString(), args);
+    }
+
+    public List<MediaMetadataCompat> getMetadataEntries(Bundle bundleQuery) {
+        long start = System.currentTimeMillis();
+        Log.d(LC, "getMetadataEntries bundleQuery start");
+        Cursor cursor = getBundleQueryCursor(bundleQuery);
+        List<MediaMetadataCompat> list = getMetaFromCursor(cursor);
+        cursor.close();
+        Log.d(LC, "getMetadataEntries bundleQuery finish " + (System.currentTimeMillis() - start));
+        return list;
+    }
+
+    public List<LibraryEntry> getEntries(Bundle bundleQuery) {
+        long start = System.currentTimeMillis();
+        Log.d(LC, "getEntries metaKey start");
+        String metaKey = Meta.METADATA_KEY_MEDIA_ID;
+        if (bundleQuery.containsKey(Meta.METADATA_KEY_TYPE)) {
+            String type = bundleQuery.getString(Meta.METADATA_KEY_TYPE);
+            if (type != null) {
+                metaKey = type;
+            }
+        }
+        ArrayList<LibraryEntry> list = new ArrayList<>();
+        Cursor cursor = getBundleQuerySelect(bundleQuery);
+        Log.i(LC, "Entries in '" + metaKey + "' column: " + cursor.getCount());
+        int srcIndex = cursor.getColumnIndex(DB.Keyify(Meta.METADATA_KEY_API));
+        int metaKeyIndex = cursor.getColumnIndex(DB.Keyify(metaKey));
+        int nameKeyIndex = Meta.METADATA_KEY_MEDIA_ID.equals(metaKey) ?
+                cursor.getColumnIndex(DB.Keyify(Meta.METADATA_KEY_TITLE)) : metaKeyIndex;
+        if (cursor.moveToFirst()) {
+            while (!cursor.isAfterLast()) {
+                String src = Meta.METADATA_KEY_MEDIA_ID.equals(metaKey) ?
+                        cursor.getString(srcIndex) : MusicLibraryService.API_ID_DANCINGBUNNIES;
+                String id = cursor.getString(metaKeyIndex);
+                String name = cursor.getString(nameKeyIndex);
+                list.add(new LibraryEntry(
+                        new EntryID(
+                                src,
+                                id,
+                                metaKey
+                        ), name
+                ));
+                cursor.moveToNext();
+            }
+        }
+        cursor.close();
+        Log.d(LC, "getEntries metaKey finish " + (System.currentTimeMillis() - start));
+        return list;
+    }
+
+    private Cursor getBundleQuerySelect(Bundle bundleQuery) {
+        if (bundleQuery == null || bundleQuery.isEmpty()) {
+            return database.rawQuery("SELECT * FROM " + DB.SONG_TABLE_NAME, null);
+        }
+        String metaKey = Meta.METADATA_KEY_MEDIA_ID;
+        if (bundleQuery.containsKey(Meta.METADATA_KEY_TYPE)) {
+            String type = bundleQuery.getString(Meta.METADATA_KEY_TYPE);
+            bundleQuery.remove(Meta.METADATA_KEY_TYPE);
+            if (type != null) {
+                metaKey = type;
+            }
+        }
+        StringBuilder query = new StringBuilder();
+        if (Meta.METADATA_KEY_MEDIA_ID.equals(metaKey)) {
+            query.append("SELECT * FROM " + DB.SONG_TABLE_NAME);
+        } else {
+            query.append("SELECT DISTINCT ");
+            query.append(DB.Keyify(metaKey));
+            query.append(" FROM ").append(DB.SONG_TABLE_NAME);
+        }
+        ArrayList<String> args = new ArrayList<>();
+        if (!bundleQuery.isEmpty()) {
+            query.append(" WHERE ");
+            int index = 0;
+            for (String key : bundleQuery.keySet()) {
+                if (Meta.METADATA_KEY_TYPE.equals(key)) {
+                    continue;
+                }
+                switch (Meta.getType(key)) {
+                    case LONG:
+                        args.add(Long.toString(bundleQuery.getLong(key)));
+                        break;
+                    case STRING:
+                        args.add(bundleQuery.getString(key));
+                        break;
+                    case BITMAP:
+                    case RATING:
+                        Log.e(LC, "Unsupported bundleQuery type: " + Meta.getType(key).name());
+                        continue;
+                }
+                if (index != 0) {
+                    query.append(" AND ");
+                }
+                query.append(DB.Keyify(key)).append("=?");
+                index++;
+            }
+        }
+        return database.rawQuery(query.toString(), args.toArray(new String[0]));
+    }
+
     private class ColumnIndexCache {
         private ArrayMap<String, Integer> mMap = new ArrayMap<>();
 
@@ -117,13 +266,10 @@ public class Storage {
         }
     }
 
-    public ArrayList<MediaMetadataCompat> getAll() {
-        long start = System.currentTimeMillis();
-        Log.d(LC, "getAll start");
+    private List<MediaMetadataCompat> getMetaFromCursor(Cursor cursor) {
         ColumnIndexCache cache = new ColumnIndexCache();
-        ArrayList<MediaMetadataCompat> list = new ArrayList<>();
-        Cursor cursor = database.rawQuery("SELECT * FROM " + DB.SONG_TABLE_NAME, null);
-        Log.i(LC, "Entries in 'songs' table: " + cursor.getCount());
+        LinkedList<MediaMetadataCompat> list = new LinkedList<>();
+        Log.i(LC, "Cursor entries: " + cursor.getCount());
         if (cursor.moveToFirst()) {
             while (!cursor.isAfterLast()) {
                 MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder();
@@ -166,14 +312,13 @@ public class Storage {
                             break;
                     }
                 }
-                b.putString(Meta.METADATA_KEY_TYPE, LibraryEntry.EntryType.SONG.name());
+                b.putString(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_MEDIA_ID);
                 list.add(b.build());
                 cursor.moveToNext();
             }
         }
         cache.clear();
         cursor.close();
-        Log.d(LC, "getAll finish " + (System.currentTimeMillis() - start));
         return list;
     }
 

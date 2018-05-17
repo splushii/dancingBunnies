@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.util.HashMap;
 
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.Song;
 import se.splushii.dancingbunnies.util.Util;
 
 // TODO: Properly handle exceptions
@@ -70,9 +69,9 @@ public class Indexer {
                 String fieldName = meta2fieldNameMap.get(key);
                 // TODO: FIXME: Not everything is a string...
                 String fieldValue = meta.getString(key);
-                Field.Store store =
-                        key.equals(Meta.METADATA_KEY_MEDIA_ID)
-                        || key.equals(Meta.METADATA_KEY_API) ?
+                Field.Store store = key.equals(Meta.METADATA_KEY_MEDIA_ID)
+                        || key.equals(Meta.METADATA_KEY_API)
+                        || key.equals(Meta.METADATA_KEY_TITLE) ?
                         Field.Store.YES : Field.Store.NO;
                 Field field = new TextField(fieldName, fieldValue, store);
                 doc.add(field);
@@ -92,9 +91,5 @@ public class Indexer {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public int indexSong(Song s) {
-        return indexSong(s.meta());
     }
 }

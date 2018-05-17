@@ -15,7 +15,7 @@ import java.util.List;
 
 import se.splushii.dancingbunnies.MainActivity;
 
-class CastOptionsProvider implements OptionsProvider {
+public class CastOptionsProvider implements OptionsProvider {
     @Override
     public CastOptions getCastOptions(Context context) {
         List<String> buttonActions = new ArrayList<>();

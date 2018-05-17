@@ -11,37 +11,29 @@ import android.util.Log;
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
 
-import org.greenrobot.eventbus.EventBus;
-
-import org.greenrobot.eventbus.Subscribe;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import cz.msebera.android.httpclient.Header;
-import java8.util.Optional;
-import java8.util.concurrent.CompletableFuture;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.events.SubsonicRequestFailEvent;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.util.Util;
 
 public class SubsonicAPIClient extends APIClient {
-    private static String LC = Util.getLogContext(SubsonicAPIClient.class);
+    private static final String LC = Util.getLogContext(SubsonicAPIClient.class);
     private static final Integer REQ_RETRY_COUNT = 3;
     private HashMap<String, Integer> retries;
 
@@ -94,16 +86,15 @@ public class SubsonicAPIClient extends APIClient {
     private static final String JSON_MUSIC_FOLDERS = "musicFolders";
     private static final String JSON_MUSIC_FOLDER = "musicFolder";
     private static final String JSON_DIRECTORY = "directory";
-
-    private static final String status_ok = "ok";
+    private static final String STATUS_OK = "ok";
 
     private String username = "";
     private String password = "";
     private String baseURL = "";
-    private static final String version = "1.15.0";
-    private static final String[] supported_versions = {"1.15.0", "1.16.0"};
-    private static final String clientId = "dancingbunnies";
-    private static final String format = "json";
+    private static final String VERSION = "1.15.0";
+    private static final String[] SUPPORTED_VERSIONS = {"1.15.0", "1.16.0"};
+    private static final String CLIENT_ID = "dancingbunnies";
+    private static final String FORMAT = "json";
 
     private SecureRandom rand;
     private HTTPClient httpClient;
@@ -115,52 +106,47 @@ public class SubsonicAPIClient extends APIClient {
         } catch (NoSuchAlgorithmException e) {
             Log.d(LC, "SHA1PRNG not supported");
             e.printStackTrace();
-            // TODO
+            // TODO(kringlan): do stuff here.
         }
         this.httpClient = new HTTPClient();
         httpClient.setRetries(AsyncHttpClient.DEFAULT_MAX_RETRIES * 10,
                 AsyncHttpClient.DEFAULT_RETRY_SLEEP_TIME_MILLIS);
-        EventBus.getDefault().register(this);
     }
 
-    public void destroy() {
-        EventBus.getDefault().unregister(this);
-        // TODO: some more cleanup?
-    }
-
-    @Subscribe
-    public void onMessageEvent(final SubsonicRequestFailEvent e) {
-        Integer retryCount;
-        if ((retryCount = retries.get(e.query)) == null) {
-            retryCount = 1;
-        }
-        final CompletableFuture<Void> pastReq = e.req;
-        String status = "SubsonicRequestFailEvent:\ntype: " + e.type + "\nquery: " + e.query;
+    private void onRequestFail(RequestType type,
+                               final CompletableFuture<Void> pastReq,
+                               String query,
+                               String musicFolder,
+                               String errorMsg,
+                               ConcurrentLinkedQueue<MediaMetadataCompat> metaList,
+                               APIClientRequestHandler handler) {
+        int retryCount = retries.getOrDefault(query, 1);
+        String status = "Request failed:\ntype: " + type + "\nquery: " + query;
         if (retryCount > REQ_RETRY_COUNT) {
             Log.d(LC,  status + " No more retries.");
-            retries.remove(e.query);
+            retries.remove(query);
             pastReq.complete(null);
             return;
         }
-        retries.put(e.query, retryCount + 1);
+        retries.put(query, retryCount + 1);
         Log.d(LC, status + "\nRetry " + retryCount + "/" + REQ_RETRY_COUNT);
-        CompletableFuture<Void> req;
-        switch(e.type) {
+        CompletableFuture<Void> newReq;
+        switch(type) {
             case GET_INDEXES:
-                req = getIndexesQuery(e.query, e.musicFolder, e.metaList, e.handler);
+                newReq = getIndexesQuery(query, musicFolder, metaList, handler);
                 break;
             case GET_MUSIC_FOLDERS:
-                req = getMusicFoldersQuery(e.query, e.metaList, e.handler);
+                newReq = getMusicFoldersQuery(query, metaList, handler);
                 break;
             case GET_MUSIC_DIRECTORY:
-                req = getMusicDirectoryQuery(e.query, e.musicFolder, e.metaList, e.handler);
+                newReq = getMusicDirectoryQuery(query, musicFolder, metaList, handler);
                 break;
             default:
-                req = new CompletableFuture<>();
-                req.complete(null);
+                newReq = new CompletableFuture<>();
+                newReq.complete(null);
                 break;
         }
-        req.thenRun(() -> pastReq.complete(null));
+        newReq.thenRun(() -> pastReq.complete(null));
     }
 
     public void ping(AsyncHttpResponseHandler handler) {
@@ -214,9 +200,14 @@ public class SubsonicAPIClient extends APIClient {
             @Override
             public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
                 HashMap<String, String> values = new HashMap<>();
-                EventBus.getDefault().post(new SubsonicRequestFailEvent(
-                        RequestType.GET_MUSIC_FOLDERS, ret, query, "", error.getMessage(),
-                        metaList, handler));
+                onRequestFail(
+                        RequestType.GET_MUSIC_FOLDERS,
+                        ret,
+                        query,
+                        "",
+                        error.getMessage(),
+                        metaList, handler
+                );
             }
 
             @Override
@@ -238,7 +229,7 @@ public class SubsonicAPIClient extends APIClient {
                         .thenRun(() -> indexReq.complete(null));
             }
             // TODO: how to handle errors? Send with handler
-            // (and collected by MusicLibrary or higher)?
+            // (and collected by MusicLibraryService or higher)?
             CompletableFuture<Void> allOf = CompletableFuture
                     .allOf(indexReqList.toArray(new CompletableFuture[indexReqList.size()]));
             allOf.thenRun(() -> ret.complete(null));
@@ -321,7 +312,14 @@ public class SubsonicAPIClient extends APIClient {
             public void onFailure(int statusCode, Header[] headers, byte[] responseBody,
                                   Throwable error) {
                 Log.e(LC, "onFailure in getIndexes");
-                EventBus.getDefault().post(new SubsonicRequestFailEvent(RequestType.GET_INDEXES, ret, query, musicFolder, error.getMessage(), metaList, handler));
+                onRequestFail(
+                        RequestType.GET_INDEXES,
+                        ret,
+                        query,
+                        musicFolder,
+                        error.getMessage(),
+                        metaList,
+                        handler);
             }
 
             @Override
@@ -337,7 +335,9 @@ public class SubsonicAPIClient extends APIClient {
                          APIClientRequestHandler handler) {
         if (meta.isPresent()) {
             metaList.add(meta.get());
-            handler.onProgress("Fetched " + metaList.size() + " entries...");
+            if (metaList.size() % 100 == 0) {
+                handler.onProgress("Fetched " + metaList.size() + " entries...");
+            }
         }
     }
 
@@ -351,7 +351,7 @@ public class SubsonicAPIClient extends APIClient {
         String title = jChild.getString(JSON_TITLE);
         MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder();
         builder
-                .putString(Meta.METADATA_KEY_API, MusicLibrary.API_ID_SUBSONIC)
+                .putString(Meta.METADATA_KEY_API, MusicLibraryService.API_ID_SUBSONIC)
                 .putString(Meta.METADATA_KEY_MEDIA_ROOT, musicFolder)
                 .putString(Meta.METADATA_KEY_MEDIA_ID, id)
                 .putString(Meta.METADATA_KEY_TITLE, title);
@@ -517,8 +517,14 @@ public class SubsonicAPIClient extends APIClient {
             @Override
             public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
                 Log.e(LC, "onFailure in getMusicDirectory");
-                EventBus.getDefault().post(new SubsonicRequestFailEvent(RequestType.GET_MUSIC_DIRECTORY, ret, query, musicFolder,
-                        error.getMessage(), metaList, handler));
+                onRequestFail(
+                        RequestType.GET_MUSIC_DIRECTORY,
+                        ret,
+                        query,
+                        musicFolder,
+                        error.getMessage(),
+                        metaList,
+                        handler);
             }
 
             @Override
@@ -529,18 +535,18 @@ public class SubsonicAPIClient extends APIClient {
     }
 
     @Override
-    public CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> getLibrary(final APIClientRequestHandler handler) {
-        final CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> ret = new CompletableFuture<>();
-        final ConcurrentLinkedQueue<MediaMetadataCompat> metaList = new ConcurrentLinkedQueue<>();
+    public CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> getLibrary(APIClientRequestHandler handler) {
+        CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> getLibraryFuture = new CompletableFuture<>();
+        ConcurrentLinkedQueue<MediaMetadataCompat> metadataList = new ConcurrentLinkedQueue<>();
         handler.onProgress("Fetching music folders...");
-        getMusicFolders(metaList, handler).thenRun(() ->
-                ret.complete(Optional.of(new ArrayList<>(metaList))));
-        return ret;
+        getMusicFolders(metadataList, handler).thenRun(() ->
+                getLibraryFuture.complete(Optional.of(new ArrayList<>(metadataList))));
+        return getLibraryFuture;
     }
 
     @Override
     public boolean hasPlaylists() {
-        // TODO: override getPlaylists
+        // TODO(kringlan): Override getPlaylists.
         return false;
     }
 
@@ -548,7 +554,7 @@ public class SubsonicAPIClient extends APIClient {
         String query = baseURL + "stream" + getBaseQuery() + "&id=" + entryID.id +
                 "&estimateContentLength=true";
         return new AudioDataSource(query, entryID);
-        // TODO: add subsonic setting for max bitrate and format
+        // TODO(kringlan): Add subsonic setting for max bitrate and FORMAT.
     }
 
     @Override
@@ -577,10 +583,10 @@ public class SubsonicAPIClient extends APIClient {
             JSONObject json = new JSONObject(resp);
             JSONObject jResp = json.getJSONObject(JSON_RESP);
             String respStatus = jResp.getString(JSON_STATUS);
-            String respVersion = jResp.getString(JSON_VERSION);
-            if (respStatus.equals(status_ok)) {
-                status = "Unsupported Subsonic API version: " + respVersion;
-                for (String supported_version: supported_versions) {
+            if (respStatus.equals(STATUS_OK)) {
+                String respVersion = jResp.getString(JSON_VERSION);
+                status = "Unsupported Subsonic API VERSION: " + respVersion;
+                for (String supported_version: SUPPORTED_VERSIONS) {
                     if (respVersion.equals(supported_version)) {
                         status = "";
                         break;
@@ -601,7 +607,7 @@ public class SubsonicAPIClient extends APIClient {
     private String getBaseQuery() {
         String salt = Util.getSalt(rand, 32);
         String token = Util.md5(password + salt);
-        return String.format(".view?u=%s&t=%s&s=%s&v=%s&c=%s&f=%s", username, token, salt, version,
-                clientId, format);
+        return String.format(".view?u=%s&t=%s&s=%s&v=%s&c=%s&f=%s", username, token, salt, VERSION,
+                CLIENT_ID, FORMAT);
     }
 }

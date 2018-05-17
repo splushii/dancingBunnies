@@ -95,7 +95,7 @@ public abstract class AudioBrowserFragment extends Fragment {
                     } catch (RemoteException e) {
                         Log.e(LC, "Failed to connect to media controller");
                     }
-
+                    AudioBrowserFragment.this.onMediaBrowserConnected();
                 }
 
                 @Override
@@ -141,6 +141,10 @@ public abstract class AudioBrowserFragment extends Fragment {
                     AudioBrowserFragment.this.onQueueChanged(queue);
                 }
             };
+
+    protected void onMediaBrowserConnected() {
+        Log.d(LC, "mediaBrowser connected");
+    }
 
     protected void onPlaybackStateChanged(PlaybackStateCompat state) {
         Log.d(LC, "mediacontroller onplaybackstatechanged");

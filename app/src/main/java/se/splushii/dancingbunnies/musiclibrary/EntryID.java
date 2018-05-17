@@ -10,17 +10,15 @@ import com.google.android.gms.cast.MediaMetadata;
 
 import org.apache.lucene.document.Document;
 
-import java.util.Objects;
-
 import se.splushii.dancingbunnies.search.Indexer;
 
 public class EntryID {
     private static final String LC = "EntryID";
     public final String src;
     public final String id;
-    public final LibraryEntry.EntryType type;
+    public final String type;
 
-    public EntryID(String src, String id, LibraryEntry.EntryType type) {
+    public EntryID(String src, String id, String type) {
         this.src = src;
         this.id = id;
         this.type = type;
@@ -28,7 +26,7 @@ public class EntryID {
 
     @Override
     public String toString() {
-        return "{src: " + src + ", id: " + id + ", type: " + type.name() + "}";
+        return "{src: " + src + ", id: " + id + ", type: " + type + "}";
     }
 
     @Override
@@ -48,13 +46,11 @@ public class EntryID {
             return false;
         }
         EntryID e = (EntryID) obj;
-        return Objects.equals(this.src, e.src)
-                && Objects.equals(this.id, e.id)
-                && this.type == e.type;
+        return src.equals(e.src) && id.equals(e.id) && type.equals(e.type);
     }
 
     public String key() {
-        return src + id + type.name();
+        return src + id + type;
     }
 
     public MediaDescriptionCompat toMediaDescriptionCompat() {
@@ -83,16 +79,20 @@ public class EntryID {
     public static EntryID from(Bundle b) {
         String src = b.getString(Meta.METADATA_KEY_API);
         String id = b.getString(Meta.METADATA_KEY_MEDIA_ID);
-        LibraryEntry.EntryType type =
-                LibraryEntry.EntryType.valueOf(b.getString(Meta.METADATA_KEY_TYPE));
+        String type = b.getString(Meta.METADATA_KEY_TYPE);
         return new EntryID(src, id, type);
     }
 
     public Bundle toBundle() {
+        Bundle b = toBundleQuery();
+        b.putString(Meta.METADATA_KEY_TYPE, type);
+        return b;
+    }
+
+    public Bundle toBundleQuery() {
         Bundle b = new Bundle();
         b.putString(Meta.METADATA_KEY_API, src);
         b.putString(Meta.METADATA_KEY_MEDIA_ID, id);
-        b.putString(Meta.METADATA_KEY_TYPE, type.name());
         return b;
     }
 
@@ -103,15 +103,14 @@ public class EntryID {
     public static EntryID from(Document doc) {
         String src = doc.get(Indexer.meta2fieldNameMap.get(Meta.METADATA_KEY_API));
         String id = doc.get(Indexer.meta2fieldNameMap.get(Meta.METADATA_KEY_MEDIA_ID));
-        LibraryEntry.EntryType type = LibraryEntry.EntryType.SONG;
+        String type = Meta.METADATA_KEY_MEDIA_ID;
         return new EntryID(src, id, type);
     }
 
     public static EntryID from(MediaMetadata castMeta) {
         String src = castMeta.getString(Meta.METADATA_KEY_API);
         String id = castMeta.getString(Meta.METADATA_KEY_MEDIA_ID);
-        LibraryEntry.EntryType type =
-                LibraryEntry.EntryType.valueOf(castMeta.getString(Meta.METADATA_KEY_TYPE));
+        String type = castMeta.getString(Meta.METADATA_KEY_TYPE);
         return new EntryID(src, id, type);
     }
 

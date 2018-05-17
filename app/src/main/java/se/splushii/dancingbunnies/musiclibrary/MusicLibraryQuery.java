@@ -14,44 +14,46 @@ public class MusicLibraryQuery {
 
     public static final String API_ANY = "ANY_API";
 
+    public Bundle subQuery() {
+        return subQuery;
+    }
+
     public enum MusicLibraryQueryType {
         SUBSCRIPTION,
         SEARCH
     }
     private final MusicLibraryQueryType type;
-    private EntryID entryID;
-    private String query;
+    private Bundle subQuery;
+    private String searchQuery;
 
-    public MusicLibraryQuery(EntryID entryID) {
+    public MusicLibraryQuery() {
         this.type = MusicLibraryQueryType.SUBSCRIPTION;
-        this.entryID = entryID;
+        this.subQuery = new Bundle();
     }
 
-    public MusicLibraryQuery(String query) {
+    public MusicLibraryQuery(MusicLibraryQuery query) {
+        this.type = MusicLibraryQueryType.SUBSCRIPTION;
+        this.subQuery = query.subQuery.deepCopy();
+    }
+
+    public MusicLibraryQuery(Bundle query) {
+        this.type = MusicLibraryQueryType.SUBSCRIPTION;
+        this.subQuery = query;
+    }
+
+    public MusicLibraryQuery addToQuery(String key, String value) {
+        assert type == MusicLibraryQueryType.SUBSCRIPTION;
+        subQuery.putString(key, value);
+        return this;
+    }
+
+    public MusicLibraryQuery(String searchQuery) {
         this.type = MusicLibraryQueryType.SEARCH;
-        this.query = query;
-    }
-
-    public static String getMusicLibraryQueryOptionsString(Bundle options) {
-        String api = options.getString(Meta.METADATA_KEY_API);
-        LibraryEntry.EntryType type =
-                LibraryEntry.EntryType.valueOf(options.getString(Meta.METADATA_KEY_TYPE));
-        return "api: " + api + ", type: " + type.name();
-    }
-
-    public static MusicLibraryQuery generateMusicLibraryQuery(String parentId, Bundle options) {
-        String src = options.getString(Meta.METADATA_KEY_API);
-        LibraryEntry.EntryType type =
-                LibraryEntry.EntryType.valueOf(options.getString(Meta.METADATA_KEY_TYPE));
-        return new MusicLibraryQuery(new EntryID(src, parentId, type));
+        this.searchQuery = searchQuery;
     }
 
     public Bundle toBundle() {
-        Bundle b = new Bundle();
-        b.putString(Meta.METADATA_KEY_API, entryID.src);
-        b.putString(Meta.METADATA_KEY_MEDIA_ID, entryID.id);
-        b.putString(Meta.METADATA_KEY_TYPE, entryID.type.name());
-        return b;
+        return subQuery;
     }
 
     private boolean isSubscription() {
@@ -59,11 +61,7 @@ public class MusicLibraryQuery {
     }
 
     private String subscriptionID() {
-        return entryID.id;
-    }
-
-    public EntryID entryID() {
-        return entryID;
+        return subQuery.toString();
     }
 
     public String query(MediaBrowserCompat mediaBrowser,
@@ -82,15 +80,14 @@ public class MusicLibraryQuery {
             return null;
         }
         Bundle options = toBundle();
-        // TODO: Use query to filter results only including all parent entryID:s
+        // TODO: Use searchQuery to filter results only including all parent entryID:s
         // TODO: THEN: Add checkbox to show all entries. (Not just including parents.)
         MediaBrowserCompat.SubscriptionCallback subCb = new MediaBrowserCompat.SubscriptionCallback() {
             @Override
             public void onChildrenLoaded(@NonNull String parentId,
                                          @NonNull List<MediaBrowserCompat.MediaItem> children,
                                          @NonNull Bundle options) {
-                String optString = MusicLibraryQuery.getMusicLibraryQueryOptionsString(options);
-                Log.d(LC, "subscription(" + parentId + ") (" + optString + "): "
+                Log.d(LC, "subscription(" + parentId + ") (" + options.toString() + "): "
                         + children.size());
                 callback.onQueryResult(children);
             }
@@ -109,7 +106,7 @@ public class MusicLibraryQuery {
             Log.w(LC, "Search: MediaBrowser not connected.");
             return;
         }
-        mediaBrowser.search(query, null, new MediaBrowserCompat.SearchCallback() {
+        mediaBrowser.search(searchQuery, null, new MediaBrowserCompat.SearchCallback() {
             @Override
             public void onSearchResult(@NonNull String query, Bundle extras, @NonNull List<MediaBrowserCompat.MediaItem> items) {
                 super.onSearchResult(query, extras, items);

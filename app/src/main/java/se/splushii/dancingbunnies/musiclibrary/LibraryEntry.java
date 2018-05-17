@@ -2,27 +2,24 @@ package se.splushii.dancingbunnies.musiclibrary;
 
 import android.support.annotation.NonNull;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Objects;
+import org.apache.lucene.document.Document;
 
-public abstract class LibraryEntry implements Comparable<LibraryEntry> {
-    public enum EntryType {
-        ANY,
-        ARTIST,
-        ALBUM,
-        SONG
-    }
+import se.splushii.dancingbunnies.search.Indexer;
+
+public class LibraryEntry implements Comparable<LibraryEntry> {
     // Uniquely identifies a LibraryEntry
-    private final EntryID entryID;
+    public final EntryID entryID;
 
     private String name;
-    private HashSet<LibraryEntry> references;
 
-    LibraryEntry(EntryID entryID, String name) {
+    public LibraryEntry(EntryID entryID, String name) {
         this.entryID = entryID;
         this.name = name;
-        references = new HashSet<>();
+    }
+
+    @Override
+    public String toString() {
+        return name + ":" + entryID.key();
     }
 
     @Override
@@ -53,43 +50,13 @@ public abstract class LibraryEntry implements Comparable<LibraryEntry> {
 
     public String src() { return entryID.src; }
     public String id() { return entryID.id; }
-    public EntryType type() { return entryID.type; }
+    public String type() { return entryID.type; }
     public String key() { return entryID.key(); }
     public String name() { return name; }
-    void addRef(LibraryEntry e) {
-        if (!references.contains(e)) {
-            references.add(e);
-            e.addRef(this);
-        }
-    }
-    void removeRef(LibraryEntry e) {
-        if (references.contains(e)) {
-            references.remove(e);
-            e.removeRef(this);
-        }
-    }
-    void removeAllRefs() {
-        ArrayList<LibraryEntry> refsCopy = new ArrayList<>(references);
-        for (LibraryEntry e: refsCopy) {
-            references.remove(e);
-            e.removeRef(this);
-        }
-    }
-    HashSet<LibraryEntry> getRefs() {
-        return getRefs(EntryType.ANY);
-    }
-    HashSet<LibraryEntry> getRefs(EntryType type) {
-        if (type == EntryType.ANY) {
-            return references;
-        }
-        HashSet<LibraryEntry> ret = new HashSet<>();
-        for (LibraryEntry e: references) {
-            if (e.type() == type) {
-                ret.add(e);
-            }
-        }
-        return ret;
-    }
 
-    public abstract ArrayList<? extends LibraryEntry> getEntries();
+    public static LibraryEntry from(Document doc) {
+        EntryID entryID = EntryID.from(doc);
+        String name = doc.get(Indexer.meta2fieldNameMap.get(Meta.METADATA_KEY_TITLE));
+        return new LibraryEntry(entryID, name);
+    }
 }

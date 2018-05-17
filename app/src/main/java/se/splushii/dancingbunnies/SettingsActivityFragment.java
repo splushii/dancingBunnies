@@ -1,7 +1,11 @@
 package se.splushii.dancingbunnies;
 
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.PersistableBundle;
 import android.preference.EditTextPreference;
 import android.preference.Preference;
 import android.preference.PreferenceFragment;
@@ -12,12 +16,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import org.greenrobot.eventbus.EventBus;
-
-import se.splushii.dancingbunnies.backend.MusicLibraryRequestHandler;
-import se.splushii.dancingbunnies.events.LibraryEvent;
-import se.splushii.dancingbunnies.events.SettingsChangedEvent;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibrary;
+import se.splushii.dancingbunnies.jobs.BackendRefreshJob;
+import se.splushii.dancingbunnies.jobs.Jobs;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -99,39 +100,26 @@ public class SettingsActivityFragment extends PreferenceFragment
         final Preference SSrefresh = findPreference(getResources()
                 .getString(R.string.pref_key_subsonic_refresh));
         SSrefresh.setOnPreferenceClickListener(preference -> {
+            JobScheduler jobScheduler =
+                    (JobScheduler) getContext().getSystemService(Context.JOB_SCHEDULER_SERVICE);
+            PersistableBundle backendRefreshBundle = new PersistableBundle();
+            backendRefreshBundle.putString(
+                    BackendRefreshJob.ACTION,
+                    BackendRefreshJob.ACTION_FETCH_LIBRARY
+            );
+            backendRefreshBundle.putString(
+                    BackendRefreshJob.API,
+                    MusicLibraryService.API_ID_SUBSONIC
+            );
+            JobInfo jobInfo = new JobInfo.Builder(
+                    Jobs.JOB_BACKEND_REFRESH,
+                    new ComponentName(getContext(), BackendRefreshJob.class)
+            )
+                    .setExtras(backendRefreshBundle)
+                    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                    .build();
             Log.d(LC, "refresh onClick!");
-            EventBus.getDefault().post(new LibraryEvent(MusicLibrary.API_ID_SUBSONIC,
-                    LibraryEvent.LibraryAction.FETCH_LIBRARY,
-                    new MusicLibraryRequestHandler() {
-                        @Override
-                        public void onStart() {
-                            Log.d(LC, "subsonic refresh onStart");
-                            SSrefresh.setSummary("Loading...");
-                        }
-
-                        @Override
-                        public void onProgress(int i, int max) {
-                            SSrefresh.setSummary("Fetched " + i + " of "
-                                    + (max == 0 ? "?" : String.valueOf(max)));
-                        }
-
-                        @Override
-                        public void onProgress(String status) {
-                            SSrefresh.setSummary("Status: " + status);
-                        }
-
-                        @Override
-                        public void onSuccess(String status) {
-                            Log.d(LC, "subsonic refresh onSuccess");
-                            SSrefresh.setSummary(status);
-                        }
-
-                        @Override
-                        public void onFailure(String status) {
-                            Log.d(LC, "subsonic refresh onFailure: " + status);
-                            SSrefresh.setSummary("Failed to fetch library.");
-                        }
-                    }));
+            jobScheduler.schedule(jobInfo);
             return false;
         });
     }
@@ -157,6 +145,5 @@ public class SettingsActivityFragment extends PreferenceFragment
         } else if (key.equals(getResources().getString(R.string.pref_subsonic_refresh))) {
             Log.d(LC, "derp");
         }
-        EventBus.getDefault().post(new SettingsChangedEvent());
     }
 }

@@ -12,8 +12,7 @@
         android:theme="@style/AppTheme">
         <meta-data
             android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
-            android:value="se.splushii.dancingbunnies.audioplayer.CastOptionsProvider"
-            />
+            android:value="se.splushii.dancingbunnies.audioplayer.CastOptionsProvider" />
         <activity
             android:name=".MainActivity"
             android:launchMode="singleTop"
@@ -24,8 +23,9 @@
                 <action android:name="android.intent.action.SEARCH" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <meta-data android:name="android.app.searchable"
-                android:resource="@xml/searchable"/>
+            <meta-data
+                android:name="android.app.searchable"
+                android:resource="@xml/searchable" />
         </activity>
         <activity
             android:name=".SettingsActivity"
@@ -39,11 +39,16 @@
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </service>
+        <service
+            android:name=".jobs.BackendRefreshJob"
+            android:exported="true"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+        <service android:name=".musiclibrary.MusicLibraryService" />
+
         <receiver android:name="android.support.v4.media.session.MediaButtonReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </receiver>
     </application>
-
 </manifest>

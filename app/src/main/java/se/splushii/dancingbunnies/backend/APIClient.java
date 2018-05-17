@@ -4,9 +4,9 @@ import android.content.Context;
 import android.support.v4.media.MediaMetadataCompat;
 
 import java.util.ArrayList;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
-import java8.util.Optional;
-import java8.util.concurrent.CompletableFuture;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Playlist;
 
