@@ -3,13 +3,17 @@ package se.splushii.dancingbunnies.ui;
 import android.support.annotation.NonNull;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.PopupMenu;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.util.Pair;
 import android.view.LayoutInflater;
+import android.view.MenuInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,10 +39,14 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     }
 
     static class SongViewHolder extends RecyclerView.ViewHolder {
-        Button butt;
-        SongViewHolder(View v) {
-            super(v);
-            butt = v.findViewById(R.id.song_title);
+        TextView songTitleView;
+        ImageButton overflowMenu;
+        View moreActions;
+        SongViewHolder(View view) {
+            super(view);
+            songTitleView = view.findViewById(R.id.song_title);
+            overflowMenu = view.findViewById(R.id.overflow_menu);
+            moreActions = view.findViewById(R.id.more_actions);
         }
     }
 
@@ -47,7 +55,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     public SongViewHolder onCreateViewHolder(@NonNull ViewGroup parent,
                                              int viewType) {
         View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.musiclibrary_item, parent, false);
+                .inflate(R.layout.musiclibrary_item_browsable, parent, false);
         return new SongViewHolder(v);
     }
 
@@ -66,23 +74,35 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         final String title = item.getDescription().getTitle() + "";
         EntryID entryID = EntryID.from(item);
         final boolean browsable = item.isBrowsable();
-        holder.butt.setText(title);
-        holder.butt.setOnLongClickListener(view -> {
+        holder.moreActions.setVisibility(View.GONE);
+        holder.songTitleView.setText(title);
+        holder.songTitleView.setOnLongClickListener(view -> {
             Log.d(LC, "Long click on " + title);
-            if (browsable) {
-                // TODO: Support context menu for browsable items
+            if (holder.moreActions.getVisibility() == View.VISIBLE) {
+                holder.moreActions.setVisibility(View.GONE);
             } else {
-                fragment.play(entryID);
+                holder.moreActions.setVisibility(View.VISIBLE);
             }
+//            if (browsable) {
+//                // TODO: Support context menu for browsable items
+//            } else {
+//                fragment.play(entryID);
+//            }
             return true;
         });
-        holder.butt.setOnClickListener(view -> {
+        holder.songTitleView.setOnClickListener(view -> {
             if (browsable) {
                 fragment.browse(entryID);
             } else {
                 contextMenuHolder = holder;
                 view.showContextMenu();
             }
+        });
+        holder.overflowMenu.setOnClickListener(v -> {
+            PopupMenu popup = new PopupMenu(fragment.getContext(), holder.overflowMenu);
+            MenuInflater inflater = popup.getMenuInflater();
+            inflater.inflate(R.menu.browsable_menu_actions, popup.getMenu());
+            popup.show();
         });
     }
 

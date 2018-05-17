@@ -7,7 +7,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,10 +39,10 @@ public class PlayListQueueAdapter
     }
 
     static class SongViewHolder extends RecyclerView.ViewHolder {
-        Button butt;
+        TextView queueTitle;
         SongViewHolder(View v) {
             super(v);
-            butt = v.findViewById(R.id.queue_title);
+            queueTitle = v.findViewById(R.id.queue_title);
         }
     }
 
@@ -63,12 +63,12 @@ public class PlayListQueueAdapter
     public void onBindViewHolder(@NonNull final PlayListQueueAdapter.SongViewHolder holder, int position) {
         QueueItem item = dataset.get(position);
         String title = item.getDescription().getTitle() + "";
-        holder.butt.setText(title);
-        holder.butt.setOnClickListener(view -> {
+        holder.queueTitle.setText(title);
+        holder.queueTitle.setOnClickListener(view -> {
             contextMenuHolder = holder;
             view.showContextMenu();
         });
-        holder.butt.setOnLongClickListener(view -> {
+        holder.queueTitle.setOnLongClickListener(view -> {
             Log.d(LC, "onLongClick on " + title);
             return false;
         });

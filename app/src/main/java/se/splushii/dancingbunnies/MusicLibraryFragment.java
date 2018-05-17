@@ -32,8 +32,8 @@ import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryFragment extends AudioBrowserFragment {
     private static String LC = Util.getLogContext(MusicLibraryFragment.class);
-    private RecyclerView recView;
-    private MusicLibraryAdapter recViewAdapter;
+    private RecyclerView recyclerView;
+    private MusicLibraryAdapter recyclerViewAdapter;
     private LibraryView currentLibraryView;
     private String currentSubscriptionID;
     private LinkedList<LibraryView> viewBackStack;
@@ -60,7 +60,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         if (currentLibraryView != null) {
             currentLibraryView = new LibraryView(
                     currentLibraryView.query,
-                    recViewAdapter.getCurrentPosition());
+                    recyclerViewAdapter.getCurrentPosition());
         }
         super.onStop();
     }
@@ -81,9 +81,9 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         currentSubscriptionID = libView.query.query(mediaBrowser, new MusicLibraryQuery.MusicLibraryQueryCallback() {
             @Override
             public void onQueryResult(@NonNull List<MediaBrowserCompat.MediaItem> items) {
-                recViewAdapter.setDataset(items);
+                recyclerViewAdapter.setDataset(items);
                 currentLibraryView = libView;
-                LinearLayoutManager llm = (LinearLayoutManager) recView.getLayoutManager();
+                LinearLayoutManager llm = (LinearLayoutManager) recyclerView.getLayoutManager();
                 llm.scrollToPositionWithOffset(libView.pos, libView.pad);
             }
         });
@@ -112,8 +112,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
 
     @Override
     public boolean onContextItemSelected(MenuItem item) {
-        int position = recViewAdapter.getContextMenuHolder().getAdapterPosition();
-        EntryID entryID = EntryID.from(recViewAdapter.getItemData(position));
+        int position = recyclerViewAdapter.getContextMenuHolder().getAdapterPosition();
+        EntryID entryID = EntryID.from(recyclerViewAdapter.getItemData(position));
         Log.d(LC, "info pos: " + position);
         switch (item.getItemId()) {
             case R.id.song_context_play:
@@ -133,7 +133,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        registerForContextMenu(recView);
+        registerForContextMenu(recyclerView);
     }
 
     @Override
@@ -142,30 +142,24 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         final View rootView = inflater.inflate(R.layout.musiclibrary_fragment_layout, container,
                 false);
 
-        recView = rootView.findViewById(R.id.musiclibrary_recyclerview);
-        recView.setHasFixedSize(true);
+        recyclerView = rootView.findViewById(R.id.musiclibrary_recyclerview);
+        recyclerView.setHasFixedSize(true);
         LinearLayoutManager recViewLayoutManager =
                 new LinearLayoutManager(this.getContext());
-        recView.setLayoutManager(recViewLayoutManager);
-        recViewAdapter = new MusicLibraryAdapter(this);
-        recView.setAdapter(recViewAdapter);
+        recyclerView.setLayoutManager(recViewLayoutManager);
+        recyclerViewAdapter = new MusicLibraryAdapter(this);
+        recyclerView.setAdapter(recyclerViewAdapter);
 
         fastScroller = rootView.findViewById(R.id.musiclibrary_fastscroller);
-        fastScroller.setRecyclerView(recView);
+        fastScroller.setRecyclerView(recyclerView);
         fastScrollerBubble = rootView.findViewById(R.id.musiclibrary_fastscroller_bubble);
         fastScroller.setBubble(fastScrollerBubble);
 
         FloatingActionButton fab = rootView.findViewById(R.id.musiclibrary_fab);
-        final FloatingActionButton fab_sort_artist = rootView.findViewById(R.id.fab_sort_artist);
-        final FloatingActionButton fab_sort_song = rootView.findViewById(R.id.fab_sort_song);
-        final FloatingActionButton fab_refresh = rootView.findViewById(R.id.fab_sort_refresh);
+        final FloatingActionButton sortByArtistFab = rootView.findViewById(R.id.fab_sort_artist);
+        final FloatingActionButton sortBySongFab = rootView.findViewById(R.id.fab_sort_song);
 
-        fab_refresh.setOnClickListener(view -> {
-            refreshView(currentLibraryView);
-            setFabVisibility(View.GONE);
-        });
-
-        fab_sort_artist.setOnClickListener(view -> {
+        sortByArtistFab.setOnClickListener(view -> {
             Snackbar.make(view, "Artist view", Snackbar.LENGTH_LONG)
                     .setAction("Action", null).show();
             MusicLibraryQuery query = new MusicLibraryQuery();
@@ -174,7 +168,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             setFabVisibility(View.GONE);
         });
 
-        fab_sort_song.setOnClickListener(view -> {
+        sortBySongFab.setOnClickListener(view -> {
             Snackbar.make(view, "Song view", Snackbar.LENGTH_LONG)
                     .setAction("Action", null).show();
             MusicLibraryQuery query = new MusicLibraryQuery();
@@ -184,7 +178,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         });
 
         fab.setOnClickListener(view -> {
-            if (fab_sort_artist.getVisibility() != View.VISIBLE) {
+            if (sortByArtistFab.getVisibility() != View.VISIBLE) {
                 setFabVisibility(View.VISIBLE);
             } else {
                 setFabVisibility(View.GONE);
@@ -197,14 +191,10 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         View rootView = this.getView();
         FloatingActionButton fab_sort_artist = rootView.findViewById(R.id.fab_sort_artist);
         FloatingActionButton fab_sort_song = rootView.findViewById(R.id.fab_sort_song);
-        FloatingActionButton fab_refresh = rootView.findViewById(R.id.fab_sort_refresh);
         TextView text_sort_artist = rootView.findViewById(R.id.fab_sort_artist_label);
         TextView text_sort_song = rootView.findViewById(R.id.fab_sort_song_label);
-        TextView text_refresh = rootView.findViewById(R.id.fab_sort_refresh_label);
         fab_sort_artist.setVisibility(visibility);
         fab_sort_song.setVisibility(visibility);
-        fab_refresh.setVisibility(visibility);
-        text_refresh.setVisibility(visibility);
         text_sort_artist.setVisibility(visibility);
         text_sort_song.setVisibility(visibility);
     }
@@ -226,7 +216,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         addBackButtonHistory(
                 new LibraryView(
                         currentLibraryView.query,
-                        recViewAdapter.getCurrentPosition()
+                        recyclerViewAdapter.getCurrentPosition()
                 )
         );
         MusicLibraryQuery query;

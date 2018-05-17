@@ -4,7 +4,7 @@
     tools:context="se.splushii.dancingbunnies.MainActivity" >
     <item android:id="@+id/action_search"
         android:title="@string/action_search"
-        android:icon="@drawable/ic_search_black_24dp"
+        android:icon="@android:drawable/ic_search_category_default"
         app:showAsAction="always|collapseActionView"
         app:actionViewClass="android.support.v7.widget.SearchView" />
     <item

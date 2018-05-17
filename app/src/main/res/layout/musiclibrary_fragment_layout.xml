@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.design.widget.CoordinatorLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -33,9 +33,10 @@
         android:visibility="gone"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|start"
+        android:layout_gravity="center_vertical"
         android:layout_marginBottom="108dp"
         android:layout_marginStart="80dp"
+        app:layout_anchor="@+id/fab_sort_artist"
         android:text="@string/sort_by_artist"
         />
     <android.support.design.widget.FloatingActionButton
@@ -52,13 +53,14 @@
         android:visibility="gone"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|start"
+        android:layout_gravity="center_vertical|start"
         android:layout_marginBottom="178dp"
         android:layout_marginStart="80dp"
+        app:layout_anchor="@+id/fab_sort_song"
         android:text="@string/sort_by_song"
         />
     <android.support.design.widget.FloatingActionButton
-        android:id="@+id/fab_sort_song"
+        android:id="@id/fab_sort_song"
         android:visibility="gone"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -66,23 +68,4 @@
         android:layout_marginBottom="156dp"
         android:layout_marginStart="@dimen/fab_margin"
         android:src="@android:drawable/ic_dialog_info" />
-    <TextView
-        android:id="@+id/fab_sort_refresh_label"
-        android:visibility="gone"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|start"
-        android:layout_marginBottom="248dp"
-        android:layout_marginStart="80dp"
-        android:text="@string/refresh"
-        />
-    <android.support.design.widget.FloatingActionButton
-        android:id="@+id/fab_sort_refresh"
-        android:visibility="gone"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|start"
-        android:layout_marginBottom="226dp"
-        android:layout_marginStart="@dimen/fab_margin"
-        android:src="@android:drawable/ic_dialog_dialer" />
 </android.support.design.widget.CoordinatorLayout>
