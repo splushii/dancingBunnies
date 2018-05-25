@@ -24,10 +24,14 @@ public class CastAudioPlayer extends AudioPlayer {
     private static final String LC = Util.getLogContext(CastAudioPlayer.class);
     private final SessionManager sessionManager;
     private final CastConnectionListener castConnectionListener;
-    private final SessionManagerListener<Session> sessionManagerListener = new SessionManagerListenerImpl();
-    private CastSession castSession;
+    private final SessionManagerListener<Session> sessionManagerListener =
+            new SessionManagerListenerImpl();
+    private final RemoteMediaClientCallback remoteMediaClientCallback =
+            new RemoteMediaClientCallback();
+    private RemoteMediaClient remoteMediaClient;
     private int playerState;
     private int idleReason;
+    private long lastPos = 0;
 
     private enum PlayerAction {
         PLAY,
@@ -41,21 +45,25 @@ public class CastAudioPlayer extends AudioPlayer {
     }
 
     protected void onCreate() {
-        castSession = sessionManager.getCurrentCastSession();
         sessionManager.addSessionManagerListener(sessionManagerListener);
+        CastSession castSession = sessionManager.getCurrentCastSession();
+        if (castSession != null && castSession.isConnected()) {
+            onConnect(castSession);
+        }
     }
 
     protected void onDestroy() {
+        remoteMediaClient.unregisterCallback(remoteMediaClientCallback);
+        remoteMediaClient = null;
         sessionManager.removeSessionManagerListener(sessionManagerListener);
-        castSession = null;
     }
 
     @Override
     public long getCurrentPosition() {
-        if (castSession == null || !castSession.isConnected()) {
-            return 0;
+        if (remoteMediaClient != null) {
+            lastPos = remoteMediaClient.getApproximateStreamPosition();
         }
-        return castSession.getRemoteMediaClient().getApproximateStreamPosition();
+        return lastPos;
     }
 
     @Override
@@ -73,21 +81,39 @@ public class CastAudioPlayer extends AudioPlayer {
         playerAction(PlayerAction.STOP);
     }
 
+    @Override
+    void seekTo(long pos) {
+        if (remoteMediaClient == null) {
+            return;
+        }
+        Log.d(LC, "playerAction: seekTo(" + pos + ") in state: "
+                + remoteMediaClient.getPlayerState());
+        remoteMediaClient.seek(pos).setResultCallback(result ->
+                Log.d(LC, "seek smooth? " + result.getStatus().isSuccess())
+        );
+    }
+
     private void playerAction(PlayerAction action) {
-        if (castSession == null || !castSession.isConnected()) {
+        if (remoteMediaClient == null) {
             return;
         }
         Log.d(LC, "playerAction: " + action.name() + " in state: "
-                + castSession.getRemoteMediaClient().getPlayerState());
+                + remoteMediaClient.getPlayerState());
         switch (action) {
             case PLAY:
-                castSession.getRemoteMediaClient().play();
+                remoteMediaClient.play().setResultCallback(result ->
+                        Log.d(LC, "play smooth? " + result.getStatus().isSuccess())
+                );
                 break;
             case PAUSE:
-                castSession.getRemoteMediaClient().pause();
+                remoteMediaClient.pause().setResultCallback(result ->
+                        Log.d(LC, "pause smooth? " + result.getStatus().isSuccess())
+                );
                 break;
             case STOP:
-                castSession.getRemoteMediaClient().stop();
+                remoteMediaClient.stop().setResultCallback(result ->
+                        Log.d(LC, "stop smooth? " + result.getStatus().isSuccess())
+                );
                 break;
             default:
                 Log.d(LC, "Unknown PlayerAction: " + action.name());
@@ -96,124 +122,130 @@ public class CastAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    public void setSource(AudioDataSource audioDataSource, MediaMetadataCompat meta) {
+    void setSource(AudioDataSource audioDataSource, MediaMetadataCompat meta) {
+        setSource(audioDataSource, meta, 0L);
+    }
+
+    @Override
+    public void setSource(AudioDataSource audioDataSource, MediaMetadataCompat meta, long position) {
+        audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_SKIPPING_TO_NEXT);
+        lastPos = position;
         MediaMetadata castMeta = Meta.from(meta);
         long duration = audioDataSource.getDuration();
         if (duration == 0L) {
             duration = meta.getLong(Meta.METADATA_KEY_DURATION);
         }
-        Log.d(LC, "Media duration: " + duration);
         MediaInfo mediaInfo = new MediaInfo.Builder(audioDataSource.getURL())
                 .setStreamType(MediaInfo.STREAM_TYPE_BUFFERED)
                 .setContentType(audioDataSource.getContentType())
                 .setMetadata(castMeta)
-//                .setStreamDuration(duration)
+                .setStreamDuration(duration)
                 .build();
-        RemoteMediaClient remoteMediaClient = castSession.getRemoteMediaClient();
         MediaLoadOptions mediaLoadOptions = new MediaLoadOptions.Builder()
                 .setAutoplay(false)
-                .setPlayPosition(0) // TODO: Set start position. (e.g. when starting cast midsong)
+                .setPlayPosition(position)
                 .build();
-        remoteMediaClient.registerCallback(new RemoteMediaClient.Callback() {
-            @Override
-            public void onStatusUpdated() {
-                String state;
-                RemoteMediaClient remoteMediaClient = castSession.getRemoteMediaClient();
-                if (remoteMediaClient == null) {
-                    return;
-                }
-                int newPlayerState = remoteMediaClient.getPlayerState();
-                if (newPlayerState == playerState) {
-                    return;
-                }
-                playerState = newPlayerState;
-                switch (newPlayerState) {
-                    case MediaStatus.PLAYER_STATE_IDLE:
-                        int newIdleReason = remoteMediaClient.getIdleReason();
-                        if (newIdleReason == idleReason) {
-                            return;
-                        }
-                        idleReason = newIdleReason;
-                        switch (newIdleReason) {
-                            case MediaStatus.IDLE_REASON_FINISHED:
-                                audioPlayerCallback.onEnded();
-                                state = "IDLE_FINISHED";
-                                break;
-                            case MediaStatus.IDLE_REASON_CANCELED:
-                                state = "IDLE_CANCELED";
-                                break;
-                            case MediaStatus.IDLE_REASON_ERROR:
-                                state = "IDLE_ERROR";
-                                break;
-                            case MediaStatus.IDLE_REASON_INTERRUPTED:
-                                state = "IDLE_INTERRUPTED";
-                                break;
-                            default:
-                                state = "IDLE_NONE";
-                                break;
-                        }
-                        break;
-                    case MediaStatus.PLAYER_STATE_BUFFERING:
-                        audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_BUFFERING);
-                        state = "BUFFERING";
-                        break;
-                    case MediaStatus.PLAYER_STATE_PAUSED:
-                        audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_PAUSED);
-                        state = "PAUSED";
-                        break;
-                    case MediaStatus.PLAYER_STATE_PLAYING:
-                        audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_PLAYING);
-                        state = "PLAYING";
-                        break;
-                    default:
-                        state = "UNKNOWN";
-                        break;
-                }
-                Log.d(LC, "onStatusUpdated state:" + state);
-            }
-
-            @Override
-            public void onMetadataUpdated() {
-                Log.d(LC, "onMetadataUpdated");
-                RemoteMediaClient remoteMediaClient = castSession.getRemoteMediaClient();
-                if (remoteMediaClient == null) {
-                    return;
-                }
-                MediaInfo mediaInfo = remoteMediaClient.getMediaInfo();
-                if (mediaInfo == null) {
-                    return;
-                }
-                MediaMetadata castMeta = mediaInfo.getMetadata();
-                audioPlayerCallback.onMetaChanged(EntryID.from(castMeta));
-            }
-
-            @Override
-            public void onQueueStatusUpdated() {
-                super.onQueueStatusUpdated();
-            }
-
-            @Override
-            public void onPreloadStatusUpdated() {
-                super.onPreloadStatusUpdated();
-            }
-
-            @Override
-            public void onSendingRemoteMediaRequest() {
-                super.onSendingRemoteMediaRequest();
-            }
-
-            @Override
-            public void onAdBreakStatusUpdated() {
-                super.onAdBreakStatusUpdated();
-            }
-        });
+        Log.d(LC, "Media duration: " + duration + ". Start: " + position);
         remoteMediaClient.load(mediaInfo, mediaLoadOptions).setResultCallback(result -> {
-            Log.d(LC, "load ready! Went smooth? " + result.getStatus().isSuccess());
+            Log.d(LC, "load smooth? " + result.getStatus().isSuccess());
             if (result.getStatus().isSuccess()) {
                 audioPlayerCallback.onReady();
             }
         });
         audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_BUFFERING);
+    }
+
+    private class RemoteMediaClientCallback extends RemoteMediaClient.Callback {
+        @Override
+        public void onStatusUpdated() {
+            String state;
+            if (remoteMediaClient == null) {
+                return;
+            }
+            int newPlayerState = remoteMediaClient.getPlayerState();
+            if (newPlayerState == playerState) {
+                return;
+            }
+            playerState = newPlayerState;
+            switch (newPlayerState) {
+                case MediaStatus.PLAYER_STATE_IDLE:
+                    int newIdleReason = remoteMediaClient.getIdleReason();
+                    if (newIdleReason == idleReason) {
+                        return;
+                    }
+                    idleReason = newIdleReason;
+                    switch (newIdleReason) {
+                        case MediaStatus.IDLE_REASON_FINISHED:
+                            audioPlayerCallback.onEnded();
+                            state = "IDLE_FINISHED";
+                            break;
+                        case MediaStatus.IDLE_REASON_CANCELED:
+                            audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_STOPPED);
+                            state = "IDLE_CANCELED";
+                            break;
+                        case MediaStatus.IDLE_REASON_ERROR:
+                            state = "IDLE_ERROR";
+                            break;
+                        case MediaStatus.IDLE_REASON_INTERRUPTED:
+                            state = "IDLE_INTERRUPTED";
+                            break;
+                        default:
+                            state = "IDLE_NONE";
+                            break;
+                    }
+                    break;
+                case MediaStatus.PLAYER_STATE_BUFFERING:
+                    audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_BUFFERING);
+                    state = "BUFFERING";
+                    break;
+                case MediaStatus.PLAYER_STATE_PAUSED:
+                    audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_PAUSED);
+                    state = "PAUSED";
+                    break;
+                case MediaStatus.PLAYER_STATE_PLAYING:
+                    audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_PLAYING);
+                    state = "PLAYING";
+                    break;
+                default:
+                    state = "UNKNOWN";
+                    break;
+            }
+            Log.d(LC, "onStatusUpdated state:" + state);
+        }
+
+        @Override
+        public void onMetadataUpdated() {
+            Log.d(LC, "onMetadataUpdated");
+            if (remoteMediaClient == null) {
+                return;
+            }
+            MediaInfo mediaInfo = remoteMediaClient.getMediaInfo();
+            if (mediaInfo == null) {
+                return;
+            }
+            MediaMetadata castMeta = mediaInfo.getMetadata();
+            audioPlayerCallback.onMetaChanged(EntryID.from(castMeta));
+        }
+
+        @Override
+        public void onQueueStatusUpdated() {
+            Log.d(LC, "onQueueStatusUpdated");
+        }
+
+        @Override
+        public void onPreloadStatusUpdated() {
+            Log.d(LC, "onPreloadStatusUpdated");
+        }
+
+        @Override
+        public void onSendingRemoteMediaRequest() {
+            Log.d(LC, "onSendingRemoteMediaRequest");
+        }
+
+        @Override
+        public void onAdBreakStatusUpdated() {
+            Log.d(LC, "onAdBreakStatusUpdated");
+        }
     }
 
     private class SessionManagerListenerImpl implements SessionManagerListener<Session> {
@@ -237,12 +269,15 @@ public class CastAudioPlayer extends AudioPlayer {
         @Override
         public void onSessionEnding(Session session) {
             Log.d(LC, "CastSession ending");
+            CastSession castSession = (CastSession) session;
+            lastPos = castSession.getRemoteMediaClient().getApproximateStreamPosition();
+            onDisconnect();
         }
 
         @Override
         public void onSessionEnded(Session session, int i) {
             Log.d(LC, "CastSession ended");
-            onDisconnect();
+            castConnectionListener.onDisconnected();
         }
 
         @Override
@@ -267,19 +302,24 @@ public class CastAudioPlayer extends AudioPlayer {
             Log.d(LC, "CastSession suspended");
         }
 
-        void onConnect(CastSession session) {
-            castSession = session;
-            castConnectionListener.onConnected();
-        }
-
         void onDisconnect() {
             audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_PAUSED);
-            castSession = null;
-            castConnectionListener.onDisconnected();
+            if (remoteMediaClient != null) {
+                remoteMediaClient.unregisterCallback(remoteMediaClientCallback);
+                remoteMediaClient = null;
+            }
         }
     }
 
-    public abstract static class CastConnectionListener {
+    private void onConnect(CastSession session) {
+        if (remoteMediaClient == null) {
+            remoteMediaClient = session.getRemoteMediaClient();
+            remoteMediaClient.registerCallback(remoteMediaClientCallback);
+        }
+        castConnectionListener.onConnected();
+    }
+
+    abstract static class CastConnectionListener {
         abstract void onConnected();
         abstract void onDisconnected();
     }

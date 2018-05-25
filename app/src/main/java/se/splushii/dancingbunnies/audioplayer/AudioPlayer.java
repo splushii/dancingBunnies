@@ -46,8 +46,13 @@ public abstract class AudioPlayer {
     abstract void play();
     abstract void pause();
     abstract void stop();
+    abstract void seekTo(long pos);
     abstract void setSource(AudioDataSource audioDataSource,
                             MediaMetadataCompat meta);
+    abstract void setSource(AudioDataSource audioDataSource,
+                            MediaMetadataCompat meta,
+                            long position);
+
 
     interface AudioPlayerCallback {
         void onReady();

@@ -402,7 +402,7 @@ public class SubsonicAPIClient extends APIClient {
                     builder.putString(Meta.METADATA_KEY_TRANSCODED_SUFFIX, jChild.getString(JSON_TRANSCODED_SUFFIX));
                     break;
                 case JSON_DURATION:
-                    builder.putLong(Meta.METADATA_KEY_DURATION, jChild.getInt(JSON_DURATION));
+                    builder.putLong(Meta.METADATA_KEY_DURATION, jChild.getInt(JSON_DURATION) * 1000L);
                     break;
                 case JSON_BITRATE:
                     builder.putLong(Meta.METADATA_KEY_BITRATE, jChild.getInt(JSON_BITRATE));
@@ -551,10 +551,9 @@ public class SubsonicAPIClient extends APIClient {
     }
 
     public AudioDataSource getAudioData(EntryID entryID) {
-        String query = baseURL + "stream" + getBaseQuery() + "&id=" + entryID.id +
-                "&estimateContentLength=true";
-        return new AudioDataSource(query, entryID);
         // TODO(kringlan): Add subsonic setting for max bitrate and FORMAT.
+        String query = baseURL + "stream" + getBaseQuery() + "&id=" + entryID.id + "&format=raw";
+        return new AudioDataSource(query, entryID);
     }
 
     @Override

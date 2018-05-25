@@ -85,6 +85,10 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.getTransportControls().skipToQueueItem(position);
     }
 
+    public void seekTo(long position) {
+        mediaController.getTransportControls().seekTo(position);
+    }
+
     private final MediaBrowserCompat.ConnectionCallback mediaBrowserConnectionCallback =
             new MediaBrowserCompat.ConnectionCallback() {
                 @Override

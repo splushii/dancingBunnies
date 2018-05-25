@@ -25,7 +25,7 @@
         android:id="@+id/musiclibrary_fab"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|start"
+        android:layout_gravity="bottom|center"
         android:layout_margin="@dimen/fab_margin"
         android:src="@android:drawable/ic_dialog_email" />
     <TextView
@@ -44,12 +44,15 @@
         android:visibility="gone"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|start"
+        android:layout_gravity="bottom|center"
         android:layout_marginBottom="86dp"
-        android:layout_marginStart="@dimen/fab_margin"
         android:src="@android:drawable/ic_dialog_alert" />
     <TextView
         android:id="@+id/fab_sort_song_label"
+        android:shadowColor="#ffffff"
+        android:shadowRadius="100"
+        android:shadowDx="0"
+        android:shadowDy="0"
         android:visibility="gone"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -64,8 +67,7 @@
         android:visibility="gone"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|start"
+        android:layout_gravity="bottom|center"
         android:layout_marginBottom="156dp"
-        android:layout_marginStart="@dimen/fab_margin"
         android:src="@android:drawable/ic_dialog_info" />
 </android.support.design.widget.CoordinatorLayout>

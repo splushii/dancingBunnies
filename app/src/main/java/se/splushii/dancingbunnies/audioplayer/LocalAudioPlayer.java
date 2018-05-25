@@ -117,11 +117,33 @@ class LocalAudioPlayer extends AudioPlayer {
             }
             state = MediaPlayerState.NULL;
         }
+
+        boolean seekTo(long pos) {
+            switch (state) {
+                case PREPARED:
+                case STARTED:
+                case PAUSED:
+                case PLAYBACK_COMPLETED:
+                    mediaPlayer.seekTo((int) pos);
+                    return true;
+                default:
+                    Log.w(LC, "onStop in wrong state: " + state);
+                    return false;
+            }
+        }
+    }
+
+    @Override
+    void setSource(AudioDataSource audioDataSource, MediaMetadataCompat meta) {
+        setSource(audioDataSource, meta, 0L);
     }
 
     @Override
     public void setSource(AudioDataSource audioDataSource,
-                          MediaMetadataCompat meta) {
+                          MediaMetadataCompat meta,
+                          long position) {
+        audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_SKIPPING_TO_NEXT);
+        audioPlayerCallback.onMetaChanged(EntryID.from(meta));
         if (nextPlayer != null) {
             nextPlayer.release();
             nextPlayer = null;
@@ -134,7 +156,7 @@ class LocalAudioPlayer extends AudioPlayer {
                 player = null;
             }
             player = nextPlayer;
-            audioPlayerCallback.onMetaChanged(EntryID.from(meta));
+            player.seekTo(position);
             audioPlayerCallback.onReady();
         });
         nextPlayer.mediaPlayer.setOnCompletionListener(mediaPlayer -> {
@@ -192,6 +214,13 @@ class LocalAudioPlayer extends AudioPlayer {
         }
         if (player != null && player.stop()) {
             audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_STOPPED);
+        }
+    }
+
+    @Override
+    void seekTo(long pos) {
+        if (player != null && player.seekTo(pos)) {
+            audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_PLAYING);
         }
     }
 }

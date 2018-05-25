@@ -160,7 +160,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         final FloatingActionButton sortBySongFab = rootView.findViewById(R.id.fab_sort_song);
 
         sortByArtistFab.setOnClickListener(view -> {
-            Snackbar.make(view, "Artist view", Snackbar.LENGTH_LONG)
+            Snackbar.make(view, "Artist view", Snackbar.LENGTH_SHORT)
                     .setAction("Action", null).show();
             MusicLibraryQuery query = new MusicLibraryQuery();
             query.addToQuery(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_ARTIST);
@@ -169,7 +169,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         });
 
         sortBySongFab.setOnClickListener(view -> {
-            Snackbar.make(view, "Song view", Snackbar.LENGTH_LONG)
+            Snackbar.make(view, "Song view", Snackbar.LENGTH_SHORT)
                     .setAction("Action", null).show();
             MusicLibraryQuery query = new MusicLibraryQuery();
             query.addToQuery(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_MEDIA_ID);

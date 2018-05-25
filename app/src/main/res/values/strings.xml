@@ -32,4 +32,5 @@
     <string name="media_route_menu_title">Cast</string>
     <string name="playlist_context_play">Play</string>
     <string name="playlist_context_dequeue">Dequeue</string>
+    <string name="nowplaying_buffering">buffering...</string>
 </resources>

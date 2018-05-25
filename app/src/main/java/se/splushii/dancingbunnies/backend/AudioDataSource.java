@@ -23,6 +23,7 @@ public class AudioDataSource extends MediaDataSource {
     private volatile boolean isDownloading = false;
     private volatile boolean isFinished = false;
     private Thread downloadThread;
+    private String contentType;
 
     public AudioDataSource(String url, EntryID entryID) {
         this.url = url;
@@ -123,8 +124,7 @@ public class AudioDataSource extends MediaDataSource {
     }
 
     public String getContentType() {
-        // TODO: Actually use the MIME from the APIClient
-        return "audio/mp3";
+        return contentType;
     }
 
     public long getDuration() {
@@ -135,5 +135,9 @@ public class AudioDataSource extends MediaDataSource {
 //                metaRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
 //        return Long.parseLong(durationString);
         return 0L;
+    }
+
+    public void setContentType(String contentType) {
+        this.contentType = contentType;
     }
 }

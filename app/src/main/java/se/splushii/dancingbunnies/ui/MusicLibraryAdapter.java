@@ -3,15 +3,12 @@ package se.splushii.dancingbunnies.ui;
 import android.support.annotation.NonNull;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.PopupMenu;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.util.Pair;
 import android.view.LayoutInflater;
-import android.view.MenuInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
@@ -39,6 +36,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     }
 
     static class SongViewHolder extends RecyclerView.ViewHolder {
+        View queueAction;
         TextView songTitleView;
         ImageButton overflowMenu;
         View moreActions;
@@ -47,6 +45,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             songTitleView = view.findViewById(R.id.song_title);
             overflowMenu = view.findViewById(R.id.overflow_menu);
             moreActions = view.findViewById(R.id.more_actions);
+            queueAction = view.findViewById(R.id.action_queue);
         }
     }
 
@@ -98,12 +97,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 view.showContextMenu();
             }
         });
-        holder.overflowMenu.setOnClickListener(v -> {
-            PopupMenu popup = new PopupMenu(fragment.getContext(), holder.overflowMenu);
-            MenuInflater inflater = popup.getMenuInflater();
-            inflater.inflate(R.menu.browsable_menu_actions, popup.getMenu());
-            popup.show();
-        });
+        holder.overflowMenu.setOnClickListener(View::showContextMenu);
+        holder.queueAction.setOnClickListener(v -> fragment.queue(entryID));
     }
 
     public Pair<Integer, Integer> getCurrentPosition() {

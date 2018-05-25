@@ -106,7 +106,13 @@ public class MusicLibraryService extends Service {
 
     public AudioDataSource getAudioData(EntryID entryID) {
         if (apis.containsKey(entryID.src)) {
-            return apis.get(entryID.src).getAudioData(entryID);
+            AudioDataSource audioDataSource = apis.get(entryID.src).getAudioData(entryID);
+            MediaMetadataCompat meta = getSongMetaData(entryID);
+            String contentType = meta.getString(Meta.METADATA_KEY_CONTENT_TYPE);
+            if (contentType != null) {
+                audioDataSource.setContentType(contentType);
+            }
+            return audioDataSource;
         } else {
             Log.d(LC, "Could not find api for song with src: " + entryID.src
                     + ", id: " + entryID.id);

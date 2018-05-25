@@ -28,26 +28,20 @@
         android:layout_marginEnd="16dp">
 
         <TextView
-            android:id="@+id/queue_title"
+            android:id="@+id/action_queue"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:contentDescription="Open popup menu"
-            android:drawableTop="@android:drawable/ic_menu_more"
+            android:drawableTop="@drawable/ic_queue_black_24dp"
             android:text="@string/song_context_queue"
             android:textColor="#263238"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp" />
 
-        <TextView
-            android:id="@+id/add_to_playlist"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:contentDescription="Open popup menu"
-            android:drawableTop="@android:drawable/ic_menu_more"
-            android:text="@string/song_context_queue"
-            android:textColor="#263238"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp" />
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
 
         <ImageButton
             android:id="@+id/overflow_menu"
@@ -55,7 +49,7 @@
             android:layout_height="wrap_content"
             android:background="@android:color/transparent"
             android:contentDescription="Open popup menu"
-            android:src="@android:drawable/ic_menu_more"
+            android:src="@drawable/ic_more_vert_black_24dp"
             android:textColor="#263238"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp" />
