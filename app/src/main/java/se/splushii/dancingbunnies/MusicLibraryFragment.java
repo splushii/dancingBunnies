@@ -56,13 +56,13 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
 
     @Override
     public void onStop() {
+        super.onStop();
         Log.d(LC, "onStop");
         if (currentLibraryView != null) {
             currentLibraryView = new LibraryView(
                     currentLibraryView.query,
                     recyclerViewAdapter.getCurrentPosition());
         }
-        super.onStop();
     }
 
     @Override

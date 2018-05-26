@@ -174,22 +174,15 @@ public class MusicLibraryService extends Service {
     private void saveLibraryToStorage(ArrayList<MediaMetadataCompat> data) {
         long start = System.currentTimeMillis();
         Log.d(LC, "saveLibraryToStorage start");
-        // TODO: Do not remove all entries, only the needed
-        storage.clearAll();
         storage.insertSongs(data);
         Log.d(LC, "saveLibraryToStorage finish " + (System.currentTimeMillis() - start));
     }
 
-    private CompletableFuture<Void> clearStorageEntries(final String src) {
-        final CompletableFuture<Void> ret = new CompletableFuture<>();
-        new Thread(() -> {
-            long start = System.currentTimeMillis();
-            Log.d(LC, "clearStorageEntries start");
-            storage.clearAll(src);
-            Log.d(LC, "clearStorageEntries finish " + (System.currentTimeMillis() - start));
-            ret.complete(null);
-        }).start();
-        return ret;
+    private void clearStorageEntries(final String src) {
+        long start = System.currentTimeMillis();
+        Log.d(LC, "clearStorageEntries start");
+        storage.clearAll(src);
+        Log.d(LC, "clearStorageEntries finish " + (System.currentTimeMillis() - start));
     }
 
     public void fetchAPILibrary(final String api, final MusicLibraryRequestHandler handler) {
@@ -211,12 +204,13 @@ public class MusicLibraryService extends Service {
                         handler.onProgress(s);
                     }
                 });
-        CompletableFuture<Integer> saveLibraryReq = new CompletableFuture<>();
         req.thenAccept(opt -> {
             if (opt.isPresent()) {
                 final ArrayList<MediaMetadataCompat> data = opt.get();
                 Log.d(LC, "Fetched library from " + api + ": " + data.size() + " entries.");
                 handler.onProgress("Saving entries to storage...");
+                // TODO: Possible to perform a smart merge instead?
+                clearStorageEntries(api);
                 saveLibraryToStorage(data);
                 Log.d(LC, "Saved library to storage.");
                 handler.onProgress("Indexing entries...");

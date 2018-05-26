@@ -25,7 +25,7 @@ public abstract class AudioBrowserFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(LC, "onCreate");
-        mediaBrowser = new MediaBrowserCompat(getActivity(), new ComponentName(getActivity(),
+        mediaBrowser = new MediaBrowserCompat(getActivity(), new ComponentName(requireContext(),
                 AudioPlayerService.class), mediaBrowserConnectionCallback, null);
         mediaBrowser.connect();
     }

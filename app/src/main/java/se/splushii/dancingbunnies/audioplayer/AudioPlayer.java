@@ -1,17 +1,19 @@
 package se.splushii.dancingbunnies.audioplayer;
 
-import android.support.v4.media.MediaMetadataCompat;
 import android.util.Log;
 
-import se.splushii.dancingbunnies.backend.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.util.Util;
 
 public abstract class AudioPlayer {
     private static final String LC = Util.getLogContext(AudioPlayer.class);
+    enum Type {
+        LOCAL,
+        CAST
+    }
 
-    AudioPlayerCallback audioPlayerCallback;
-    private AudioPlayerCallback emptyAudioPlayerCallback = new AudioPlayerCallback() {
+    Callback audioPlayerCallback;
+    private Callback emptyAudioPlayerCallback = new Callback() {
         @Override
         public void onReady() {
             Log.w(LC, "onReady");
@@ -36,7 +38,7 @@ public abstract class AudioPlayer {
     AudioPlayer() {
         audioPlayerCallback = emptyAudioPlayerCallback;
     }
-    void setListener(AudioPlayerCallback audioPlayerCallback) {
+    void setListener(Callback audioPlayerCallback) {
         this.audioPlayerCallback = audioPlayerCallback;
     }
     public void removeListener() {
@@ -47,14 +49,10 @@ public abstract class AudioPlayer {
     abstract void pause();
     abstract void stop();
     abstract void seekTo(long pos);
-    abstract void setSource(AudioDataSource audioDataSource,
-                            MediaMetadataCompat meta);
-    abstract void setSource(AudioDataSource audioDataSource,
-                            MediaMetadataCompat meta,
-                            long position);
+    abstract void setSource(PlaybackEntry playbackEntry);
+    abstract void setSource(PlaybackEntry playbackEntry, long lastPos);
 
-
-    interface AudioPlayerCallback {
+    interface Callback {
         void onReady();
         void onEnded();
         void onStateChanged(int playBackState);

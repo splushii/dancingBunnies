@@ -134,14 +134,14 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    void setSource(AudioDataSource audioDataSource, MediaMetadataCompat meta) {
-        setSource(audioDataSource, meta, 0L);
+    void setSource(PlaybackEntry playbackEntry) {
+        setSource(playbackEntry, 0L);
     }
 
     @Override
-    public void setSource(AudioDataSource audioDataSource,
-                          MediaMetadataCompat meta,
-                          long position) {
+    public void setSource(PlaybackEntry playbackEntry, long position) {
+        AudioDataSource audioDataSource = playbackEntry.audioDataSource;
+        MediaMetadataCompat meta = playbackEntry.meta;
         audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_SKIPPING_TO_NEXT);
         audioPlayerCallback.onMetaChanged(EntryID.from(meta));
         if (nextPlayer != null) {
@@ -157,6 +157,7 @@ class LocalAudioPlayer extends AudioPlayer {
             }
             player = nextPlayer;
             player.seekTo(position);
+            audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_PAUSED);
             audioPlayerCallback.onReady();
         });
         nextPlayer.mediaPlayer.setOnCompletionListener(mediaPlayer -> {
@@ -164,6 +165,7 @@ class LocalAudioPlayer extends AudioPlayer {
             audioPlayerCallback.onEnded();
         });
         // TODO: Change to audioDataSource.buffer, and use a callback to play when buffered enough
+        audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_BUFFERING);
         nextPlayer.audioDataSource.download(new AudioDataDownloadHandler() {
             @Override
             public void onStart() {
@@ -181,7 +183,6 @@ class LocalAudioPlayer extends AudioPlayer {
                 Log.e(LC, "nextPlayer download error: " + status);
             }
         });
-        audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_BUFFERING);
     }
 
     @Override

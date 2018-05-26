@@ -39,6 +39,12 @@ public class PlaylistQueueFragment extends AudioBrowserFragment {
     }
 
     @Override
+    public void onStop() {
+        super.onStop();
+        Log.d(LC, "onStop");
+    }
+
+    @Override
     protected void onSessionReady() {
         super.onSessionReady();
         refreshView();

@@ -93,6 +93,12 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     @Override
+    public void onStop() {
+        super.onStop();
+        Log.d(LC, "onStop");
+    }
+
+    @Override
     public void onDestroy() {
         super.onDestroy();
         stopProgressUpdate();

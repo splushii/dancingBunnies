@@ -94,6 +94,12 @@ public final class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onStop() {
+        Log.d(LC, "onStop");
+        super.onStop();
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater menuInflater = getMenuInflater();
         menuInflater.inflate(R.menu.main_activity_menu, menu);

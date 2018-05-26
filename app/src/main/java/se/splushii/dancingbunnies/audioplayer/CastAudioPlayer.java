@@ -122,14 +122,16 @@ public class CastAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    void setSource(AudioDataSource audioDataSource, MediaMetadataCompat meta) {
-        setSource(audioDataSource, meta, 0L);
+    void setSource(PlaybackEntry playbackEntry) {
+        setSource(playbackEntry, 0L);
     }
 
     @Override
-    public void setSource(AudioDataSource audioDataSource, MediaMetadataCompat meta, long position) {
+    public void setSource(PlaybackEntry playbackEntry, long position) {
         audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_SKIPPING_TO_NEXT);
         lastPos = position;
+        MediaMetadataCompat meta = playbackEntry.meta;
+        AudioDataSource audioDataSource = playbackEntry.audioDataSource;
         MediaMetadata castMeta = Meta.from(meta);
         long duration = audioDataSource.getDuration();
         if (duration == 0L) {
@@ -149,6 +151,7 @@ public class CastAudioPlayer extends AudioPlayer {
         remoteMediaClient.load(mediaInfo, mediaLoadOptions).setResultCallback(result -> {
             Log.d(LC, "load smooth? " + result.getStatus().isSuccess());
             if (result.getStatus().isSuccess()) {
+                audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_PAUSED);
                 audioPlayerCallback.onReady();
             }
         });

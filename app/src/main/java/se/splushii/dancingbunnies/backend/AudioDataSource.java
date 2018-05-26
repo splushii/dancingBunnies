@@ -52,6 +52,7 @@ public class AudioDataSource extends MediaDataSource {
             return;
         } else if (isFinished) {
             Log.d(LC, "download() when already finished.");
+            handler.onSuccess();
             return;
         }
         isDownloading = true;
