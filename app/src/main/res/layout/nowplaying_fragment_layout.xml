@@ -9,7 +9,20 @@
         android:orientation="vertical"
         android:gravity="bottom">
         <TextView
-            android:id="@+id/nowplaying_text"
+            android:id="@+id/nowplaying_artist"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:layout_gravity="center_horizontal"/>
+        <TextView
+            android:id="@+id/nowplaying_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="24sp"
+            android:textColor="@color/bluegrey900"
+            android:layout_gravity="center_horizontal"/>
+        <TextView
+            android:id="@+id/nowplaying_album"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
@@ -17,7 +30,9 @@
         <SeekBar
             android:id="@+id/nowplaying_seekbar"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"/>
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -28,7 +28,7 @@ public class PlaylistQueueFragment extends AudioBrowserFragment {
     private RecyclerView recView;
 
     public PlaylistQueueFragment() {
-        recViewAdapter = new PlayListQueueAdapter(this);
+        recViewAdapter = new PlayListQueueAdapter();
     }
 
     @Override

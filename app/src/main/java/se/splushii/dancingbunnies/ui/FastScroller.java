@@ -157,7 +157,7 @@ public class FastScroller extends LinearLayout {
     private boolean iAmNeeded() {
         int scrollRange = recyclerView.computeVerticalScrollRange();
         int visibleScrollRange = recyclerView.getHeight();
-        return scrollRange > visibleScrollRange;
+        return scrollRange > 2 * visibleScrollRange;
     }
 
     /**

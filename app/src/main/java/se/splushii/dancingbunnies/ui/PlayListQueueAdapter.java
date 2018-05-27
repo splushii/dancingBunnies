@@ -1,6 +1,7 @@
 package se.splushii.dancingbunnies.ui;
 
 import android.support.annotation.NonNull;
+import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat.QueueItem;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
@@ -13,19 +14,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.util.Util;
 
 public class PlayListQueueAdapter
         extends RecyclerView.Adapter<PlayListQueueAdapter.SongViewHolder> {
     private static final String LC = Util.getLogContext(PlayListQueueAdapter.class);
 
-    private AudioBrowserFragment fragment;
     private List<QueueItem> dataset;
     private RecyclerView.ViewHolder contextMenuHolder;
 
-    public PlayListQueueAdapter(AudioBrowserFragment fragment) {
-        this.fragment = fragment;
+    public PlayListQueueAdapter() {
         dataset = new ArrayList<>();
     }
 
@@ -39,10 +38,16 @@ public class PlayListQueueAdapter
     }
 
     static class SongViewHolder extends RecyclerView.ViewHolder {
+        private final View queueEntry;
+        private final TextView queueMoreInfo;
+        private final TextView queueArtist;
         TextView queueTitle;
         SongViewHolder(View v) {
             super(v);
+            queueEntry = v.findViewById(R.id.queue_entry);
             queueTitle = v.findViewById(R.id.queue_title);
+            queueArtist = v.findViewById(R.id.queue_artist);
+            queueMoreInfo = v.findViewById(R.id.queue_more_info);
         }
     }
 
@@ -62,16 +67,21 @@ public class PlayListQueueAdapter
     @Override
     public void onBindViewHolder(@NonNull final PlayListQueueAdapter.SongViewHolder holder, int position) {
         QueueItem item = dataset.get(position);
-        String title = item.getDescription().getTitle() + "";
-        holder.queueTitle.setText(title);
-        holder.queueTitle.setOnClickListener(view -> {
+        MediaMetadataCompat meta = Meta.desc2meta(item.getDescription());
+        String title = meta.getString(Meta.METADATA_KEY_TITLE);
+        holder.queueEntry.setOnClickListener(view -> {
             contextMenuHolder = holder;
             view.showContextMenu();
         });
-        holder.queueTitle.setOnLongClickListener(view -> {
+        holder.queueEntry.setOnLongClickListener(view -> {
             Log.d(LC, "onLongClick on " + title);
             return false;
         });
+        holder.queueTitle.setText(title);
+        String artist = meta.getString(Meta.METADATA_KEY_ARTIST);
+        holder.queueArtist.setText(artist);
+        String src = meta.getString(Meta.METADATA_KEY_API);
+        holder.queueMoreInfo.setText(src);
     }
 
     @Override

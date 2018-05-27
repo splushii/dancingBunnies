@@ -81,7 +81,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         currentSubscriptionID = libView.query.query(mediaBrowser, new MusicLibraryQuery.MusicLibraryQueryCallback() {
             @Override
             public void onQueryResult(@NonNull List<MediaBrowserCompat.MediaItem> items) {
-                recyclerViewAdapter.setDataset(items);
+                recyclerViewAdapter.setDataset(items, libView.query.isSearchQuery());
                 currentLibraryView = libView;
                 LinearLayoutManager llm = (LinearLayoutManager) recyclerView.getLayoutManager();
                 llm.scrollToPositionWithOffset(libView.pos, libView.pad);

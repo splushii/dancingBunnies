@@ -221,7 +221,11 @@ class LocalAudioPlayer extends AudioPlayer {
     @Override
     void seekTo(long pos) {
         if (player != null && player.seekTo(pos)) {
-            audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_PLAYING);
+            if (player.mediaPlayer.isPlaying()) {
+                audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_PLAYING);
+            } else {
+                audioPlayerCallback.onStateChanged(PlaybackStateCompat.STATE_PAUSED);
+            }
         }
     }
 }

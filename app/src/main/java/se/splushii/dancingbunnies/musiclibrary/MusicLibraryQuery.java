@@ -52,12 +52,16 @@ public class MusicLibraryQuery {
         this.searchQuery = searchQuery;
     }
 
-    public Bundle toBundle() {
+    private Bundle toBundle() {
         return subQuery;
     }
 
     private boolean isSubscription() {
         return type == MusicLibraryQueryType.SUBSCRIPTION;
+    }
+
+    public boolean isSearchQuery() {
+        return !isSubscription();
     }
 
     private String subscriptionID() {

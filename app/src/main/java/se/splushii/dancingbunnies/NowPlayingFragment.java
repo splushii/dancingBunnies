@@ -29,7 +29,9 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private static final long PROGRESS_UPDATE_INITIAL_INTERVAL = 100;
     private static final long PROGRESS_UPDATE_INTERNAL = 1000;
 
-    private TextView nowPlayingText;
+    private TextView nowPlayingTitle;
+    private TextView nowPlayingArtist;
+    private TextView nowPlayingAlbum;
     private Button playPauseBtn;
     private boolean isPlaying = false;
     private SeekBar seekBar;
@@ -47,8 +49,9 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                              Bundle savedInstanceState) {
         final View rootView = inflater.inflate(R.layout.nowplaying_fragment_layout, container,
                 false);
-        nowPlayingText = rootView.findViewById(R.id.nowplaying_text);
-        nowPlayingText.setText("");
+        nowPlayingTitle = rootView.findViewById(R.id.nowplaying_title);
+        nowPlayingArtist = rootView.findViewById(R.id.nowplaying_artist);
+        nowPlayingAlbum = rootView.findViewById(R.id.nowplaying_album);
         Button previousBtn = rootView.findViewById(R.id.nowplaying_previous);
         previousBtn.setOnClickListener(view -> previous());
         isPlaying = false;
@@ -167,9 +170,26 @@ public class NowPlayingFragment extends AudioBrowserFragment {
 
     private void updateDescription(MediaMetadataCompat metadata) {
         updateMediaInfo(metadata);
-        String description = Meta.getLongDescription(metadata);
-        Log.d(LC, "meta: " + description);
-        nowPlayingText.setText(description);
+        String title = metadata.getString(Meta.METADATA_KEY_TITLE);
+        String album = metadata.getString(Meta.METADATA_KEY_ALBUM);
+        String artist = metadata.getString(Meta.METADATA_KEY_ARTIST);
+        if (title == null || title.equals(Meta.METADATA_VALUE_UNKNOWN_TITLE)) {
+            title = "Unknown title";
+        }
+        if (album == null || album.equals(Meta.METADATA_VALUE_UNKNOWN_ALBUM)) {
+            album = "Unknown album";
+        } else {
+            long year = metadata.getLong(Meta.METADATA_KEY_YEAR);
+            if (year != 0L) {
+                album = String.format(Locale.getDefault(), "%s - %d", album, year);
+            }
+        }
+        if (artist == null || artist.equals(Meta.METADATA_VALUE_UNKNOWN_ARTIST)) {
+            artist = "Unknown artist";
+        }
+        nowPlayingTitle.setText(title);
+        nowPlayingAlbum.setText(album);
+        nowPlayingArtist.setText(artist);
     }
 
     private void updateMediaInfo(MediaMetadataCompat metadata) {

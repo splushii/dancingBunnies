@@ -18,6 +18,7 @@ import java.util.List;
 import se.splushii.dancingbunnies.MusicLibraryFragment;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapter.SongViewHolder> {
@@ -25,6 +26,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     private List<MediaBrowserCompat.MediaItem> dataset;
     private MusicLibraryFragment fragment;
     private RecyclerView.ViewHolder contextMenuHolder;
+    private boolean searchMode = false;
 
     public MusicLibraryAdapter(MusicLibraryFragment fragment) {
         this.dataset = new ArrayList<>();
@@ -36,16 +38,23 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     }
 
     static class SongViewHolder extends RecyclerView.ViewHolder {
-        View queueAction;
-        TextView songTitleView;
-        ImageButton overflowMenu;
-        View moreActions;
+        private final View libraryEntry;
+        private final TextView libraryEntryTitle;
+        private final TextView libraryEntryArtist;
+        private final View playAction;
+        private final View queueAction;
+        private final ImageButton overflowMenu;
+        private final View moreActions;
+
         SongViewHolder(View view) {
             super(view);
-            songTitleView = view.findViewById(R.id.song_title);
+            libraryEntry = view.findViewById(R.id.library_entry);
+            libraryEntryTitle = view.findViewById(R.id.library_entry_title);
+            libraryEntryArtist = view.findViewById(R.id.library_entry_artist);
+            playAction = view.findViewById(R.id.action_play);
+            queueAction = view.findViewById(R.id.action_queue);
             overflowMenu = view.findViewById(R.id.overflow_menu);
             moreActions = view.findViewById(R.id.more_actions);
-            queueAction = view.findViewById(R.id.action_queue);
         }
     }
 
@@ -58,8 +67,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         return new SongViewHolder(v);
     }
 
-    public void setDataset(List<MediaBrowserCompat.MediaItem> items) {
+    public void setDataset(List<MediaBrowserCompat.MediaItem> items, boolean searchMode) {
         this.dataset = items;
+        this.searchMode = searchMode;
         notifyDataSetChanged();
     }
 
@@ -74,31 +84,47 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         EntryID entryID = EntryID.from(item);
         final boolean browsable = item.isBrowsable();
         holder.moreActions.setVisibility(View.GONE);
-        holder.songTitleView.setText(title);
-        holder.songTitleView.setOnLongClickListener(view -> {
+        holder.libraryEntryTitle.setText(title);
+        if (searchMode) {
+            String artist = item.getDescription().getExtras().getString(Meta.METADATA_KEY_ARTIST);
+            holder.libraryEntryArtist.setText(artist);
+        } else {
+            holder.libraryEntryArtist.setText("");
+        }
+        if (position % 2 == 0) {
+            holder.libraryEntry.setBackgroundColor(
+                    fragment.requireContext().getColor(R.color.grey50)
+            );
+        } else {
+            holder.libraryEntry.setBackgroundColor(
+                    fragment.requireContext().getColor(R.color.grey100)
+            );
+        }
+        holder.libraryEntry.setOnLongClickListener(view -> {
             Log.d(LC, "Long click on " + title);
-            if (holder.moreActions.getVisibility() == View.VISIBLE) {
-                holder.moreActions.setVisibility(View.GONE);
-            } else {
-                holder.moreActions.setVisibility(View.VISIBLE);
-            }
-//            if (browsable) {
-//                // TODO: Support context menu for browsable items
-//            } else {
-//                fragment.play(entryID);
-//            }
+            holder.moreActions.setVisibility(holder.moreActions.getVisibility() == View.VISIBLE ?
+                    View.GONE : View.VISIBLE
+            );
             return true;
         });
-        holder.songTitleView.setOnClickListener(view -> {
+        holder.libraryEntry.setOnClickListener(view -> {
             if (browsable) {
                 fragment.browse(entryID);
             } else {
-                contextMenuHolder = holder;
-                view.showContextMenu();
+                holder.moreActions.setVisibility(holder.moreActions.getVisibility() == View.VISIBLE ?
+                        View.GONE : View.VISIBLE
+                );
             }
         });
-        holder.overflowMenu.setOnClickListener(View::showContextMenu);
+        holder.playAction.setOnClickListener(v -> fragment.play(entryID));
         holder.queueAction.setOnClickListener(v -> fragment.queue(entryID));
+        holder.overflowMenu.setOnClickListener(v -> {
+            v.setOnCreateContextMenuListener((menu, v1, menuInfo) -> {
+                menu.setHeaderTitle(title);
+            });
+            contextMenuHolder = holder;
+            v.showContextMenu();
+        });
     }
 
     public Pair<Integer, Integer> getCurrentPosition() {

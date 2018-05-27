@@ -24,11 +24,13 @@ import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
@@ -117,7 +119,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public void onSearch(@NonNull String query, Bundle extras, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
         List<MediaBrowserCompat.MediaItem> mediaItems = new ArrayList<>();
         List<LibraryEntry> entries = musicLibraryService.getSearchEntries(query);
-        Collections.sort(entries);
         for (LibraryEntry entry: entries) {
             MediaBrowserCompat.MediaItem item = generateMediaItem(entry);
             mediaItems.add(item);
@@ -127,9 +128,14 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private MediaBrowserCompat.MediaItem generateMediaItem(LibraryEntry entry) {
         EntryID entryID = entry.entryID;
+        Bundle extras = entryID.toBundle();
+        if (entryID.type.equals(Meta.METADATA_KEY_MEDIA_ID)) {
+            MediaMetadataCompat meta = musicLibraryService.getSongMetaData(entryID);
+            extras.putAll(meta.getBundle());
+        }
         MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
                 .setMediaId(entryID.key())
-                .setExtras(entryID.toBundle())
+                .setExtras(extras)
                 .setTitle(entry.name())
                 .build();
         int flags = MediaBrowserCompat.MediaItem.FLAG_PLAYABLE;
@@ -299,19 +305,38 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onPlayFromMediaId(String mediaId, Bundle extras) {
             Log.d(LC, "onPlayFromMediaId");
+            PlaybackEntry playbackEntry = getPlaybackEntry(EntryID.from(extras));
             mediaSession.setQueue(
-                    playbackController.playNow(getPlaybackEntry(EntryID.from(extras)))
+                    playbackController.playNow(playbackEntry)
             );
+            setToast(playbackEntry, "Playing %s \"%s\" now!");
         }
 
         @Override
         public void onAddQueueItem(MediaDescriptionCompat description) {
             Log.d(LC, "onAddQueueItem");
+            PlaybackEntry playbackEntry = getPlaybackEntry(EntryID.from(description));
             List<MediaSessionCompat.QueueItem> queue = playbackController.addToQueue(
-                    getPlaybackEntry(EntryID.from(description)),
+                    playbackEntry,
                     PlayQueue.QueueOp.LAST
             );
             mediaSession.setQueue(queue);
+            setToast(playbackEntry, "Added %s \"%s\" to queue!");
+        }
+
+        private void setToast(PlaybackEntry playbackEntry, String format) {
+            String entryType = playbackEntry.meta.getString(Meta.METADATA_KEY_TYPE);
+            if (Meta.METADATA_KEY_MEDIA_ID.equals(entryType)) {
+                entryType = Meta.METADATA_KEY_TITLE;
+            }
+            String title = playbackEntry.meta.getString(entryType);
+            String type = Meta.getHumanReadable(entryType);
+            String message = String.format(Locale.getDefault(), format, type, title);
+            Toast.makeText(
+                    AudioPlayerService.this,
+                    message,
+                    Toast.LENGTH_SHORT
+            ).show();
         }
 
         @Override
@@ -353,6 +378,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         }
 
         PlaybackEntry getPlaybackEntry(EntryID entryID) {
+            if (!Meta.METADATA_KEY_MEDIA_ID.equals(entryID.type)) {
+                Log.e(LC, "Non-track entry. Unhandled! Beware!");
+            }
             MediaMetadataCompat meta = musicLibraryService.getSongMetaData(entryID);
             AudioDataSource audioDataSource = musicLibraryService.getAudioData(entryID);
             return new PlaybackEntry(entryID, meta, audioDataSource);

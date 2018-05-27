@@ -41,8 +41,14 @@ public class Meta {
         MediaDescriptionCompat description = meta.getDescription();
         Bundle extras = description.getExtras();
         assert extras != null;
-        extras.putAll(EntryID.from(meta).toBundle());
+        extras.putAll(meta.getBundle());
         return description;
+    }
+
+    public static MediaMetadataCompat desc2meta(MediaDescriptionCompat desc) {
+        MediaMetadataCompat meta = new MediaMetadataCompat.Builder().build();
+        meta.getBundle().putAll(desc.getExtras());
+        return meta;
     }
 
     public enum Type {
@@ -282,5 +288,63 @@ public class Meta {
             Log.d(LC, "key: " + key);
         }
         return typeMap.get(key);
+    }
+
+    private static final HashMap<String, String> humanMap;
+    static {
+        humanMap = new HashMap<>();
+        humanMap.put(METADATA_KEY_TYPE, "type");
+        humanMap.put(METADATA_KEY_PARENT_ID, "parent");
+        humanMap.put(METADATA_KEY_API, "api");
+        humanMap.put(METADATA_KEY_MEDIA_ROOT, "media root");
+        humanMap.put(METADATA_KEY_FILE_SIZE, "file size");
+        humanMap.put(METADATA_KEY_CONTENT_TYPE, "content type");
+        humanMap.put(METADATA_KEY_FILE_SUFFIX, "file suffix");
+        humanMap.put(METADATA_KEY_TRANSCODED_TYPE, "transcoded type");
+        humanMap.put(METADATA_KEY_TRANSCODED_SUFFIX, "transcoded suffix");
+        humanMap.put(METADATA_KEY_BITRATE, "bitrate");
+        humanMap.put(METADATA_KEY_DATE_ADDED, "date added");
+        humanMap.put(METADATA_KEY_DATE_STARRED, "date starred");
+        humanMap.put(METADATA_KEY_HEART_RATING, "heart rating");
+        humanMap.put(METADATA_KEY_ALBUM_ID, "album id");
+        humanMap.put(METADATA_KEY_ARTIST_ID, "artist id");
+        humanMap.put(METADATA_KEY_BOOKMARK_POSITION, "bookmark position");
+        humanMap.put(METADATA_KEY_AVERAGE_RATING, "average rating");
+        // Android keys
+        humanMap.put(METADATA_KEY_ADVERTISEMENT, "advertisement");
+        humanMap.put(METADATA_KEY_ALBUM, "album");
+        humanMap.put(METADATA_KEY_ALBUM_ART, "album art");
+        humanMap.put(METADATA_KEY_ALBUM_ARTIST, "album artist");
+        humanMap.put(METADATA_KEY_ALBUM_ART_URI, "album art URI");
+        humanMap.put(METADATA_KEY_ART, "art");
+        humanMap.put(METADATA_KEY_ARTIST, "artist");
+        humanMap.put(METADATA_KEY_ART_URI, "art URI");
+        humanMap.put(METADATA_KEY_AUTHOR, "author");
+        humanMap.put(METADATA_KEY_BT_FOLDER_TYPE, "BlueTooth folder type");
+        humanMap.put(METADATA_KEY_COMPILATION, "compilation");
+        humanMap.put(METADATA_KEY_COMPOSER, "composer");
+        humanMap.put(METADATA_KEY_DATE, "date");
+        humanMap.put(METADATA_KEY_DISC_NUMBER, "disc number");
+        humanMap.put(METADATA_KEY_DISPLAY_DESCRIPTION, "display description");
+        humanMap.put(METADATA_KEY_DISPLAY_ICON, "display icon");
+        humanMap.put(METADATA_KEY_DISPLAY_ICON_URI, "display icon URI");
+        humanMap.put(METADATA_KEY_DISPLAY_SUBTITLE, "display subtitle");
+        humanMap.put(METADATA_KEY_DISPLAY_TITLE, "display title");
+        humanMap.put(METADATA_KEY_DOWNLOAD_STATUS, "download status");
+        humanMap.put(METADATA_KEY_DURATION, "duration");
+        humanMap.put(METADATA_KEY_GENRE, "genre");
+        humanMap.put(METADATA_KEY_MEDIA_ID, "media ID");
+        humanMap.put(METADATA_KEY_MEDIA_URI, "media URI");
+        humanMap.put(METADATA_KEY_NUM_TRACKS, "number of tracks");
+        humanMap.put(METADATA_KEY_RATING, "rating");
+        humanMap.put(METADATA_KEY_TITLE, "title");
+        humanMap.put(METADATA_KEY_TRACK_NUMBER, "track number");
+        humanMap.put(METADATA_KEY_USER_RATING, "user rating");
+        humanMap.put(METADATA_KEY_WRITER, "writer");
+        humanMap.put(METADATA_KEY_YEAR, "year");
+    }
+
+    public static String getHumanReadable(String string) {
+        return humanMap.get(string);
     }
 }
