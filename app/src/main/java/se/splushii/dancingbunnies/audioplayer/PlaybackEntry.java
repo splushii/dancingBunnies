@@ -2,18 +2,16 @@ package se.splushii.dancingbunnies.audioplayer;
 
 import android.support.v4.media.MediaMetadataCompat;
 
-import se.splushii.dancingbunnies.backend.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 
 public class PlaybackEntry {
     public final EntryID entryID;
     public final MediaMetadataCompat meta;
-    public final AudioDataSource audioDataSource;
 
-    public PlaybackEntry(EntryID entryID, MediaMetadataCompat meta, AudioDataSource audioDataSource) {
+    // TODO: Why not use LibraryEntry for this instead?
+    public PlaybackEntry(EntryID entryID, MediaMetadataCompat meta) {
         this.entryID = entryID;
         this.meta = meta;
-        this.audioDataSource = audioDataSource;
     }
 
     @Override

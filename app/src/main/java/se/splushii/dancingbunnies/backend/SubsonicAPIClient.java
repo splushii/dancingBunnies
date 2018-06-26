@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import cz.msebera.android.httpclient.Header;
 import se.splushii.dancingbunnies.R;
+import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
@@ -199,7 +200,6 @@ public class SubsonicAPIClient extends APIClient {
             }
             @Override
             public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-                HashMap<String, String> values = new HashMap<>();
                 onRequestFail(
                         RequestType.GET_MUSIC_FOLDERS,
                         ret,

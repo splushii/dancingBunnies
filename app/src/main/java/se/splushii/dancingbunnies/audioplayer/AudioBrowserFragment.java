@@ -146,31 +146,11 @@ public abstract class AudioBrowserFragment extends Fragment {
                 }
             };
 
-    protected void onMediaBrowserConnected() {
-        Log.d(LC, "mediaBrowser connected");
-    }
-
-    protected void onPlaybackStateChanged(PlaybackStateCompat state) {
-        Log.d(LC, "mediacontroller onplaybackstatechanged");
-    }
-
-    protected void onMetadataChanged(MediaMetadataCompat metadata) {
-        Log.d(LC, "mediacontroller onmetadatachanged");
-    }
-
-    protected void onSessionEvent(String event, Bundle extras) {
-        Log.d(LC, "mediacontroller onsessionevent: " + event);
-    }
-
-    protected void onSessionDestroyed() {
-        Log.w(LC, "mediacontroller session destroyed");
-    }
-
-    protected void onSessionReady() {
-        Log.d(LC, "mediacontroller session ready");
-    }
-
-    protected void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {
-        Log.d(LC, "mediacontroller onQueueChanged");
-    }
+    protected void onMediaBrowserConnected() {}
+    protected void onPlaybackStateChanged(PlaybackStateCompat state) {}
+    protected void onMetadataChanged(MediaMetadataCompat metadata) {}
+    protected void onSessionEvent(String event, Bundle extras) {}
+    protected void onSessionDestroyed() {}
+    protected void onSessionReady() {}
+    protected void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {}
 }

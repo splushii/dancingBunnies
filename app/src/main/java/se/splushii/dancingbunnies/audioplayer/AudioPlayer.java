@@ -7,6 +7,7 @@ import se.splushii.dancingbunnies.util.Util;
 
 public abstract class AudioPlayer {
     private static final String LC = Util.getLogContext(AudioPlayer.class);
+
     enum Type {
         LOCAL,
         CAST
@@ -34,6 +35,16 @@ public abstract class AudioPlayer {
             Log.w(LC, "onMetaChanged");
         }
 
+        @Override
+        public void onQueueChanged() {
+            Log.w(LC, "onQueueChanged");
+        }
+
+        @Override
+        public void onPreloadNextConsumed() {
+            Log.w(LC, "onPreloadNextConsumed");
+        }
+
     };
     AudioPlayer() {
         audioPlayerCallback = emptyAudioPlayerCallback;
@@ -49,13 +60,20 @@ public abstract class AudioPlayer {
     abstract void pause();
     abstract void stop();
     abstract void seekTo(long pos);
-    abstract void setSource(PlaybackEntry playbackEntry);
-    abstract void setSource(PlaybackEntry playbackEntry, long lastPos);
+    abstract int getNumToPreload();
+    abstract int getNumPreloadedNext();
+    abstract void addPreloadNext(PlaybackEntry playbackEntry);
+    abstract void addPreloadNext(PlaybackEntry playbackEntry, int index);
+    abstract void clearPreload();
+    abstract void next();
+    abstract void previous();
 
     interface Callback {
         void onReady();
         void onEnded();
         void onStateChanged(int playBackState);
         void onMetaChanged(EntryID entryID);
+        void onQueueChanged();
+        void onPreloadNextConsumed();
     }
 }

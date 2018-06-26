@@ -40,6 +40,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private TextView durationText;
     private TextView mediaInfoText;
     private TextView bufferingText;
+    private MediaMetadataCompat currentMeta;
 
     public NowPlayingFragment() {
     }
@@ -115,7 +116,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
 
     private void updatePlaybackState(PlaybackStateCompat state) {
         playbackState = state;
-        switch (state.getState()) { // TODO: look at this...
+        switch (state.getState()) { // TODO: Refactor to avoid repetition
             case PlaybackStateCompat.STATE_PLAYING:
                 Log.d(LC, "state: playing");
                 playPauseBtn.setEnabled(true);
@@ -152,8 +153,12 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                         + " queue id: " + state.getActiveQueueItemId() + " state: " + state.getState());
             case PlaybackStateCompat.STATE_NONE:
             case PlaybackStateCompat.STATE_STOPPED:
-                playPauseBtn.setEnabled(false);
+                playPauseBtn.setEnabled(
+                        currentMeta != null
+                        && !Meta.UNKNOWN_ENTRY.equals(currentMeta)
+                );
                 seekBar.setEnabled(false);
+                playPauseBtn.setText(">");
                 bufferingText.setVisibility(View.INVISIBLE);
                 isPlaying = false;
                 stopProgressUpdate();
@@ -163,6 +168,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
 
     @Override
     protected void onMetadataChanged(MediaMetadataCompat metadata) {
+        currentMeta = metadata;
         updateDescription(metadata);
         updateDuration(metadata);
         updateProgress();

@@ -20,21 +20,53 @@ public class Meta {
     private static String LC = Util.getLogContext(Meta.class);
 
     public static String getLongDescription(MediaMetadataCompat metadata) {
-        String artist = metadata.getString(Meta.METADATA_KEY_ARTIST);
-        String album = metadata.getString(Meta.METADATA_KEY_ALBUM);
-        String title = metadata.getString(Meta.METADATA_KEY_TITLE);
+        String artist = metadata.getString(METADATA_KEY_ARTIST);
+        String album = metadata.getString(METADATA_KEY_ALBUM);
+        String title = metadata.getString(METADATA_KEY_TITLE);
         return title + " - " + artist + " [" + album + "]";
+    }
+
+    public static MediaMetadataCompat from(MediaMetadata castMeta) {
+        return new MediaMetadataCompat.Builder()
+                .putString(METADATA_KEY_API, castMeta.getString(METADATA_KEY_API))
+                .putString(METADATA_KEY_MEDIA_ID, castMeta.getString(METADATA_KEY_MEDIA_ID))
+                .putString(METADATA_KEY_TYPE, castMeta.getString(METADATA_KEY_TYPE))
+                .putString(METADATA_KEY_TITLE, castMeta.getString(MediaMetadata.KEY_TITLE))
+                .putString(METADATA_KEY_ALBUM, castMeta.getString(MediaMetadata.KEY_ALBUM_TITLE))
+                .putString(METADATA_KEY_ARTIST, castMeta.getString(MediaMetadata.KEY_ARTIST))
+                .build();
+        // TODO: Put all metadata in there ^
     }
 
     public static MediaMetadata from(MediaMetadataCompat meta) {
         MediaMetadata castMeta = new MediaMetadata();
-        castMeta.putString(MediaMetadata.KEY_TITLE, meta.getString(Meta.METADATA_KEY_TITLE));
-        castMeta.putString(MediaMetadata.KEY_ALBUM_TITLE, meta.getString(Meta.METADATA_KEY_ALBUM));
-        castMeta.putString(MediaMetadata.KEY_ARTIST, meta.getString(Meta.METADATA_KEY_ARTIST));
-        castMeta.putString(Meta.METADATA_KEY_API, meta.getString(Meta.METADATA_KEY_API));
-        castMeta.putString(Meta.METADATA_KEY_MEDIA_ID, meta.getString(Meta.METADATA_KEY_MEDIA_ID));
-        castMeta.putString(Meta.METADATA_KEY_TYPE, meta.getString(Meta.METADATA_KEY_TYPE));
+        castMeta.putString(MediaMetadata.KEY_TITLE, meta.getString(METADATA_KEY_TITLE));
+        castMeta.putString(MediaMetadata.KEY_ALBUM_TITLE, meta.getString(METADATA_KEY_ALBUM));
+        castMeta.putString(MediaMetadata.KEY_ARTIST, meta.getString(METADATA_KEY_ARTIST));
+        castMeta.putString(METADATA_KEY_API, meta.getString(METADATA_KEY_API));
+        castMeta.putString(METADATA_KEY_MEDIA_ID, meta.getString(METADATA_KEY_MEDIA_ID));
+        castMeta.putString(METADATA_KEY_TYPE, meta.getString(METADATA_KEY_TYPE));
+        castMeta.putString(METADATA_KEY_TITLE, meta.getString(METADATA_KEY_TITLE));
+        // TODO: Put all metadata in there ^
         return castMeta;
+    }
+
+    public static MediaDescriptionCompat meta2desc(MediaMetadata castMeta) {
+        Bundle extras = new Bundle();
+        String title = castMeta.getString(MediaMetadata.KEY_TITLE);
+        String album = castMeta.getString(MediaMetadata.KEY_ALBUM_TITLE);
+        String artist = castMeta.getString(MediaMetadata.KEY_ARTIST);
+        extras.putString(METADATA_KEY_TITLE, title);
+        extras.putString(METADATA_KEY_ALBUM, album);
+        extras.putString(METADATA_KEY_ARTIST, artist);
+        // TODO: get all metadata from there ^
+        EntryID entryID = EntryID.from(castMeta);
+        extras.putAll(entryID.toBundle());
+        return new MediaDescriptionCompat.Builder()
+                .setMediaId(entryID.key())
+                .setExtras(extras)
+                .setTitle(title)
+                .build();
     }
 
     public static MediaDescriptionCompat meta2desc(MediaMetadataCompat meta) {
@@ -56,12 +88,21 @@ public class Meta {
     }
 
     public static final MediaMetadataCompat UNKNOWN_ENTRY = new MediaMetadataCompat.Builder()
+            .putString(Meta.METADATA_KEY_API, Meta.METADATA_VALUE_UNKNOWN_SRC)
+            .putString(Meta.METADATA_KEY_MEDIA_ID, Meta.METADATA_VALUE_UNKNOWN_ID)
+            .putString(Meta.METADATA_KEY_TYPE, Meta.METADATA_VALUE_UNKNOWN_TYPE)
             .putString(Meta.METADATA_KEY_ALBUM, Meta.METADATA_VALUE_UNKNOWN_ALBUM)
             .putString(Meta.METADATA_KEY_ARTIST, Meta.METADATA_VALUE_UNKNOWN_ARTIST)
             .putString(Meta.METADATA_KEY_TITLE, Meta.METADATA_VALUE_UNKNOWN_TITLE)
             .build();
 
     // Special keys/values
+    public static final String METADATA_VALUE_UNKNOWN_SRC =
+            "dancingbunnies.metadata.value.UNKNOWN_SRC";
+    public static final String METADATA_VALUE_UNKNOWN_ID =
+            "dancingbunnies.metadata.value.UNKNOWN_ID";
+    public static final String METADATA_VALUE_UNKNOWN_TYPE =
+            "dancingbunnies.metadata.value.UNKNOWN_TYPE";
     public static final String METADATA_VALUE_UNKNOWN_ARTIST =
             "dancingbunnies.metadata.value.UNKNOWN_ARTIST";
     public static final String METADATA_VALUE_UNKNOWN_ALBUM =
@@ -290,7 +331,7 @@ public class Meta {
         return typeMap.get(key);
     }
 
-    private static final HashMap<String, String> humanMap;
+    public static final HashMap<String, String> humanMap;
     static {
         humanMap = new HashMap<>();
         humanMap.put(METADATA_KEY_TYPE, "type");
@@ -320,7 +361,7 @@ public class Meta {
         humanMap.put(METADATA_KEY_ARTIST, "artist");
         humanMap.put(METADATA_KEY_ART_URI, "art URI");
         humanMap.put(METADATA_KEY_AUTHOR, "author");
-        humanMap.put(METADATA_KEY_BT_FOLDER_TYPE, "BlueTooth folder type");
+        humanMap.put(METADATA_KEY_BT_FOLDER_TYPE, "Bluetooth folder type");
         humanMap.put(METADATA_KEY_COMPILATION, "compilation");
         humanMap.put(METADATA_KEY_COMPOSER, "composer");
         humanMap.put(METADATA_KEY_DATE, "date");

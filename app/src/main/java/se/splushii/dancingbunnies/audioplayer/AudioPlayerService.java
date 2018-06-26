@@ -34,7 +34,6 @@ import java.util.Locale;
 
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.backend.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
@@ -66,6 +65,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             Log.d(LC, "Connected MusicLibraryService");
             MusicLibraryService.MusicLibraryBinder binder = (MusicLibraryService.MusicLibraryBinder) service;
             musicLibraryService = binder.getService();
+            setupPlaybackController();
             setupMediaSession();
         }
 
@@ -167,8 +167,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 Context.BIND_AUTO_CREATE
         );
 
-        playbackController = new PlaybackController(this, audioPlayerManagerCallback);
-
         NotificationChannel notificationChannel = new NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
                 NOTIFICATION_CHANNEL_NAME,
@@ -187,6 +185,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         musicLibraryService = null;
         mediaSession.release();
         super.onDestroy();
+    }
+
+    private void setupPlaybackController() {
+        playbackController = new PlaybackController(
+                this, musicLibraryService, audioPlayerManagerCallback
+        );
     }
 
     private void setupMediaSession() {
@@ -218,9 +222,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void setNotification() {
-        if (!notify) {
-            stopSelf();
+        if (!notify || isStoppedState()) {
             stopForeground(true);
+            stopSelf();
             return;
         }
         String play_pause_string;
@@ -289,6 +293,13 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         startForeground(SERVICE_NOTIFICATION_ID, notification);
     }
 
+    private boolean isStoppedState() {
+        int state = playbackState.getState();
+        return state == PlaybackStateCompat.STATE_ERROR
+                || state == PlaybackStateCompat.STATE_NONE
+                || state == PlaybackStateCompat.STATE_STOPPED;
+    }
+
     private class MediaSessionCallback extends MediaSessionCompat.Callback {
         @Override
         public void onPlay() {
@@ -306,9 +317,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         public void onPlayFromMediaId(String mediaId, Bundle extras) {
             Log.d(LC, "onPlayFromMediaId");
             PlaybackEntry playbackEntry = getPlaybackEntry(EntryID.from(extras));
-            mediaSession.setQueue(
-                    playbackController.playNow(playbackEntry)
-            );
+            playbackController.playNow(playbackEntry);
             setToast(playbackEntry, "Playing %s \"%s\" now!");
         }
 
@@ -316,12 +325,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         public void onAddQueueItem(MediaDescriptionCompat description) {
             Log.d(LC, "onAddQueueItem");
             PlaybackEntry playbackEntry = getPlaybackEntry(EntryID.from(description));
-            List<MediaSessionCompat.QueueItem> queue = playbackController.addToQueue(
-                    playbackEntry,
-                    PlayQueue.QueueOp.LAST
-            );
-            mediaSession.setQueue(queue);
-            setToast(playbackEntry, "Added %s \"%s\" to queue!");
+            playbackController.addToQueue(playbackEntry, PlaybackQueue.QueueOp.LAST);
+            setToast(playbackEntry, "Adding %s \"%s\" to queue!");
         }
 
         private void setToast(PlaybackEntry playbackEntry, String format) {
@@ -342,9 +347,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onRemoveQueueItem(MediaDescriptionCompat description) {
             Log.d(LC, "onRemoveQueueItem");
-            mediaSession.setQueue(
-                    playbackController.removeFromQueue(getPlaybackEntry(EntryID.from(description)))
-            );
+            playbackController.removeFromQueue(getPlaybackEntry(EntryID.from(description)));
         }
 
         @Override
@@ -382,8 +385,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 Log.e(LC, "Non-track entry. Unhandled! Beware!");
             }
             MediaMetadataCompat meta = musicLibraryService.getSongMetaData(entryID);
-            AudioDataSource audioDataSource = musicLibraryService.getAudioData(entryID);
-            return new PlaybackEntry(entryID, meta, audioDataSource);
+            return new PlaybackEntry(entryID, meta);
         }
     }
 
@@ -397,18 +399,50 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 case CAST:
                 default:
                     notify = false;
-                    setNotification();
                     break;
+            }
+            setNotification();
+        }
+
+        private String getPlaybackStateString(int playbackState) {
+            switch (playbackState) {
+                case PlaybackStateCompat.STATE_ERROR:
+                    return "STATE_ERROR";
+                case PlaybackStateCompat.STATE_STOPPED:
+                    return "STATE_STOPPED";
+                case PlaybackStateCompat.STATE_NONE:
+                    return "STATE_NONE";
+                case PlaybackStateCompat.STATE_PAUSED:
+                    return "STATE_PAUSED";
+                case PlaybackStateCompat.STATE_PLAYING:
+                    return "STATE_PLAYING";
+                case PlaybackStateCompat.STATE_BUFFERING:
+                    return "STATE_BUFFERING";
+                case PlaybackStateCompat.STATE_SKIPPING_TO_PREVIOUS:
+                    return "STATE_SKIPPING_TO_PREVIOUS";
+                case PlaybackStateCompat.STATE_SKIPPING_TO_NEXT:
+                    return "STATE_SKIPPING_TO_NEXT";
+                case PlaybackStateCompat.STATE_SKIPPING_TO_QUEUE_ITEM:
+                    return "STATE_SKIPPING_TO_QUEUE_ITEM";
+                case PlaybackStateCompat.STATE_FAST_FORWARDING:
+                    return "STATE_FAST_FORWARDING";
+                case PlaybackStateCompat.STATE_REWINDING:
+                    return "STATE_REWINDING";
+                case PlaybackStateCompat.STATE_CONNECTING:
+                    return "STATE_CONNECTING";
+                default:
+                    return "UNKNOWN_STATE: " + playbackState;
             }
         }
 
         @Override
         public void onStateChanged(int newPlaybackState) {
+            Log.d(LC, "PlaybackState: " + getPlaybackStateString(newPlaybackState));
             switch (newPlaybackState) {
+                case PlaybackStateCompat.STATE_ERROR:
+                case PlaybackStateCompat.STATE_NONE:
                 case PlaybackStateCompat.STATE_STOPPED:
                     setPlaybackState(newPlaybackState, 0L, PLAYBACK_SPEED_PAUSED);
-                    mediaSession.setMetadata(Meta.UNKNOWN_ENTRY);
-                    stopSelf();
                     break;
                 case PlaybackStateCompat.STATE_PAUSED:
                     setPlaybackState(
@@ -442,20 +476,17 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 case PlaybackStateCompat.STATE_SKIPPING_TO_QUEUE_ITEM:
                     setPlaybackState(newPlaybackState, 0L, PLAYBACK_SPEED_PAUSED);
                     break;
-                case PlaybackStateCompat.STATE_NONE:
-                    Log.w(LC, "Unhandled state: STATE_NONE");
-                    break;
                 case PlaybackStateCompat.STATE_FAST_FORWARDING:
                     Log.w(LC, "Unhandled state: STATE_FAST_FORWARDING");
                     break;
                 case PlaybackStateCompat.STATE_REWINDING:
                     Log.w(LC, "Unhandled state: STATE_REWINDING");
                     break;
-                case PlaybackStateCompat.STATE_ERROR:
-                    Log.w(LC, "Unhandled state: STATE_ERROR");
-                    break;
                 case PlaybackStateCompat.STATE_CONNECTING:
                     Log.w(LC, "Unhandled state: STATE_CONNECTING");
+                    break;
+                default:
+                    Log.w(LC, "Unhandled state: " + newPlaybackState);
                     break;
             }
             setNotification();
@@ -472,6 +503,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         public void onMetaChanged(EntryID entryID) {
             MediaMetadataCompat meta = musicLibraryService.getSongMetaData(entryID);
             mediaSession.setMetadata(meta);
+        }
+
+        @Override
+        public void onQueueChanged() {
+            List<MediaSessionCompat.QueueItem> queue = playbackController.getQueue();
+            mediaSession.setQueue(queue);
         }
     }
 }

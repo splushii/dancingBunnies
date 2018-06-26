@@ -21,6 +21,8 @@ public class CastOptionsProvider implements OptionsProvider {
         List<String> buttonActions = new ArrayList<>();
         buttonActions.add(MediaIntentReceiver.ACTION_TOGGLE_PLAYBACK);
         buttonActions.add(MediaIntentReceiver.ACTION_STOP_CASTING);
+        buttonActions.add(MediaIntentReceiver.ACTION_SKIP_NEXT);
+        buttonActions.add(MediaIntentReceiver.ACTION_SKIP_PREV);
         int[] buttonIndices = new int[]{ 0, 1 };
         NotificationOptions notificationOptions = new NotificationOptions.Builder()
                 .setActions(buttonActions, buttonIndices)

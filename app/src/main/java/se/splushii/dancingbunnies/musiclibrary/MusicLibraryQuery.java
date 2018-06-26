@@ -12,8 +12,6 @@ import se.splushii.dancingbunnies.util.Util;
 public class MusicLibraryQuery {
     private static final String LC = Util.getLogContext(MusicLibraryQuery.class);
 
-    public static final String API_ANY = "ANY_API";
-
     public Bundle subQuery() {
         return subQuery;
     }
@@ -52,7 +50,7 @@ public class MusicLibraryQuery {
         this.searchQuery = searchQuery;
     }
 
-    private Bundle toBundle() {
+    public Bundle toBundle() {
         return subQuery;
     }
 
@@ -84,8 +82,6 @@ public class MusicLibraryQuery {
             return null;
         }
         Bundle options = toBundle();
-        // TODO: Use searchQuery to filter results only including all parent entryID:s
-        // TODO: THEN: Add checkbox to show all entries. (Not just including parents.)
         MediaBrowserCompat.SubscriptionCallback subCb = new MediaBrowserCompat.SubscriptionCallback() {
             @Override
             public void onChildrenLoaded(@NonNull String parentId,

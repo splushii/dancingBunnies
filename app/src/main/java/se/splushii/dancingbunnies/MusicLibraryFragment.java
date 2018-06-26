@@ -15,10 +15,20 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.google.android.gms.flags.impl.DataUtils;
+
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -38,6 +48,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private String currentSubscriptionID;
     private LinkedList<LibraryView> viewBackStack;
 
+    private TextView activeFiltersView;
     FastScroller fastScroller;
     FastScrollerBubble fastScrollerBubble;
 
@@ -76,6 +87,19 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             query.addToQuery(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_ARTIST);
             refreshView(new LibraryView(query, 0, 0));
             return;
+        }
+        clearFilterView();
+        if (!libView.query.isSearchQuery()) {
+            Bundle b = libView.query.toBundle();
+            for (String filterType: b.keySet()) {
+                String filterValue = b.getString(filterType);
+                addFilterToView(filterType, filterValue);
+            }
+        }
+        if (activeFiltersView.getText().toString().isEmpty()) {
+            activeFiltersView.setVisibility(View.GONE);
+        } else {
+            activeFiltersView.setVisibility(View.VISIBLE);
         }
         unsubscribe();
         currentSubscriptionID = libView.query.query(mediaBrowser, new MusicLibraryQuery.MusicLibraryQueryCallback() {
@@ -155,6 +179,48 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         fastScrollerBubble = rootView.findViewById(R.id.musiclibrary_fastscroller_bubble);
         fastScroller.setBubble(fastScrollerBubble);
 
+        activeFiltersView = rootView.findViewById(R.id.musiclibrary_active_filters);
+
+        View filterInput = rootView.findViewById(R.id.musiclibrary_filterinput);
+        FloatingActionButton filterFab = rootView.findViewById(R.id.musiclibrary_filter_fab);
+        filterFab.setOnClickListener(view -> filterInput.setVisibility(
+                filterInput.getVisibility() == View.GONE ? View.VISIBLE : View.GONE
+        ));
+        Spinner filterInputType = rootView.findViewById(R.id.musiclibrary_filterinput_type);
+
+        List<String> filterTypes = new ArrayList<>();
+        List<String> metaKeys = new ArrayList<>();
+        List<Map.Entry<String, String>> derp = new ArrayList<>(Meta.humanMap.entrySet());
+        derp.sort(Comparator.comparing(Map.Entry::getValue));
+        for (Map.Entry<String, String> entry: derp) {
+            filterTypes.add(entry.getValue());
+            metaKeys.add(entry.getKey());
+        }
+        ArrayAdapter<String> filterInputTypeAdapter = new ArrayAdapter<>(
+                this.requireContext(),
+                android.R.layout.simple_spinner_dropdown_item,
+                filterTypes
+        );
+        filterInputType.setAdapter(filterInputTypeAdapter);
+        EditText filterInputText = rootView.findViewById(R.id.musiclibrary_filterinput_text);
+        filterInputText.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                int pos = filterInputType.getSelectedItemPosition();
+                String filterType = filterTypes.get(pos);
+                String metaKey = metaKeys.get(pos);
+                String filterString = filterInputText.getText().toString();
+                Log.d(LC, "Applying filter: " + filterType + "(" + filterString + ")");
+                Toast.makeText(
+                        this.requireContext(),
+                        "Applying filter: " + filterType + "(" + filterString + ")",
+                        Toast.LENGTH_SHORT
+                ).show();
+                filter(metaKey, filterString);
+                return true;
+            }
+            return false;
+        });
+
         FloatingActionButton fab = rootView.findViewById(R.id.musiclibrary_fab);
         final FloatingActionButton sortByArtistFab = rootView.findViewById(R.id.fab_sort_artist);
         final FloatingActionButton sortBySongFab = rootView.findViewById(R.id.fab_sort_song);
@@ -212,6 +278,18 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         return false;
     }
 
+    public void filter(String filterType, String filter) {
+        addBackButtonHistory(
+                new LibraryView(
+                        currentLibraryView.query,
+                        recyclerViewAdapter.getCurrentPosition()
+                )
+        );
+        MusicLibraryQuery query = new MusicLibraryQuery(currentLibraryView.query);
+        query.addToQuery(filterType, filter);
+        refreshView(new LibraryView(query, 0, 0));
+    }
+
     public void browse(EntryID entryID) {
         addBackButtonHistory(
                 new LibraryView(
@@ -238,5 +316,20 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 break;
         }
         refreshView(new LibraryView(query, 0, 0));
+    }
+
+    private void clearFilterView() {
+        activeFiltersView.setText("");
+    }
+
+    private void addFilterToView(String filterType, String filter) {
+        String s = activeFiltersView.getText().toString();
+        s += s.isEmpty() ? "" : ", ";
+        String humanFilterType = Meta.humanMap.get(filterType);
+        String humanFilter = Meta.METADATA_KEY_TYPE.equals(filterType) ?
+                Meta.humanMap.get(filter) : filter;
+        activeFiltersView.setText(
+                String.format("%s%s=%s", s, humanFilterType, humanFilter)
+        );
     }
 }

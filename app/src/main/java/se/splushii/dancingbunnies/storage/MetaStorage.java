@@ -23,19 +23,19 @@ import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.util.Util;
 
-public class Storage {
-    private static final String LC = Util.getLogContext(Storage.class);
+public class MetaStorage {
+    private static final String LC = Util.getLogContext(MetaStorage.class);
 
     private final Context context;
     private DB db;
     private SQLiteDatabase database;
     private int connectedClients = 0;
 
-    public Storage(Context context) {
+    public MetaStorage(Context context) {
         this.context = context;
     }
 
-    public synchronized Storage open() {
+    public synchronized MetaStorage open() {
         if (connectedClients == 0 && database == null) {
             db = new DB(context);
             database = db.getWritableDatabase();
@@ -107,12 +107,9 @@ public class Storage {
     }
 
     public MediaMetadataCompat getMetadataEntry(EntryID entryID) {
-        long start = System.currentTimeMillis();
-        Log.d(LC, "getMetadataEntry start");
         Cursor cursor = getBundleQueryCursor(entryID.toBundleQuery());
         List<MediaMetadataCompat> list = getMetaFromCursor(cursor);
         cursor.close();
-        Log.d(LC, "getMetadataEntry finish " + (System.currentTimeMillis() - start));
         if (list.isEmpty()) {
             return null;
         }

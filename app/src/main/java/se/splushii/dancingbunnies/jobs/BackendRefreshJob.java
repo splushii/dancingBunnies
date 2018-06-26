@@ -6,7 +6,9 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PersistableBundle;
 import android.util.Log;
 import android.widget.Toast;
@@ -27,6 +29,7 @@ public class BackendRefreshJob extends JobService {
     private MusicLibraryService service;
     private Toast toast;
     private JobParameters jobParams;
+    private Thread worker;
 
     @Override
     public boolean onStartJob(JobParameters params) {
@@ -42,6 +45,7 @@ public class BackendRefreshJob extends JobService {
     @Override
     public boolean onStopJob(JobParameters params) {
         Log.e(LC, "Job stopped");
+        stopJob(true);
         return true;
     }
 
@@ -69,37 +73,58 @@ public class BackendRefreshJob extends JobService {
         toast.show();
     }
 
-    private void doJob() {
-        MusicLibraryRequestHandler handler = new MusicLibraryRequestHandler() {
-            @Override
-            public void onProgress(String status) {
-                updateToast("Status: " + status);
-            }
+    private class BackendRefreshThread extends Thread {
+        Handler handler;
+        @Override
+        public void run() {
+            Looper.prepare();
+            handler = new Handler(Looper.getMainLooper());
+            handler.post(() -> updateToast("hej"));
+            MusicLibraryRequestHandler musicLibraryRequestHandler = new MusicLibraryRequestHandler() {
+                @Override
+                public void onProgress(String status) {
+                    handler.post(() -> updateToast("Status: " + status));
+                }
 
-            @Override
-            public void onStart() {
-                updateToast("ML req onStart");
-            }
+                @Override
+                public void onStart() {
+                    handler.post(() -> updateToast("ML req onStart"));
+                }
 
-            @Override
-            public void onSuccess(String status) {
-                updateToast("ML req onSuccess: " + status);
-                jobFinished(jobParams, false);
-            }
+                @Override
+                public void onSuccess(String status) {
+                    handler.post(() -> updateToast("ML req onSuccess: " + status));
+                    stopJob(false);
+                }
 
-            @Override
-            public void onFailure(String status) {
-                updateToast("ML req onFailure: " + status);
-                jobFinished(jobParams, false);
+                @Override
+                public void onFailure(String status) {
+                    handler.post(() -> updateToast("ML req onFailure: " + status));
+                    stopJob(false);
+                }
+            };
+            switch (action) {
+                case ACTION_FETCH_LIBRARY:
+                    service.fetchAPILibrary(api, musicLibraryRequestHandler);
+                    break;
+                default:
+                    Log.w(LC, "Unsupported action: " + action);
+                    break;
             }
-        };
-        switch (action) {
-            case ACTION_FETCH_LIBRARY:
-                service.fetchAPILibrary(api, handler);
-                break;
-            default:
-                Log.w(LC, "Unsupported action: " + action);
-                break;
+            Looper.loop();
         }
+    }
+
+    private void doJob() {
+        worker = new BackendRefreshThread();
+        worker.start();
+    }
+
+    private void stopJob(boolean needsReschedule) {
+        if (worker != null) {
+            worker.interrupt();
+        }
+        unbindService(serviceConnection);
+        jobFinished(jobParams, needsReschedule);
     }
 }

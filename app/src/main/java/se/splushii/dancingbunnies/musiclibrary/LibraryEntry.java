@@ -44,7 +44,7 @@ public class LibraryEntry implements Comparable<LibraryEntry> {
 
     @Override
     public int compareTo(@NonNull LibraryEntry o) {
-        int nameVal = name.compareTo(o.name);
+        int nameVal = name.toLowerCase().compareTo(o.name.toLowerCase());
         return nameVal != 0 ? nameVal : key().compareTo(o.key());
     }
 

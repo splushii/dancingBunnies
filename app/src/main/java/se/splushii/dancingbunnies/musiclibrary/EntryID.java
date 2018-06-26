@@ -14,6 +14,7 @@ import se.splushii.dancingbunnies.search.Indexer;
 
 public class EntryID {
     private static final String LC = "EntryID";
+    static final EntryID UnknownEntryID = EntryID.from(Meta.UNKNOWN_ENTRY);
     public final String src;
     public final String id;
     public final String type;

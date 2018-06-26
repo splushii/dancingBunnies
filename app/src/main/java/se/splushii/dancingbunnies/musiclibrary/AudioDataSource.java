@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies.backend;
+package se.splushii.dancingbunnies.musiclibrary;
 
 import android.media.MediaDataSource;
 import android.util.Log;
@@ -12,7 +12,6 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.util.Util;
 
 public class AudioDataSource extends MediaDataSource {
@@ -23,7 +22,6 @@ public class AudioDataSource extends MediaDataSource {
     private volatile boolean isDownloading = false;
     private volatile boolean isFinished = false;
     private Thread downloadThread;
-    private String contentType;
 
     public AudioDataSource(String url, EntryID entryID) {
         this.url = url;
@@ -31,7 +29,27 @@ public class AudioDataSource extends MediaDataSource {
         buffer = new byte[0];
     }
 
-    public void download(final AudioDataDownloadHandler handler) {
+    public void download(final Handler handler) {
+        if (isDownloading) {
+            new Thread(() -> {
+                try {
+                    downloadThread.join();
+                } catch (InterruptedException e) {
+                    handler.onFailure("Could not join download thread");
+                    return;
+                }
+                if (isFinished) {
+                    handler.onSuccess();
+                    return;
+                }
+                handler.onFailure("Download thread failed");
+            }).start();
+            return;
+        } else if (isFinished) {
+            Log.d(LC, "download() when already finished.");
+            handler.onSuccess();
+            return;
+        }
         HttpURLConnection conn = null;
         if (url != null) {
             try {
@@ -46,13 +64,6 @@ public class AudioDataSource extends MediaDataSource {
         final HttpURLConnection connection = conn;
         if (null == conn) {
             handler.onFailure("No HttpURLConnection");
-            return;
-        } else if (isDownloading) {
-            handler.onFailure("Already downloading");
-            return;
-        } else if (isFinished) {
-            Log.d(LC, "download() when already finished.");
-            handler.onSuccess();
             return;
         }
         isDownloading = true;
@@ -93,7 +104,7 @@ public class AudioDataSource extends MediaDataSource {
     }
 
     @Override
-    public int readAt(long position, byte[] bytes, int offset, int size) throws IOException {
+    public int readAt(long position, byte[] bytes, int offset, int size) {
         long len = buffer.length;
         if (position > len) {
             return -1;
@@ -120,25 +131,18 @@ public class AudioDataSource extends MediaDataSource {
         }
     }
 
+    public boolean isFinished() {
+        return isFinished;
+    }
+
     public String getURL() {
         return url;
     }
 
-    public String getContentType() {
-        return contentType;
-    }
-
-    public long getDuration() {
-        // TODO: FIXME
-//        MediaMetadataRetriever metaRetriever = new MediaMetadataRetriever();
-//        metaRetriever.setDataSource(this);
-//        String durationString =
-//                metaRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-//        return Long.parseLong(durationString);
-        return 0L;
-    }
-
-    public void setContentType(String contentType) {
-        this.contentType = contentType;
+    public interface Handler {
+        void onStart();
+        void onFailure(String message);
+        void onSuccess();
+        void onProgress(long i, long max);
     }
 }

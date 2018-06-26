@@ -18,19 +18,22 @@ import org.apache.lucene.search.TopDocs;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
+import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.backend.APIClientRequestHandler;
-import se.splushii.dancingbunnies.backend.AudioDataSource;
+import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.backend.MusicLibraryRequestHandler;
 import se.splushii.dancingbunnies.backend.SubsonicAPIClient;
 import se.splushii.dancingbunnies.search.Indexer;
 import se.splushii.dancingbunnies.search.Searcher;
-import se.splushii.dancingbunnies.storage.Storage;
+import se.splushii.dancingbunnies.storage.AudioStorage;
+import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryService extends Service {
@@ -42,11 +45,22 @@ public class MusicLibraryService extends Service {
 
     private File indexDirectoryPath;
     private HashMap<String, APIClient> apis;
-    private Storage storage;
-    private Indexer indexer;
     private Searcher searcher;
+    private MetaStorage metaStorage;
+    private AudioStorage audioStorage;
 
     private final IBinder binder = new MusicLibraryBinder();
+
+    public List<PlaybackEntry> getNextPlaylistEntries(String playlistId, int max_entries) {
+        // TODO: Implement
+        return new LinkedList<>();
+    }
+
+    public List<PlaybackEntry> getPreviousPlaylistEntries(String playlistId, int max_entries) {
+        // TODO: Implement
+        return new LinkedList<>();
+    }
+
     public class MusicLibraryBinder extends Binder {
         public MusicLibraryService getService() {
             return MusicLibraryService.this;
@@ -59,8 +73,9 @@ public class MusicLibraryService extends Service {
         Log.d(LC, "onCreate");
         apis = new HashMap<>();
         loadSettings();
-        storage = new Storage(this);
-        storage.open();
+        metaStorage = new MetaStorage(this);
+        metaStorage.open();
+        audioStorage = new AudioStorage();
         indexDirectoryPath = new File(getFilesDir(), LUCENE_INDEX_PATH);
         if (!indexDirectoryPath.isDirectory()) {
             if (!indexDirectoryPath.mkdirs()) {
@@ -74,7 +89,7 @@ public class MusicLibraryService extends Service {
     public void onDestroy() {
         super.onDestroy();
         Log.d(LC, "onDestroy");
-        storage.close();
+        metaStorage.close();
     }
 
     @Nullable
@@ -84,13 +99,12 @@ public class MusicLibraryService extends Service {
     }
 
     private void reIndex() {
-        Log.e(LC, "Why no logs?");
         Log.d(LC, "Indexing library...");
-        indexer = new Indexer(indexDirectoryPath);
+        Indexer indexer = new Indexer(indexDirectoryPath);
         long startTime = System.currentTimeMillis();
         int numDocs = 0;
         // TODO: Do this one item at a time when fetching from backend API instead...
-        List<MediaMetadataCompat> songs = storage.getMetadataEntries(null);
+        List<MediaMetadataCompat> songs = metaStorage.getMetadataEntries(null);
         Log.d(LC, "Songs: " + songs.size());
         for (MediaMetadataCompat meta: songs) {
             numDocs = indexer.indexSong(meta);
@@ -104,28 +118,36 @@ public class MusicLibraryService extends Service {
         // TODO: Notify about ALL changed parents/children?
     }
 
-    public AudioDataSource getAudioData(EntryID entryID) {
-        if (apis.containsKey(entryID.src)) {
-            AudioDataSource audioDataSource = apis.get(entryID.src).getAudioData(entryID);
-            MediaMetadataCompat meta = getSongMetaData(entryID);
-            String contentType = meta.getString(Meta.METADATA_KEY_CONTENT_TYPE);
-            if (contentType != null) {
-                audioDataSource.setContentType(contentType);
+    public void getAudioData(EntryID entryID, AudioDataDownloadHandler handler) {
+        AudioDataSource audioDataSource = audioStorage.get(entryID);
+        if (audioDataSource == null) {
+            if (apis.containsKey(entryID.src)) {
+                audioDataSource = apis.get(entryID.src).getAudioData(entryID);
+                audioStorage.put(entryID, audioDataSource);
+            } else {
+                handler.onFailure("Could not find api for song with src: " + entryID.src
+                        + ", id: " + entryID.id);
+                return;
             }
-            return audioDataSource;
-        } else {
-            Log.d(LC, "Could not find api for song with src: " + entryID.src
-                    + ", id: " + entryID.id);
-            return new AudioDataSource(null, entryID);
         }
+        if (audioDataSource.isFinished()) {
+            handler.onStart();
+            handler.onSuccess(audioDataSource);
+            return;
+        }
+        // TODO: JobSchedule this with AudioDataDownloadJob
+        audioStorage.download(entryID, handler);
     }
 
     public MediaMetadataCompat getSongMetaData(EntryID entryID) {
-        return storage.getMetadataEntry(entryID);
+        if (EntryID.UnknownEntryID.equals(entryID)) {
+            return Meta.UNKNOWN_ENTRY;
+        }
+        return metaStorage.getMetadataEntry(entryID);
     }
 
     public List<LibraryEntry> getSubscriptionEntries(MusicLibraryQuery q) {
-        return storage.getEntries(q.subQuery());
+        return metaStorage.getEntries(q.subQuery());
     }
 
     public List<LibraryEntry> getSearchEntries(String query) {
@@ -142,7 +164,6 @@ public class MusicLibraryService extends Service {
         for (ScoreDoc scoreDoc: topDocs.scoreDocs) {
             Document doc = searcher.getDocument(scoreDoc);
             entries.add(LibraryEntry.from(doc));
-            Log.d(LC, "searchEntries: " + entries.get(entries.size() - 1).name());
         }
         return entries;
     }
@@ -174,14 +195,14 @@ public class MusicLibraryService extends Service {
     private void saveLibraryToStorage(ArrayList<MediaMetadataCompat> data) {
         long start = System.currentTimeMillis();
         Log.d(LC, "saveLibraryToStorage start");
-        storage.insertSongs(data);
+        metaStorage.insertSongs(data);
         Log.d(LC, "saveLibraryToStorage finish " + (System.currentTimeMillis() - start));
     }
 
     private void clearStorageEntries(final String src) {
         long start = System.currentTimeMillis();
         Log.d(LC, "clearStorageEntries start");
-        storage.clearAll(src);
+        metaStorage.clearAll(src);
         Log.d(LC, "clearStorageEntries finish " + (System.currentTimeMillis() - start));
     }
 
@@ -208,11 +229,11 @@ public class MusicLibraryService extends Service {
             if (opt.isPresent()) {
                 final ArrayList<MediaMetadataCompat> data = opt.get();
                 Log.d(LC, "Fetched library from " + api + ": " + data.size() + " entries.");
-                handler.onProgress("Saving entries to storage...");
+                handler.onProgress("Saving entries to metaStorage...");
                 // TODO: Possible to perform a smart merge instead?
                 clearStorageEntries(api);
                 saveLibraryToStorage(data);
-                Log.d(LC, "Saved library to storage.");
+                Log.d(LC, "Saved library to metaStorage.");
                 handler.onProgress("Indexing entries...");
                 reIndex();
                 notifyLibraryChanged();

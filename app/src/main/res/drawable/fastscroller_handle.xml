@@ -12,5 +12,5 @@
 
     <size
         android:height="50dp"
-        android:width="20dp" />
+        android:width="@dimen/fastscroller_width" />
 </shape>

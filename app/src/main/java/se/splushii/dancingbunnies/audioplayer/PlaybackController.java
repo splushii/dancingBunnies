@@ -1,57 +1,65 @@
 package se.splushii.dancingbunnies.audioplayer;
 
 import android.content.Context;
-import android.media.session.PlaybackState;
 import android.support.v4.media.session.MediaSessionCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
 import com.google.android.gms.cast.framework.CastContext;
 
+import java.util.LinkedList;
 import java.util.List;
 
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.util.Util;
 
+// TODO: PlaybackController should have audioplayers, a queue and a reference to the current playlist.
+// TODO: It is responsible for giving entries to preload to the audioplayers.
+// TODO: The data to preload is taken from the queue if non-empty, otherwise from the current playlist.
+// TODO: It is also responsible for shifting state between players.
 public class PlaybackController {
     private static final String LC = Util.getLogContext(PlaybackController.class);
 
     private AudioPlayer audioPlayer;
     private AudioPlayer.Callback audioPlayerCallback = new AudioPlayerCallback();
-    private int lastPlaybackState = -1;
+    private int lastPlaybackState = PlaybackStateCompat.STATE_NONE;
     private LocalAudioPlayer localAudioPlayer;
     private CastAudioPlayer castAudioPlayer;
-    private PlayQueue playQueue;
+    private PlaybackEntry currentEntry;
+    private PlaybackQueue queue;
+    private String playlistId;
+    private String playlistItemId;
     private Callback callback;
     private boolean playWhenReady;
 
-    PlaybackController(Context context, Callback callback) {
+    PlaybackController(Context context, MusicLibraryService musicLibraryService, Callback callback) {
         this.callback = callback;
-        localAudioPlayer = new LocalAudioPlayer();
+        CastContext castContext = CastContext.getSharedInstance(context);
+
+        queue = new PlaybackQueue();
+
+        localAudioPlayer = new LocalAudioPlayer(musicLibraryService);
         audioPlayer = localAudioPlayer;
         audioPlayer.setListener(audioPlayerCallback);
 
-        CastContext castContext = CastContext.getSharedInstance(context);
         castAudioPlayer = new CastAudioPlayer(castContext, new CastAudioPlayer.CastConnectionListener() {
             @Override
             void onConnected() {
-                setAudioPlayer(AudioPlayer.Type.CAST);
+//                setAudioPlayer(AudioPlayer.Type.CAST);
             }
 
             @Override
             void onDisconnected() {
-                playWhenReady = false;
-                setAudioPlayer(AudioPlayer.Type.LOCAL);
+//                playWhenReady = false;
+//                setAudioPlayer(AudioPlayer.Type.LOCAL);
             }
         });
         castAudioPlayer.onCreate();
-
-        playQueue = new PlayQueue(castContext);
-        playQueue.onCreate();
     }
 
     void onDestroy() {
         castAudioPlayer.onDestroy();
-        playQueue.onDestroy();
     }
 
     public long getCurrentPosition() {
@@ -73,65 +81,97 @@ public class PlaybackController {
         audioPlayer.stop();
     }
 
+    private List<PlaybackEntry> getNextItems(int offset, int max) {
+        List<PlaybackEntry> playbackEntries = new LinkedList<>();
+        int numFromQueue = queue.size() > offset ? queue.size() - offset : 0;
+        int offsetInPlaylist = offset > queue.size() ? offset - queue.size() : 0;
+        int numFromPlaylist = max - numFromQueue;
+        if (numFromQueue > 0) {
+            playbackEntries.addAll(queue.getEntries(offset, max));
+        }
+        if (numFromPlaylist > 0) {
+//            playbackEntries.addAll(
+//                    musicLibraryService.getNextPlaylistEntries(
+//                            playlistId,
+//                            offsetInPlaylist,
+//                            numFromPlaylist
+//                    )
+//            );
+        }
+        return playbackEntries;
+    }
+
     public void skipToNext() {
-        PlaybackEntry playbackEntry = playQueue.next();
-        if (playbackEntry == null) {
-            stop();
-        } else {
-            prepareMedia(playbackEntry, false);
+        // Step forward in the queue
+        queue.next();
+        callback.onQueueChanged();
+        // Fill audio player preload
+        fillPreloadNext();
+        // Step forward in the audio player
+        audioPlayer.next();
+    }
+
+    private void fillPreloadNext() {
+        // How many already preloaded?
+        int numPreloaded = audioPlayer.getNumPreloadedNext();
+        // How many to preload?
+        int numToPreload = audioPlayer.getNumToPreload();
+        // Get needed entries to preload
+        int maxToPreload = numToPreload - numPreloaded > 0 ? numToPreload - numPreloaded : 0;
+        int startIndex = numToPreload - 1;
+        List<PlaybackEntry> nextItems = getNextItems(numToPreload - 1, maxToPreload);
+        // Add them to audio player
+        for (PlaybackEntry entry: nextItems) {
+            audioPlayer.addPreloadNext(entry);
         }
     }
 
     public void skipToPrevious() {
-        PlaybackEntry playbackEntry = playQueue.previous();
-        if (playbackEntry == null) {
-            stop();
-        } else {
-            prepareMedia(playbackEntry, false);
-        }
+        // TODO: implement
+        Log.e(LC, "skipToPrevious not implemented");
     }
 
     public void skipToQueueItem(long queueItemId) {
-        PlaybackEntry playbackEntry = playQueue.skipTo(queueItemId);
-        if (playbackEntry == null) {
-            return;
+        // TODO: implement
+        Log.e(LC, "skipToQueueItem not implemented");
+//        PlaybackEntry currentPlaybackEntry = queue.skipTo(queueItemId);
+//        List<PlaybackEntry> playbackEntries = getNextItems();
+//        playbackEntries.add(0, currentPlaybackEntry);
+//        audioPlayer.setPreloadNext(playbackEntries);
+    }
+
+    public void addToQueue(PlaybackEntry playbackEntry, PlaybackQueue.QueueOp op) {
+        // Add to queue
+        int index = queue.addToQueue(playbackEntry, op);
+        callback.onQueueChanged();
+        // Update audio player preload
+        if (audioPlayer.getNumPreloadedNext() < audioPlayer.getNumToPreload()) {
+            audioPlayer.addPreloadNext(playbackEntry, index);
         }
-        prepareMedia(playbackEntry, false);
     }
 
-    public List<MediaSessionCompat.QueueItem> addToQueue(PlaybackEntry playbackEntry,
-                                                         PlayQueue.QueueOp op) {
-        // TODO: If casting, add to castQueue. Also add to (local) playQueue.
-        return playQueue.addToQueue(playbackEntry, op);
-    }
-
-    public List<MediaSessionCompat.QueueItem> removeFromQueue(PlaybackEntry playbackEntry) {
-        return playQueue.removeFromQueue(playbackEntry);
+    public void removeFromQueue(PlaybackEntry playbackEntry) {
+        // TODO: implement
+        Log.e(LC, "removeFromQueue not implemented");
+//        queue.removeFromQueue(playbackEntry);
+//        audioPlayer.setPreloadNext(getNextItems());
+//        callback.onQueueChanged();
     }
 
     public void seekTo(long pos) {
         audioPlayer.seekTo(pos);
     }
 
-    public List<MediaSessionCompat.QueueItem> playNow(PlaybackEntry playbackEntry) {
-        List<MediaSessionCompat.QueueItem> queue =
-                addToQueue(playbackEntry, PlayQueue.QueueOp.NEXT);
-        if (playQueue.size() > 1) {
-            playbackEntry = playQueue.next();
-        }
-        prepareMedia(playbackEntry, true);
-        return queue;
-    }
-
-    private void prepareMedia(PlaybackEntry playbackEntry, boolean forcePlayWhenReady) {
-        Log.d(LC, "prepareMedia");
-        if (forcePlayWhenReady) {
-            playWhenReady = true;
-        }
-        audioPlayer.setSource(playbackEntry);
+    public void playNow(PlaybackEntry playbackEntry) {
+        // TODO: implement
+        Log.e(LC, "playNow not implemented");
+//        playWhenReady = true;
+//        addToQueue(playbackEntry, PlaybackQueue.QueueOp.NEXT);
+//        skipToNext();
     }
 
     private void setAudioPlayer(AudioPlayer.Type audioPlayerType) {
+        // TODO: implement new version
         AudioPlayer newAudioPlayer;
         switch (audioPlayerType) {
             case LOCAL:
@@ -153,28 +193,27 @@ public class PlaybackController {
         long lastPos = audioPlayer.getCurrentPosition();
         audioPlayer.removeListener();
         audioPlayer.stop();
+        audioPlayer.clearPreload();
         newAudioPlayer.setListener(audioPlayerCallback);
         audioPlayer = newAudioPlayer;
         callback.onPlayerChanged(audioPlayerType);
-        PlaybackEntry playbackEntry = playQueue.current();
-        if (playbackEntry == null) {
-            return;
+        audioPlayer.clearPreload();
+        for (PlaybackEntry playbackEntry: getNextItems(0, audioPlayer.getNumToPreload())) {
+            audioPlayer.addPreloadNext(playbackEntry);
         }
-        audioPlayer.setSource(playbackEntry, lastPos);
-        switch (lastPlaybackState) {
-            case PlaybackState.STATE_PLAYING:
-                audioPlayer.play();
-                audioPlayer.seekTo(lastPos);
-                break;
-            default:
-                break;
-        }
+        audioPlayer.seekTo(lastPos);
+    }
+
+    public List<MediaSessionCompat.QueueItem> getQueue() {
+        // TODO: Merge the cast queue with the local queue
+        return queue.getQueue();
     }
 
     interface Callback {
         void onPlayerChanged(AudioPlayer.Type type);
         void onStateChanged(int playBackState);
         void onMetaChanged(EntryID entryID);
+        void onQueueChanged();
     }
 
     private class AudioPlayerCallback implements AudioPlayer.Callback {
@@ -192,6 +231,9 @@ public class PlaybackController {
 
         @Override
         public void onStateChanged(int newPlaybackState) {
+            if (PlaybackStateCompat.STATE_STOPPED == newPlaybackState) {
+                playWhenReady = false;
+            }
             lastPlaybackState = newPlaybackState;
             callback.onStateChanged(newPlaybackState);
         }
@@ -199,6 +241,17 @@ public class PlaybackController {
         @Override
         public void onMetaChanged(EntryID entryID) {
             callback.onMetaChanged(entryID);
+        }
+
+        @Override
+        public void onQueueChanged() {
+            // TODO: If cast queue changed, add to local queue if possible
+            callback.onQueueChanged();
+        }
+
+        @Override
+        public void onPreloadNextConsumed() {
+            fillPreloadNext();
         }
     }
 }

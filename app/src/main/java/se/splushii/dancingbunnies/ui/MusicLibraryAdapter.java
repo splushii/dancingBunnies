@@ -82,6 +82,12 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         final MediaBrowserCompat.MediaItem item = dataset.get(position);
         final String title = item.getDescription().getTitle() + "";
         EntryID entryID = EntryID.from(item);
+        if (entryID == null) {
+            for (String key: item.getDescription().getExtras().keySet()) {
+                Log.d(LC, "item: " + key + " = "
+                + item.getDescription().getExtras().getString(key));
+            }
+        }
         final boolean browsable = item.isBrowsable();
         holder.moreActions.setVisibility(View.GONE);
         holder.libraryEntryTitle.setText(title);
