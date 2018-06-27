@@ -62,9 +62,9 @@ public abstract class AudioPlayer {
     abstract void seekTo(long pos);
     abstract int getNumToPreload();
     abstract int getNumPreloadedNext();
-    abstract void addPreloadNext(PlaybackEntry playbackEntry);
     abstract void addPreloadNext(PlaybackEntry playbackEntry, int index);
-    abstract void clearPreload();
+    abstract void removePreloadNext(int index);
+    abstract void clearPreloadNext();
     abstract void next();
     abstract void previous();
 

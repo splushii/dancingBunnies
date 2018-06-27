@@ -69,9 +69,12 @@ class PlaybackQueue {
         int index;
         switch (op) {
             case NEXT:
-                queue.addFirst(queueItem);
-                entryQueue.addFirst(playbackEntry);
                 index = 0;
+                if (queue.size() > 0) {
+                    index = 1;
+                }
+                queue.add(index, queueItem);
+                entryQueue.add(index, playbackEntry);
                 break;
             default:
             case LAST:
@@ -82,22 +85,17 @@ class PlaybackQueue {
         }
         Log.d(LC, queue.toString());
         Log.d(LC, "Added " + playbackEntry.meta.getDescription().getTitle() +
-                (op == QueueOp.NEXT ? " first" : " last at index " + index) +
-                " in queue.");
+                (op == QueueOp.NEXT ? " next " : " last ") + "at index " + index + " in queue.");
         return index;
     }
 
-    void removeFromQueue(PlaybackEntry playbackEntry) {
-        // TODO: Fixme. Not working when there is the same playbackEntry multiple times in queue
-        QueueItem queueItem = itemMap.remove(playbackEntry.entryID);
-        if (queueItem == null) {
-            Log.w(LC, "Tried to remove queue item not in play queue: " + playbackEntry.toString());
-            for(EntryID e: itemMap.keySet()) {
-                Log.w(LC, e.toString());
-            }
+    boolean removeFromQueue(int queuePosition) {
+        if (queuePosition >= queue.size()) {
+            return false;
         }
-        queue.remove(queueItem);
-        entryQueue.remove(playbackEntry);
+        queue.remove(queuePosition);
+        entryQueue.remove(queuePosition);
+        return true;
     }
 
     PlaybackEntry current() {
@@ -109,10 +107,10 @@ class PlaybackQueue {
         entryQueue.pollFirst();
     }
 
-    PlaybackEntry skipTo(long queueItemId) {
-        Log.d(LC, "skipTo id: " + queueItemId + " size: " + entryQueue.size());
+    PlaybackEntry skipTo(long queuePosition) {
+        Log.d(LC, "skipTo id: " + queuePosition + " size: " + entryQueue.size());
         PlaybackEntry playbackEntry = null;
-        for (int i = 0; i < queueItemId; i++) {
+        for (int i = 0; i < queuePosition; i++) {
             playbackEntry = entryQueue.pollFirst();
             queue.pollFirst();
         }

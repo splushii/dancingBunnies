@@ -213,6 +213,9 @@ public class Meta {
             "dancingbunnies.metadata.BOOKMARK_POSITION";
     public static final String METADATA_KEY_AVERAGE_RATING =
             "dancingbunnies.metadata.AVERAGE_RATING";
+    // Only used to identify queue position when de-queueing using onRemoveQueueItem
+    public static final String METADATA_KEY_QUEUE_POS =
+            "dancingbunnies.metadata.QUEUE_POS";
 
     public static final String[] db_keys = {
         // DancingBunnies keys
@@ -287,6 +290,7 @@ public class Meta {
         typeMap.put(METADATA_KEY_ARTIST_ID, STRING);
         typeMap.put(METADATA_KEY_BOOKMARK_POSITION, LONG);
         typeMap.put(METADATA_KEY_AVERAGE_RATING, STRING);
+        typeMap.put(METADATA_KEY_QUEUE_POS, LONG);
         // Android keys
         typeMap.put(METADATA_KEY_ADVERTISEMENT, LONG);
         typeMap.put(METADATA_KEY_ALBUM, STRING);
@@ -351,6 +355,7 @@ public class Meta {
         humanMap.put(METADATA_KEY_ARTIST_ID, "artist id");
         humanMap.put(METADATA_KEY_BOOKMARK_POSITION, "bookmark position");
         humanMap.put(METADATA_KEY_AVERAGE_RATING, "average rating");
+        humanMap.put(METADATA_KEY_QUEUE_POS, "current queue position");
         // Android keys
         humanMap.put(METADATA_KEY_ADVERTISEMENT, "advertisement");
         humanMap.put(METADATA_KEY_ALBUM, "album");

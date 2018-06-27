@@ -347,7 +347,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onRemoveQueueItem(MediaDescriptionCompat description) {
             Log.d(LC, "onRemoveQueueItem");
-            playbackController.removeFromQueue(getPlaybackEntry(EntryID.from(description)));
+            assert description.getExtras() != null;
+            long pos = description.getExtras().getLong(Meta.METADATA_KEY_QUEUE_POS);
+            playbackController.removeFromQueue((int) pos);
         }
 
         @Override

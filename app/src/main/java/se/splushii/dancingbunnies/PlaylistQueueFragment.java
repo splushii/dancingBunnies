@@ -96,7 +96,7 @@ public class PlaylistQueueFragment extends AudioBrowserFragment {
                 Log.d(LC, "playlist context play");
                 return true;
             case R.id.playlist_context_dequeue:
-                dequeue(entryID);
+                dequeue(entryID, position);
                 Log.d(LC, "playlist context queue");
                 return true;
             default:

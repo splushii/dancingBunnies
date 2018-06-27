@@ -14,6 +14,7 @@ import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.util.Util;
 
+// TODO: Set error state if a triggered action is unsuccessful
 class LocalAudioPlayer extends AudioPlayer {
     private static final String LC = Util.getLogContext(LocalAudioPlayer.class);
     private static final int NUM_PRELOAD_ITEMS = 2;
@@ -391,14 +392,9 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    void addPreloadNext(PlaybackEntry playbackEntry) {
-        addPreloadNext(playbackEntry, nextPlayers.size() + 1);
-    }
-
-    @Override
     void addPreloadNext(PlaybackEntry playbackEntry, int index) {
-        Log.d(LC, "addPreloadNext: " + playbackEntry.meta.getString(Meta.METADATA_KEY_TITLE));
         MediaPlayerInstance mediaPlayerInstance = new MediaPlayerInstance(playbackEntry);
+        Log.d(LC, "addPreloadNext: " + mediaPlayerInstance.title());
         if (index == 0) {
             setCurrentPlayer(mediaPlayerInstance);
         } else {
@@ -408,14 +404,26 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    void clearPreload() {
-        // TODO: implement
-        Log.e(LC, "clearPreload not implemented");
+    void clearPreloadNext() {
+        player.release();
+        while (!nextPlayers.isEmpty()) {
+            nextPlayers.poll().release();
+        }
+        setCurrentPlayer(null);
+    }
+
+    @Override
+    void removePreloadNext(int index) {
+        if (index == 0) {
+            next();
+            return;
+        }
+        nextPlayers.remove(--index);
+        audioPlayerCallback.onPreloadNextConsumed();
     }
 
     @Override
     void next() {
-        // TODO: Set error state if unsuccessful
         MediaPlayerInstance previousPlayer = player;
         setCurrentPlayer(nextPlayers.poll());
         // TODO: Add previousPlayer to previous preload? Nope
@@ -433,7 +441,6 @@ class LocalAudioPlayer extends AudioPlayer {
     @Override
     void previous() {
         // TODO: implement
-        // TODO: Set error state if unsuccessful
         Log.e(LC, "previous not implemented");
     }
 

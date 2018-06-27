@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.os.RemoteException;
 import android.support.v4.app.Fragment;
 import android.support.v4.media.MediaBrowserCompat;
+import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
@@ -14,6 +15,7 @@ import android.util.Log;
 import java.util.List;
 
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.util.Util;
 
 public abstract class AudioBrowserFragment extends Fragment {
@@ -65,8 +67,11 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.addQueueItem(entryID.toMediaDescriptionCompat());
     }
 
-    public void dequeue(EntryID entryID) {
-        mediaController.removeQueueItem(entryID.toMediaDescriptionCompat());
+    public void dequeue(EntryID entryID, long pos) {
+        MediaDescriptionCompat mediaDescription = entryID.toMediaDescriptionCompat();
+        assert mediaDescription.getExtras() != null;
+        mediaDescription.getExtras().putLong(Meta.METADATA_KEY_QUEUE_POS, pos);
+        mediaController.removeQueueItem(mediaDescription);
     }
 
     public void pause() {

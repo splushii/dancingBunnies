@@ -158,17 +158,17 @@ public class CastAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    void addPreloadNext(PlaybackEntry playbackEntry) {
-
-    }
-
-    @Override
     void addPreloadNext(PlaybackEntry playbackEntry, int index) {
 
     }
 
     @Override
-    void clearPreload() {
+    void removePreloadNext(int index) {
+
+    }
+
+    @Override
+    void clearPreloadNext() {
 
     }
 

@@ -102,6 +102,7 @@ public class PlaybackController {
     }
 
     public void skipToNext() {
+        // TODO: If queue is empty, step next in playlist instead
         // Step forward in the queue
         queue.next();
         callback.onQueueChanged();
@@ -118,11 +119,10 @@ public class PlaybackController {
         int numToPreload = audioPlayer.getNumToPreload();
         // Get needed entries to preload
         int maxToPreload = numToPreload - numPreloaded > 0 ? numToPreload - numPreloaded : 0;
-        int startIndex = numToPreload - 1;
-        List<PlaybackEntry> nextItems = getNextItems(numToPreload - 1, maxToPreload);
+        List<PlaybackEntry> nextItems = getNextItems(numPreloaded, maxToPreload);
         // Add them to audio player
         for (PlaybackEntry entry: nextItems) {
-            audioPlayer.addPreloadNext(entry);
+            audioPlayer.addPreloadNext(entry, numPreloaded++);
         }
     }
 
@@ -131,13 +131,14 @@ public class PlaybackController {
         Log.e(LC, "skipToPrevious not implemented");
     }
 
-    public void skipToQueueItem(long queueItemId) {
-        // TODO: implement
-        Log.e(LC, "skipToQueueItem not implemented");
-//        PlaybackEntry currentPlaybackEntry = queue.skipTo(queueItemId);
-//        List<PlaybackEntry> playbackEntries = getNextItems();
-//        playbackEntries.add(0, currentPlaybackEntry);
-//        audioPlayer.setPreloadNext(playbackEntries);
+    public void skipToQueueItem(long queuePosition) {
+        if (queuePosition <= 0) {
+            return;
+        }
+        queue.skipTo(queuePosition);
+        callback.onQueueChanged();
+        audioPlayer.clearPreloadNext();
+        fillPreloadNext();
     }
 
     public void addToQueue(PlaybackEntry playbackEntry, PlaybackQueue.QueueOp op) {
@@ -145,17 +146,25 @@ public class PlaybackController {
         int index = queue.addToQueue(playbackEntry, op);
         callback.onQueueChanged();
         // Update audio player preload
-        if (audioPlayer.getNumPreloadedNext() < audioPlayer.getNumToPreload()) {
-            audioPlayer.addPreloadNext(playbackEntry, index);
+        switch (op) {
+            case LAST:
+                if (audioPlayer.getNumPreloadedNext() < audioPlayer.getNumToPreload()) {
+                    audioPlayer.addPreloadNext(playbackEntry, index);
+                }
+                break;
+            case NEXT:
+            default:
+                audioPlayer.addPreloadNext(playbackEntry, index);
+                break;
         }
     }
 
-    public void removeFromQueue(PlaybackEntry playbackEntry) {
-        // TODO: implement
-        Log.e(LC, "removeFromQueue not implemented");
-//        queue.removeFromQueue(playbackEntry);
-//        audioPlayer.setPreloadNext(getNextItems());
-//        callback.onQueueChanged();
+    public void removeFromQueue(int queuePosition) {
+        if (queue.removeFromQueue(queuePosition)) {
+            callback.onQueueChanged();
+            audioPlayer.removePreloadNext(queuePosition);
+            fillPreloadNext();
+        }
     }
 
     public void seekTo(long pos) {
@@ -163,45 +172,46 @@ public class PlaybackController {
     }
 
     public void playNow(PlaybackEntry playbackEntry) {
-        // TODO: implement
-        Log.e(LC, "playNow not implemented");
-//        playWhenReady = true;
-//        addToQueue(playbackEntry, PlaybackQueue.QueueOp.NEXT);
-//        skipToNext();
+        playWhenReady = true;
+        addToQueue(playbackEntry, PlaybackQueue.QueueOp.NEXT);
+        if (queue.size() > 1) {
+            skipToNext();
+        }
     }
 
     private void setAudioPlayer(AudioPlayer.Type audioPlayerType) {
         // TODO: implement new version
-        AudioPlayer newAudioPlayer;
-        switch (audioPlayerType) {
-            case LOCAL:
-                if (audioPlayer instanceof LocalAudioPlayer) {
-                    return;
-                }
-                newAudioPlayer = localAudioPlayer;
-                break;
-            case CAST:
-                if (audioPlayer instanceof CastAudioPlayer) {
-                    return;
-                }
-                newAudioPlayer = castAudioPlayer;
-                break;
-            default:
-                return;
-        }
-        audioPlayer.pause();
-        long lastPos = audioPlayer.getCurrentPosition();
-        audioPlayer.removeListener();
-        audioPlayer.stop();
-        audioPlayer.clearPreload();
-        newAudioPlayer.setListener(audioPlayerCallback);
-        audioPlayer = newAudioPlayer;
-        callback.onPlayerChanged(audioPlayerType);
-        audioPlayer.clearPreload();
-        for (PlaybackEntry playbackEntry: getNextItems(0, audioPlayer.getNumToPreload())) {
-            audioPlayer.addPreloadNext(playbackEntry);
-        }
-        audioPlayer.seekTo(lastPos);
+        Log.e(LC, "setAudioPlayer not implemented");
+//        AudioPlayer newAudioPlayer;
+//        switch (audioPlayerType) {
+//            case LOCAL:
+//                if (audioPlayer instanceof LocalAudioPlayer) {
+//                    return;
+//                }
+//                newAudioPlayer = localAudioPlayer;
+//                break;
+//            case CAST:
+//                if (audioPlayer instanceof CastAudioPlayer) {
+//                    return;
+//                }
+//                newAudioPlayer = castAudioPlayer;
+//                break;
+//            default:
+//                return;
+//        }
+//        audioPlayer.pause();
+//        long lastPos = audioPlayer.getCurrentPosition();
+//        audioPlayer.removeListener();
+//        audioPlayer.stop();
+//        audioPlayer.clearPreloadNext();
+//        newAudioPlayer.setListener(audioPlayerCallback);
+//        audioPlayer = newAudioPlayer;
+//        callback.onPlayerChanged(audioPlayerType);
+//        audioPlayer.clearPreloadNext();
+//        for (PlaybackEntry playbackEntry: getNextItems(0, audioPlayer.getNumToPreload())) {
+//            audioPlayer.addPreloadNext(playbackEntry);
+//        }
+//        audioPlayer.seekTo(lastPos);
     }
 
     public List<MediaSessionCompat.QueueItem> getQueue() {
