@@ -19,16 +19,17 @@ public class CastOptionsProvider implements OptionsProvider {
     @Override
     public CastOptions getCastOptions(Context context) {
         List<String> buttonActions = new ArrayList<>();
-        buttonActions.add(MediaIntentReceiver.ACTION_TOGGLE_PLAYBACK);
-        buttonActions.add(MediaIntentReceiver.ACTION_STOP_CASTING);
-        buttonActions.add(MediaIntentReceiver.ACTION_SKIP_NEXT);
         buttonActions.add(MediaIntentReceiver.ACTION_SKIP_PREV);
-        int[] buttonIndices = new int[]{ 0, 1 };
+        buttonActions.add(MediaIntentReceiver.ACTION_TOGGLE_PLAYBACK);
+        buttonActions.add(MediaIntentReceiver.ACTION_SKIP_NEXT);
+        buttonActions.add(MediaIntentReceiver.ACTION_STOP_CASTING);
+        int[] buttonIndices = new int[]{ 1, 3 };
         NotificationOptions notificationOptions = new NotificationOptions.Builder()
                 .setActions(buttonActions, buttonIndices)
                 .setTargetActivityClassName(MainActivity.class.getName())
                 .build();
         CastMediaOptions castMediaOptions = new CastMediaOptions.Builder()
+                .setMediaIntentReceiverClassName(CastMediaIntentReceiver.class.getName())
                 .setNotificationOptions(notificationOptions)
                 .build();
         return new CastOptions.Builder()

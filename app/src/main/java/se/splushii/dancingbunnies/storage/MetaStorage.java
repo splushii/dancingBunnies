@@ -26,45 +26,27 @@ import se.splushii.dancingbunnies.util.Util;
 public class MetaStorage {
     private static final String LC = Util.getLogContext(MetaStorage.class);
 
-    private final Context context;
-    private DB db;
-    private SQLiteDatabase database;
-    private int connectedClients = 0;
+    private DB dbHandler;
+    private SQLiteDatabase db;
 
     public MetaStorage(Context context) {
-        this.context = context;
-    }
-
-    public synchronized MetaStorage open() {
-        if (connectedClients == 0 && database == null) {
-            db = new DB(context);
-            database = db.getWritableDatabase();
-        }
-        connectedClients++;
-        Log.d(LC, "open(): connected clients: " + connectedClients);
-        return this;
+        dbHandler = DB.getInstance(context);
+        db = dbHandler.getWritableDatabase();
     }
 
     public synchronized void close() {
-        if (connectedClients > 0) {
-            connectedClients--;
-        }
-        Log.d(LC, "close(): connected clients: " + connectedClients);
-        if (connectedClients == 0) {
-            db.close();
-            database = null;
-        }
+        dbHandler.closeDB();
     }
 
     public void insertSongs(List<MediaMetadataCompat> metaList) {
         long start = System.currentTimeMillis();
         Log.d(LC, "insertSongs start");
-        database.beginTransaction();
+        db.beginTransaction();
         for (MediaMetadataCompat meta: metaList) {
             insertSong(meta);
         }
-        database.setTransactionSuccessful();
-        database.endTransaction();
+        db.setTransactionSuccessful();
+        db.endTransaction();
         Log.d(LC, "insertSongs finish " + (System.currentTimeMillis() - start));
     }
 
@@ -103,7 +85,7 @@ public class MetaStorage {
                     break;
             }
         }
-        database.replace(DB.SONG_TABLE_NAME, null, c);
+        db.replace(DB.TABLE_SONGS, null, c);
     }
 
     public MediaMetadataCompat getMetadataEntry(EntryID entryID) {
@@ -111,7 +93,7 @@ public class MetaStorage {
         List<MediaMetadataCompat> list = getMetaFromCursor(cursor);
         cursor.close();
         if (list.isEmpty()) {
-            return null;
+            return Meta.UNKNOWN_ENTRY;
         }
         if (list.size() > 1) {
             Log.e(LC, "getMetadataEntry returned more than one result!");
@@ -121,9 +103,9 @@ public class MetaStorage {
 
     private Cursor getBundleQueryCursor(Bundle bundleQuery) {
         if (bundleQuery == null || bundleQuery.isEmpty()) {
-            return database.rawQuery("SELECT * FROM " + DB.SONG_TABLE_NAME, null);
+            return db.rawQuery("SELECT * FROM " + DB.TABLE_SONGS, null);
         }
-        StringBuilder query = new StringBuilder("SELECT * FROM " + DB.SONG_TABLE_NAME + " WHERE ");
+        StringBuilder query = new StringBuilder("SELECT * FROM " + DB.TABLE_SONGS + " WHERE ");
         String args[] = new String[bundleQuery.size()];
         int index = 0;
         for (String key: bundleQuery.keySet()) {
@@ -148,7 +130,7 @@ public class MetaStorage {
             query.append(DB.Keyify(key)).append("=?");
             index++;
         }
-        return database.rawQuery(query.toString(), args);
+        return db.rawQuery(query.toString(), args);
     }
 
     public List<MediaMetadataCompat> getMetadataEntries(Bundle bundleQuery) {
@@ -201,7 +183,7 @@ public class MetaStorage {
 
     private Cursor getBundleQuerySelect(Bundle bundleQuery) {
         if (bundleQuery == null || bundleQuery.isEmpty()) {
-            return database.rawQuery("SELECT * FROM " + DB.SONG_TABLE_NAME, null);
+            return db.rawQuery("SELECT * FROM " + DB.TABLE_SONGS, null);
         }
         String metaKey = Meta.METADATA_KEY_MEDIA_ID;
         if (bundleQuery.containsKey(Meta.METADATA_KEY_TYPE)) {
@@ -213,11 +195,11 @@ public class MetaStorage {
         }
         StringBuilder query = new StringBuilder();
         if (Meta.METADATA_KEY_MEDIA_ID.equals(metaKey)) {
-            query.append("SELECT * FROM " + DB.SONG_TABLE_NAME);
+            query.append("SELECT * FROM " + DB.TABLE_SONGS);
         } else {
             query.append("SELECT DISTINCT ");
             query.append(DB.Keyify(metaKey));
-            query.append(" FROM ").append(DB.SONG_TABLE_NAME);
+            query.append(" FROM ").append(DB.TABLE_SONGS);
         }
         ArrayList<String> args = new ArrayList<>();
         if (!bundleQuery.isEmpty()) {
@@ -246,7 +228,7 @@ public class MetaStorage {
                 index++;
             }
         }
-        return database.rawQuery(query.toString(), args.toArray(new String[0]));
+        return db.rawQuery(query.toString(), args.toArray(new String[0]));
     }
 
     private class ColumnIndexCache {
@@ -320,11 +302,11 @@ public class MetaStorage {
     }
 
     public void clearAll() {
-        database.delete(DB.SONG_TABLE_NAME, null, null);
+        db.delete(DB.TABLE_SONGS, null, null);
     }
 
     public void clearAll(String src) {
-        database.delete(DB.SONG_TABLE_NAME,
+        db.delete(DB.TABLE_SONGS,
                 DB.Keyify(Meta.METADATA_KEY_API) + "=?",
                 new String[]{src});
     }

@@ -95,8 +95,10 @@ public class SettingsActivityFragment extends PreferenceFragment
                 .getString(R.string.pref_key_subsonic_usr), ""));
         EditTextPreference SSpwd = (EditTextPreference) findPreference(getResources()
                 .getString(R.string.pref_key_subsonic_pwd));
-        SSpwd.setSummary(settings.getString(getResources()
-                .getString(R.string.pref_key_subsonic_pwd), ""));
+        SSpwd.setSummary(settings.contains(getResources()
+                .getString(R.string.pref_key_subsonic_pwd)) ?
+                "********" : ""
+        );
         final Preference SSrefresh = findPreference(getResources()
                 .getString(R.string.pref_key_subsonic_refresh));
         SSrefresh.setOnPreferenceClickListener(preference -> {

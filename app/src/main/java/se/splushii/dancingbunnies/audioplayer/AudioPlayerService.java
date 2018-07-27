@@ -11,6 +11,7 @@ import android.content.ServiceConnection;
 import android.media.session.PlaybackState;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.ResultReceiver;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.NotificationCompat;
@@ -31,6 +32,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
 
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
@@ -39,8 +41,12 @@ import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
+import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
 import se.splushii.dancingbunnies.util.Util;
 
+// TODO: Handle audio output switching. AudioManager.ACTION_AUDIO_BECOMING_NOISY.
+// TODO: Handle incoming call. PhoneStateListener.LISTEN_CALL_STATE.
 public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static String LC = Util.getLogContext(AudioPlayerService.class);
     private static final String NOTIFICATION_CHANNEL_ID = "dancingbunnies.notification.channel";
@@ -49,6 +55,24 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static final float PLAYBACK_SPEED_PAUSED = 0f;
     private static final float PLAYBACK_SPEED_PLAYING = 1f;
     public static final String MEDIA_ID_ROOT = "dancingbunnies.media.id.root";
+
+    public static final String SESSION_EVENT_PLAYLIST_POSITION_CHANGED = "PLAYLIST_POSITION_CHANGED";
+    public static final String SESSION_EVENT_PLAYLIST_CHANGED = "PLAYLIST_CHANGED";
+
+    public static final String COMMAND_GET_PLAYLISTS = "GET_PLAYLISTS";
+    public static final String COMMAND_GET_CURRENT_PLAYLIST = "GET_CURRENT_PLAYLIST";
+    public static final String COMMAND_GET_PLAYLIST_ENTRIES = "GET_PLAYLIST_ENTRIES";
+    public static final String COMMAND_GET_PLAYLIST_NEXT = "GET_PLAYLIST_NEXT";
+    public static final String COMMAND_GET_PLAYLIST_PREVIOUS = "GET_PLAYLIST_PREVIOUS";
+    public static final String COMMAND_ADD_TO_PLAYLIST = "ADD_TO_PLAYLIST";
+    public static final String COMMAND_GET_CURRENT_PLAYBACK_ENTRY = "GET_CURRENT_PLAYBACK_ENTRY";
+    private static final String COMMAND_REMOVE_FROM_PLAYLIST = "REMOVE_FROM_PLAYLIST";
+
+    public static final String STARTCMD_INTENT_CAST_ACTION = "dancingbunnies.intent.castaction";
+
+    public static final String CAST_ACTION_TOGGLE_PLAYBACK = "TOGGLE_PLAYBACK";
+    public static final String CAST_ACTION_NEXT = "NEXT";
+    public static final String CAST_ACTION_PREVIOUS = "PREVIOUS";
 
     private PlaybackController playbackController;
     private final PlaybackController.Callback audioPlayerManagerCallback = new PlaybackCallback();
@@ -67,6 +91,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             musicLibraryService = binder.getService();
             setupPlaybackController();
             setupMediaSession();
+            playbackController.update();
         }
 
         @Override
@@ -152,8 +177,40 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(LC, "onStartCommand");
-        MediaButtonReceiver.handleIntent(mediaSession, intent);
+        if (intent != null && intent.hasExtra(STARTCMD_INTENT_CAST_ACTION)) {
+            handleCastIntent(intent);
+        } else {
+            MediaButtonReceiver.handleIntent(mediaSession, intent);
+        }
         return START_STICKY;
+    }
+
+    private void handleCastIntent(Intent intent) {
+        if (intent == null) {
+            return;
+        }
+        Bundle extras = intent.getExtras();
+        if (extras == null) {
+            return;
+        }
+        String action = extras.getString(STARTCMD_INTENT_CAST_ACTION);
+        if (action == null) {
+            return;
+        }
+        Log.d(LC, "CAST_ACTION: " + action);
+        switch (action) {
+            case CAST_ACTION_TOGGLE_PLAYBACK:
+                playbackController.playPause();
+                break;
+            case CAST_ACTION_PREVIOUS:
+                playbackController.skipToPrevious();
+                break;
+            case CAST_ACTION_NEXT:
+                playbackController.skipToNext();
+                break;
+            default:
+                break;
+        }
     }
 
     @Override
@@ -221,10 +278,21 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         mediaSession.setQueue(new LinkedList<>());
     }
 
+    private boolean isStoppedState() {
+        int state = playbackState.getState();
+        return state == PlaybackStateCompat.STATE_ERROR
+                || state == PlaybackStateCompat.STATE_NONE
+                || state == PlaybackStateCompat.STATE_STOPPED;
+    }
+
+    private boolean isPlayingState() {
+        int state = playbackState.getState();
+        return state == PlaybackStateCompat.STATE_PLAYING;
+    }
+
     private void setNotification() {
         if (!notify || isStoppedState()) {
             stopForeground(true);
-            stopSelf();
             return;
         }
         String play_pause_string;
@@ -293,13 +361,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         startForeground(SERVICE_NOTIFICATION_ID, notification);
     }
 
-    private boolean isStoppedState() {
-        int state = playbackState.getState();
-        return state == PlaybackStateCompat.STATE_ERROR
-                || state == PlaybackStateCompat.STATE_NONE
-                || state == PlaybackStateCompat.STATE_STOPPED;
-    }
-
     private class MediaSessionCallback extends MediaSessionCompat.Callback {
         @Override
         public void onPlay() {
@@ -318,7 +379,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             Log.d(LC, "onPlayFromMediaId");
             PlaybackEntry playbackEntry = getPlaybackEntry(EntryID.from(extras));
             playbackController.playNow(playbackEntry);
-            setToast(playbackEntry, "Playing %s \"%s\" now!");
+            setToast(playbackEntry.meta, "Playing %s \"%s\" now!");
         }
 
         @Override
@@ -326,15 +387,15 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             Log.d(LC, "onAddQueueItem");
             PlaybackEntry playbackEntry = getPlaybackEntry(EntryID.from(description));
             playbackController.addToQueue(playbackEntry, PlaybackQueue.QueueOp.LAST);
-            setToast(playbackEntry, "Adding %s \"%s\" to queue!");
+            setToast(playbackEntry.meta, "Adding %s \"%s\" to queue!");
         }
 
-        private void setToast(PlaybackEntry playbackEntry, String format) {
-            String entryType = playbackEntry.meta.getString(Meta.METADATA_KEY_TYPE);
+        private void setToast(MediaMetadataCompat meta, String format) {
+            String entryType = meta.getString(Meta.METADATA_KEY_TYPE);
             if (Meta.METADATA_KEY_MEDIA_ID.equals(entryType)) {
                 entryType = Meta.METADATA_KEY_TITLE;
             }
-            String title = playbackEntry.meta.getString(entryType);
+            String title = meta.getString(entryType);
             String type = Meta.getHumanReadable(entryType);
             String message = String.format(Locale.getDefault(), format, type, title);
             Toast.makeText(
@@ -389,6 +450,200 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             MediaMetadataCompat meta = musicLibraryService.getSongMetaData(entryID);
             return new PlaybackEntry(entryID, meta);
         }
+
+        @Override
+        public void onCustomAction(String action, Bundle extras) {
+            switch (action) {
+                default:
+                    Log.e(LC, "Unhandled MediaSession onCustomAction: " + action);
+                    break;
+            }
+        }
+
+        @Override
+        public void onSetShuffleMode(int shuffleMode) {
+            // TODO: implement
+            Log.e(LC, "onSetShuffleMode not implemented");
+            switch (shuffleMode) {
+                case PlaybackStateCompat.SHUFFLE_MODE_INVALID:
+                case PlaybackStateCompat.SHUFFLE_MODE_NONE:
+                case PlaybackStateCompat.SHUFFLE_MODE_ALL:
+                case PlaybackStateCompat.SHUFFLE_MODE_GROUP:
+                default:
+                    Log.e(LC, "onSetShuffleMode unhandled mode: " + shuffleMode);
+                    break;
+            }
+        }
+
+        @Override
+        public void onSetRepeatMode(int repeatMode) {
+            // TODO: implement
+            Log.e(LC, "onSetRepeatMode not implemented");
+            switch (repeatMode) {
+                case PlaybackStateCompat.REPEAT_MODE_INVALID:
+                case PlaybackStateCompat.REPEAT_MODE_NONE:
+                case PlaybackStateCompat.REPEAT_MODE_ONE:
+                case PlaybackStateCompat.REPEAT_MODE_ALL:
+                case PlaybackStateCompat.REPEAT_MODE_GROUP:
+                default:
+                    Log.e(LC, "onSetRepeatMode unhandled mode: " + repeatMode);
+                    break;
+            }
+        }
+
+        @Override
+        public void onCommand(String command, Bundle extras, ResultReceiver cb) {
+            switch (command) {
+                case COMMAND_GET_PLAYLISTS:
+                    List<PlaylistItem> playlistItems = musicLibraryService.getPlaylists();
+                    cb.send(0, putPlaylistItems(new ArrayList<>(playlistItems)));
+                    break;
+                case COMMAND_GET_PLAYLIST_ENTRIES:
+                    PlaylistID playlistID = PlaylistID.from(extras);
+                    List<LibraryEntry> playlistEntries = musicLibraryService.getPlaylistEntries(playlistID);
+                    cb.send(0, putPlaylistEntries(new ArrayList<>(playlistEntries)));
+                    break;
+                case COMMAND_ADD_TO_PLAYLIST:
+                    EntryID entryID = EntryID.from(extras);
+                    musicLibraryService.playlistAddEntry(
+                            playbackController.getCurrentPlaylist().playlistID,
+                            entryID
+                    );
+                    setToast(musicLibraryService.getSongMetaData(entryID),
+                            "Adding %s \"%s\" to current playlist!");
+                    break;
+                case COMMAND_GET_CURRENT_PLAYLIST:
+                    cb.send(0, putPlaylist(playbackController.getCurrentPlaylist()));
+                    break;
+                case COMMAND_GET_PLAYLIST_NEXT:
+                    int maxNum = extras.getInt("MAX_ENTRIES");
+                    PlaylistItem playListItem = playbackController.getCurrentPlaylist();
+                    long pos = playbackController.getCurrentPlaylistPosition();
+                    List<PlaybackEntry> playbackEntries = musicLibraryService.playlistGetNext(
+                            playListItem.playlistID,
+                            pos,
+                            maxNum
+                    );
+                    if (playbackEntries.isEmpty()) {
+                        cb.send(1, null);
+                        return;
+                    }
+                    cb.send(0, putPlaybackEntries(new ArrayList<>(playbackEntries)));
+                    break;
+                case COMMAND_GET_PLAYLIST_PREVIOUS:
+                    Log.e(LC, "COMMAND_GET_PLAYLIST_PREVIOUS not implemented");
+                    break;
+                case COMMAND_GET_CURRENT_PLAYBACK_ENTRY:
+                    PlaybackEntry playbackEntry = playbackController.getCurrentPlaybackEntry();
+                    if (playbackEntry == null) {
+                        cb.send(1, null);
+                        return;
+                    }
+                    cb.send(0, putPlaybackEntry(playbackEntry));
+                    break;
+                case COMMAND_REMOVE_FROM_PLAYLIST:
+                    removeFromPlaylist(cb, extras);
+                    mediaSession.sendSessionEvent(
+                            AudioPlayerService.SESSION_EVENT_PLAYLIST_CHANGED,
+                            null
+                    );
+                    break;
+                default:
+                    Log.e(LC, "Unhandled MediaSession onCommand: " + command);
+                    break;
+            }
+        }
+    }
+
+    public static CompletableFuture<Boolean> removeFromPlaylist(
+            MediaControllerCompat mediaController,
+            PlaylistID playlistID,
+            int position
+    ) {
+        Bundle params = new Bundle();
+        params.putParcelable("playlist", playlistID);
+        params.putInt("position", position);
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        mediaController.sendCommand(
+                AudioPlayerService.COMMAND_REMOVE_FROM_PLAYLIST,
+                params,
+                new ResultReceiver(null) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        future.complete(resultCode == 0);
+                    }
+                }
+        );
+        return future;
+    }
+
+    private void removeFromPlaylist(ResultReceiver cb, Bundle b) {
+        b.setClassLoader(PlaylistID.class.getClassLoader());
+        PlaylistID playlistID = b.getParcelable("playlist");
+        int position = b.getInt("position");
+        musicLibraryService.playlistRemoveEntry(playlistID, position);
+        cb.send(0, null);
+    }
+
+    private static final String BUNDLE_KEY_PLAYLIST_ITEMS =
+            "BUNDLE_KEY_PLAYLIST_ITEMS";
+    private static final String BUNDLE_KEY_LIBRARY_ENTRIES =
+            "BUNDLE_KEY_LIBRARY_ENTRIES";
+    private static final String BUNDLE_KEY_PLAYLIST_ITEM =
+            "BUNDLE_KEY_PLAYLIST_ITEM";
+    private static final String BUNDLE_KEY_PLAYBACK_ENTRY =
+            "BUNDLE_KEY_PLAYBACK_ENTRY";
+    private static final String BUNDLE_KEY_PLAYBACK_ENTRIES =
+            "BUNDLE_KEY_PLAYBACK_ENTRIES";
+
+    private static Bundle putPlaybackEntry(PlaybackEntry playbackEntry) {
+        Bundle b = new Bundle();
+        b.putParcelable(BUNDLE_KEY_PLAYBACK_ENTRY, playbackEntry);
+        return b;
+    }
+
+    public static PlaybackEntry getPlaybackEntry(Bundle resultData) {
+        return resultData.getParcelable(BUNDLE_KEY_PLAYBACK_ENTRY);
+    }
+
+    private static Bundle putPlaybackEntries(ArrayList<PlaybackEntry> playbackEntries) {
+        Bundle b = new Bundle();
+        b.putParcelableArrayList(BUNDLE_KEY_PLAYBACK_ENTRIES, playbackEntries);
+        return b;
+    }
+
+    public static List<PlaybackEntry> getPlaybackEntries(Bundle resultData) {
+        return resultData.getParcelableArrayList(BUNDLE_KEY_PLAYBACK_ENTRIES);
+    }
+
+    private static Bundle putPlaylist(PlaylistItem playlistItem) {
+        Bundle b = new Bundle();
+        b.putParcelable(BUNDLE_KEY_PLAYLIST_ITEM, playlistItem);
+        return b;
+    }
+
+    public static PlaylistItem getPlaylist(Bundle resultData) {
+        return resultData.getParcelable(BUNDLE_KEY_PLAYLIST_ITEM);
+    }
+
+    private static Bundle putPlaylistItems(ArrayList<PlaylistItem> playlistItems) {
+        Bundle b = new Bundle();
+        b.putParcelableArrayList(BUNDLE_KEY_PLAYLIST_ITEMS, playlistItems);
+        return b;
+    }
+
+    public static ArrayList<PlaylistItem> getPlaylistItems(Bundle resultData) {
+        return resultData.getParcelableArrayList(BUNDLE_KEY_PLAYLIST_ITEMS);
+    }
+
+    private static Bundle putPlaylistEntries(ArrayList<LibraryEntry> playlistEntries) {
+        Bundle b = new Bundle();
+        b.putParcelableArrayList(BUNDLE_KEY_LIBRARY_ENTRIES, playlistEntries);
+        return b;
+    }
+
+    public static ArrayList<LibraryEntry> getPlaylistEntries(Bundle resultData) {
+        return resultData.getParcelableArrayList(BUNDLE_KEY_LIBRARY_ENTRIES);
     }
 
     private class PlaybackCallback implements PlaybackController.Callback {
@@ -445,31 +700,31 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 case PlaybackStateCompat.STATE_NONE:
                 case PlaybackStateCompat.STATE_STOPPED:
                     setPlaybackState(newPlaybackState, 0L, PLAYBACK_SPEED_PAUSED);
+                    stopForeground(true);
+                    stopSelf();
                     break;
                 case PlaybackStateCompat.STATE_PAUSED:
                     setPlaybackState(
                             newPlaybackState,
-                            playbackController.getCurrentPosition(),
+                            playbackController.getPlayerSeekPosition(),
                             PLAYBACK_SPEED_PAUSED
                     );
                     break;
                 case PlaybackStateCompat.STATE_PLAYING:
-                    if (notify) {
-                        Log.d(LC, "startService");
-                        startService(new Intent(
-                                AudioPlayerService.this,
-                                AudioPlayerService.class));
-                    }
+                    Log.d(LC, "startService");
+                    startService(new Intent(
+                            AudioPlayerService.this,
+                            AudioPlayerService.class));
                     setPlaybackState(
                             newPlaybackState,
-                            playbackController.getCurrentPosition(),
+                            playbackController.getPlayerSeekPosition(),
                             PLAYBACK_SPEED_PLAYING
                     );
                     break;
                 case PlaybackStateCompat.STATE_BUFFERING:
                     setPlaybackState(
                             newPlaybackState,
-                            playbackController.getCurrentPosition(),
+                            playbackController.getPlayerSeekPosition(),
                             PLAYBACK_SPEED_PAUSED
                     );
                     break;
@@ -511,6 +766,14 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         public void onQueueChanged() {
             List<MediaSessionCompat.QueueItem> queue = playbackController.getQueue();
             mediaSession.setQueue(queue);
+        }
+
+        @Override
+        public void onPlaylistPositionChanged() {
+            mediaSession.sendSessionEvent(
+                    AudioPlayerService.SESSION_EVENT_PLAYLIST_POSITION_CHANGED,
+                    null
+            );
         }
     }
 }

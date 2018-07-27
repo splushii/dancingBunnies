@@ -21,9 +21,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.backend.APIClientRequestHandler;
@@ -34,6 +31,7 @@ import se.splushii.dancingbunnies.search.Indexer;
 import se.splushii.dancingbunnies.search.Searcher;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.MetaStorage;
+import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryService extends Service {
@@ -48,17 +46,87 @@ public class MusicLibraryService extends Service {
     private Searcher searcher;
     private MetaStorage metaStorage;
     private AudioStorage audioStorage;
+    private PlaylistStorage playlistStorage;
 
     private final IBinder binder = new MusicLibraryBinder();
 
-    public List<PlaybackEntry> getNextPlaylistEntries(String playlistId, int max_entries) {
+    public List<PlaybackEntry> playlistGetNext(PlaylistID playlistID, long index, int maxEntries) {
+        List<PlaybackEntry> playbackEntries = new LinkedList<>();
+        Playlist playlist = playlistStorage.getPlaylist(playlistID);
+        if (playlist == null) {
+            return playbackEntries;
+        }
+        List<EntryID> entryIDS = new LinkedList<>();
+        switch (playlist.id.type) {
+            case PlaylistID.TYPE_STUPID:
+                entryIDS.addAll(((StupidPlaylist) playlist).getEntries());
+                break;
+            case PlaylistID.TYPE_SMART:
+                Log.e(LC, "playlistGetNext not implemented for smart playlists");
+                break;
+        }
+        if (entryIDS.isEmpty()) {
+            return playbackEntries;
+        }
+        for (int count = 0; count < maxEntries; count++) {
+            index %= entryIDS.size();
+            EntryID entryID = entryIDS.get((int)index);
+            playbackEntries.add(new PlaybackEntry(entryID, getSongMetaData(entryID)));
+            index++;
+        }
+        return playbackEntries;
+    }
+
+    public List<PlaybackEntry> playlistGetPrevious(PlaylistID playlistID, long index, int maxEntries) {
         // TODO: Implement
+        Log.e(LC, "playlistGetPrevious not implemented");
         return new LinkedList<>();
     }
 
-    public List<PlaybackEntry> getPreviousPlaylistEntries(String playlistId, int max_entries) {
-        // TODO: Implement
+    public long playlistNext(PlaylistID playlistID, long playlistIndex) {
+        Playlist playlist = playlistStorage.getPlaylist(playlistID);
+        if (playlist == null) {
+            return 0;
+        }
+        switch (playlist.id.type) {
+            case PlaylistID.TYPE_STUPID:
+                int playlistSize = ((StupidPlaylist) playlist).getEntries().size();
+                return playlistSize > 0 ? (playlistIndex + 1) % playlistSize : 0;
+            case PlaylistID.TYPE_SMART:
+                Log.e(LC, "playlistGetNext not implemented for smart playlists");
+                break;
+        }
+        return 0;
+    }
+
+    public List<PlaylistItem> getPlaylists() {
+        return playlistStorage.getPlaylists();
+    }
+
+    public List<LibraryEntry> getPlaylistEntries(PlaylistID playlistID) {
+        Playlist playlist = playlistStorage.getPlaylist(playlistID);
+        switch (playlist.id.type) {
+            case PlaylistID.TYPE_STUPID:
+                List<LibraryEntry> entries = new LinkedList<>();
+                for (EntryID entryID: ((StupidPlaylist) playlist).getEntries()) {
+                    MediaMetadataCompat meta = getSongMetaData(entryID);
+                    String title = meta.getString(Meta.METADATA_KEY_TITLE);
+                    entries.add(new LibraryEntry(entryID, title));
+                }
+                return entries;
+            case PlaylistID.TYPE_SMART:
+                Log.e(LC, "getPlaylistEntries not implemented for smart playlists");
+                break;
+        }
         return new LinkedList<>();
+    }
+
+    public void playlistAddEntry(PlaylistID playlistID, EntryID entryID) {
+        playlistStorage.addToPlaylist(playlistID, entryID);
+    }
+
+    public void playlistRemoveEntry(PlaylistID playlistID, int position) {
+        playlistStorage.removeFromPlaylist(playlistID, position);
     }
 
     public class MusicLibraryBinder extends Binder {
@@ -74,7 +142,7 @@ public class MusicLibraryService extends Service {
         apis = new HashMap<>();
         loadSettings();
         metaStorage = new MetaStorage(this);
-        metaStorage.open();
+        playlistStorage = new PlaylistStorage(this);
         audioStorage = new AudioStorage();
         indexDirectoryPath = new File(getFilesDir(), LUCENE_INDEX_PATH);
         if (!indexDirectoryPath.isDirectory()) {
@@ -89,6 +157,7 @@ public class MusicLibraryService extends Service {
     public void onDestroy() {
         super.onDestroy();
         Log.d(LC, "onDestroy");
+        playlistStorage.close();
         metaStorage.close();
     }
 
@@ -116,6 +185,15 @@ public class MusicLibraryService extends Service {
 
     private void notifyLibraryChanged() {
         // TODO: Notify about ALL changed parents/children?
+        Log.e(LC, "notifyLibraryChange not implemented");
+    }
+
+    public String getAudioURL(EntryID entryID) {
+        if (!apis.containsKey(entryID.src)) {
+            return null;
+        }
+        AudioDataSource audioDataSource = apis.get(entryID.src).getAudioData(entryID);
+        return audioDataSource.getURL();
     }
 
     public void getAudioData(EntryID entryID, AudioDataDownloadHandler handler) {
@@ -192,18 +270,32 @@ public class MusicLibraryService extends Service {
         }
     }
 
-    private void saveLibraryToStorage(ArrayList<MediaMetadataCompat> data) {
+    private void saveLibraryToStorage(List<MediaMetadataCompat> data) {
         long start = System.currentTimeMillis();
         Log.d(LC, "saveLibraryToStorage start");
         metaStorage.insertSongs(data);
         Log.d(LC, "saveLibraryToStorage finish " + (System.currentTimeMillis() - start));
     }
 
-    private void clearStorageEntries(final String src) {
+    private void clearLibraryStorageEntries(final String src) {
         long start = System.currentTimeMillis();
-        Log.d(LC, "clearStorageEntries start");
+        Log.d(LC, "clearLibraryStorageEntries start");
         metaStorage.clearAll(src);
-        Log.d(LC, "clearStorageEntries finish " + (System.currentTimeMillis() - start));
+        Log.d(LC, "clearLibraryStorageEntries finish " + (System.currentTimeMillis() - start));
+    }
+
+    private void savePlaylistsToStorage(List<Playlist> data) {
+        long start = System.currentTimeMillis();
+        Log.d(LC, "saveLibraryToStorage start");
+        playlistStorage.insertPlaylists(data);
+        Log.d(LC, "saveLibraryToStorage finish " + (System.currentTimeMillis() - start));
+    }
+
+    private void clearPlaylistStorageEntries(String src) {
+        long start = System.currentTimeMillis();
+        Log.d(LC, "clearPlaylistStorageEntries start");
+        playlistStorage.clearAll(src);
+        Log.d(LC, "clearPlaylistStorageEntries finish " + (System.currentTimeMillis() - start));
     }
 
     public void fetchAPILibrary(final String api, final MusicLibraryRequestHandler handler) {
@@ -218,34 +310,64 @@ public class MusicLibraryService extends Service {
             handler.onFailure("Can not fetch library. API " + api + " does not support library.");
             return;
         }
-        CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> req =
-                apis.get(api).getLibrary(new APIClientRequestHandler() {
+        apis.get(api).getLibrary(new APIClientRequestHandler() {
                     @Override
                     public void onProgress(String s) {
                         handler.onProgress(s);
                     }
-                });
-        req.thenAccept(opt -> {
+        }).thenAccept(opt -> {
             if (opt.isPresent()) {
-                final ArrayList<MediaMetadataCompat> data = opt.get();
+                final List<MediaMetadataCompat> data = opt.get();
                 Log.d(LC, "Fetched library from " + api + ": " + data.size() + " entries.");
-                handler.onProgress("Saving entries to metaStorage...");
+                handler.onProgress("Saving entries to local meta storage...");
                 // TODO: Possible to perform a smart merge instead?
-                clearStorageEntries(api);
+                clearLibraryStorageEntries(api);
                 saveLibraryToStorage(data);
-                Log.d(LC, "Saved library to metaStorage.");
+                Log.d(LC, "Saved library to local meta storage.");
                 handler.onProgress("Indexing entries...");
                 reIndex();
                 notifyLibraryChanged();
-                handler.onSuccess("Successfully fetched "
-                        + data.size() + " entries.");
+                handler.onSuccess("Successfully processed "
+                        + data.size() + " library entries from " + api + ".");
             } else {
-                handler.onFailure("Could not fetch library.");
+                handler.onFailure("Could not fetch library from " + api + ".");
             }
         });
     }
 
-    public void fetchPlayLists(String api, MusicLibraryRequestHandler handler) {
-        // TODO: implement
+    public void fetchPlayLists(final String api, final MusicLibraryRequestHandler handler) {
+        handler.onStart();
+        loadSettings();
+        if (!apis.containsKey(api)) {
+            handler.onFailure("Can not fetch playlists. API " + api + " not found.");
+            return;
+        }
+        APIClient client = apis.get(api);
+        if (!client.hasPlaylists()) {
+            handler.onFailure("Can not fetch playlists. API " + api
+                    + " does not support playlists.");
+            return;
+        }
+        apis.get(api).getPlaylists(new APIClientRequestHandler() {
+            @Override
+            public void onProgress(String s) {
+                handler.onProgress(s);
+            }
+        }).thenAccept(opt -> {
+            if (opt.isPresent()) {
+                final List<Playlist> data = opt.get();
+                Log.d(LC, "Fetched playlists from " + api + ": " + data.size() + " entries.");
+                handler.onProgress("Saving playlists to local playlist storage...");
+                // TODO: Before clearing, check if there are any unsynced changes in 'api' playlists
+                clearPlaylistStorageEntries(api);
+                savePlaylistsToStorage(data);
+                Log.d(LC, "Saved playlists to local playlist storage.");
+                notifyLibraryChanged();
+                handler.onSuccess("Successfully processed "
+                        + data.size() + " playlist entries from " + api + ".");
+            } else {
+                handler.onFailure("Could not fetch playlists from " + api + ".");
+            }
+        });
     }
 }

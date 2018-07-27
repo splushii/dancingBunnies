@@ -3,10 +3,18 @@ package se.splushii.dancingbunnies;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.view.ContextMenu;
 import android.view.LayoutInflater;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
@@ -14,6 +22,7 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -21,7 +30,10 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
+import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.ui.NowPlayingEntriesAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
 public class NowPlayingFragment extends AudioBrowserFragment {
@@ -42,7 +54,11 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private TextView bufferingText;
     private MediaMetadataCompat currentMeta;
 
+    NowPlayingEntriesAdapter recViewAdapter;
+    private RecyclerView recView;
+
     public NowPlayingFragment() {
+        recViewAdapter = new NowPlayingEntriesAdapter();
     }
 
     @Override
@@ -50,6 +66,15 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                              Bundle savedInstanceState) {
         final View rootView = inflater.inflate(R.layout.nowplaying_fragment_layout, container,
                 false);
+
+        recView = rootView.findViewById(R.id.nowplaying_recyclerview);
+        recView.setHasFixedSize(true);
+        LinearLayoutManager recViewLayoutManager =
+                new LinearLayoutManager(this.getContext());
+        recViewLayoutManager.setReverseLayout(true);
+        recView.setLayoutManager(recViewLayoutManager);
+        recView.setAdapter(recViewAdapter);
+
         nowPlayingTitle = rootView.findViewById(R.id.nowplaying_title);
         nowPlayingArtist = rootView.findViewById(R.id.nowplaying_artist);
         nowPlayingAlbum = rootView.findViewById(R.id.nowplaying_album);
@@ -97,6 +122,13 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     @Override
+    public void onStart() {
+        super.onStart();
+        refreshView();
+        Log.d(LC, "onStart");
+    }
+
+    @Override
     public void onStop() {
         super.onStop();
         Log.d(LC, "onStop");
@@ -107,6 +139,35 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         super.onDestroy();
         stopProgressUpdate();
         executor.shutdown();
+    }
+
+    @Override
+    protected void onSessionReady() {
+        super.onSessionReady();
+        refreshView();
+    }
+
+    public void refreshView() {
+        if (mediaController == null || !mediaController.isSessionReady()) {
+            Log.w(LC, "Media session not ready");
+            return;
+        }
+        List<MediaSessionCompat.QueueItem> queue = mediaController.getQueue();
+        if (queue == null) {
+            Log.w(LC, "queue is null");
+            return;
+        }
+        Log.d(LC, "Queue size: " + queue.size());
+        recViewAdapter.setQueue(queue);
+
+        getCurrentPlaylist().thenAccept(opt -> opt.ifPresent(
+                recViewAdapter::setCurrentPlaylistItem
+        ));
+        getPlaylistNext(3).thenAccept(opt -> opt.ifPresent(
+                recViewAdapter::setPlaylistNext
+        ));
+        // TODO: Implement playbackhistory in AudioPlayerService/PlaybackController, then in UI.
+        //getPlaybackHistory().thenAccept(opt -> opt.ifPresent(recViewAdapter::setPlaybackHistory));
     }
 
     @Override
@@ -216,11 +277,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     @Override
-    protected void onSessionEvent(String event, Bundle extras) {
-        Log.d(LC, "event: " + event);
-    }
-
-    @Override
     protected void onMediaBrowserConnected() {
         PlaybackStateCompat state = mediaController.getPlaybackState();
         updatePlaybackState(state);
@@ -290,6 +346,55 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         if (scheduledFuture != null) {
             Log.d(LC, "stop progress update");
             scheduledFuture.cancel(false);
+        }
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
+        super.onCreateContextMenu(menu, v, menuInfo);
+        MenuInflater menuInflater = getActivity().getMenuInflater();
+        menuInflater.inflate(R.menu.nowplaying_item_menu, menu);
+    }
+
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        int position = recViewAdapter.getContextMenuHolder().getAdapterPosition();
+        EntryID entryID = EntryID.from(recViewAdapter.getItemData(position));
+        Log.d(LC, "info pos: " + position);
+        switch (item.getItemId()) {
+            case R.id.nowplaying_item_context_play:
+                skipTo(position);
+                play();
+                Log.d(LC, "nowplaying context play");
+                return true;
+            case R.id.nowplaying_item_context_dequeue:
+                dequeue(entryID, position);
+                Log.d(LC, "nowplaying context dequeue");
+                return true;
+            default:
+                Log.d(LC, "nowplaying context unknown");
+                return super.onContextItemSelected(item);
+        }
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        registerForContextMenu(recView);
+    }
+
+    @Override
+    protected void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {
+        refreshView();
+    }
+
+    @Override
+    protected void onSessionEvent(String event, Bundle extras) {
+        switch (event) {
+            case AudioPlayerService.SESSION_EVENT_PLAYLIST_POSITION_CHANGED:
+            case AudioPlayerService.SESSION_EVENT_PLAYLIST_CHANGED:
+                refreshView();
+                break;
         }
     }
 }

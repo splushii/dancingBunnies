@@ -3,7 +3,7 @@ package se.splushii.dancingbunnies.backend;
 import android.content.Context;
 import android.support.v4.media.MediaMetadataCompat;
 
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -23,15 +23,17 @@ public abstract class APIClient {
      *  - Meta.METADATA_KEY_MEDIA_ID
      *  - Meta.METADATA_KEY_TITLE
      */
-    public CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> getLibrary(APIClientRequestHandler handler) {
-        CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> ret = new CompletableFuture<>();
+    public CompletableFuture<Optional<List<MediaMetadataCompat>>> getLibrary(APIClientRequestHandler handler) {
+        CompletableFuture<Optional<List<MediaMetadataCompat>>> ret = new CompletableFuture<>();
         ret.complete(Optional.empty());
+        handler.onFailure("Not implemented");
         return ret;
     }
     public abstract boolean hasPlaylists();
-    public CompletableFuture<Optional<Playlist>> getPlaylists() {
-        CompletableFuture<Optional<Playlist>> ret = new CompletableFuture<>();
+    public CompletableFuture<Optional<List<Playlist>>> getPlaylists(APIClientRequestHandler handler) {
+        CompletableFuture<Optional<List<Playlist>>> ret = new CompletableFuture<>();
         ret.complete(Optional.empty());
+        handler.onFailure("Not implemented");
         return ret;
     }
     public abstract AudioDataSource getAudioData(EntryID entryID);

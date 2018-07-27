@@ -31,6 +31,9 @@ import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
+import se.splushii.dancingbunnies.musiclibrary.Playlist;
+import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
 import se.splushii.dancingbunnies.util.Util;
 
 public class SubsonicAPIClient extends APIClient {
@@ -39,7 +42,7 @@ public class SubsonicAPIClient extends APIClient {
     private HashMap<String, Integer> retries;
 
     public enum RequestType {
-        GET_INDEXES, GET_MUSIC_DIRECTORY, GET_MUSIC_FOLDERS
+        GET_INDEXES, GET_MUSIC_DIRECTORY, GET_MUSIC_FOLDERS, GET_PLAYLIST, GET_PLAYLISTS
     }
 
     private static final String API_BASE_URL = "/rest/";
@@ -87,6 +90,9 @@ public class SubsonicAPIClient extends APIClient {
     private static final String JSON_MUSIC_FOLDERS = "musicFolders";
     private static final String JSON_MUSIC_FOLDER = "musicFolder";
     private static final String JSON_DIRECTORY = "directory";
+    private static final String JSON_PLAYLISTS = "playlists";
+    private static final String JSON_PLAYLIST = "playlist";
+    private static final String JSON_ENTRY = "entry";
     private static final String STATUS_OK = "ok";
 
     private String username = "";
@@ -120,6 +126,8 @@ public class SubsonicAPIClient extends APIClient {
                                String musicFolder,
                                String errorMsg,
                                ConcurrentLinkedQueue<MediaMetadataCompat> metaList,
+                               ConcurrentLinkedQueue<Playlist> playlists,
+                               ConcurrentLinkedQueue<EntryID> playlistEntries,
                                APIClientRequestHandler handler) {
         int retryCount = retries.getOrDefault(query, 1);
         String status = "Request failed:\ntype: " + type + "\nquery: " + query;
@@ -141,6 +149,12 @@ public class SubsonicAPIClient extends APIClient {
                 break;
             case GET_MUSIC_DIRECTORY:
                 newReq = getMusicDirectoryQuery(query, musicFolder, metaList, handler);
+                break;
+            case GET_PLAYLISTS:
+                newReq = getPlaylistsQuery(query, playlists, handler);
+                break;
+            case GET_PLAYLIST:
+                newReq = getPlaylistQuery(query, playlistEntries, handler);
                 break;
             default:
                 newReq = new CompletableFuture<>();
@@ -206,7 +220,10 @@ public class SubsonicAPIClient extends APIClient {
                         query,
                         "",
                         error.getMessage(),
-                        metaList, handler
+                        metaList,
+                        null,
+                        null,
+                        handler
                 );
             }
 
@@ -291,9 +308,9 @@ public class SubsonicAPIClient extends APIClient {
                                     getMusicDirectory(id, musicFolder, metaList, handler)
                                             .thenRun(() -> req.complete(null));
                                 } else {
-                                    Optional<MediaMetadataCompat> meta =
-                                            handleJSONChild(jChild, musicFolder);
-                                    addMeta(meta, metaList, handler);
+                                    handleJSONChild(jChild, musicFolder).ifPresent(meta ->
+                                        addMeta(meta, metaList, handler)
+                                    );
                                 }
                             }
                         }
@@ -319,6 +336,8 @@ public class SubsonicAPIClient extends APIClient {
                         musicFolder,
                         error.getMessage(),
                         metaList,
+                        null,
+                        null,
                         handler);
             }
 
@@ -330,14 +349,12 @@ public class SubsonicAPIClient extends APIClient {
         return ret;
     }
 
-    private void addMeta(Optional<MediaMetadataCompat> meta,
+    private void addMeta(MediaMetadataCompat meta,
                          ConcurrentLinkedQueue<MediaMetadataCompat> metaList,
                          APIClientRequestHandler handler) {
-        if (meta.isPresent()) {
-            metaList.add(meta.get());
-            if (metaList.size() % 100 == 0) {
-                handler.onProgress("Fetched " + metaList.size() + " entries...");
-            }
+        metaList.add(meta);
+        if (metaList.size() % 100 == 0) {
+            handler.onProgress("Fetched " + metaList.size() + " entries...");
         }
     }
 
@@ -496,9 +513,9 @@ public class SubsonicAPIClient extends APIClient {
                                     getMusicDirectory(id, musicFolder, metaList, handler)
                                             .thenRun(() -> req.complete(null));
                                 } else {
-                                    Optional<MediaMetadataCompat> meta =
-                                            handleJSONChild(jChild, musicFolder);
-                                    addMeta(meta, metaList, handler);
+                                    handleJSONChild(jChild, musicFolder).ifPresent(meta ->
+                                            addMeta(meta, metaList, handler)
+                                    );
                                 }
                             }
                         }
@@ -524,6 +541,8 @@ public class SubsonicAPIClient extends APIClient {
                         musicFolder,
                         error.getMessage(),
                         metaList,
+                        null,
+                        null,
                         handler);
             }
 
@@ -535,8 +554,8 @@ public class SubsonicAPIClient extends APIClient {
     }
 
     @Override
-    public CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> getLibrary(APIClientRequestHandler handler) {
-        CompletableFuture<Optional<ArrayList<MediaMetadataCompat>>> getLibraryFuture = new CompletableFuture<>();
+    public CompletableFuture<Optional<List<MediaMetadataCompat>>> getLibrary(APIClientRequestHandler handler) {
+        CompletableFuture<Optional<List<MediaMetadataCompat>>> getLibraryFuture = new CompletableFuture<>();
         ConcurrentLinkedQueue<MediaMetadataCompat> metadataList = new ConcurrentLinkedQueue<>();
         handler.onProgress("Fetching music folders...");
         getMusicFolders(metadataList, handler).thenRun(() ->
@@ -546,8 +565,151 @@ public class SubsonicAPIClient extends APIClient {
 
     @Override
     public boolean hasPlaylists() {
-        // TODO(kringlan): Override getPlaylists.
-        return false;
+        return true;
+    }
+
+    private CompletableFuture<Void> getPlaylists(final ConcurrentLinkedQueue<Playlist> playlists,
+                                                    final APIClientRequestHandler handler) {
+        String query = baseURL + "getPlaylists" + getBaseQuery();
+        return getPlaylistsQuery(query, playlists, handler);
+    }
+
+    private CompletableFuture<Void> getPlaylistsQuery(String query,
+                                                      ConcurrentLinkedQueue<Playlist> playlists,
+                                                      APIClientRequestHandler handler) {
+        final CompletableFuture<Void> ret = new CompletableFuture<>();
+        final List<CompletableFuture<Void>> reqList = new ArrayList<>();
+        httpClient.get(query, null, new AsyncHttpResponseHandler() {
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
+                String resp = new String(responseBody);
+                String status = statusOK(resp);
+                if (status.isEmpty()) {
+                    try {
+                        JSONObject json = new JSONObject(resp);
+                        JSONObject jResp = json.getJSONObject(JSON_RESP);
+                        JSONObject jPlaylists = jResp.getJSONObject(JSON_PLAYLISTS);
+                        if (jPlaylists.has(JSON_PLAYLIST)) {
+                            JSONArray jPlaylistArray = jPlaylists.getJSONArray(JSON_PLAYLIST);
+                            for (int i = 0; i < jPlaylistArray.length(); i++) {
+                                JSONObject jPlaylist = jPlaylistArray.getJSONObject(i);
+                                // Required attributes
+                                String id = jPlaylist.getString(JSON_ID);
+                                String name = jPlaylist.getString(JSON_NAME);
+                                final CompletableFuture<Void> req = new CompletableFuture<>();
+                                reqList.add(req);
+                                ConcurrentLinkedQueue<EntryID> entries = new ConcurrentLinkedQueue<>();
+                                getPlaylist(id, entries, handler)
+                                        .thenRun(() -> {
+                                            Playlist playlist = new StupidPlaylist(new PlaylistID(
+                                                    MusicLibraryService.API_ID_SUBSONIC,
+                                                    id,
+                                                    PlaylistID.TYPE_STUPID
+                                            ), name, new ArrayList<>(entries));
+                                            playlists.add(playlist);
+                                            req.complete(null);
+                                        });
+                            }
+                        }
+                        CompletableFuture<Void> allOf = CompletableFuture.allOf(reqList.toArray(new CompletableFuture[reqList.size()]));
+                        allOf.thenRun(() -> ret.complete(null));
+                    } catch (JSONException e) {
+                        Log.e(LC, "JSON error in getPlaylistsQuery: " + e.getMessage());
+                        ret.complete(null);
+                    }
+                } else {
+                    Log.e(LC, "getPlaylistsQuery: " + status + "\n" + query);
+                    ret.complete(null);
+                }
+            }
+
+            @Override
+            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
+                Log.e(LC, "onFailure in getPlaylistsQuery");
+                onRequestFail(
+                        RequestType.GET_PLAYLISTS,
+                        ret,
+                        query,
+                        null,
+                        error.getMessage(),
+                        null,
+                        playlists,
+                        null,
+                        handler);
+            }
+        });
+        return ret;
+    }
+
+    private CompletableFuture<Void> getPlaylist(String id,
+                                                ConcurrentLinkedQueue<EntryID> entries,
+                                                APIClientRequestHandler handler) {
+        String query = baseURL + "getPlaylist" + getBaseQuery() + "&id=" + id;
+        return getPlaylistQuery(query, entries, handler);
+    }
+
+    private CompletableFuture<Void> getPlaylistQuery(String query,
+                                                     ConcurrentLinkedQueue<EntryID> entries,
+                                                     APIClientRequestHandler handler) {
+        CompletableFuture<Void> ret = new CompletableFuture<>();
+        httpClient.get(query, null, new AsyncHttpResponseHandler() {
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
+                String resp = new String(responseBody);
+                String status = statusOK(resp);
+                if (status.isEmpty()) {
+                    try {
+                        JSONObject json = new JSONObject(resp);
+                        JSONObject jResp = json.getJSONObject(JSON_RESP);
+                        JSONObject jPlaylists = jResp.getJSONObject(JSON_PLAYLIST);
+                        if (jPlaylists.has(JSON_ENTRY)) {
+                            JSONArray jEntryArray = jPlaylists.getJSONArray(JSON_ENTRY);
+                            for (int i = 0; i < jEntryArray.length(); i++) {
+                                JSONObject jPlaylist = jEntryArray.getJSONObject(i);
+                                // Required attributes
+                                String id = jPlaylist.getString(JSON_ID);
+                                entries.add(new EntryID(
+                                        MusicLibraryService.API_ID_SUBSONIC,
+                                        id,
+                                        Meta.METADATA_KEY_MEDIA_ID
+                                ));
+                            }
+                        }
+                    } catch (JSONException e) {
+                        Log.e(LC, "JSON error in getPlaylistsQuery: " + e.getMessage());
+                    }
+                } else {
+                    Log.e(LC, "getPlaylistQuery: " + status + "\n" + query);
+                }
+                ret.complete(null);
+            }
+
+            @Override
+            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
+                Log.e(LC, "onFailure in getPlaylistQuery");
+                onRequestFail(
+                        RequestType.GET_PLAYLIST,
+                        ret,
+                        query,
+                        null,
+                        error.getMessage(),
+                        null,
+                        null,
+                        entries,
+                        handler);
+            }
+        });
+        return ret;
+    }
+
+    @Override
+    public CompletableFuture<Optional<List<Playlist>>> getPlaylists(APIClientRequestHandler handler) {
+        CompletableFuture<Optional<List<Playlist>>> getPlaylistsFuture = new CompletableFuture<>();
+        ConcurrentLinkedQueue<Playlist> playlists = new ConcurrentLinkedQueue<>();
+        getPlaylists(playlists, handler).thenRun(() ->
+                getPlaylistsFuture.complete(Optional.of(new ArrayList<>(playlists)))
+        );
+        return getPlaylistsFuture;
     }
 
     public AudioDataSource getAudioData(EntryID entryID) {

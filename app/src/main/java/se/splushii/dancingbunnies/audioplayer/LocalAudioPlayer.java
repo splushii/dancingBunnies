@@ -6,6 +6,9 @@ import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
 import java.util.LinkedList;
+import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
@@ -15,9 +18,10 @@ import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.util.Util;
 
 // TODO: Set error state if a triggered action is unsuccessful
+// TODO: Make it thread-safe. A lock is probably needed for player and nextplayers.
 class LocalAudioPlayer extends AudioPlayer {
     private static final String LC = Util.getLogContext(LocalAudioPlayer.class);
-    private static final int NUM_PRELOAD_ITEMS = 2;
+    private static final int NUM_PRELOAD_ITEMS = 3;
 
     private enum MediaPlayerState {
         NULL,
@@ -234,10 +238,10 @@ class LocalAudioPlayer extends AudioPlayer {
                     break;
                 default:
                     Log.w(LC, "MediaPlayer(" + title() + ") "
-                            + "getCurrentPosition in wrong state: " + state);
+                            + "getPlayerSeekPosition in wrong state: " + state);
                     return 0L;
             }
-            Log.d(LC, "MediaPlayer(" + title() + ") getCurrentPosition");
+            Log.d(LC, "MediaPlayer(" + title() + ") getPlayerSeekPosition");
             return mediaPlayer.getCurrentPosition();
         }
 
@@ -326,7 +330,7 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    public long getCurrentPosition() {
+    public long getSeekPosition() {
         if (player == null) {
             return 0;
         }
@@ -382,29 +386,7 @@ class LocalAudioPlayer extends AudioPlayer {
         return NUM_PRELOAD_ITEMS;
     }
 
-    @Override
-    int getNumPreloadedNext() {
-        int num = nextPlayers.size();
-        if (player != null) {
-            num++;
-        }
-        return num;
-    }
-
-    @Override
-    void addPreloadNext(PlaybackEntry playbackEntry, int index) {
-        MediaPlayerInstance mediaPlayerInstance = new MediaPlayerInstance(playbackEntry);
-        Log.d(LC, "addPreloadNext: " + mediaPlayerInstance.title());
-        if (index == 0) {
-            setCurrentPlayer(mediaPlayerInstance);
-        } else {
-            nextPlayers.add(--index, mediaPlayerInstance);
-        }
-        mediaPlayerInstance.preload();
-    }
-
-    @Override
-    void clearPreloadNext() {
+    private void clearPreloadNext() {
         player.release();
         while (!nextPlayers.isEmpty()) {
             nextPlayers.poll().release();
@@ -413,29 +395,91 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    void removePreloadNext(int index) {
-        if (index == 0) {
-            next();
+    void setPreloadNext(List<PlaybackEntry> playbackEntries) {
+        if (playbackEntries == null || playbackEntries.isEmpty()) {
+            clearPreloadNext();
             return;
         }
-        nextPlayers.remove(--index);
-        audioPlayerCallback.onPreloadNextConsumed();
+        LinkedList<MediaPlayerInstance> newMediaplayers = new LinkedList<>();
+        // Stop current player if it's getting replaced
+        if (player != null && !player.playbackEntry.equals(playbackEntries.get(0))) {
+            // TODO: May need to release player if it's in a weird state
+            player.stop();
+        }
+        // Reuse existing mediaplayers
+        for (PlaybackEntry newEntry: playbackEntries) {
+            if (player != null && newEntry.equals(player.playbackEntry)) {
+                newMediaplayers.add(player);
+                player = null;
+                continue;
+            }
+            boolean found = false;
+            for (MediaPlayerInstance m: nextPlayers) {
+                if (newEntry.equals(m.playbackEntry)) {
+                    newMediaplayers.add(m);
+                    nextPlayers.remove(m);
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                continue;
+            }
+            MediaPlayerInstance m = new MediaPlayerInstance(newEntry);
+            m.preload();
+            newMediaplayers.add(m);
+        }
+        // Release unneeded players
+        if (player != null) {
+            boolean found = false;
+            for (MediaPlayerInstance m: newMediaplayers) {
+                if (player.playbackEntry.equals(m.playbackEntry)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                player.release();
+                player = null;
+            }
+        }
+        for (MediaPlayerInstance old: nextPlayers) {
+            old.release();
+        }
+        Log.d(LC, "newNexts " + newMediaplayers.size() + ": (" +
+                String.join(
+                        ", ",
+                        newMediaplayers.stream()
+                                .map(MediaPlayerInstance::title)
+                                .collect(Collectors.toList())
+                ) +
+                ")"
+        );
+        // Set current player
+        MediaPlayerInstance first = newMediaplayers.poll();
+        if (player != null && !player.playbackEntry.equals(first.playbackEntry)) {
+            player.release();
+        }
+        setCurrentPlayer(first);
+        // Set next players
+        nextPlayers = newMediaplayers;
     }
 
     @Override
     void next() {
         MediaPlayerInstance previousPlayer = player;
         setCurrentPlayer(nextPlayers.poll());
-        // TODO: Add previousPlayer to previous preload? Nope
+        // TODO: Add previousPlayer to previous preload? Yes, if previous() means history. Else no.
         // TODO: Remove one item from previous preload
         if (previousPlayer != null) {
+            previousPlayer.pause();
+            previousPlayer.seekTo(0);
             previousPlayer.release();
         }
         updatePlaybackState();
         if (player != null && player.isReady()) {
             audioPlayerCallback.onReady();
         }
-        audioPlayerCallback.onPreloadNextConsumed();
     }
 
     @Override

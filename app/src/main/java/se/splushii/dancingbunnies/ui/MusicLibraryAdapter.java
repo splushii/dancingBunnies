@@ -43,6 +43,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         private final TextView libraryEntryArtist;
         private final View playAction;
         private final View queueAction;
+        private final View addToPlaylistAction;
         private final ImageButton overflowMenu;
         private final View moreActions;
 
@@ -53,6 +54,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             libraryEntryArtist = view.findViewById(R.id.library_entry_artist);
             playAction = view.findViewById(R.id.action_play);
             queueAction = view.findViewById(R.id.action_queue);
+            addToPlaylistAction = view.findViewById(R.id.action_add_to_playlist);
             overflowMenu = view.findViewById(R.id.overflow_menu);
             moreActions = view.findViewById(R.id.more_actions);
         }
@@ -82,12 +84,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         final MediaBrowserCompat.MediaItem item = dataset.get(position);
         final String title = item.getDescription().getTitle() + "";
         EntryID entryID = EntryID.from(item);
-        if (entryID == null) {
-            for (String key: item.getDescription().getExtras().keySet()) {
-                Log.d(LC, "item: " + key + " = "
-                + item.getDescription().getExtras().getString(key));
-            }
-        }
         final boolean browsable = item.isBrowsable();
         holder.moreActions.setVisibility(View.GONE);
         holder.libraryEntryTitle.setText(title);
@@ -124,10 +120,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         });
         holder.playAction.setOnClickListener(v -> fragment.play(entryID));
         holder.queueAction.setOnClickListener(v -> fragment.queue(entryID));
+        holder.addToPlaylistAction.setOnClickListener(v -> fragment.addToPlaylist(entryID));
         holder.overflowMenu.setOnClickListener(v -> {
-            v.setOnCreateContextMenuListener((menu, v1, menuInfo) -> {
-                menu.setHeaderTitle(title);
-            });
+            v.setOnCreateContextMenuListener((menu, v1, menuInfo) -> menu.setHeaderTitle(title));
             contextMenuHolder = holder;
             v.showContextMenu();
         });

@@ -21,7 +21,7 @@ import android.view.MenuItem;
 import com.google.android.gms.cast.framework.CastButtonFactory;
 
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
-import se.splushii.dancingbunnies.ui.LibraryView;
+import se.splushii.dancingbunnies.ui.MusicLibraryUserState;
 import se.splushii.dancingbunnies.util.Util;
 
 public final class MainActivity extends AppCompatActivity {
@@ -32,12 +32,12 @@ public final class MainActivity extends AppCompatActivity {
     public static final String PAGER_SELECTION = "dancingbunnies.mainactivity.pagerselection";
     public static final int PAGER_MUSICLIBRARY = 0;
     public static final int PAGER_NOWPLAYING = 1;
-    public static final int PAGER_QUEUE = 2;
+    public static final int PAGER_PLAYLIST = 2;
     private static final int NUM_VIEWS = 3;
 
     private MusicLibraryFragment musicLibraryFragment;
     private NowPlayingFragment nowPlayingFragment;
-    private PlaylistQueueFragment playlistQueueFragment;
+    private PlaylistFragment playlistFragment;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -58,7 +58,7 @@ public final class MainActivity extends AppCompatActivity {
 
         musicLibraryFragment = new MusicLibraryFragment();
         nowPlayingFragment = new NowPlayingFragment();
-        playlistQueueFragment = new PlaylistQueueFragment();
+        playlistFragment = new PlaylistFragment();
 
         MediaRouteButton mediaRouteButton = findViewById(R.id.media_route_button);
         CastButtonFactory.setUpMediaRouteButton(getApplicationContext(), mediaRouteButton);
@@ -81,7 +81,7 @@ public final class MainActivity extends AppCompatActivity {
             mViewPager.setCurrentItem(PAGER_MUSICLIBRARY);
             String query = intent.getStringExtra(SearchManager.QUERY);
             musicLibraryFragment.refreshView(
-                    new LibraryView(
+                    new MusicLibraryUserState(
                             new MusicLibraryQuery(query), 0, 0
                     )
             );
@@ -158,8 +158,16 @@ public final class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (mViewPager.getCurrentItem() != PAGER_MUSICLIBRARY
-                || !musicLibraryFragment.onBackPressed()) {
+        boolean backStackEmpty = false;
+        switch (mViewPager.getCurrentItem()) {
+            case PAGER_MUSICLIBRARY:
+                backStackEmpty = !musicLibraryFragment.onBackPressed();
+                break;
+            case PAGER_PLAYLIST:
+                backStackEmpty = !playlistFragment.onBackPressed();
+                break;
+        }
+        if (backStackEmpty) {
             Log.w(LC, "Backpress ignored.");
         }
     }
@@ -181,8 +189,8 @@ public final class MainActivity extends AppCompatActivity {
                     return musicLibraryFragment;
                 case PAGER_NOWPLAYING:
                     return nowPlayingFragment;
-                case PAGER_QUEUE:
-                    return playlistQueueFragment;
+                case PAGER_PLAYLIST:
+                    return playlistFragment;
             }
             return null;
         }
@@ -199,8 +207,8 @@ public final class MainActivity extends AppCompatActivity {
                     return "MusicLibrary";
                 case PAGER_NOWPLAYING:
                     return "Now Playing";
-                case PAGER_QUEUE:
-                    return "Playlist/Queue";
+                case PAGER_PLAYLIST:
+                    return "Playlists";
             }
             return null;
         }

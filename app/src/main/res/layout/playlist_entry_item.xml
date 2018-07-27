@@ -1,37 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/library_entry"
+    android:id="@+id/playlist_entry"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical">
-
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp">
         <TextView
-            android:id="@+id/library_entry_title"
+            android:id="@+id/playlist_entry_name"
             android:layout_width="0dp"
-            android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:layout_marginStart="16dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="8dp"
+            android:layout_weight="1"
             android:gravity="center_vertical"
             android:textColor="@color/bluegrey900"
             android:fontFamily="sans-serif"
-            android:textSize="14sp" />
+            android:textSize="16sp"/>
         <TextView
-            android:id="@+id/library_entry_artist"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="8dp"
-            android:layout_marginEnd="24dp"
-            android:gravity="center_vertical"
+            android:id="@+id/playlist_entry_src"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:textColor="@color/grey500"
+            android:fontFamily="sans-serif"/>
     </LinearLayout>
-
     <LinearLayout
-        android:id="@+id/more_actions"
+        android:id="@+id/playlist_entry_more_actions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -39,42 +38,21 @@
         android:background="#EEEEEE"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp">
-
         <TextView
-            android:id="@+id/action_play"
+            android:id="@+id/playlist_entry_action_remove"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:drawableTop="@drawable/ic_play_arrow_black_24dp"
-            android:text="@string/song_context_play"
+            android:drawableTop="@drawable/ic_delete_black_24dp"
+            android:text="@string/playlist_context_remove"
             android:textColor="@color/bluegrey900"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp" />
-        <TextView
-            android:id="@+id/action_queue"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:drawableTop="@drawable/ic_queue_black_24dp"
-            android:text="@string/song_context_queue"
-            android:textColor="@color/bluegrey900"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp" />
-        <TextView
-            android:id="@+id/action_add_to_playlist"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:drawableTop="@drawable/ic_playlist_add_black_24dp"
-            android:text="@string/song_context_add_to_playlist"
-            android:textColor="@color/bluegrey900"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp" />
-
         <View
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_weight="1" />
-
         <ImageButton
-            android:id="@+id/overflow_menu"
+            android:id="@+id/playlist_entry_overflow_menu"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:background="@android:color/transparent"

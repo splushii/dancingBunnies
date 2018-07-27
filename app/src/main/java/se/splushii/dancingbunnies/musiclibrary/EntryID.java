@@ -1,6 +1,8 @@
 package se.splushii.dancingbunnies.musiclibrary;
 
 import android.os.Bundle;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.support.v4.media.MediaBrowserCompat.MediaItem;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
@@ -11,9 +13,10 @@ import com.google.android.gms.cast.MediaMetadata;
 import org.apache.lucene.document.Document;
 
 import se.splushii.dancingbunnies.search.Indexer;
+import se.splushii.dancingbunnies.util.Util;
 
-public class EntryID {
-    private static final String LC = "EntryID";
+public class EntryID implements Parcelable {
+    private static final String LC = Util.getLogContext(EntryID.class);
     static final EntryID UnknownEntryID = EntryID.from(Meta.UNKNOWN_ENTRY);
     public final String src;
     public final String id;
@@ -23,6 +26,36 @@ public class EntryID {
         this.src = src;
         this.id = id;
         this.type = type;
+    }
+
+    protected EntryID(Parcel in) {
+        src = in.readString();
+        id = in.readString();
+        type = in.readString();
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(src);
+        dest.writeString(id);
+        dest.writeString(type);
+    }
+
+    public static final Creator<EntryID> CREATOR = new Creator<EntryID>() {
+        @Override
+        public EntryID createFromParcel(Parcel in) {
+            return new EntryID(in);
+        }
+
+        @Override
+        public EntryID[] newArray(int size) {
+            return new EntryID[size];
+        }
+    };
+
+    @Override
+    public int describeContents() {
+        return 0;
     }
 
     @Override

@@ -109,8 +109,9 @@ class PlaybackQueue {
 
     PlaybackEntry skipTo(long queuePosition) {
         Log.d(LC, "skipTo id: " + queuePosition + " size: " + entryQueue.size());
+        int size = entryQueue.size();
         PlaybackEntry playbackEntry = null;
-        for (int i = 0; i < queuePosition; i++) {
+        for (int i = 0; i < queuePosition && i < size; i++) {
             playbackEntry = entryQueue.pollFirst();
             queue.pollFirst();
         }

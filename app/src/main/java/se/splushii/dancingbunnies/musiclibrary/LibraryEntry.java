@@ -1,21 +1,40 @@
 package se.splushii.dancingbunnies.musiclibrary;
 
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.support.annotation.NonNull;
 
 import org.apache.lucene.document.Document;
 
 import se.splushii.dancingbunnies.search.Indexer;
 
-public class LibraryEntry implements Comparable<LibraryEntry> {
+public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
     // Uniquely identifies a LibraryEntry
     public final EntryID entryID;
 
-    private String name;
+    private final String name;
 
     public LibraryEntry(EntryID entryID, String name) {
         this.entryID = entryID;
         this.name = name;
     }
+
+    protected LibraryEntry(Parcel in) {
+        entryID = in.readParcelable(EntryID.class.getClassLoader());
+        name = in.readString();
+    }
+
+    public static final Creator<LibraryEntry> CREATOR = new Creator<LibraryEntry>() {
+        @Override
+        public LibraryEntry createFromParcel(Parcel in) {
+            return new LibraryEntry(in);
+        }
+
+        @Override
+        public LibraryEntry[] newArray(int size) {
+            return new LibraryEntry[size];
+        }
+    };
 
     @Override
     public String toString() {
@@ -58,5 +77,16 @@ public class LibraryEntry implements Comparable<LibraryEntry> {
         EntryID entryID = EntryID.from(doc);
         String name = doc.get(Indexer.meta2fieldNameMap.get(Meta.METADATA_KEY_TITLE));
         return new LibraryEntry(entryID, name);
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeParcelable(entryID, flags);
+        dest.writeString(name);
     }
 }

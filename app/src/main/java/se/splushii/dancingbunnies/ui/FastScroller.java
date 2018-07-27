@@ -178,8 +178,9 @@ public class FastScroller extends LinearLayout {
                 MediaBrowserCompat.MediaItem item =
                         libAdapter.getItemData(recyclerView.getChildAdapterPosition(recyclerView.getChildAt(0)));
                 String title = String.valueOf(item.getDescription().getTitle());
-                char firstChar = title.charAt(0);
-                bubble.setText(String.valueOf(firstChar));
+                String firstChar = title.length() >= 1 ? title.substring(0, 1).toUpperCase() : "";
+                String secondChar = title.length() >= 2 ? title.substring(1, 2).toLowerCase() : "";
+                bubble.setText(firstChar + secondChar);
             }
 
             animateShow(handle, handleHider, AnimationType.FADE);

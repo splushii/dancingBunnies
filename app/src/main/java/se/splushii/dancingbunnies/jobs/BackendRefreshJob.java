@@ -94,7 +94,24 @@ public class BackendRefreshJob extends JobService {
                 @Override
                 public void onSuccess(String status) {
                     handler.post(() -> updateToast("ML req onSuccess: " + status));
-                    stopJob(false);
+                    service.fetchPlayLists(api, new MusicLibraryRequestHandler() {
+                        @Override
+                        public void onStart() {
+                            Log.d(LC, "onStart fetchPlaylists");
+                        }
+
+                        @Override
+                        public void onSuccess(String status) {
+                            Log.d(LC, "onSuccess fetchPlaylists: " + status);
+                            stopJob(false);
+                        }
+
+                        @Override
+                        public void onFailure(String status) {
+                            Log.d(LC, "onFailure fetchPlaylists: " + status);
+                            stopJob(false);
+                        }
+                    });
                 }
 
                 @Override

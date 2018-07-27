@@ -22,8 +22,6 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.flags.impl.DataUtils;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -36,7 +34,7 @@ import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.FastScrollerBubble;
-import se.splushii.dancingbunnies.ui.LibraryView;
+import se.splushii.dancingbunnies.ui.MusicLibraryUserState;
 import se.splushii.dancingbunnies.ui.MusicLibraryAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -44,9 +42,9 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private static String LC = Util.getLogContext(MusicLibraryFragment.class);
     private RecyclerView recyclerView;
     private MusicLibraryAdapter recyclerViewAdapter;
-    private LibraryView currentLibraryView;
     private String currentSubscriptionID;
-    private LinkedList<LibraryView> viewBackStack;
+    private MusicLibraryUserState userState;
+    private LinkedList<MusicLibraryUserState> viewBackStack;
 
     private TextView activeFiltersView;
     FastScroller fastScroller;
@@ -61,7 +59,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     @Override
     public void onStart() {
         super.onStart();
-        refreshView(currentLibraryView);
+        refreshView(userState);
         Log.d(LC, "onStart");
     }
 
@@ -69,28 +67,28 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     public void onStop() {
         super.onStop();
         Log.d(LC, "onStop");
-        if (currentLibraryView != null) {
-            currentLibraryView = new LibraryView(
-                    currentLibraryView.query,
+        if (userState != null) {
+            userState = new MusicLibraryUserState(
+                    userState.query,
                     recyclerViewAdapter.getCurrentPosition());
         }
     }
 
     @Override
     protected void onMediaBrowserConnected() {
-        refreshView(currentLibraryView);
+        refreshView(userState);
     }
 
-    public void refreshView(final LibraryView libView) {
-        if (libView == null) {
+    public void refreshView(final MusicLibraryUserState newUserState) {
+        if (newUserState == null) {
             MusicLibraryQuery query = new MusicLibraryQuery();
             query.addToQuery(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_ARTIST);
-            refreshView(new LibraryView(query, 0, 0));
+            refreshView(new MusicLibraryUserState(query, 0, 0));
             return;
         }
         clearFilterView();
-        if (!libView.query.isSearchQuery()) {
-            Bundle b = libView.query.toBundle();
+        if (!newUserState.query.isSearchQuery()) {
+            Bundle b = newUserState.query.toBundle();
             for (String filterType: b.keySet()) {
                 String filterValue = b.getString(filterType);
                 addFilterToView(filterType, filterValue);
@@ -102,13 +100,13 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             activeFiltersView.setVisibility(View.VISIBLE);
         }
         unsubscribe();
-        currentSubscriptionID = libView.query.query(mediaBrowser, new MusicLibraryQuery.MusicLibraryQueryCallback() {
+        currentSubscriptionID = newUserState.query.query(mediaBrowser, new MusicLibraryQuery.MusicLibraryQueryCallback() {
             @Override
             public void onQueryResult(@NonNull List<MediaBrowserCompat.MediaItem> items) {
-                recyclerViewAdapter.setDataset(items, libView.query.isSearchQuery());
-                currentLibraryView = libView;
+                recyclerViewAdapter.setDataset(items, newUserState.query.isSearchQuery());
+                userState = newUserState;
                 LinearLayoutManager llm = (LinearLayoutManager) recyclerView.getLayoutManager();
-                llm.scrollToPositionWithOffset(libView.pos, libView.pad);
+                llm.scrollToPositionWithOffset(newUserState.pos, newUserState.pad);
             }
         });
     }
@@ -230,7 +228,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                     .setAction("Action", null).show();
             MusicLibraryQuery query = new MusicLibraryQuery();
             query.addToQuery(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_ARTIST);
-            refreshView(new LibraryView(query, 0, 0));
+            refreshView(new MusicLibraryUserState(query, 0, 0));
             setFabVisibility(View.GONE);
         });
 
@@ -239,7 +237,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                     .setAction("Action", null).show();
             MusicLibraryQuery query = new MusicLibraryQuery();
             query.addToQuery(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_MEDIA_ID);
-            refreshView(new LibraryView(query, 0, 0));
+            refreshView(new MusicLibraryUserState(query, 0, 0));
             setFabVisibility(View.GONE);
         });
 
@@ -265,8 +263,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         text_sort_song.setVisibility(visibility);
     }
 
-    public void addBackButtonHistory(LibraryView libView) {
-        viewBackStack.push(libView);
+    public void addBackButtonHistory(MusicLibraryUserState userState) {
+        viewBackStack.push(userState);
     }
 
     public boolean onBackPressed() {
@@ -280,20 +278,20 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
 
     public void filter(String filterType, String filter) {
         addBackButtonHistory(
-                new LibraryView(
-                        currentLibraryView.query,
+                new MusicLibraryUserState(
+                        userState.query,
                         recyclerViewAdapter.getCurrentPosition()
                 )
         );
-        MusicLibraryQuery query = new MusicLibraryQuery(currentLibraryView.query);
+        MusicLibraryQuery query = new MusicLibraryQuery(userState.query);
         query.addToQuery(filterType, filter);
-        refreshView(new LibraryView(query, 0, 0));
+        refreshView(new MusicLibraryUserState(query, 0, 0));
     }
 
     public void browse(EntryID entryID) {
         addBackButtonHistory(
-                new LibraryView(
-                        currentLibraryView.query,
+                new MusicLibraryUserState(
+                        userState.query,
                         recyclerViewAdapter.getCurrentPosition()
                 )
         );
@@ -305,7 +303,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 query.addToQuery(Meta.METADATA_KEY_ARTIST, entryID.id);
                 break;
             case Meta.METADATA_KEY_ALBUM:
-                query = new MusicLibraryQuery(currentLibraryView.query);
+                query = new MusicLibraryQuery(userState.query);
                 query.addToQuery(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_MEDIA_ID);
                 if (entryID.id != null) {
                     query.addToQuery(Meta.METADATA_KEY_ALBUM, entryID.id);
@@ -315,7 +313,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 query = new MusicLibraryQuery();
                 break;
         }
-        refreshView(new LibraryView(query, 0, 0));
+        refreshView(new MusicLibraryUserState(query, 0, 0));
     }
 
     private void clearFilterView() {

@@ -2,6 +2,8 @@ package se.splushii.dancingbunnies.audioplayer;
 
 import android.util.Log;
 
+import java.util.List;
+
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -14,7 +16,7 @@ public abstract class AudioPlayer {
     }
 
     Callback audioPlayerCallback;
-    private Callback emptyAudioPlayerCallback = new Callback() {
+    private final Callback emptyAudioPlayerCallback = new Callback() {
         @Override
         public void onReady() {
             Log.w(LC, "onReady");
@@ -39,12 +41,6 @@ public abstract class AudioPlayer {
         public void onQueueChanged() {
             Log.w(LC, "onQueueChanged");
         }
-
-        @Override
-        public void onPreloadNextConsumed() {
-            Log.w(LC, "onPreloadNextConsumed");
-        }
-
     };
     AudioPlayer() {
         audioPlayerCallback = emptyAudioPlayerCallback;
@@ -55,16 +51,13 @@ public abstract class AudioPlayer {
     public void removeListener() {
         audioPlayerCallback = emptyAudioPlayerCallback;
     }
-    abstract long getCurrentPosition();
+    abstract long getSeekPosition();
     abstract void play();
     abstract void pause();
     abstract void stop();
     abstract void seekTo(long pos);
     abstract int getNumToPreload();
-    abstract int getNumPreloadedNext();
-    abstract void addPreloadNext(PlaybackEntry playbackEntry, int index);
-    abstract void removePreloadNext(int index);
-    abstract void clearPreloadNext();
+    abstract void setPreloadNext(List<PlaybackEntry> playbackEntries);
     abstract void next();
     abstract void previous();
 
@@ -74,6 +67,5 @@ public abstract class AudioPlayer {
         void onStateChanged(int playBackState);
         void onMetaChanged(EntryID entryID);
         void onQueueChanged();
-        void onPreloadNextConsumed();
     }
 }
