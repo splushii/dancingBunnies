@@ -33,7 +33,6 @@ public class FastScroller extends LinearLayout {
     private static final String SCALE_X = "scaleX";
     private static final String SCALE_Y = "scaleY";
     private static final String ALPHA = "alpha";
-    private float handleOffset = 0f;
 
     public FastScroller(Context context) {
         super(context);
@@ -194,7 +193,6 @@ public class FastScroller extends LinearLayout {
             int height = getHeight();
             float handlePos = proportion * height;
             setPosition(handlePos);
-            handleOffset = handle.getY();
         }
     }
 
@@ -258,27 +256,23 @@ public class FastScroller extends LinearLayout {
         if (recyclerView != null) {
             recyclerView.stopScroll();
 
-            // Calculate FastScroll move proportion
             float newHandleOffset = handle.getY();
-            float oldHandleOffset = handleOffset;
-            handleOffset = newHandleOffset;
             int handleRange = getHeight() - handle.getHeight();
+            int numItems = recyclerView.getAdapter().getItemCount();
             if (newHandleOffset == 0f) {
                 recyclerView.scrollToPosition(0);
                 return;
             } else if (newHandleOffset >= handleRange) {
-                int lastItem = recyclerView.getAdapter().getItemCount() - 1;
-                recyclerView.scrollToPosition(lastItem);
+                recyclerView.scrollToPosition(numItems - 1);
                 return;
             }
-            float moveProportion = (newHandleOffset - oldHandleOffset) / handleRange;
-
-            // Apply move proportion to RecyclerView
-            int scrollRange = recyclerView.computeVerticalScrollRange();
-            int visibleScrollRange = recyclerView.getHeight();
-            int invisibleScrollRange = scrollRange - visibleScrollRange;
-            int recViewMove = (int) (moveProportion * invisibleScrollRange);
-            recyclerView.scrollBy(0, recViewMove);
+            float offsetProportion = newHandleOffset / handleRange;
+            int position = getValueInRange(
+                    0,
+                    numItems - 1,
+                    (int)(offsetProportion * numItems)
+            );
+            recyclerView.scrollToPosition(position);
         }
     }
 
