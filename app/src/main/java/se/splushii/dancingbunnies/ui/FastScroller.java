@@ -6,6 +6,7 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.support.v4.media.MediaBrowserCompat;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
@@ -33,6 +34,8 @@ public class FastScroller extends LinearLayout {
     private static final String SCALE_X = "scaleX";
     private static final String SCALE_Y = "scaleY";
     private static final String ALPHA = "alpha";
+    private boolean touching = false;
+    private float handleOffset = 0f;
 
     public FastScroller(Context context) {
         super(context);
@@ -174,8 +177,11 @@ public class FastScroller extends LinearLayout {
             }
             if (bubble != null) {
                 MusicLibraryAdapter libAdapter = (MusicLibraryAdapter) recyclerView.getAdapter();
-                MediaBrowserCompat.MediaItem item =
-                        libAdapter.getItemData(recyclerView.getChildAdapterPosition(recyclerView.getChildAt(0)));
+                LinearLayoutManager linearLayoutManager =
+                        (LinearLayoutManager) recyclerView.getLayoutManager();
+                int visibleIndex = linearLayoutManager.findFirstCompletelyVisibleItemPosition();
+                visibleIndex = visibleIndex >= 0 ? visibleIndex : 0;
+                MediaBrowserCompat.MediaItem item = libAdapter.getItemData(visibleIndex);
                 String title = String.valueOf(item.getDescription().getTitle());
                 String firstChar = title.length() >= 1 ? title.substring(0, 1).toUpperCase() : "";
                 String secondChar = title.length() >= 2 ? title.substring(1, 2).toLowerCase() : "";
@@ -185,14 +191,16 @@ public class FastScroller extends LinearLayout {
             animateShow(handle, handleHider, AnimationType.FADE);
             animateHide(handleHider, VIEW_HIDE_DELAY);
 
-            int scrollOffset = recyclerView.computeVerticalScrollOffset();
-            int scrollRange = recyclerView.computeVerticalScrollRange();
-            int visibleScrollRange = recyclerView.getHeight();
-            int invisibleScrollRange = scrollRange - visibleScrollRange;
-            float proportion = scrollOffset / (float) invisibleScrollRange;
-            int height = getHeight();
-            float handlePos = proportion * height;
-            setPosition(handlePos);
+            if (!touching) {
+                int scrollOffset = recyclerView.computeVerticalScrollOffset();
+                int scrollRange = recyclerView.computeVerticalScrollRange();
+                int visibleScrollRange = recyclerView.getHeight();
+                int invisibleScrollRange = scrollRange - visibleScrollRange;
+                float proportion = scrollOffset / (float) invisibleScrollRange;
+                int height = getHeight();
+                float handlePos = proportion * height;
+                setPosition(handlePos);
+            }
         }
     }
 
@@ -210,6 +218,7 @@ public class FastScroller extends LinearLayout {
         }
         int action = event.getAction();
         if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
+            touching = true;
             setPosition(event.getY());
             animateShow(handle, handleHider, AnimationType.FADE);
             if (bubble != null) {
@@ -218,6 +227,7 @@ public class FastScroller extends LinearLayout {
             setRecyclerViewPosition();
             return true;
         } else if (event.getAction() == MotionEvent.ACTION_UP) {
+            touching = false;
             animateHide(handleHider, VIEW_HIDE_DELAY);
             if (bubble != null) {
                 animateHide(bubbleHider, VIEW_HIDE_DELAY);
@@ -257,22 +267,25 @@ public class FastScroller extends LinearLayout {
             recyclerView.stopScroll();
 
             float newHandleOffset = handle.getY();
+            if (newHandleOffset == handleOffset) {
+                return;
+            }
+            handleOffset = newHandleOffset;
             int handleRange = getHeight() - handle.getHeight();
             int numItems = recyclerView.getAdapter().getItemCount();
-            if (newHandleOffset == 0f) {
-                recyclerView.scrollToPosition(0);
-                return;
-            } else if (newHandleOffset >= handleRange) {
+            if (newHandleOffset >= handleRange) {
                 recyclerView.scrollToPosition(numItems - 1);
                 return;
             }
             float offsetProportion = newHandleOffset / handleRange;
+            int visibleItems = recyclerView.getChildCount();
             int position = getValueInRange(
                     0,
                     numItems - 1,
-                    (int)(offsetProportion * numItems)
+                    (int)(offsetProportion * (numItems - visibleItems + 1))
             );
-            recyclerView.scrollToPosition(position);
+            LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+            linearLayoutManager.scrollToPositionWithOffset(position, 0);
         }
     }
 
