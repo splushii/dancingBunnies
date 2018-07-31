@@ -32,7 +32,7 @@ dependencies {
     implementation 'com.android.support:design:27.1.1'
     implementation 'com.android.support:appcompat-v7:27.1.1'
     implementation 'com.android.support:mediarouter-v7:27.1.1'
-    implementation 'com.google.android.gms:play-services-cast-framework:15.0.1'
+    implementation 'com.google.android.gms:play-services-cast-framework:16.0.0'
     implementation 'com.loopj.android:android-async-http:1.4.9'
     testImplementation 'junit:junit:4.12'
     implementation 'org.apache.lucene:lucene-core:4.8.1'
