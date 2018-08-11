@@ -7,7 +7,8 @@ import android.util.Log;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.function.Function;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
@@ -338,13 +339,14 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    public void play() {
-        if (player != null) {
-            if (player.isStopped()) {
-                player.prepare();
-            } else {
-                player.play();
-            }
+    public CompletableFuture<Optional<String>> play() {
+        if (player == null) {
+            return actionResult("Player is null");
+        }
+        if (player.isStopped()) {
+            player.prepare();
+        } else {
+            player.play();
         }
         for (MediaPlayerInstance mediaPlayerInstance: nextPlayers) {
             if (mediaPlayerInstance.isStopped()) {
@@ -352,33 +354,40 @@ class LocalAudioPlayer extends AudioPlayer {
             }
         }
         updatePlaybackState();
+        return actionResult(null);
     }
 
     @Override
-    public void pause() {
-        if (player != null) {
-            player.pause();
+    public CompletableFuture<Optional<String>> pause() {
+        if (player == null) {
+            return actionResult("Player is null");
         }
+        player.pause();
         updatePlaybackState();
+        return actionResult(null);
     }
 
     @Override
-    public void stop() {
-        if (player != null) {
-            player.stop();
+    public CompletableFuture<Optional<String>> stop() {
+        if (player == null) {
+            return actionResult("Player is null");
         }
+        player.stop();
         for (MediaPlayerInstance mediaPlayerInstance: nextPlayers) {
             mediaPlayerInstance.stop();
         }
         updatePlaybackState();
+        return actionResult(null);
     }
 
     @Override
-    void seekTo(long pos) {
-        if (player != null) {
-            player.seekTo(pos);
+    public CompletableFuture<Optional<String>> seekTo(long pos) {
+        if (player == null) {
+            return actionResult("Player is null");
         }
+        player.seekTo(pos);
         updatePlaybackState();
+        return actionResult(null);
     }
 
     @Override
@@ -395,10 +404,10 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    void setPreloadNext(List<PlaybackEntry> playbackEntries) {
+    public CompletableFuture<Optional<String>> setPreloadNext(List<PlaybackEntry> playbackEntries) {
         if (playbackEntries == null || playbackEntries.isEmpty()) {
             clearPreloadNext();
-            return;
+            return actionResult(null);
         }
         LinkedList<MediaPlayerInstance> newMediaplayers = new LinkedList<>();
         // Stop current player if it's getting replaced
@@ -463,10 +472,11 @@ class LocalAudioPlayer extends AudioPlayer {
         setCurrentPlayer(first);
         // Set next players
         nextPlayers = newMediaplayers;
+        return actionResult(null);
     }
 
     @Override
-    void next() {
+    public CompletableFuture<Optional<String>> next() {
         MediaPlayerInstance previousPlayer = player;
         setCurrentPlayer(nextPlayers.poll());
         // TODO: Add previousPlayer to previous preload? Yes, if previous() means history. Else no.
@@ -480,12 +490,14 @@ class LocalAudioPlayer extends AudioPlayer {
         if (player != null && player.isReady()) {
             audioPlayerCallback.onReady();
         }
+        return actionResult(null);
     }
 
     @Override
-    void previous() {
+    public CompletableFuture<Optional<String>> previous() {
         // TODO: implement
         Log.e(LC, "previous not implemented");
+        return actionResult("Not implemented");
     }
 
     private void updatePlaybackState() {

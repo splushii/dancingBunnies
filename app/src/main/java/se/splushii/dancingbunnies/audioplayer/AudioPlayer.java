@@ -3,6 +3,8 @@ package se.splushii.dancingbunnies.audioplayer;
 import android.util.Log;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.util.Util;
@@ -36,11 +38,6 @@ public abstract class AudioPlayer {
         public void onMetaChanged(EntryID entryID) {
             Log.w(LC, "onMetaChanged");
         }
-
-        @Override
-        public void onQueueChanged() {
-            Log.w(LC, "onQueueChanged");
-        }
     };
     AudioPlayer() {
         audioPlayerCallback = emptyAudioPlayerCallback;
@@ -52,20 +49,29 @@ public abstract class AudioPlayer {
         audioPlayerCallback = emptyAudioPlayerCallback;
     }
     abstract long getSeekPosition();
-    abstract void play();
-    abstract void pause();
-    abstract void stop();
-    abstract void seekTo(long pos);
     abstract int getNumToPreload();
-    abstract void setPreloadNext(List<PlaybackEntry> playbackEntries);
-    abstract void next();
-    abstract void previous();
+    abstract CompletableFuture<Optional<String>> play();
+    abstract CompletableFuture<Optional<String>> pause();
+    abstract CompletableFuture<Optional<String>> stop();
+    abstract CompletableFuture<Optional<String>> seekTo(long pos);
+    abstract CompletableFuture<Optional<String>> setPreloadNext(List<PlaybackEntry> playbackEntries);
+    abstract CompletableFuture<Optional<String>> next();
+    abstract CompletableFuture<Optional<String>> previous();
 
     interface Callback {
         void onReady();
         void onEnded();
         void onStateChanged(int playBackState);
         void onMetaChanged(EntryID entryID);
-        void onQueueChanged();
+    }
+
+    CompletableFuture<Optional<String>> actionResult(String error) {
+        CompletableFuture<Optional<String>> result = new CompletableFuture<>();
+        if (error != null) {
+            result.complete(Optional.of(error));
+            return result;
+        }
+        result.complete(Optional.empty());
+        return result;
     }
 }

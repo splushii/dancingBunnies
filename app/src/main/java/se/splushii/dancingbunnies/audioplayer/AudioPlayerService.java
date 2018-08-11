@@ -91,7 +91,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             musicLibraryService = binder.getService();
             setupPlaybackController();
             setupMediaSession();
-            playbackController.update();
+            playbackController.initialize();
         }
 
         @Override
