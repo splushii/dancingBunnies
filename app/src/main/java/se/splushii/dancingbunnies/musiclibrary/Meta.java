@@ -9,6 +9,7 @@ import com.google.android.gms.cast.MediaMetadata;
 
 import java.util.HashMap;
 
+import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.BITMAP;
@@ -27,18 +28,19 @@ public class Meta {
     }
 
     public static MediaMetadataCompat from(MediaMetadata castMeta) {
-        return new MediaMetadataCompat.Builder()
-                .putString(METADATA_KEY_API, castMeta.getString(METADATA_KEY_API))
-                .putString(METADATA_KEY_MEDIA_ID, castMeta.getString(METADATA_KEY_MEDIA_ID))
-                .putString(METADATA_KEY_TYPE, castMeta.getString(METADATA_KEY_TYPE))
-                .putString(METADATA_KEY_TITLE, castMeta.getString(MediaMetadata.KEY_TITLE))
-                .putString(METADATA_KEY_ALBUM, castMeta.getString(MediaMetadata.KEY_ALBUM_TITLE))
-                .putString(METADATA_KEY_ARTIST, castMeta.getString(MediaMetadata.KEY_ARTIST))
-                .build();
+        MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder();
+        b.putString(METADATA_KEY_TITLE, castMeta.getString(MediaMetadata.KEY_TITLE));
+        b.putString(METADATA_KEY_ALBUM, castMeta.getString(MediaMetadata.KEY_ALBUM_TITLE));
+        b.putString(METADATA_KEY_ARTIST, castMeta.getString(MediaMetadata.KEY_ARTIST));
+        b.putString(METADATA_KEY_API, castMeta.getString(METADATA_KEY_API));
+        b.putString(METADATA_KEY_MEDIA_ID, castMeta.getString(METADATA_KEY_MEDIA_ID));
+        b.putString(METADATA_KEY_TYPE, castMeta.getString(METADATA_KEY_TYPE));
+        b.putString(METADATA_KEY_PLAYBACK_TYPE, castMeta.getString(METADATA_KEY_PLAYBACK_TYPE));
         // TODO: Put all metadata in there ^
+        return b.build();
     }
 
-    public static MediaMetadata from(MediaMetadataCompat meta) {
+    public static MediaMetadata from(MediaMetadataCompat meta, String playbackType) {
         MediaMetadata castMeta = new MediaMetadata();
         castMeta.putString(MediaMetadata.KEY_TITLE, meta.getString(METADATA_KEY_TITLE));
         castMeta.putString(MediaMetadata.KEY_ALBUM_TITLE, meta.getString(METADATA_KEY_ALBUM));
@@ -47,6 +49,7 @@ public class Meta {
         castMeta.putString(METADATA_KEY_MEDIA_ID, meta.getString(METADATA_KEY_MEDIA_ID));
         castMeta.putString(METADATA_KEY_TYPE, meta.getString(METADATA_KEY_TYPE));
         castMeta.putString(METADATA_KEY_TITLE, meta.getString(METADATA_KEY_TITLE));
+        castMeta.putString(METADATA_KEY_PLAYBACK_TYPE, playbackType);
         // TODO: Put all metadata in there ^
         return castMeta;
     }
@@ -70,11 +73,14 @@ public class Meta {
     }
 
     public static MediaDescriptionCompat meta2desc(MediaMetadataCompat meta) {
-        MediaDescriptionCompat description = meta.getDescription();
-        Bundle extras = description.getExtras();
-        assert extras != null;
+        EntryID entryID = EntryID.from(meta);
+        Bundle extras = new Bundle();
         extras.putAll(meta.getBundle());
-        return description;
+        return new MediaDescriptionCompat.Builder()
+                .setMediaId(entryID.key())
+                .setExtras(extras)
+                .setTitle(extras.getString(Meta.METADATA_KEY_TITLE))
+                .build();
     }
 
     public static MediaMetadataCompat desc2meta(MediaDescriptionCompat desc) {
@@ -94,6 +100,7 @@ public class Meta {
             .putString(Meta.METADATA_KEY_ALBUM, Meta.METADATA_VALUE_UNKNOWN_ALBUM)
             .putString(Meta.METADATA_KEY_ARTIST, Meta.METADATA_VALUE_UNKNOWN_ARTIST)
             .putString(Meta.METADATA_KEY_TITLE, Meta.METADATA_VALUE_UNKNOWN_TITLE)
+            .putString(Meta.METADATA_KEY_PLAYBACK_TYPE, PlaybackEntry.USER_TYPE_EXTERNAL)
             .build();
 
     // Special keys/values
@@ -216,6 +223,9 @@ public class Meta {
     // Only used to identify queue position when de-queueing using onRemoveQueueItem
     public static final String METADATA_KEY_QUEUE_POS =
             "dancingbunnies.metadata.QUEUE_POS";
+    // Only used to identify if playback entry is in queue or in playlist
+    public static final String METADATA_KEY_PLAYBACK_TYPE =
+            "dancingbunnies.metadata.PLAYBACK_TYPE";
 
     public static final String[] db_keys = {
         // DancingBunnies keys
@@ -291,6 +301,7 @@ public class Meta {
         typeMap.put(METADATA_KEY_BOOKMARK_POSITION, LONG);
         typeMap.put(METADATA_KEY_AVERAGE_RATING, STRING);
         typeMap.put(METADATA_KEY_QUEUE_POS, LONG);
+        typeMap.put(METADATA_KEY_PLAYBACK_TYPE, LONG);
         // Android keys
         typeMap.put(METADATA_KEY_ADVERTISEMENT, LONG);
         typeMap.put(METADATA_KEY_ALBUM, STRING);
@@ -356,6 +367,7 @@ public class Meta {
         humanMap.put(METADATA_KEY_BOOKMARK_POSITION, "bookmark position");
         humanMap.put(METADATA_KEY_AVERAGE_RATING, "average rating");
         humanMap.put(METADATA_KEY_QUEUE_POS, "current queue position");
+        humanMap.put(METADATA_KEY_PLAYBACK_TYPE, "entry playback type");
         // Android keys
         humanMap.put(METADATA_KEY_ADVERTISEMENT, "advertisement");
         humanMap.put(METADATA_KEY_ALBUM, "album");

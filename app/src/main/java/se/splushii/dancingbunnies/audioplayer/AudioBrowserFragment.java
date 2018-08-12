@@ -192,26 +192,6 @@ public abstract class AudioBrowserFragment extends Fragment {
         return future;
     }
 
-    public CompletableFuture<Optional<PlaybackEntry>> getCurrentPlaybackEntry() {
-        CompletableFuture<Optional<PlaybackEntry>> future = new CompletableFuture<>();
-        mediaController.sendCommand(
-                AudioPlayerService.COMMAND_GET_CURRENT_PLAYBACK_ENTRY, null,
-                new ResultReceiver(null) {
-                    @Override
-                    protected void onReceiveResult(int resultCode, Bundle resultData) {
-                        if (resultCode != 0) {
-                            future.complete(Optional.empty());
-                            return;
-                        }
-                        PlaybackEntry playbackEntry =
-                                AudioPlayerService.getPlaybackEntry(resultData);
-                        future.complete(Optional.of(playbackEntry));
-                    }
-                }
-        );
-        return future;
-    }
-
     public void pause() {
         mediaController.getTransportControls().pause();
     }

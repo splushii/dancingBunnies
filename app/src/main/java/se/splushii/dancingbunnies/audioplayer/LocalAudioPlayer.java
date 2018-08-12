@@ -9,7 +9,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
@@ -339,6 +338,26 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
+    List<PlaybackEntry> getPreloadedEntries(int maxNum) {
+        return new LinkedList<>();
+    }
+
+    @Override
+    List<PlaybackEntry> getPreloadedQueueEntries(int maxNum) {
+        return new LinkedList<>();
+    }
+
+    @Override
+    List<PlaybackEntry> getPreloadedPlaylistEntries(int maxNum) {
+        return new LinkedList<>();
+    }
+
+    @Override
+    CompletableFuture<Optional<String>> queue(PlaybackEntry playbackEntry, PlaybackQueue.QueueOp op) {
+        return CompletableFuture.completedFuture(Optional.empty());
+    }
+
+    @Override
     public CompletableFuture<Optional<String>> play() {
         if (player == null) {
             return actionResult("Player is null");
@@ -390,11 +409,6 @@ class LocalAudioPlayer extends AudioPlayer {
         return actionResult(null);
     }
 
-    @Override
-    int getNumToPreload() {
-        return NUM_PRELOAD_ITEMS;
-    }
-
     private void clearPreloadNext() {
         player.release();
         while (!nextPlayers.isEmpty()) {
@@ -403,77 +417,77 @@ class LocalAudioPlayer extends AudioPlayer {
         setCurrentPlayer(null);
     }
 
-    @Override
-    public CompletableFuture<Optional<String>> setPreloadNext(List<PlaybackEntry> playbackEntries) {
-        if (playbackEntries == null || playbackEntries.isEmpty()) {
-            clearPreloadNext();
-            return actionResult(null);
-        }
-        LinkedList<MediaPlayerInstance> newMediaplayers = new LinkedList<>();
-        // Stop current player if it's getting replaced
-        if (player != null && !player.playbackEntry.equals(playbackEntries.get(0))) {
-            // TODO: May need to release player if it's in a weird state
-            player.stop();
-        }
-        // Reuse existing mediaplayers
-        for (PlaybackEntry newEntry: playbackEntries) {
-            if (player != null && newEntry.equals(player.playbackEntry)) {
-                newMediaplayers.add(player);
-                player = null;
-                continue;
-            }
-            boolean found = false;
-            for (MediaPlayerInstance m: nextPlayers) {
-                if (newEntry.equals(m.playbackEntry)) {
-                    newMediaplayers.add(m);
-                    nextPlayers.remove(m);
-                    found = true;
-                    break;
-                }
-            }
-            if (found) {
-                continue;
-            }
-            MediaPlayerInstance m = new MediaPlayerInstance(newEntry);
-            m.preload();
-            newMediaplayers.add(m);
-        }
-        // Release unneeded players
-        if (player != null) {
-            boolean found = false;
-            for (MediaPlayerInstance m: newMediaplayers) {
-                if (player.playbackEntry.equals(m.playbackEntry)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                player.release();
-                player = null;
-            }
-        }
-        for (MediaPlayerInstance old: nextPlayers) {
-            old.release();
-        }
-        Log.d(LC, "newNexts " + newMediaplayers.size() + ": (" +
-                String.join(
-                        ", ",
-                        newMediaplayers.stream()
-                                .map(MediaPlayerInstance::title)
-                                .collect(Collectors.toList())
-                ) +
-                ")"
-        );
-        // Set current player
-        MediaPlayerInstance first = newMediaplayers.poll();
-        if (player != null && !player.playbackEntry.equals(first.playbackEntry)) {
-            player.release();
-        }
-        setCurrentPlayer(first);
-        // Set next players
-        nextPlayers = newMediaplayers;
-        return actionResult(null);
-    }
+//    @Override
+//    public CompletableFuture<Optional<String>> setPreloadNext(List<PlaybackEntry> playbackEntries) {
+//        if (playbackEntries == null || playbackEntries.isEmpty()) {
+//            clearPreloadNext();
+//            return actionResult(null);
+//        }
+//        LinkedList<MediaPlayerInstance> newMediaplayers = new LinkedList<>();
+//        // Stop current player if it's getting replaced
+//        if (player != null && !player.playbackEntry.equals(playbackEntries.get(0))) {
+//            // TODO: May need to release player if it's in a weird state
+//            player.stop();
+//        }
+//        // Reuse existing mediaplayers
+//        for (PlaybackEntry newEntry: playbackEntries) {
+//            if (player != null && newEntry.equals(player.playbackEntry)) {
+//                newMediaplayers.add(player);
+//                player = null;
+//                continue;
+//            }
+//            boolean found = false;
+//            for (MediaPlayerInstance m: nextPlayers) {
+//                if (newEntry.equals(m.playbackEntry)) {
+//                    newMediaplayers.add(m);
+//                    nextPlayers.remove(m);
+//                    found = true;
+//                    break;
+//                }
+//            }
+//            if (found) {
+//                continue;
+//            }
+//            MediaPlayerInstance m = new MediaPlayerInstance(newEntry);
+//            m.preload();
+//            newMediaplayers.add(m);
+//        }
+//        // Release unneeded players
+//        if (player != null) {
+//            boolean found = false;
+//            for (MediaPlayerInstance m: newMediaplayers) {
+//                if (player.playbackEntry.equals(m.playbackEntry)) {
+//                    found = true;
+//                    break;
+//                }
+//            }
+//            if (!found) {
+//                player.release();
+//                player = null;
+//            }
+//        }
+//        for (MediaPlayerInstance old: nextPlayers) {
+//            old.release();
+//        }
+//        Log.d(LC, "newNexts " + newMediaplayers.size() + ": (" +
+//                String.join(
+//                        ", ",
+//                        newMediaplayers.stream()
+//                                .map(MediaPlayerInstance::title)
+//                                .collect(Collectors.toList())
+//                ) +
+//                ")"
+//        );
+//        // Set current player
+//        MediaPlayerInstance first = newMediaplayers.poll();
+//        if (player != null && !player.playbackEntry.equals(first.playbackEntry)) {
+//            player.release();
+//        }
+//        setCurrentPlayer(first);
+//        // Set next players
+//        nextPlayers = newMediaplayers;
+//        return actionResult(null);
+//    }
 
     @Override
     public CompletableFuture<Optional<String>> next() {

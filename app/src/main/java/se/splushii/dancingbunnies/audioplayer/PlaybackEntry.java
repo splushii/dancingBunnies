@@ -7,18 +7,24 @@ import android.support.v4.media.MediaMetadataCompat;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 
 public class PlaybackEntry implements Parcelable {
+    public static final String USER_TYPE_PLAYLIST = "playlist";
+    public static final String USER_TYPE_QUEUE = "queue";
+    public static final String USER_TYPE_EXTERNAL = "external";
     public final EntryID entryID;
     public final MediaMetadataCompat meta;
+    public final String playbackType;
 
     // TODO: Why not use LibraryEntry for this instead?
-    public PlaybackEntry(EntryID entryID, MediaMetadataCompat meta) {
+    public PlaybackEntry(EntryID entryID, String playbackType, MediaMetadataCompat meta) {
         this.entryID = entryID;
         this.meta = meta;
+        this.playbackType = playbackType;
     }
 
     protected PlaybackEntry(Parcel in) {
         entryID = in.readParcelable(EntryID.class.getClassLoader());
         meta = in.readParcelable(MediaMetadataCompat.class.getClassLoader());
+        playbackType = in.readString();
     }
 
     public static final Creator<PlaybackEntry> CREATOR = new Creator<PlaybackEntry>() {
@@ -67,5 +73,6 @@ public class PlaybackEntry implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeParcelable(entryID, flags);
         dest.writeParcelable(meta, flags);
+        dest.writeString(playbackType);
     }
 }

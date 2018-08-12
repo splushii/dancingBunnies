@@ -1,6 +1,7 @@
 package se.splushii.dancingbunnies.audioplayer;
 
 import android.content.Context;
+import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
@@ -12,7 +13,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
@@ -20,39 +20,59 @@ import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
 import se.splushii.dancingbunnies.util.Util;
 
-// TODO: PlaybackController should have audio players, a queue and a reference to the current playlist.
-// TODO: It is responsible for giving entries to preload to the audio players.
-// TODO: The data to preload is taken from the queue if non-empty, otherwise from the current playlist.
-// TODO: It is also responsible for shifting state between audio players.
+// PlaybackController should have audio players, an internal queue, an internal playlist and a
+// reference to the current playlist.
+//
+// It is responsible for giving entries to preload to the audio players.
+// The data to preload is supplied by the following sources in order until depleted:
+// internal queue, internal playlist, current playlist by reference.
+//
+// It is responsible for exposing the UI queue items and playlist items.
+// The UI queue is taken from: current audio player, internal queue.
+// The UI playlist items is taken from: current audio player, internal playlist items, current
+// playlist by reference.
+//
+// It is responsible for shifting state between audio players.
+
 public class PlaybackController {
     private static final String LC = Util.getLogContext(PlaybackController.class);
 
-    private final MusicLibraryService musicLibraryService;
     private final Context context;
+    private final MusicLibraryService musicLibraryService;
+    private final Callback callback;
+
+    // Audio players
     private AudioPlayer audioPlayer;
-    private AudioPlayer.Callback audioPlayerCallback = new AudioPlayerCallback();
-    private int lastPlaybackState = PlaybackStateCompat.STATE_NONE;
     private LocalAudioPlayer localAudioPlayer;
     private CastAudioPlayer castAudioPlayer;
-    private PlaybackEntry currentEntry;
+    private AudioPlayer.Callback audioPlayerCallback = new AudioPlayerCallback();
+
+    // Internal queue items
     private PlaybackQueue queue;
+
+    // Internal playlist items
+    private PlaybackQueue playlistItems;
+
+    // Current playlist reference
     private PlaylistItem currentPlaylist = PlaylistItem.defaultPlaylist;
-    private long playlistPosition;
-    private Callback callback;
+    private long playlistPosition = 0;
+
+    // Internal state
     private boolean playWhenReady;
 
     PlaybackController(Context context, MusicLibraryService musicLibraryService, Callback callback) {
         this.context = context;
         this.musicLibraryService = musicLibraryService;
         this.callback = callback;
-        CastContext castContext = CastContext.getSharedInstance(context);
 
         queue = new PlaybackQueue();
+        playlistItems = new PlaybackQueue();
 
         localAudioPlayer = new LocalAudioPlayer(musicLibraryService);
         audioPlayer = localAudioPlayer;
         audioPlayer.setListener(audioPlayerCallback);
 
+        CastContext castContext = CastContext.getSharedInstance(context);
         castAudioPlayer = new CastAudioPlayer(
                 musicLibraryService,
                 castContext,
@@ -72,76 +92,12 @@ public class PlaybackController {
         castAudioPlayer.onCreate();
     }
 
-    private CompletableFuture<Optional<String>> updateAudioPlayerPreload() {
-        List<PlaybackEntry> nextItems = getNextItems(0, audioPlayer.getNumToPreload());
-        StringBuilder sb = new StringBuilder();
-        sb.append("nextItems: ").append(nextItems.size()).append(": (");
-        sb.append((String.join(", ", nextItems.stream()
-                .map(playbackEntry -> playbackEntry.meta.getString(Meta.METADATA_KEY_TITLE))
-                .collect(Collectors.toList())
-        )));
-        Log.e(LC, sb.append(")").toString());
-        return audioPlayer.setPreloadNext(nextItems);
-    }
-
-    private List<PlaybackEntry> getNextItems(int offset, int max) {
-        List<PlaybackEntry> playbackEntries = new LinkedList<>();
-        if (max <= 0) {
-            return playbackEntries;
-        }
-        if (currentEntry != null) {
-            playbackEntries.add(currentEntry);
-            max--;
-        }
-        int numFromQueue = queue.size() > offset ? queue.size() - offset : 0;
-        if (numFromQueue > 0) {
-            playbackEntries.addAll(queue.getEntries(offset, max));
-        }
-        int offsetInPlaylist = offset > queue.size() ? offset - queue.size() : 0;
-        if (currentEntry != null) {
-            offsetInPlaylist++;
-        }
-        Log.e(LC, "playlistOffset: " + offsetInPlaylist);
-        int numFromPlaylist = max - numFromQueue;
-        if (numFromPlaylist > 0) {
-            playbackEntries.addAll(
-                    musicLibraryService.playlistGetNext(
-                            currentPlaylist.playlistID,
-                            playlistPosition + offsetInPlaylist,
-                            numFromPlaylist
-                    )
-            );
-        }
-        return playbackEntries;
-    }
-
-    private void updateCurrentEntry() {
-        if (currentEntry == null) {
-            if (!queue.isEmpty()) {
-                currentEntry = queue.current();
-                queue.next();
-                callback.onQueueChanged();
-            } else {
-                List<PlaybackEntry> entries = musicLibraryService.playlistGetNext(
-                        currentPlaylist.playlistID,
-                        playlistPosition,
-                        1
-                );
-                currentEntry = entries.isEmpty() ? null : entries.get(0);
-            }
-        }
+    public void initialize() {
+        playWhenReady = false;
     }
 
     void onDestroy() {
         castAudioPlayer.onDestroy();
-    }
-
-    public void initialize() {
-        playWhenReady = false;
-        updateCurrentEntry();
-        updateAudioPlayerPreload().thenAccept(e ->
-                e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show())
-        );
     }
 
     public long getPlayerSeekPosition() {
@@ -152,56 +108,36 @@ public class PlaybackController {
         return currentPlaylist;
     }
 
-    public long getCurrentPlaylistPosition() {
-        return playlistPosition;
-    }
-
-    public void play() {
+    public CompletableFuture<Optional<String>> play() {
         playWhenReady = true;
-        audioPlayer.play().thenAccept(e ->
-                e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show())
-        );
+        return audioPlayer.play().thenApply(e -> {
+            e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
+            return e;
+        });
     }
 
-    public void pause() {
+    public CompletableFuture<Optional<String>> pause() {
         playWhenReady = false;
-        audioPlayer.pause().thenAccept(e ->
-                e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show())
-        );
+        return audioPlayer.pause().thenApply(e -> {
+            e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
+            return e;
+        });
     }
 
-    public void playPause() {
-        if (playWhenReady) {
-            pause();
-        } else {
-            play();
-        }
+    public CompletableFuture<Optional<String>> playPause() {
+        return playWhenReady ? pause() : play();
     }
 
-    public void stop() {
+    public CompletableFuture<Optional<String>> stop() {
         playWhenReady = false;
-        audioPlayer.stop().thenAccept(e ->
-                e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show())
-        );
+        return audioPlayer.stop().thenApply(e -> {
+            e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
+            return e;
+        });
     }
 
     public CompletableFuture<Optional<String>> skipToNext() {
-        // Update controller state
-        currentEntry = null;
-        if (queue.isEmpty()) {
-            playlistPosition = musicLibraryService.playlistNext(
-                    currentPlaylist.playlistID,
-                    playlistPosition
-            );
-            callback.onPlaylistPositionChanged();
-        }
-        updateCurrentEntry();
-        // AudioPlayer next
-        return audioPlayer.next().thenCompose(e -> {
-            e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
-            // Update AudioPlayer preload
-            return updateAudioPlayerPreload();
-        }).thenApply(e -> {
+        return audioPlayer.next().thenApply(e -> {
             e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
             return e;
         });
@@ -213,47 +149,51 @@ public class PlaybackController {
     }
 
     public void skipToQueueItem(long queuePosition) {
-        // Update controller state
-        if (queuePosition <= 0 || queue.isEmpty()) {
-            return;
-        }
-        currentEntry = queue.skipTo(queuePosition);
-        callback.onQueueChanged();
-        updateCurrentEntry();
-        // Update AudioPlayer preload
-        updateAudioPlayerPreload().thenAccept(e ->
-                e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show())
-        );
+        // TODO: implement
+        Log.e(LC, "skipToQueueItem not implemented");
+//        // Update controller state
+//        if (queuePosition <= 0 || queue.isEmpty()) {
+//            return;
+//        }
+//        currentEntry = queue.skipTo(queuePosition);
+//        callback.onQueueChanged();
+//        updateCurrentEntry();
+//        // Update AudioPlayer preload
+//        updateAudioPlayerPreload().thenAccept(e ->
+//                e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show())
+//        );
     }
 
     public CompletableFuture<Optional<String>> addToQueue(PlaybackEntry playbackEntry, PlaybackQueue.QueueOp op) {
-        // Update controller state
-        queue.addToQueue(playbackEntry, op);
-        callback.onQueueChanged();
-        updateCurrentEntry();
-        // Update AudioPlayer preload
-        return updateAudioPlayerPreload().thenApply(e -> {
-            e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
+        Log.e(LC, "addToQueue: " + playbackEntry.toString());
+        return audioPlayer.queue(playbackEntry, op).thenApply(e -> {
+            if (e.isPresent()) {
+                Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
+            } else {
+                callback.onQueueChanged();
+            }
             return e;
         });
     }
 
     public void removeFromQueue(int queuePosition) {
-        if (queue.removeFromQueue(queuePosition)) {
-            // Update controller state
-            callback.onQueueChanged();
-            updateCurrentEntry();
-            // Update AudioPlayer preload
-            updateAudioPlayerPreload().thenAccept(e ->
-                    e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show())
-            );
-        }
+        Log.e(LC, "removeFromQueue not implemented");
+//        if (queue.removeFromQueue(queuePosition)) {
+//            // Update controller state
+//            callback.onQueueChanged();
+//            updateCurrentEntry();
+//            // Update AudioPlayer preload
+//            updateAudioPlayerPreload().thenAccept(e ->
+//                    e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show())
+//            );
+//        }
     }
 
-    public void seekTo(long pos) {
-        audioPlayer.seekTo(pos).thenAccept(e ->
-                e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show())
-        );
+    public CompletableFuture<Optional<String>> seekTo(long pos) {
+        return audioPlayer.seekTo(pos).thenApply(e -> {
+            e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
+            return e;
+        });
     }
 
     public CompletableFuture<Optional<String>> playNow(PlaybackEntry playbackEntry) {
@@ -292,18 +232,41 @@ public class PlaybackController {
         newAudioPlayer.setListener(audioPlayerCallback);
         audioPlayer = newAudioPlayer;
         callback.onPlayerChanged(audioPlayerType);
-        updateAudioPlayerPreload();
         audioPlayer.seekTo(lastPos);
     }
 
     public List<MediaSessionCompat.QueueItem> getQueue() {
-        // TODO: Merge the cast queue with the local queue?
-        Log.w(LC, "getQueue not implemented for Cast");
-        return queue.getQueue();
+        Log.d(LC, "getQueue");
+        List<PlaybackEntry> entries = new LinkedList<>();
+        entries.addAll(audioPlayer.getPreloadedQueueEntries(Integer.MAX_VALUE));
+        entries.forEach(p -> Log.e(LC, "appe: " + p.toString()));
+        entries.addAll(queue.getEntries());
+        entries.forEach(p -> Log.e(LC, "qupe: " + p.toString()));
+        List<MediaSessionCompat.QueueItem> queueItems = new LinkedList<>();
+        for (PlaybackEntry playbackEntry: entries) {
+            MediaDescriptionCompat description = Meta.meta2desc(playbackEntry.meta);
+            MediaSessionCompat.QueueItem queueItem = new MediaSessionCompat.QueueItem(
+                    description,
+                    playbackEntry.entryID.hashCode()
+            );
+            queueItems.add(queueItem);
+        }
+        return queueItems;
     }
 
-    public PlaybackEntry getCurrentPlaybackEntry() {
-        return currentEntry;
+    public List<PlaybackEntry> getPlaylistEntries(int maxNum) {
+        List<PlaybackEntry> entries = audioPlayer.getPreloadedPlaylistEntries(maxNum);
+        if (maxNum > entries.size()) {
+            entries.addAll(playlistItems.getEntries(maxNum - entries.size()));
+        }
+        if (maxNum > entries.size()) {
+            entries.addAll(musicLibraryService.playlistGetNext(
+                    currentPlaylist.playlistID,
+                    playlistPosition,
+                    maxNum
+            ));
+        }
+        return entries;
     }
 
     interface Callback {
@@ -317,14 +280,10 @@ public class PlaybackController {
     private class AudioPlayerCallback implements AudioPlayer.Callback {
         @Override
         public void onReady() {
-            if (playWhenReady) {
-                play();
-            }
         }
 
         @Override
         public void onEnded() {
-            skipToNext();
         }
 
         @Override
@@ -332,7 +291,6 @@ public class PlaybackController {
             if (PlaybackStateCompat.STATE_STOPPED == newPlaybackState) {
                 playWhenReady = false;
             }
-            lastPlaybackState = newPlaybackState;
             callback.onStateChanged(newPlaybackState);
         }
 
@@ -340,5 +298,54 @@ public class PlaybackController {
         public void onMetaChanged(EntryID entryID) {
             callback.onMetaChanged(entryID);
         }
+
+        @Override
+        public void onPreloadChanged() {
+            callback.onQueueChanged();
+            callback.onPlaylistPositionChanged();
+        }
+
+        @Override
+        public List<PlaybackEntry> requestPreload(int num) {
+            return getNextPreloadItems(num);
+        }
+
+        @Override
+        public void dePreload(List<PlaybackEntry> queueEntries,
+                              List<PlaybackEntry> playlistEntries) {
+            queue.offer(queueEntries);
+            playlistItems.offer(playlistEntries);
+        }
+    }
+
+    private List<PlaybackEntry> getNextPreloadItems(int num) {
+        Log.d(LC, "getNextPreloadItems");
+        List<PlaybackEntry> entries = new LinkedList<>();
+        // Get from internal queue
+        if (!queue.isEmpty()) {
+            entries.addAll(queue.poll(num));
+        }
+        // Get from internal playlist items
+        if (entries.size() < num && !playlistItems.isEmpty()) {
+            entries.addAll(playlistItems.poll(num - entries.size()));
+        }
+        // Get from current playlist reference
+        if (entries.size() < num) {
+            entries.addAll(musicLibraryService.playlistGetNext(
+                    currentPlaylist.playlistID,
+                    playlistPosition,
+                    num - entries.size()
+            ));
+        }
+        Log.e(LC, "PL position: " + playlistPosition);
+        Log.e(LC, "offset: " + (num - entries.size()));
+        playlistPosition = musicLibraryService.playlistPosition(
+                currentPlaylist.playlistID,
+                playlistPosition,
+                entries.size()
+        );
+        Log.e(LC, "PL position: " + playlistPosition);
+        callback.onPlaylistPositionChanged();
+        return entries;
     }
 }

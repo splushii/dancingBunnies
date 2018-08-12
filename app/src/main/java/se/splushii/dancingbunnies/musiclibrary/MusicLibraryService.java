@@ -71,7 +71,11 @@ public class MusicLibraryService extends Service {
         for (int count = 0; count < maxEntries; count++) {
             index %= entryIDS.size();
             EntryID entryID = entryIDS.get((int)index);
-            playbackEntries.add(new PlaybackEntry(entryID, getSongMetaData(entryID)));
+            playbackEntries.add(new PlaybackEntry(
+                    entryID,
+                    PlaybackEntry.USER_TYPE_PLAYLIST,
+                    getSongMetaData(entryID)
+            ));
             index++;
         }
         return playbackEntries;
@@ -83,7 +87,11 @@ public class MusicLibraryService extends Service {
         return new LinkedList<>();
     }
 
-    public long playlistNext(PlaylistID playlistID, long playlistIndex) {
+
+    public long playlistPosition(PlaylistID playlistID, long playlistPosition, int offset) {
+        if (offset == 0) {
+            return playlistPosition;
+        }
         Playlist playlist = playlistStorage.getPlaylist(playlistID);
         if (playlist == null) {
             return 0;
@@ -91,7 +99,7 @@ public class MusicLibraryService extends Service {
         switch (playlist.id.type) {
             case PlaylistID.TYPE_STUPID:
                 int playlistSize = ((StupidPlaylist) playlist).getEntries().size();
-                return playlistSize > 0 ? (playlistIndex + 1) % playlistSize : 0;
+                return playlistSize > 0 ? (playlistPosition + offset) % playlistSize : 0;
             case PlaylistID.TYPE_SMART:
                 Log.e(LC, "playlistGetNext not implemented for smart playlists");
                 break;

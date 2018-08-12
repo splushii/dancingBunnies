@@ -65,7 +65,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public static final String COMMAND_GET_PLAYLIST_NEXT = "GET_PLAYLIST_NEXT";
     public static final String COMMAND_GET_PLAYLIST_PREVIOUS = "GET_PLAYLIST_PREVIOUS";
     public static final String COMMAND_ADD_TO_PLAYLIST = "ADD_TO_PLAYLIST";
-    public static final String COMMAND_GET_CURRENT_PLAYBACK_ENTRY = "GET_CURRENT_PLAYBACK_ENTRY";
     private static final String COMMAND_REMOVE_FROM_PLAYLIST = "REMOVE_FROM_PLAYLIST";
 
     public static final String STARTCMD_INTENT_CAST_ACTION = "dancingbunnies.intent.castaction";
@@ -377,7 +376,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onPlayFromMediaId(String mediaId, Bundle extras) {
             Log.d(LC, "onPlayFromMediaId");
-            PlaybackEntry playbackEntry = getPlaybackEntry(EntryID.from(extras));
+            PlaybackEntry playbackEntry = getPlaybackEntry(
+                    EntryID.from(extras),
+                    PlaybackEntry.USER_TYPE_QUEUE
+            );
             playbackController.playNow(playbackEntry);
             setToast(playbackEntry.meta, "Playing %s \"%s\" now!");
         }
@@ -385,7 +387,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onAddQueueItem(MediaDescriptionCompat description) {
             Log.d(LC, "onAddQueueItem");
-            PlaybackEntry playbackEntry = getPlaybackEntry(EntryID.from(description));
+            PlaybackEntry playbackEntry = getPlaybackEntry(
+                    EntryID.from(description),
+                    PlaybackEntry.USER_TYPE_QUEUE
+            );
             playbackController.addToQueue(playbackEntry, PlaybackQueue.QueueOp.LAST);
             setToast(playbackEntry.meta, "Adding %s \"%s\" to queue!");
         }
@@ -443,12 +448,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             playbackController.seekTo(pos);
         }
 
-        PlaybackEntry getPlaybackEntry(EntryID entryID) {
+        PlaybackEntry getPlaybackEntry(EntryID entryID, String playbackType) {
             if (!Meta.METADATA_KEY_MEDIA_ID.equals(entryID.type)) {
                 Log.e(LC, "Non-track entry. Unhandled! Beware!");
             }
             MediaMetadataCompat meta = musicLibraryService.getSongMetaData(entryID);
-            return new PlaybackEntry(entryID, meta);
+            return new PlaybackEntry(entryID, playbackType, meta);
         }
 
         @Override
@@ -517,11 +522,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     break;
                 case COMMAND_GET_PLAYLIST_NEXT:
                     int maxNum = extras.getInt("MAX_ENTRIES");
-                    PlaylistItem playListItem = playbackController.getCurrentPlaylist();
-                    long pos = playbackController.getCurrentPlaylistPosition();
-                    List<PlaybackEntry> playbackEntries = musicLibraryService.playlistGetNext(
-                            playListItem.playlistID,
-                            pos,
+                    List<PlaybackEntry> playbackEntries = playbackController.getPlaylistEntries(
                             maxNum
                     );
                     if (playbackEntries.isEmpty()) {
@@ -532,14 +533,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     break;
                 case COMMAND_GET_PLAYLIST_PREVIOUS:
                     Log.e(LC, "COMMAND_GET_PLAYLIST_PREVIOUS not implemented");
-                    break;
-                case COMMAND_GET_CURRENT_PLAYBACK_ENTRY:
-                    PlaybackEntry playbackEntry = playbackController.getCurrentPlaybackEntry();
-                    if (playbackEntry == null) {
-                        cb.send(1, null);
-                        return;
-                    }
-                    cb.send(0, putPlaybackEntry(playbackEntry));
                     break;
                 case COMMAND_REMOVE_FROM_PLAYLIST:
                     removeFromPlaylist(cb, extras);
@@ -591,20 +584,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             "BUNDLE_KEY_LIBRARY_ENTRIES";
     private static final String BUNDLE_KEY_PLAYLIST_ITEM =
             "BUNDLE_KEY_PLAYLIST_ITEM";
-    private static final String BUNDLE_KEY_PLAYBACK_ENTRY =
-            "BUNDLE_KEY_PLAYBACK_ENTRY";
     private static final String BUNDLE_KEY_PLAYBACK_ENTRIES =
             "BUNDLE_KEY_PLAYBACK_ENTRIES";
-
-    private static Bundle putPlaybackEntry(PlaybackEntry playbackEntry) {
-        Bundle b = new Bundle();
-        b.putParcelable(BUNDLE_KEY_PLAYBACK_ENTRY, playbackEntry);
-        return b;
-    }
-
-    public static PlaybackEntry getPlaybackEntry(Bundle resultData) {
-        return resultData.getParcelable(BUNDLE_KEY_PLAYBACK_ENTRY);
-    }
 
     private static Bundle putPlaybackEntries(ArrayList<PlaybackEntry> playbackEntries) {
         Bundle b = new Bundle();
