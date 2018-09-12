@@ -5,25 +5,32 @@ import android.os.Parcelable;
 import android.support.v4.media.MediaMetadataCompat;
 
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
 
 public class PlaybackEntry implements Parcelable {
     public static final String USER_TYPE_PLAYLIST = "playlist";
     public static final String USER_TYPE_QUEUE = "queue";
     public static final String USER_TYPE_EXTERNAL = "external";
-    public final EntryID entryID;
     public final MediaMetadataCompat meta;
+    public final EntryID entryID;
     public final String playbackType;
 
-    // TODO: Why not use LibraryEntry for this instead?
-    public PlaybackEntry(EntryID entryID, String playbackType, MediaMetadataCompat meta) {
-        this.entryID = entryID;
+    public PlaybackEntry(MediaMetadataCompat meta) {
         this.meta = meta;
+        this.entryID = EntryID.from(meta);
+        String playbackType = meta.getString(Meta.METADATA_KEY_PLAYBACK_TYPE);
+        this.playbackType = playbackType != null ? playbackType : PlaybackEntry.USER_TYPE_EXTERNAL;
+    }
+
+    public PlaybackEntry(MediaMetadataCompat meta, String playbackType) {
+        this.meta = meta;
+        this.entryID = EntryID.from(meta);
         this.playbackType = playbackType;
     }
 
     protected PlaybackEntry(Parcel in) {
-        entryID = in.readParcelable(EntryID.class.getClassLoader());
         meta = in.readParcelable(MediaMetadataCompat.class.getClassLoader());
+        entryID = in.readParcelable(EntryID.class.getClassLoader());
         playbackType = in.readString();
     }
 
@@ -41,7 +48,7 @@ public class PlaybackEntry implements Parcelable {
 
     @Override
     public String toString() {
-        return entryID.toString() + ":  " + meta.getDescription().getDescription();
+        return entryID.toString() + ":  " + meta.getString(Meta.METADATA_KEY_TITLE);
     }
 
     @Override
@@ -71,8 +78,8 @@ public class PlaybackEntry implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeParcelable(entryID, flags);
         dest.writeParcelable(meta, flags);
+        dest.writeParcelable(entryID, flags);
         dest.writeString(playbackType);
     }
 }

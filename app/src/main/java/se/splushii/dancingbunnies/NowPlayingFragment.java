@@ -22,6 +22,7 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Executors;
@@ -62,7 +63,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         final View rootView = inflater.inflate(R.layout.nowplaying_fragment_layout, container,
                 false);
@@ -152,22 +153,27 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             Log.w(LC, "Media session not ready");
             return;
         }
-        List<MediaSessionCompat.QueueItem> queue = mediaController.getQueue();
-        if (queue == null) {
-            Log.w(LC, "queue is null");
-            return;
-        }
-        Log.d(LC, "Queue size: " + queue.size());
-        recViewAdapter.setQueue(queue);
-
         getCurrentPlaylist().thenAccept(opt -> opt.ifPresent(
                 recViewAdapter::setCurrentPlaylistItem
         ));
-        getPlaylistNext(3).thenAccept(opt -> opt.ifPresent(
-                recViewAdapter::setPlaylistNext
-        ));
+        getPlaylistNext(3).thenAccept(opt -> opt.ifPresent(entries -> {
+            Log.d(LC, "refreshView: playlist(" + entries.size() + ")");
+            recViewAdapter.setPlaylistNext(entries);
+        }));
         // TODO: Implement playbackhistory in AudioPlayerService/PlaybackController, then in UI.
         //getPlaybackHistory().thenAccept(opt -> opt.ifPresent(recViewAdapter::setPlaybackHistory));
+        List<MediaSessionCompat.QueueItem> queue = getQueue();
+        Log.d(LC, "refreshView: queue(" + queue.size() + ")");
+        recViewAdapter.setQueue(queue);
+    }
+
+    private List<MediaSessionCompat.QueueItem> getQueue() {
+        List<MediaSessionCompat.QueueItem> queue = mediaController.getQueue();
+        if (queue == null) {
+            Log.w(LC, "queue is null");
+            return new LinkedList<>();
+        }
+        return queue;
     }
 
     @Override

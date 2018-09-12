@@ -88,8 +88,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             Log.d(LC, "Connected MusicLibraryService");
             MusicLibraryService.MusicLibraryBinder binder = (MusicLibraryService.MusicLibraryBinder) service;
             musicLibraryService = binder.getService();
-            setupPlaybackController();
             setupMediaSession();
+            setupPlaybackController();
             playbackController.initialize();
         }
 
@@ -284,11 +284,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 || state == PlaybackStateCompat.STATE_STOPPED;
     }
 
-    private boolean isPlayingState() {
-        int state = playbackState.getState();
-        return state == PlaybackStateCompat.STATE_PLAYING;
-    }
-
     private void setNotification() {
         if (!notify || isStoppedState()) {
             stopForeground(true);
@@ -376,7 +371,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onPlayFromMediaId(String mediaId, Bundle extras) {
             Log.d(LC, "onPlayFromMediaId");
-            PlaybackEntry playbackEntry = getPlaybackEntry(
+            PlaybackEntry playbackEntry = createPlaybackEntry(
                     EntryID.from(extras),
                     PlaybackEntry.USER_TYPE_QUEUE
             );
@@ -387,7 +382,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onAddQueueItem(MediaDescriptionCompat description) {
             Log.d(LC, "onAddQueueItem");
-            PlaybackEntry playbackEntry = getPlaybackEntry(
+            PlaybackEntry playbackEntry = createPlaybackEntry(
                     EntryID.from(description),
                     PlaybackEntry.USER_TYPE_QUEUE
             );
@@ -432,8 +427,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         @Override
         public void onSkipToQueueItem(long queueItemId) {
-            Log.d(LC, "onSkipToQueueItem: " + queueItemId);
-            playbackController.skipToQueueItem(queueItemId);
+            Log.e(LC, "onSkipToQueueItem(" + queueItemId + ") not implemented");
+            playbackController.skipItems((int) queueItemId);
         }
 
         @Override
@@ -448,12 +443,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             playbackController.seekTo(pos);
         }
 
-        PlaybackEntry getPlaybackEntry(EntryID entryID, String playbackType) {
+        PlaybackEntry createPlaybackEntry(EntryID entryID, String playbackType) {
             if (!Meta.METADATA_KEY_MEDIA_ID.equals(entryID.type)) {
                 Log.e(LC, "Non-track entry. Unhandled! Beware!");
             }
             MediaMetadataCompat meta = musicLibraryService.getSongMetaData(entryID);
-            return new PlaybackEntry(entryID, playbackType, meta);
+            return new PlaybackEntry(meta, playbackType);
         }
 
         @Override
@@ -525,10 +520,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     List<PlaybackEntry> playbackEntries = playbackController.getPlaylistEntries(
                             maxNum
                     );
-                    if (playbackEntries.isEmpty()) {
-                        cb.send(1, null);
-                        return;
-                    }
                     cb.send(0, putPlaybackEntries(new ArrayList<>(playbackEntries)));
                     break;
                 case COMMAND_GET_PLAYLIST_PREVIOUS:
@@ -744,8 +735,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         }
 
         @Override
-        public void onQueueChanged() {
-            List<MediaSessionCompat.QueueItem> queue = playbackController.getQueue();
+        public void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {
             mediaSession.setQueue(queue);
         }
 

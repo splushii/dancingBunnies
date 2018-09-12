@@ -8,6 +8,10 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.google.android.gms.cast.framework.CastContext;
+import com.google.android.gms.cast.framework.CastSession;
+import com.google.android.gms.cast.framework.Session;
+import com.google.android.gms.cast.framework.SessionManager;
+import com.google.android.gms.cast.framework.SessionManagerListener;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -34,17 +38,18 @@ import se.splushii.dancingbunnies.util.Util;
 //
 // It is responsible for shifting state between audio players.
 
+// TODO: Sequentialize control calls to AudioPlayers here, to avoid doing it in every AudioPlayer.
 public class PlaybackController {
     private static final String LC = Util.getLogContext(PlaybackController.class);
 
     private final Context context;
     private final MusicLibraryService musicLibraryService;
     private final Callback callback;
+    private final SessionManagerListener<Session> sessionManagerListener = new SessionManagerListenerImpl();
+    private final SessionManager sessionManager;
 
     // Audio players
     private AudioPlayer audioPlayer;
-    private LocalAudioPlayer localAudioPlayer;
-    private CastAudioPlayer castAudioPlayer;
     private AudioPlayer.Callback audioPlayerCallback = new AudioPlayerCallback();
 
     // Internal queue items
@@ -68,36 +73,24 @@ public class PlaybackController {
         queue = new PlaybackQueue();
         playlistItems = new PlaybackQueue();
 
-        localAudioPlayer = new LocalAudioPlayer(musicLibraryService);
-        audioPlayer = localAudioPlayer;
-        audioPlayer.setListener(audioPlayerCallback);
+        audioPlayer = new LocalAudioPlayer(
+                audioPlayerCallback,
+                musicLibraryService,
+                AudioPlayer.EmptyState
+        );
 
         CastContext castContext = CastContext.getSharedInstance(context);
-        castAudioPlayer = new CastAudioPlayer(
-                musicLibraryService,
-                castContext,
-                new CastAudioPlayer.CastConnectionListener() {
-                    @Override
-                    void onConnected() {
-                        setAudioPlayer(AudioPlayer.Type.CAST);
-                    }
-
-                    @Override
-                    void onDisconnected() {
-                        playWhenReady = false;
-                        setAudioPlayer(AudioPlayer.Type.LOCAL);
-                    }
-                }
-        );
-        castAudioPlayer.onCreate();
+        sessionManager = castContext.getSessionManager();
+        sessionManager.addSessionManagerListener(sessionManagerListener);
     }
 
     public void initialize() {
         playWhenReady = false;
+        audioPlayer.checkPreload();
     }
 
     void onDestroy() {
-        castAudioPlayer.onDestroy();
+        sessionManager.removeSessionManagerListener(sessionManagerListener);
     }
 
     public long getPlayerSeekPosition() {
@@ -148,20 +141,8 @@ public class PlaybackController {
         Log.e(LC, "skipToPrevious not implemented");
     }
 
-    public void skipToQueueItem(long queuePosition) {
-        // TODO: implement
-        Log.e(LC, "skipToQueueItem not implemented");
-//        // Update controller state
-//        if (queuePosition <= 0 || queue.isEmpty()) {
-//            return;
-//        }
-//        currentEntry = queue.skipTo(queuePosition);
-//        callback.onQueueChanged();
-//        updateCurrentEntry();
-//        // Update AudioPlayer preload
-//        updateAudioPlayerPreload().thenAccept(e ->
-//                e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show())
-//        );
+    public void skipItems(int offset) {
+        audioPlayer.skipItems(offset);
     }
 
     public CompletableFuture<Optional<String>> addToQueue(PlaybackEntry playbackEntry, PlaybackQueue.QueueOp op) {
@@ -170,13 +151,14 @@ public class PlaybackController {
             if (e.isPresent()) {
                 Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
             } else {
-                callback.onQueueChanged();
+                callback.onQueueChanged(getQueue());
             }
             return e;
         });
     }
 
     public void removeFromQueue(int queuePosition) {
+        // TODO: implement
         Log.e(LC, "removeFromQueue not implemented");
 //        if (queue.removeFromQueue(queuePosition)) {
 //            // Update controller state
@@ -207,42 +189,11 @@ public class PlaybackController {
         });
     }
 
-    private void setAudioPlayer(AudioPlayer.Type audioPlayerType) {
-        AudioPlayer newAudioPlayer;
-        switch (audioPlayerType) {
-            case LOCAL:
-                if (audioPlayer instanceof LocalAudioPlayer) {
-                    return;
-                }
-                newAudioPlayer = localAudioPlayer;
-                break;
-            case CAST:
-                if (audioPlayer instanceof CastAudioPlayer) {
-                    return;
-                }
-                newAudioPlayer = castAudioPlayer;
-                break;
-            default:
-                return;
-        }
-        audioPlayer.pause();
-        long lastPos = audioPlayer.getSeekPosition();
-        audioPlayer.removeListener();
-        audioPlayer.stop();
-        newAudioPlayer.setListener(audioPlayerCallback);
-        audioPlayer = newAudioPlayer;
-        callback.onPlayerChanged(audioPlayerType);
-        audioPlayer.seekTo(lastPos);
-    }
-
     public List<MediaSessionCompat.QueueItem> getQueue() {
-        Log.d(LC, "getQueue");
+        List<MediaSessionCompat.QueueItem> queueItems = new LinkedList<>();
         List<PlaybackEntry> entries = new LinkedList<>();
         entries.addAll(audioPlayer.getPreloadedQueueEntries(Integer.MAX_VALUE));
-        entries.forEach(p -> Log.e(LC, "appe: " + p.toString()));
         entries.addAll(queue.getEntries());
-        entries.forEach(p -> Log.e(LC, "qupe: " + p.toString()));
-        List<MediaSessionCompat.QueueItem> queueItems = new LinkedList<>();
         for (PlaybackEntry playbackEntry: entries) {
             MediaDescriptionCompat description = Meta.meta2desc(playbackEntry.meta);
             MediaSessionCompat.QueueItem queueItem = new MediaSessionCompat.QueueItem(
@@ -256,10 +207,10 @@ public class PlaybackController {
 
     public List<PlaybackEntry> getPlaylistEntries(int maxNum) {
         List<PlaybackEntry> entries = audioPlayer.getPreloadedPlaylistEntries(maxNum);
-        if (maxNum > entries.size()) {
+        if (entries.size() < maxNum) {
             entries.addAll(playlistItems.getEntries(maxNum - entries.size()));
         }
-        if (maxNum > entries.size()) {
+        if (entries.size() < maxNum) {
             entries.addAll(musicLibraryService.playlistGetNext(
                     currentPlaylist.playlistID,
                     playlistPosition,
@@ -273,19 +224,11 @@ public class PlaybackController {
         void onPlayerChanged(AudioPlayer.Type type);
         void onStateChanged(int playBackState);
         void onMetaChanged(EntryID entryID);
-        void onQueueChanged();
+        void onQueueChanged(List<MediaSessionCompat.QueueItem> queue);
         void onPlaylistPositionChanged();
     }
 
     private class AudioPlayerCallback implements AudioPlayer.Callback {
-        @Override
-        public void onReady() {
-        }
-
-        @Override
-        public void onEnded() {
-        }
-
         @Override
         public void onStateChanged(int newPlaybackState) {
             if (PlaybackStateCompat.STATE_STOPPED == newPlaybackState) {
@@ -301,13 +244,13 @@ public class PlaybackController {
 
         @Override
         public void onPreloadChanged() {
-            callback.onQueueChanged();
+            callback.onQueueChanged(getQueue());
             callback.onPlaylistPositionChanged();
         }
 
         @Override
         public List<PlaybackEntry> requestPreload(int num) {
-            return getNextPreloadItems(num);
+            return pollNextPreloadItems(num);
         }
 
         @Override
@@ -318,34 +261,126 @@ public class PlaybackController {
         }
     }
 
-    private List<PlaybackEntry> getNextPreloadItems(int num) {
-        Log.d(LC, "getNextPreloadItems");
+    private List<PlaybackEntry> pollNextPreloadItems(int num) {
+        Log.d(LC, "pollNextPreloadItems");
         List<PlaybackEntry> entries = new LinkedList<>();
         // Get from internal queue
         if (!queue.isEmpty()) {
             entries.addAll(queue.poll(num));
+            callback.onQueueChanged(getQueue());
         }
         // Get from internal playlist items
         if (entries.size() < num && !playlistItems.isEmpty()) {
             entries.addAll(playlistItems.poll(num - entries.size()));
+            callback.onPlaylistPositionChanged();
         }
         // Get from current playlist reference
         if (entries.size() < num) {
-            entries.addAll(musicLibraryService.playlistGetNext(
+            List<PlaybackEntry> playlistEntries = musicLibraryService.playlistGetNext(
                     currentPlaylist.playlistID,
                     playlistPosition,
                     num - entries.size()
-            ));
+            );
+            long oldPosition = playlistPosition;
+            playlistPosition = musicLibraryService.playlistPosition(
+                    currentPlaylist.playlistID,
+                    playlistPosition,
+                    playlistEntries.size()
+            );
+            entries.addAll(playlistEntries);
+            Log.d(LC, "Playlist position +" + (num - playlistEntries.size())
+                    + " from " + oldPosition + " to " + playlistPosition);
+            callback.onPlaylistPositionChanged();
         }
-        Log.e(LC, "PL position: " + playlistPosition);
-        Log.e(LC, "offset: " + (num - entries.size()));
-        playlistPosition = musicLibraryService.playlistPosition(
-                currentPlaylist.playlistID,
-                playlistPosition,
-                entries.size()
-        );
-        Log.e(LC, "PL position: " + playlistPosition);
-        callback.onPlaylistPositionChanged();
         return entries;
+    }
+
+    private void onCastConnect(CastSession session) {
+        AudioPlayer.AudioPlayerState lastState = audioPlayer.getLastState();
+        printState("onCastConnect", lastState);
+        audioPlayer.stop();
+        audioPlayer = new CastAudioPlayer(
+                audioPlayerCallback,
+                musicLibraryService,
+                lastState,
+                session
+        );
+        callback.onPlayerChanged(AudioPlayer.Type.CAST);
+    }
+
+    private void onCastDisconnect() {
+        AudioPlayer.AudioPlayerState lastState = audioPlayer.getLastState();
+        printState("onCastDisconnect", lastState);
+        audioPlayer = new LocalAudioPlayer(
+                audioPlayerCallback,
+                musicLibraryService,
+                lastState
+        );
+        callback.onPlayerChanged(AudioPlayer.Type.LOCAL);
+    }
+
+    private void printState(String caption, AudioPlayer.AudioPlayerState lastState) {
+        Log.d(LC, caption);
+        Log.d(LC, "history:");
+        for (PlaybackEntry entry: lastState.history) {
+            Log.d(LC, entry.toString());
+        }
+        Log.d(LC, "entries:");
+        for (PlaybackEntry entry: lastState.entries) {
+            Log.d(LC, entry.toString());
+        }
+        Log.d(LC, "lastPos: " + lastState.lastPos);
+    }
+
+    private class SessionManagerListenerImpl implements SessionManagerListener<Session> {
+        @Override
+        public void onSessionStarting(Session session) {
+            Log.d(LC, "CastSession starting");
+        }
+
+        @Override
+        public void onSessionStarted(Session session, String s) {
+            Log.d(LC, "CastSession started");
+            onCastConnect((CastSession) session);
+        }
+
+        @Override
+        public void onSessionStartFailed(Session session, int i) {
+            Log.d(LC, "CastSession start failed");
+            onCastDisconnect();
+        }
+
+        @Override
+        public void onSessionEnding(Session session) {
+            Log.d(LC, "CastSession ending");
+            onCastDisconnect();
+        }
+
+        @Override
+        public void onSessionEnded(Session session, int i) {
+            Log.d(LC, "CastSession ended");
+        }
+
+        @Override
+        public void onSessionResuming(Session session, String s) {
+            Log.d(LC, "CastSession resuming");
+        }
+
+        @Override
+        public void onSessionResumed(Session session, boolean b) {
+            Log.d(LC, "CastSession resumed");
+            onCastConnect((CastSession) session);
+        }
+
+        @Override
+        public void onSessionResumeFailed(Session session, int i) {
+            Log.d(LC, "CastSession resume failed");
+            onCastDisconnect();
+        }
+
+        @Override
+        public void onSessionSuspended(Session session, int i) {
+            Log.d(LC, "CastSession suspended");
+        }
     }
 }

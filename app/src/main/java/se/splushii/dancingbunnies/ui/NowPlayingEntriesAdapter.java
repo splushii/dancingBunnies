@@ -54,9 +54,6 @@ public class NowPlayingEntriesAdapter
     }
 
     public void setPlaylistNext(List<PlaybackEntry> playbackEntries) {
-        if (!playbackEntries.isEmpty()) {
-            playbackEntries.remove(0);
-        }
         playlistNext = playbackEntries;
         notifyDataSetChanged();
     }
