@@ -4,7 +4,6 @@ import android.content.ComponentName;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.ResultReceiver;
-import android.support.v4.app.Fragment;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
@@ -18,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
+import androidx.fragment.app.Fragment;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
@@ -27,8 +27,8 @@ import se.splushii.dancingbunnies.util.Util;
 
 public abstract class AudioBrowserFragment extends Fragment {
     private static final String LC = Util.getLogContext(AudioBrowserFragment.class);
-    public MediaBrowserCompat mediaBrowser;
-    public MediaControllerCompat mediaController;
+    protected MediaBrowserCompat mediaBrowser;
+    protected MediaControllerCompat mediaController;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -74,7 +74,7 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.addQueueItem(entryID.toMediaDescriptionCompat());
     }
 
-    public void dequeue(EntryID entryID, long pos) {
+    protected void dequeue(EntryID entryID, long pos) {
         MediaDescriptionCompat mediaDescription = entryID.toMediaDescriptionCompat();
         assert mediaDescription.getExtras() != null;
         mediaDescription.getExtras().putLong(Meta.METADATA_KEY_QUEUE_POS, pos);
@@ -106,7 +106,7 @@ public abstract class AudioBrowserFragment extends Fragment {
         );
     }
 
-    public CompletableFuture<Optional<PlaylistItem>> getCurrentPlaylist() {
+    protected CompletableFuture<Optional<PlaylistItem>> getCurrentPlaylist() {
         CompletableFuture<Optional<PlaylistItem>> future = new CompletableFuture<>();
         mediaController.sendCommand(AudioPlayerService.COMMAND_GET_CURRENT_PLAYLIST, null,
                 new ResultReceiver(null) {
@@ -124,7 +124,7 @@ public abstract class AudioBrowserFragment extends Fragment {
         return future;
     }
 
-    public CompletableFuture<Optional<List<PlaylistItem>>> getPlaylists() {
+    protected CompletableFuture<Optional<List<PlaylistItem>>> getPlaylists() {
         CompletableFuture<Optional<List<PlaylistItem>>> future = new CompletableFuture<>();
         mediaController.sendCommand(AudioPlayerService.COMMAND_GET_PLAYLISTS, null,
                 new ResultReceiver(null) {
@@ -148,7 +148,7 @@ public abstract class AudioBrowserFragment extends Fragment {
         return future;
     }
 
-    public CompletableFuture<Optional<List<LibraryEntry>>> getPlaylistEntries(PlaylistID playlistID) {
+    protected CompletableFuture<Optional<List<LibraryEntry>>> getPlaylistEntries(PlaylistID playlistID) {
         CompletableFuture<Optional<List<LibraryEntry>>> future = new CompletableFuture<>();
         mediaController.sendCommand(
                 AudioPlayerService.COMMAND_GET_PLAYLIST_ENTRIES,
@@ -170,7 +170,7 @@ public abstract class AudioBrowserFragment extends Fragment {
         return future;
     }
 
-    public CompletableFuture<Optional<List<PlaybackEntry>>> getPlaylistNext(int maxEntries) {
+    protected CompletableFuture<Optional<List<PlaybackEntry>>> getPlaylistNext(int maxEntries) {
         CompletableFuture<Optional<List<PlaybackEntry>>> future = new CompletableFuture<>();
         Bundle params = new Bundle();
         params.putInt("MAX_ENTRIES", maxEntries);
@@ -204,7 +204,7 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.getTransportControls().skipToNext();
     }
 
-    public void skipTo(long position) {
+    protected void skipTo(long position) {
         mediaController.getTransportControls().skipToQueueItem(position);
     }
 
@@ -273,7 +273,7 @@ public abstract class AudioBrowserFragment extends Fragment {
     protected void onPlaybackStateChanged(PlaybackStateCompat state) {}
     protected void onMetadataChanged(MediaMetadataCompat metadata) {}
     protected void onSessionEvent(String event, Bundle extras) {}
-    protected void onSessionDestroyed() {}
+    private void onSessionDestroyed() {}
     protected void onSessionReady() {}
     protected void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {}
 }

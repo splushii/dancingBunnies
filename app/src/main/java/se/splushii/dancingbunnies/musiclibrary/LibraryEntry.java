@@ -2,10 +2,10 @@ package se.splushii.dancingbunnies.musiclibrary;
 
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.support.annotation.NonNull;
 
 import org.apache.lucene.document.Document;
 
+import androidx.annotation.NonNull;
 import se.splushii.dancingbunnies.search.Indexer;
 
 public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
@@ -19,7 +19,7 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
         this.name = name;
     }
 
-    protected LibraryEntry(Parcel in) {
+    private LibraryEntry(Parcel in) {
         entryID = in.readParcelable(EntryID.class.getClassLoader());
         name = in.readString();
     }

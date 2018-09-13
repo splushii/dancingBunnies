@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<android.support.design.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -8,7 +8,7 @@
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="bottom">
-        <android.support.v7.widget.RecyclerView
+        <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/nowplaying_recyclerview"
             android:visibility="visible"
             android:layout_width="match_parent"
@@ -65,31 +65,33 @@
             android:layout_gravity="center_horizontal">
             <TextView
                 android:id="@+id/nowplaying_position"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:layout_width="32dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"/>
             <Button
                 android:id="@+id/nowplaying_previous"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 style="?android:buttonBarButtonStyle"
-                android:text="|&lt;"/>
+                android:background="@drawable/prev"/>
             <Button
                 android:id="@+id/nowplaying_play_pause"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 style="?android:buttonBarButtonStyle"
-                android:text="|| >"/>
+                android:background="@drawable/play"/>
             <Button
                 android:id="@+id/nowplaying_next"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 style="?android:buttonBarButtonStyle"
-                android:text=">|"/>
+                android:background="@drawable/next"/>
             <TextView
                 android:id="@+id/nowplaying_duration"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:layout_width="32dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"/>
         </LinearLayout>
     </LinearLayout>
 
-</android.support.design.widget.CoordinatorLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

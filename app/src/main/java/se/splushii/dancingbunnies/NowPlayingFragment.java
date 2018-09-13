@@ -3,13 +3,9 @@ package se.splushii.dancingbunnies;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
@@ -30,6 +26,10 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -55,7 +55,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private TextView bufferingText;
     private MediaMetadataCompat currentMeta;
 
-    NowPlayingEntriesAdapter recViewAdapter;
+    private NowPlayingEntriesAdapter recViewAdapter;
     private RecyclerView recView;
 
     public NowPlayingFragment() {
@@ -148,7 +148,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         refreshView();
     }
 
-    public void refreshView() {
+    private void refreshView() {
         if (mediaController == null || !mediaController.isSessionReady()) {
             Log.w(LC, "Media session not ready");
             return;
@@ -185,10 +185,12 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         playbackState = state;
         switch (state.getState()) { // TODO: Refactor to avoid repetition
             case PlaybackStateCompat.STATE_PLAYING:
+            case PlaybackStateCompat.STATE_FAST_FORWARDING:
+            case PlaybackStateCompat.STATE_REWINDING:
                 Log.d(LC, "state: playing");
                 playPauseBtn.setEnabled(true);
                 seekBar.setEnabled(true);
-                playPauseBtn.setText("||");
+                playPauseBtn.setBackgroundResource(R.drawable.pause);
                 bufferingText.setVisibility(View.INVISIBLE);
                 isPlaying = true;
                 scheduleProgressUpdate();
@@ -199,16 +201,17 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             case PlaybackStateCompat.STATE_PAUSED:
                 playPauseBtn.setEnabled(true);
                 seekBar.setEnabled(true);
-                playPauseBtn.setText(">");
+                playPauseBtn.setBackgroundResource(R.drawable.play);
                 bufferingText.setVisibility(View.INVISIBLE);
                 isPlaying = false;
                 updateProgress();
                 stopProgressUpdate();
                 break;
+            case PlaybackStateCompat.STATE_CONNECTING:
             case PlaybackStateCompat.STATE_BUFFERING:
                 playPauseBtn.setEnabled(true);
                 seekBar.setEnabled(true);
-                playPauseBtn.setText(">");
+                playPauseBtn.setBackgroundResource(R.drawable.play);
                 bufferingText.setVisibility(View.VISIBLE);
                 isPlaying = false;
                 updateProgress();
@@ -220,12 +223,13 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                         + " queue id: " + state.getActiveQueueItemId() + " state: " + state.getState());
             case PlaybackStateCompat.STATE_NONE:
             case PlaybackStateCompat.STATE_STOPPED:
+            case PlaybackStateCompat.STATE_ERROR:
                 playPauseBtn.setEnabled(
                         currentMeta != null
-                        && !Meta.UNKNOWN_ENTRY.equals(currentMeta)
+                                && !Meta.UNKNOWN_ENTRY.equals(currentMeta)
                 );
                 seekBar.setEnabled(false);
-                playPauseBtn.setText(">");
+                playPauseBtn.setBackgroundResource(R.drawable.play);
                 bufferingText.setVisibility(View.INVISIBLE);
                 isPlaying = false;
                 stopProgressUpdate();

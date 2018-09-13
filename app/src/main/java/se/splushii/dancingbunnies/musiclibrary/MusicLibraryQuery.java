@@ -1,18 +1,18 @@
 package se.splushii.dancingbunnies.musiclibrary;
 
 import android.os.Bundle;
-import android.support.annotation.NonNull;
 import android.support.v4.media.MediaBrowserCompat;
 import android.util.Log;
 
 import java.util.List;
 
+import androidx.annotation.NonNull;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryQuery {
     private static final String LC = Util.getLogContext(MusicLibraryQuery.class);
 
-    public Bundle subQuery() {
+    Bundle subQuery() {
         return subQuery;
     }
 
@@ -32,6 +32,7 @@ public class MusicLibraryQuery {
     public MusicLibraryQuery(MusicLibraryQuery query) {
         this.type = MusicLibraryQueryType.SUBSCRIPTION;
         this.subQuery = query.subQuery.deepCopy();
+        this.searchQuery = query.searchQuery;
     }
 
     public MusicLibraryQuery(Bundle query) {
@@ -39,10 +40,12 @@ public class MusicLibraryQuery {
         this.subQuery = query;
     }
 
-    public MusicLibraryQuery addToQuery(String key, String value) {
-        assert type == MusicLibraryQueryType.SUBSCRIPTION;
+    public void addToQuery(String key, String value) {
+        if (type != MusicLibraryQueryType.SUBSCRIPTION) {
+            Log.e(LC, "addToQuery on type: " + type.name());
+            return;
+        }
         subQuery.putString(key, value);
-        return this;
     }
 
     public MusicLibraryQuery(String searchQuery) {

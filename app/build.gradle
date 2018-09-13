@@ -1,13 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 27
-    buildToolsVersion '27.0.3'
+    compileSdkVersion 28
+    buildToolsVersion '28.0.2'
 
     defaultConfig {
         applicationId "se.splushii.dancingbunnies"
         minSdkVersion 26
-        targetSdkVersion 27
+        targetSdkVersion 28
         versionCode 1
         versionName "1.0"
     }
@@ -29,12 +29,13 @@ repositories {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'com.android.support:design:27.1.1'
-    implementation 'com.android.support:appcompat-v7:27.1.1'
-    implementation 'com.android.support:mediarouter-v7:27.1.1'
+    implementation 'com.google.android.material:material:1.0.0-rc02'
+    implementation 'androidx.appcompat:appcompat:1.0.0-rc02'
+    implementation 'androidx.mediarouter:mediarouter:1.0.0-beta01'
     implementation 'com.google.android.gms:play-services-cast-framework:16.0.2'
     implementation 'com.loopj.android:android-async-http:1.4.9'
     testImplementation 'junit:junit:4.12'
+    // Android is missing ClassValue. Needed to update Lucene.
     implementation 'org.apache.lucene:lucene-core:4.8.1'
     implementation 'org.apache.lucene:lucene-queryparser:4.8.1'
     implementation 'org.apache.lucene:lucene-analyzers-common:4.8.1'

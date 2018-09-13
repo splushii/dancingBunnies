@@ -1,7 +1,6 @@
 package se.splushii.dancingbunnies.ui;
 
-import android.support.v4.util.Pair;
-
+import androidx.core.util.Pair;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 
 public class PlaylistUserState {

@@ -6,8 +6,6 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.support.v4.media.MediaBrowserCompat;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -16,6 +14,8 @@ import android.widget.LinearLayout;
 
 import java.util.ArrayList;
 
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -156,10 +156,10 @@ public class FastScroller extends LinearLayout {
         return Math.min(minimum, max);
     }
 
-    private boolean iAmNeeded() {
+    private boolean FastScrollerNotNeeded() {
         int scrollRange = recyclerView.computeVerticalScrollRange();
         int visibleScrollRange = recyclerView.getHeight();
-        return scrollRange > 2 * visibleScrollRange;
+        return scrollRange <= 2 * visibleScrollRange;
     }
 
     /**
@@ -168,7 +168,7 @@ public class FastScroller extends LinearLayout {
     private class ScrollListener extends RecyclerView.OnScrollListener {
         @Override
         public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-            if (!iAmNeeded()) {
+            if (FastScrollerNotNeeded()) {
                 hideView(handle, AnimationType.FADE);
                 if (bubble != null) {
                     hideView(bubble, AnimationType.SCALE);
@@ -209,7 +209,7 @@ public class FastScroller extends LinearLayout {
      */
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (!iAmNeeded()) {
+        if (FastScrollerNotNeeded()) {
             hideView(handle, AnimationType.FADE);
             if (bubble != null) {
                 hideView(bubble, AnimationType.SCALE);

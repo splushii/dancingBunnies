@@ -6,14 +6,15 @@
         android:title="@string/action_search"
         android:icon="@drawable/ic_search_white_24dp"
         app:showAsAction="always|collapseActionView"
-        app:actionViewClass="android.support.v7.widget.SearchView" />
+        app:actionViewClass="androidx.appcompat.widget.SearchView" />
     <item
         android:id="@+id/media_route_menu_item"
         android:title="@string/media_route_menu_title"
-        app:actionProviderClass="android.support.v7.app.MediaRouteActionProvider"
-        app:showAsAction="always" />
+        app:actionProviderClass="androidx.mediarouter.app.MediaRouteActionProvider"
+        app:showAsAction="ifRoom" />
     <item android:id="@+id/action_settings"
         android:title="@string/action_settings"
         android:orderInCategory="100"
-        app:showAsAction="never" />
+        android:icon="@drawable/ic_settings_white_24dp"
+        app:showAsAction="ifRoom" />
 </menu>

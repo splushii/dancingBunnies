@@ -1,10 +1,6 @@
 package se.splushii.dancingbunnies;
 
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
@@ -15,6 +11,10 @@ import android.view.ViewGroup;
 
 import java.util.LinkedList;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
@@ -26,7 +26,7 @@ import se.splushii.dancingbunnies.util.Util;
 public class PlaylistFragment extends AudioBrowserFragment {
 
     private static final String LC = Util.getLogContext(PlaylistFragment.class);
-    PlaylistAdapter recViewAdapter;
+    private PlaylistAdapter recViewAdapter;
     private RecyclerView recView;
     private PlaylistUserState userState;
     private LinkedList<PlaylistUserState> viewBackStack;
@@ -67,7 +67,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         }
     }
 
-    public void refreshView(PlaylistUserState newUserState) {
+    private void refreshView(PlaylistUserState newUserState) {
         if (newUserState == null) {
             refreshView(new PlaylistUserState(0, 0));
             return;
@@ -127,11 +127,11 @@ public class PlaylistFragment extends AudioBrowserFragment {
         registerForContextMenu(recView);
     }
 
-    public void addBackButtonHistory(PlaylistUserState libView) {
+    private void addBackButtonHistory(PlaylistUserState libView) {
         viewBackStack.push(libView);
     }
 
-    public boolean onBackPressed() {
+    boolean onBackPressed() {
         if (viewBackStack.size() > 0) {
             refreshView(viewBackStack.pop());
             return true;
@@ -153,7 +153,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         }));
     }
 
-    public void fetchPlaylistEntriesView(PlaylistUserState newUserState) {
+    private void fetchPlaylistEntriesView(PlaylistUserState newUserState) {
         getPlaylistEntries(newUserState.playlistID).thenAccept(opt -> opt.ifPresent(entries -> {
             Log.d(LC, "playlist entries size: " + entries.size());
             recViewAdapter.setPlaylistEntriesDataSet(entries);

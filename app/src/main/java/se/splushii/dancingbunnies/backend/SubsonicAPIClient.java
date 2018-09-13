@@ -5,7 +5,6 @@ import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.RatingCompat;
-import android.support.v4.util.Pair;
 import android.util.Log;
 
 import com.loopj.android.http.AsyncHttpClient;
@@ -25,6 +24,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import androidx.core.util.Pair;
 import cz.msebera.android.httpclient.Header;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
@@ -248,7 +248,7 @@ public class SubsonicAPIClient extends APIClient {
             // TODO: how to handle errors? Send with handler
             // (and collected by MusicLibraryService or higher)?
             CompletableFuture<Void> allOf = CompletableFuture
-                    .allOf(indexReqList.toArray(new CompletableFuture[indexReqList.size()]));
+                    .allOf(indexReqList.toArray(new CompletableFuture[0]));
             allOf.thenRun(() -> ret.complete(null));
         });
         return ret;
@@ -314,7 +314,7 @@ public class SubsonicAPIClient extends APIClient {
                                 }
                             }
                         }
-                        CompletableFuture<Void> allOf = CompletableFuture.allOf(reqList.toArray(new CompletableFuture[reqList.size()]));
+                        CompletableFuture<Void> allOf = CompletableFuture.allOf(reqList.toArray(new CompletableFuture[0]));
                         allOf.thenRun(() -> ret.complete(null));
                     } catch (JSONException e) {
                         Log.e(LC, "JSON error in getIndexes: " + e.getMessage());
@@ -519,7 +519,7 @@ public class SubsonicAPIClient extends APIClient {
                                 }
                             }
                         }
-                        CompletableFuture<Void> allOf = CompletableFuture.allOf(reqList.toArray(new CompletableFuture[reqList.size()]));
+                        CompletableFuture<Void> allOf = CompletableFuture.allOf(reqList.toArray(new CompletableFuture[0]));
                         allOf.thenRun(() -> ret.complete(null));
                     } catch (JSONException e) {
                         Log.e(LC, "JSON error in getMusicDirectory: " + e.getMessage());
@@ -611,7 +611,7 @@ public class SubsonicAPIClient extends APIClient {
                                         });
                             }
                         }
-                        CompletableFuture<Void> allOf = CompletableFuture.allOf(reqList.toArray(new CompletableFuture[reqList.size()]));
+                        CompletableFuture<Void> allOf = CompletableFuture.allOf(reqList.toArray(new CompletableFuture[0]));
                         allOf.thenRun(() -> ret.complete(null));
                     } catch (JSONException e) {
                         Log.e(LC, "JSON error in getPlaylistsQuery: " + e.getMessage());

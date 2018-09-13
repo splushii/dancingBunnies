@@ -1,9 +1,6 @@
 package se.splushii.dancingbunnies.ui;
 
-import android.support.annotation.NonNull;
 import android.support.v4.media.MediaBrowserCompat;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.util.Pair;
 import android.view.LayoutInflater;
@@ -15,6 +12,9 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.MusicLibraryFragment;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;

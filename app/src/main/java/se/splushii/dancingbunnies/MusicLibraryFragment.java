@@ -1,13 +1,7 @@
 package se.splushii.dancingbunnies;
 
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v4.media.MediaBrowserCompat;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
@@ -22,20 +16,27 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.FastScrollerBubble;
-import se.splushii.dancingbunnies.ui.MusicLibraryUserState;
 import se.splushii.dancingbunnies.ui.MusicLibraryAdapter;
+import se.splushii.dancingbunnies.ui.MusicLibraryUserState;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryFragment extends AudioBrowserFragment {
@@ -47,8 +48,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private LinkedList<MusicLibraryUserState> viewBackStack;
 
     private TextView activeFiltersView;
-    FastScroller fastScroller;
-    FastScrollerBubble fastScrollerBubble;
+    private FastScroller fastScroller;
+    private FastScrollerBubble fastScrollerBubble;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -79,7 +80,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         refreshView(userState);
     }
 
-    public void refreshView(final MusicLibraryUserState newUserState) {
+    void refreshView(final MusicLibraryUserState newUserState) {
         if (newUserState == null) {
             MusicLibraryQuery query = new MusicLibraryQuery();
             query.addToQuery(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_ARTIST);
@@ -257,17 +258,17 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         FloatingActionButton fab_sort_song = rootView.findViewById(R.id.fab_sort_song);
         TextView text_sort_artist = rootView.findViewById(R.id.fab_sort_artist_label);
         TextView text_sort_song = rootView.findViewById(R.id.fab_sort_song_label);
-        fab_sort_artist.setVisibility(visibility);
-        fab_sort_song.setVisibility(visibility);
+        fab_sort_artist.show();
+        fab_sort_song.show();
         text_sort_artist.setVisibility(visibility);
         text_sort_song.setVisibility(visibility);
     }
 
-    public void addBackButtonHistory(MusicLibraryUserState userState) {
+    private void addBackButtonHistory(MusicLibraryUserState userState) {
         viewBackStack.push(userState);
     }
 
-    public boolean onBackPressed() {
+    boolean onBackPressed() {
         if (viewBackStack.size() > 0) {
             refreshView(viewBackStack.pop());
             return true;
@@ -276,7 +277,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         return false;
     }
 
-    public void filter(String filterType, String filter) {
+    private void filter(String filterType, String filter) {
         addBackButtonHistory(
                 new MusicLibraryUserState(
                         userState.query,
