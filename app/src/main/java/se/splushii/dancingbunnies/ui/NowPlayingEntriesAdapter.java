@@ -1,6 +1,5 @@
 package se.splushii.dancingbunnies.ui;
 
-import android.graphics.Color;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat.QueueItem;
 import android.util.Log;
@@ -13,7 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
+import se.splushii.dancingbunnies.NowPlayingFragment;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
@@ -24,6 +25,7 @@ public class NowPlayingEntriesAdapter
         extends RecyclerView.Adapter<NowPlayingEntriesAdapter.SongViewHolder> {
     private static final String LC = Util.getLogContext(NowPlayingEntriesAdapter.class);
 
+    private final NowPlayingFragment context;
     private List<QueueItem> queueData;
     private PlaylistItem currentPlaylistItem;
     private List<PlaybackEntry> playlistNext;
@@ -33,7 +35,8 @@ public class NowPlayingEntriesAdapter
     private static final int VIEWTYPE_QUEUE_ITEM = 0;
     private static final int VIEWTYPE_PLAYLIST_NEXT = 1;
 
-    public NowPlayingEntriesAdapter() {
+    public NowPlayingEntriesAdapter(NowPlayingFragment context) {
+        this.context = context;
         queueData = new ArrayList<>();
         currentPlaylistItem = PlaylistItem.defaultPlaylist;
         playlistNext = new ArrayList<>();
@@ -91,7 +94,7 @@ public class NowPlayingEntriesAdapter
         View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.nowplaying_item, parent, false);
         if (viewType == VIEWTYPE_QUEUE_ITEM) {
-            v.setBackgroundColor(Color.LTGRAY);
+            v.setBackgroundColor(ContextCompat.getColor(context.requireContext(), R.color.gray));
         }
         return new SongViewHolder(v);
     }

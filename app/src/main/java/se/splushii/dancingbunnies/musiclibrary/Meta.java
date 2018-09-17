@@ -17,6 +17,7 @@ import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.LONG;
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.RATING;
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.STRING;
 
+// TODO: Use Meta throughout app. To convert, do for example "new Meta(metaCompat).toCastMeta()".
 public class Meta {
     private static String LC = Util.getLogContext(Meta.class);
 
@@ -54,24 +55,6 @@ public class Meta {
         return castMeta;
     }
 
-    public static MediaDescriptionCompat meta2desc(MediaMetadata castMeta) {
-        Bundle extras = new Bundle();
-        String title = castMeta.getString(MediaMetadata.KEY_TITLE);
-        String album = castMeta.getString(MediaMetadata.KEY_ALBUM_TITLE);
-        String artist = castMeta.getString(MediaMetadata.KEY_ARTIST);
-        extras.putString(METADATA_KEY_TITLE, title);
-        extras.putString(METADATA_KEY_ALBUM, album);
-        extras.putString(METADATA_KEY_ARTIST, artist);
-        // TODO: get all metadata from there ^
-        EntryID entryID = EntryID.from(castMeta);
-        extras.putAll(entryID.toBundle());
-        return new MediaDescriptionCompat.Builder()
-                .setMediaId(entryID.key())
-                .setExtras(extras)
-                .setTitle(title)
-                .build();
-    }
-
     public static MediaDescriptionCompat meta2desc(MediaMetadataCompat meta) {
         EntryID entryID = EntryID.from(meta);
         Bundle extras = new Bundle();
@@ -84,9 +67,24 @@ public class Meta {
     }
 
     public static MediaMetadataCompat desc2meta(MediaDescriptionCompat desc) {
-        MediaMetadataCompat meta = new MediaMetadataCompat.Builder().build();
-        meta.getBundle().putAll(desc.getExtras());
-        return meta;
+        MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder();
+        Bundle descExtras = desc.getExtras();
+        for (String key: descExtras.keySet()) {
+            switch (typeMap.get(key)) {
+                case STRING:
+                    b.putString(key, descExtras.getString(key));
+                    break;
+                case LONG:
+                    b.putLong(key, descExtras.getLong(key));
+                    break;
+                case RATING:
+                case BITMAP:
+                default:
+                    Log.e(LC, "desc2meta: " + typeMap.get(key).name() + " not handled");
+                    break;
+            }
+        }
+        return b.build();
     }
 
     public enum Type {

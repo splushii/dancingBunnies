@@ -1,5 +1,6 @@
 package se.splushii.dancingbunnies;
 
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
@@ -13,7 +14,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
@@ -28,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
@@ -45,7 +47,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private TextView nowPlayingTitle;
     private TextView nowPlayingArtist;
     private TextView nowPlayingAlbum;
-    private Button playPauseBtn;
+    private ImageButton playPauseBtn;
     private boolean isPlaying = false;
     private SeekBar seekBar;
     private PlaybackStateCompat playbackState;
@@ -59,7 +61,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private RecyclerView recView;
 
     public NowPlayingFragment() {
-        recViewAdapter = new NowPlayingEntriesAdapter();
+        recViewAdapter = new NowPlayingEntriesAdapter(this);
     }
 
     @Override
@@ -79,7 +81,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         nowPlayingTitle = rootView.findViewById(R.id.nowplaying_title);
         nowPlayingArtist = rootView.findViewById(R.id.nowplaying_artist);
         nowPlayingAlbum = rootView.findViewById(R.id.nowplaying_album);
-        Button previousBtn = rootView.findViewById(R.id.nowplaying_previous);
+        ImageButton previousBtn = rootView.findViewById(R.id.nowplaying_previous);
         previousBtn.setOnClickListener(view -> previous());
         isPlaying = false;
         playPauseBtn = rootView.findViewById(R.id.nowplaying_play_pause);
@@ -92,7 +94,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 scheduleProgressUpdate();
             }
         });
-        Button nextBtn = rootView.findViewById(R.id.nowplaying_next);
+        ImageButton nextBtn = rootView.findViewById(R.id.nowplaying_next);
         nextBtn.setOnClickListener(view -> next());
         seekBar = rootView.findViewById(R.id.nowplaying_seekbar);
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -182,6 +184,11 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     private void updatePlaybackState(PlaybackStateCompat state) {
+        Drawable playDrawable = ContextCompat.getDrawable(requireContext(), R.drawable.quantum_ic_play_arrow_grey600_36);
+        playDrawable.setTint(ContextCompat.getColor(requireContext(), R.color.bluegrey900));
+        Drawable pauseDrawable = ContextCompat.getDrawable(requireContext(), R.drawable.quantum_ic_pause_grey600_36);
+        pauseDrawable.setTint(ContextCompat.getColor(requireContext(), R.color.bluegrey900));
+
         playbackState = state;
         switch (state.getState()) { // TODO: Refactor to avoid repetition
             case PlaybackStateCompat.STATE_PLAYING:
@@ -190,7 +197,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 Log.d(LC, "state: playing");
                 playPauseBtn.setEnabled(true);
                 seekBar.setEnabled(true);
-                playPauseBtn.setBackgroundResource(R.drawable.pause);
+                playPauseBtn.setImageDrawable(pauseDrawable);
                 bufferingText.setVisibility(View.INVISIBLE);
                 isPlaying = true;
                 scheduleProgressUpdate();
@@ -201,7 +208,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             case PlaybackStateCompat.STATE_PAUSED:
                 playPauseBtn.setEnabled(true);
                 seekBar.setEnabled(true);
-                playPauseBtn.setBackgroundResource(R.drawable.play);
+                playPauseBtn.setImageDrawable(playDrawable);
                 bufferingText.setVisibility(View.INVISIBLE);
                 isPlaying = false;
                 updateProgress();
@@ -211,7 +218,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             case PlaybackStateCompat.STATE_BUFFERING:
                 playPauseBtn.setEnabled(true);
                 seekBar.setEnabled(true);
-                playPauseBtn.setBackgroundResource(R.drawable.play);
+                playPauseBtn.setImageDrawable(playDrawable);
                 bufferingText.setVisibility(View.VISIBLE);
                 isPlaying = false;
                 updateProgress();
@@ -229,7 +236,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                                 && !Meta.UNKNOWN_ENTRY.equals(currentMeta)
                 );
                 seekBar.setEnabled(false);
-                playPauseBtn.setBackgroundResource(R.drawable.play);
+                playPauseBtn.setImageDrawable(playDrawable);
                 bufferingText.setVisibility(View.INVISIBLE);
                 isPlaying = false;
                 stopProgressUpdate();

@@ -6,11 +6,9 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:gravity="bottom">
+        android:orientation="vertical">
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/nowplaying_recyclerview"
-            android:visibility="visible"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
@@ -21,7 +19,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="16sp"
-            android:layout_gravity="center_horizontal"/>
+            android:layout_gravity="center_horizontal"
+            android:paddingTop="8dp"/>
         <TextView
             android:id="@+id/nowplaying_title"
             android:layout_width="wrap_content"
@@ -33,6 +32,7 @@
             android:id="@+id/nowplaying_album"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:paddingTop="2dp"
             android:layout_gravity="center_horizontal"
             android:text="@string/song_info"/>
         <SeekBar
@@ -62,36 +62,43 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
+            android:paddingBottom="4dp"
             android:layout_gravity="center_horizontal">
             <TextView
                 android:id="@+id/nowplaying_position"
                 android:layout_width="32dp"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
                 android:layout_marginEnd="16dp"/>
-            <Button
+            <ImageButton
                 android:id="@+id/nowplaying_previous"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 style="?android:buttonBarButtonStyle"
-                android:background="@drawable/prev"/>
-            <Button
+                android:src="@drawable/quantum_ic_skip_previous_grey600_36"
+                android:tint="@color/bluegrey900"
+                android:contentDescription="@string/nowplaying_previous_contentdesc" />
+            <ImageButton
                 android:id="@+id/nowplaying_play_pause"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 style="?android:buttonBarButtonStyle"
-                android:background="@drawable/play"/>
-            <Button
+                android:src="@drawable/quantum_ic_play_arrow_grey600_36"
+                android:contentDescription="@string/nowplaying_play_pause_contentdesc" />
+            <ImageButton
                 android:id="@+id/nowplaying_next"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 style="?android:buttonBarButtonStyle"
-                android:background="@drawable/next"/>
+                android:src="@drawable/quantum_ic_skip_next_grey600_36"
+                android:tint="@color/bluegrey900"
+                android:contentDescription="@string/nowplaying_next_contentdesc" />
             <TextView
                 android:id="@+id/nowplaying_duration"
                 android:layout_width="32dp"
                 android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
                 android:layout_marginStart="16dp"/>
         </LinearLayout>
     </LinearLayout>
-
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

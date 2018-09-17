@@ -46,7 +46,7 @@ public class CastAudioPlayer extends AudioPlayer {
     private final Object lastActionFutureLock = new Object();
     private boolean playWhenReady = false;
     private long lastPos = 0;
-    private int[] lastItemIds;
+    private int[] lastItemIds = new int[0];
     private int lastCurrentItemId;
     private SparseArray<MediaQueueItem> lastQueueItemMap;
 
