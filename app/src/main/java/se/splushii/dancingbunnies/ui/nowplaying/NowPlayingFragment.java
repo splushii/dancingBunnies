@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies;
+package se.splushii.dancingbunnies.ui.nowplaying;
 
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
@@ -32,11 +32,11 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.ui.NowPlayingEntriesAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
 public class NowPlayingFragment extends AudioBrowserFragment {

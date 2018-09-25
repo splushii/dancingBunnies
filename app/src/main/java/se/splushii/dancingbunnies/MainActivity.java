@@ -21,7 +21,10 @@ import androidx.fragment.app.FragmentPagerAdapter;
 import androidx.mediarouter.app.MediaRouteButton;
 import androidx.viewpager.widget.ViewPager;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
-import se.splushii.dancingbunnies.ui.MusicLibraryUserState;
+import se.splushii.dancingbunnies.ui.musiclibrary.MusicLibraryFragment;
+import se.splushii.dancingbunnies.ui.musiclibrary.MusicLibraryUserState;
+import se.splushii.dancingbunnies.ui.nowplaying.NowPlayingFragment;
+import se.splushii.dancingbunnies.ui.playlist.PlaylistFragment;
 import se.splushii.dancingbunnies.util.Util;
 
 public final class MainActivity extends AppCompatActivity {

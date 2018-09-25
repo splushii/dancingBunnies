@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies;
+package se.splushii.dancingbunnies.ui.playlist;
 
 import android.os.Bundle;
 import android.util.Log;
@@ -15,12 +15,11 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
-import se.splushii.dancingbunnies.ui.PlaylistAdapter;
-import se.splushii.dancingbunnies.ui.PlaylistUserState;
 import se.splushii.dancingbunnies.util.Util;
 
 public class PlaylistFragment extends AudioBrowserFragment {
@@ -131,7 +130,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         viewBackStack.push(libView);
     }
 
-    boolean onBackPressed() {
+    public boolean onBackPressed() {
         if (viewBackStack.size() > 0) {
             refreshView(viewBackStack.pop());
             return true;
@@ -140,7 +139,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         return false;
     }
 
-    public void browsePlaylist(PlaylistID playlistID) {
+    void browsePlaylist(PlaylistID playlistID) {
         addBackButtonHistory(userState);
         refreshView(new PlaylistUserState(playlistID, 0, 0));
     }

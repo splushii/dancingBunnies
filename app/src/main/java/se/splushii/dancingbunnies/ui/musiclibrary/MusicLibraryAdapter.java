@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies.ui;
+package se.splushii.dancingbunnies.ui.musiclibrary;
 
 import android.support.v4.media.MediaBrowserCompat;
 import android.util.Log;
@@ -15,7 +15,6 @@ import java.util.List;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import se.splushii.dancingbunnies.MusicLibraryFragment;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
@@ -28,12 +27,12 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     private RecyclerView.ViewHolder contextMenuHolder;
     private boolean searchMode = false;
 
-    public MusicLibraryAdapter(MusicLibraryFragment fragment) {
+    MusicLibraryAdapter(MusicLibraryFragment fragment) {
         this.dataset = new ArrayList<>();
         this.fragment = fragment;
     }
 
-    public MediaBrowserCompat.MediaItem getItemData(int childPosition) {
+    MediaBrowserCompat.MediaItem getItemData(int childPosition) {
         return dataset.get(childPosition);
     }
 
@@ -69,13 +68,13 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         return new SongViewHolder(v);
     }
 
-    public void setDataset(List<MediaBrowserCompat.MediaItem> items, boolean searchMode) {
+    void setDataset(List<MediaBrowserCompat.MediaItem> items, boolean searchMode) {
         this.dataset = items;
         this.searchMode = searchMode;
         notifyDataSetChanged();
     }
 
-    public RecyclerView.ViewHolder getContextMenuHolder() {
+    RecyclerView.ViewHolder getContextMenuHolder() {
         return contextMenuHolder;
     }
 
@@ -128,7 +127,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         });
     }
 
-    public Pair<Integer, Integer> getCurrentPosition() {
+    Pair<Integer, Integer> getCurrentPosition() {
         RecyclerView rv = fragment.getView().findViewById(R.id.musiclibrary_recyclerview);
         LinearLayoutManager llm = (LinearLayoutManager) rv.getLayoutManager();
         int hPos = llm.findFirstCompletelyVisibleItemPosition();

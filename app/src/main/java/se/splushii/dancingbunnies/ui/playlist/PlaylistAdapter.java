@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies.ui;
+package se.splushii.dancingbunnies.ui.playlist;
 
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -13,7 +13,6 @@ import androidx.annotation.NonNull;
 import androidx.core.util.Pair;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import se.splushii.dancingbunnies.PlaylistFragment;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
@@ -34,7 +33,7 @@ public class PlaylistAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private boolean playlistMode = true;
     private PlaylistItem currentPlaylistItem;
 
-    public PlaylistAdapter(PlaylistFragment playlistFragment) {
+    PlaylistAdapter(PlaylistFragment playlistFragment) {
         playlistDataset = new LinkedList<>();
         playlistEntriesDataset = new LinkedList<>();
         fragment = playlistFragment;
@@ -148,7 +147,7 @@ public class PlaylistAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         holder.src.setText(src);
     }
 
-    public PlaylistItem getPlaylistItemData(int position) {
+    PlaylistItem getPlaylistItemData(int position) {
         return playlistDataset.get(position);
     }
 
@@ -161,23 +160,23 @@ public class PlaylistAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         return playlistMode ? playlistDataset.size() : playlistEntriesDataset.size();
     }
 
-    public RecyclerView.ViewHolder getContextMenuHolder() {
+    RecyclerView.ViewHolder getContextMenuHolder() {
         return contextMenuHolder;
     }
 
-    public void setPlaylistDataSet(List<PlaylistItem> playlists) {
+    void setPlaylistDataSet(List<PlaylistItem> playlists) {
         playlistMode = true;
         playlistDataset = playlists;
         notifyDataSetChanged();
     }
 
-    public void setPlaylistEntriesDataSet(List<LibraryEntry> entries) {
+    void setPlaylistEntriesDataSet(List<LibraryEntry> entries) {
         playlistMode = false;
         playlistEntriesDataset = entries;
         notifyDataSetChanged();
     }
 
-    public Pair<Integer, Integer> getCurrentPosition() {
+    Pair<Integer, Integer> getCurrentPosition() {
         RecyclerView rv = fragment.getView().findViewById(R.id.playlist_recyclerview);
         LinearLayoutManager llm = (LinearLayoutManager) rv.getLayoutManager();
         int hPos = llm.findFirstCompletelyVisibleItemPosition();

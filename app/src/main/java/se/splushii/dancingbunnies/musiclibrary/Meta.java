@@ -7,7 +7,9 @@ import android.util.Log;
 
 import com.google.android.gms.cast.MediaMetadata;
 
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.util.Util;
@@ -277,6 +279,7 @@ public class Meta {
         METADATA_KEY_WRITER,
         METADATA_KEY_YEAR
     };
+    public static final HashSet DBKeysSet = new HashSet<>(Arrays.asList(db_keys));
 
     private static final HashMap<String, Type> typeMap;
     static {

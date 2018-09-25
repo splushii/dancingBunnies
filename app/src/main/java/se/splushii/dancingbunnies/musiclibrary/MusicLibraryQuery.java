@@ -48,6 +48,14 @@ public class MusicLibraryQuery {
         subQuery.putString(key, value);
     }
 
+    public void removeFromQuery(String key) {
+        if (type != MusicLibraryQueryType.SUBSCRIPTION) {
+            Log.e(LC, "removeFromQuery on type: " + type.name());
+            return;
+        }
+        subQuery.remove(key);
+    }
+
     public MusicLibraryQuery(String searchQuery) {
         this.type = MusicLibraryQueryType.SEARCH;
         this.searchQuery = searchQuery;

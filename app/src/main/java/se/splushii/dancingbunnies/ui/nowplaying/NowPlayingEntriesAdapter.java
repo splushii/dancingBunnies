@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies.ui;
+package se.splushii.dancingbunnies.ui.nowplaying;
 
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat.QueueItem;
@@ -14,7 +14,6 @@ import java.util.List;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
-import se.splushii.dancingbunnies.NowPlayingFragment;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
@@ -35,14 +34,14 @@ public class NowPlayingEntriesAdapter
     private static final int VIEWTYPE_QUEUE_ITEM = 0;
     private static final int VIEWTYPE_PLAYLIST_NEXT = 1;
 
-    public NowPlayingEntriesAdapter(NowPlayingFragment context) {
+    NowPlayingEntriesAdapter(NowPlayingFragment context) {
         this.context = context;
         queueData = new ArrayList<>();
         currentPlaylistItem = PlaylistItem.defaultPlaylist;
         playlistNext = new ArrayList<>();
     }
 
-    public QueueItem getItemData(int childPosition) {
+    QueueItem getItemData(int childPosition) {
         return queueData.get(childPosition);
     }
 
@@ -51,12 +50,12 @@ public class NowPlayingEntriesAdapter
         notifyDataSetChanged();
     }
 
-    public void setCurrentPlaylistItem(PlaylistItem playlistItem) {
+    void setCurrentPlaylistItem(PlaylistItem playlistItem) {
         currentPlaylistItem = playlistItem;
         notifyDataSetChanged();
     }
 
-    public void setPlaylistNext(List<PlaybackEntry> playbackEntries) {
+    void setPlaylistNext(List<PlaybackEntry> playbackEntries) {
         playlistNext = playbackEntries;
         notifyDataSetChanged();
     }
@@ -99,7 +98,7 @@ public class NowPlayingEntriesAdapter
         return new SongViewHolder(v);
     }
 
-    public RecyclerView.ViewHolder getContextMenuHolder() {
+    RecyclerView.ViewHolder getContextMenuHolder() {
         return contextMenuHolder;
     }
 

@@ -1,19 +1,120 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
     <LinearLayout
+        android:id="@+id/musiclibrary_filter"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical">
-        <TextView
-            android:id="@+id/musiclibrary_active_filters"
-            android:background="@color/grey100"
-            android:elevation="4dp"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
+            android:layout_height="wrap_content"
+            android:elevation="4dp"
+            android:background="@color/grey100"
+            android:orientation="vertical">
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/musiclibrary_filter_chips"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:paddingTop="4dp"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp">
+            </com.google.android.material.chip.ChipGroup>
+            <LinearLayout
+                android:id="@+id/musiclibrary_entry_type"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:visibility="gone">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:paddingTop="4sp"
+                    android:paddingBottom="4sp"
+                    android:paddingStart="16sp"
+                    android:paddingEnd="2dp"
+                    android:text="@string/musiclibrary_entry_type_select"/>
+                <Spinner
+                    android:id="@+id/musiclibrary_entry_type_spinner"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:paddingStart="4sp"
+                    android:paddingEnd="16sp"/>
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/musiclibrary_filter_edit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:visibility="gone">
+                <TextView
+                    android:id="@+id/musiclibrary_filter_edit_type"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:paddingTop="4sp"
+                    android:paddingBottom="4sp"
+                    android:paddingStart="16sp"
+                    android:paddingEnd="2dp"/>
+                <EditText
+                    android:id="@+id/musiclibrary_filter_edit_input"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:background="@android:color/transparent"
+                    android:imeOptions="actionDone"
+                    android:hint="@string/enter_filter"
+                    android:paddingTop="4sp"
+                    android:paddingBottom="4sp"
+                    android:paddingStart="4sp"
+                    android:paddingEnd="16sp"
+                    android:inputType="text|textFilter"
+                    android:autofillHints="" />
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/musiclibrary_filter_new"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:visibility="gone">
+                <Spinner
+                    android:id="@+id/musiclibrary_filter_new_type"
+                    android:paddingStart="16sp"
+                    android:paddingEnd="2dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"/>
+                <EditText
+                    android:id="@+id/musiclibrary_filter_new_text"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:background="@android:color/transparent"
+                    android:imeOptions="actionDone"
+                    android:hint="@string/enter_filter"
+                    android:paddingTop="4sp"
+                    android:paddingBottom="4sp"
+                    android:paddingStart="4sp"
+                    android:paddingEnd="16sp"
+                    android:inputType="text|textFilter"
+                    android:autofillHints=""/>
+            </LinearLayout>
+        </LinearLayout>
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/musiclibrary_recyclerview"
             android:visibility="visible"
@@ -23,101 +124,15 @@
             android:paddingTop="8dp"
             android:clipToPadding="false"/>
     </LinearLayout>
-    <se.splushii.dancingbunnies.ui.FastScrollerBubble
+    <se.splushii.dancingbunnies.ui.musiclibrary.FastScrollerBubble
         android:id="@+id/musiclibrary_fastscroller_bubble"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="30dp"
         android:layout_gravity="end" />
-    <se.splushii.dancingbunnies.ui.FastScroller
+    <se.splushii.dancingbunnies.ui.musiclibrary.FastScroller
         android:id="@+id/musiclibrary_fastscroller"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_gravity="end" />
-    <LinearLayout
-        android:id="@+id/musiclibrary_filterinput"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@drawable/input_box"
-        android:layout_marginBottom="100dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:elevation="2dp"
-        app:layout_anchor="@id/musiclibrary_fab"
-        android:visibility="gone">
-        <Spinner
-            android:id="@+id/musiclibrary_filterinput_type"
-            android:paddingStart="16sp"
-            android:paddingEnd="2dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical"/>
-        <EditText
-            android:id="@+id/musiclibrary_filterinput_text"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:imeOptions="actionDone"
-            android:layout_height="wrap_content"
-            android:hint="@string/enter_filter"
-            android:paddingTop="4sp"
-            android:paddingBottom="4sp"
-            android:paddingStart="4sp"
-            android:paddingEnd="16sp"
-            android:inputType="text|textFilter"
-            android:autofillHints="" />
-    </LinearLayout>
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/musiclibrary_filter_fab"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="@dimen/fab_margin"
-        android:src="@drawable/ic_filter_list_white_24dp" />
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/musiclibrary_fab"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center"
-        android:layout_margin="@dimen/fab_margin"
-        android:src="@android:drawable/ic_dialog_email" />
-    <TextView
-        android:id="@+id/fab_sort_artist_label"
-        android:visibility="gone"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical"
-        android:layout_marginBottom="108dp"
-        android:layout_marginStart="80dp"
-        app:layout_anchor="@+id/fab_sort_artist"
-        android:text="@string/sort_by_artist" />
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_sort_artist"
-        android:visibility="gone"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center"
-        android:layout_marginBottom="86dp"
-        android:src="@android:drawable/ic_dialog_alert" />
-    <TextView
-        android:id="@+id/fab_sort_song_label"
-        android:shadowColor="#ffffff"
-        android:shadowRadius="100"
-        android:shadowDx="0"
-        android:shadowDy="0"
-        android:visibility="gone"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical|start"
-        android:layout_marginBottom="178dp"
-        android:layout_marginStart="80dp"
-        app:layout_anchor="@+id/fab_sort_song"
-        android:text="@string/sort_by_song" />
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@id/fab_sort_song"
-        android:visibility="gone"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center"
-        android:layout_marginBottom="156dp"
-        android:src="@android:drawable/ic_dialog_info" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

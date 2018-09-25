@@ -224,6 +224,7 @@ public class MusicLibraryService extends Service {
         if (EntryID.UnknownEntryID.equals(entryID)) {
             return Meta.UNKNOWN_ENTRY;
         }
+        // TODO: Add cache here?
         return metaStorage.getMetadataEntry(entryID);
     }
 

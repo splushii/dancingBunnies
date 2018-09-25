@@ -29,9 +29,9 @@ repositories {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'com.google.android.material:material:1.0.0-rc02'
-    implementation 'androidx.appcompat:appcompat:1.0.0-rc02'
-    implementation 'androidx.mediarouter:mediarouter:1.0.0-beta01'
+    implementation 'com.google.android.material:material:1.0.0'
+    implementation 'androidx.appcompat:appcompat:1.0.0'
+    implementation 'androidx.mediarouter:mediarouter:1.0.0'
     implementation 'com.google.android.gms:play-services-cast-framework:16.0.2'
     implementation 'com.loopj.android:android-async-http:1.4.9'
     testImplementation 'junit:junit:4.12'

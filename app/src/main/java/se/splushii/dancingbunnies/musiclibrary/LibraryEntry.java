@@ -63,6 +63,12 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
 
     @Override
     public int compareTo(@NonNull LibraryEntry o) {
+        if (o == null || o.name == null) {
+            return -1;
+        }
+        if (name == null) {
+            return 1;
+        }
         int nameVal = name.toLowerCase().compareTo(o.name.toLowerCase());
         return nameVal != 0 ? nameVal : key().compareTo(o.key());
     }

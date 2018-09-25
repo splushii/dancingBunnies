@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies.ui;
+package se.splushii.dancingbunnies.ui.musiclibrary;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
