@@ -154,10 +154,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private MediaBrowserCompat.MediaItem generateMediaItem(LibraryEntry entry) {
         EntryID entryID = entry.entryID;
         Bundle extras = entryID.toBundle();
-        if (entryID.type.equals(Meta.METADATA_KEY_MEDIA_ID)) {
-            MediaMetadataCompat meta = musicLibraryService.getSongMetaData(entryID);
-            extras.putAll(meta.getBundle());
-        }
         MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
                 .setMediaId(entryID.key())
                 .setExtras(extras)

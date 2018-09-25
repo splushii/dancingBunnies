@@ -352,7 +352,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private void setEntryTypeSelectSpinnerSelection(String filterType) {
         for (int i = 0; i < entryTypeSelectSpinner.getCount(); i++) {
             if (filterType.equals(entryTypeSelectSpinner.getItemAtPosition(i))) {
-                Log.e(LC, "selection: " + filterType + " index: " + i);
                 entryTypeSelectSpinner.setSelection(i);
                 entryTypeSelectionPos = i;
                 break;
