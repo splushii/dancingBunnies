@@ -71,21 +71,31 @@ public class Meta {
     public static MediaMetadataCompat desc2meta(MediaDescriptionCompat desc) {
         MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder();
         Bundle descExtras = desc.getExtras();
-        for (String key: descExtras.keySet()) {
+        addFromBundle(b, descExtras);
+        return b.build();
+    }
+
+    private static void addFromBundle(MediaMetadataCompat.Builder b, Bundle bundle) {
+        for (String key: bundle.keySet()) {
             switch (typeMap.get(key)) {
                 case STRING:
-                    b.putString(key, descExtras.getString(key));
+                    b.putString(key, bundle.getString(key));
                     break;
                 case LONG:
-                    b.putLong(key, descExtras.getLong(key));
+                    b.putLong(key, bundle.getLong(key));
                     break;
                 case RATING:
                 case BITMAP:
                 default:
-                    Log.e(LC, "desc2meta: " + typeMap.get(key).name() + " not handled");
+                    Log.e(LC, "addFromBundle: " + typeMap.get(key).name() + " not handled");
                     break;
             }
         }
+    }
+
+    public static MediaMetadataCompat from(Bundle bundle) {
+        MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder();
+        addFromBundle(b, bundle);
         return b.build();
     }
 

@@ -60,6 +60,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public static final String SESSION_EVENT_PLAYLIST_POSITION_CHANGED = "PLAYLIST_POSITION_CHANGED";
     public static final String SESSION_EVENT_PLAYLIST_CHANGED = "PLAYLIST_CHANGED";
 
+    private static final String COMMAND_GET_META = "GET_META";
     public static final String COMMAND_GET_PLAYLISTS = "GET_PLAYLISTS";
     public static final String COMMAND_GET_CURRENT_PLAYLIST = "GET_CURRENT_PLAYLIST";
     public static final String COMMAND_GET_PLAYLIST_ENTRIES = "GET_PLAYLIST_ENTRIES";
@@ -530,6 +531,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                             null
                     );
                     break;
+                case COMMAND_GET_META:
+                    getSongMeta(cb, extras);
+                    break;
                 default:
                     Log.e(LC, "Unhandled MediaSession onCommand: " + command);
                     break;
@@ -565,6 +569,33 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         int position = b.getInt("position");
         musicLibraryService.playlistRemoveEntry(playlistID, position);
         cb.send(0, null);
+    }
+
+    public static CompletableFuture<MediaMetadataCompat> getSongMeta(MediaControllerCompat mediaController,
+                                                      EntryID entryID) {
+        CompletableFuture<MediaMetadataCompat> future = new CompletableFuture<>();
+        Bundle params = new Bundle();
+        params.putParcelable("entryID", entryID);
+        mediaController.sendCommand(
+                AudioPlayerService.COMMAND_GET_META,
+                params,
+                new ResultReceiver(null) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        if (resultCode != 0) {
+                            future.complete(Meta.UNKNOWN_ENTRY);
+                            return;
+                        }
+                        future.complete(Meta.from(resultData));
+                    }
+                }
+        );
+        return future;
+    }
+
+    private void getSongMeta(ResultReceiver cb, Bundle b) {
+        EntryID entryID = b.getParcelable("entryID");
+        cb.send(0, musicLibraryService.getSongMetaData(entryID).getBundle());
     }
 
     private static final String BUNDLE_KEY_PLAYLIST_ITEMS =

@@ -1,6 +1,7 @@
 package se.splushii.dancingbunnies.ui.musiclibrary;
 
 import android.support.v4.media.MediaBrowserCompat;
+import android.text.TextUtils;
 import android.util.Log;
 import android.util.Pair;
 import android.view.LayoutInflater;
@@ -25,7 +26,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     private List<MediaBrowserCompat.MediaItem> dataset;
     private MusicLibraryFragment fragment;
     private RecyclerView.ViewHolder contextMenuHolder;
-    private boolean searchMode = false;
 
     MusicLibraryAdapter(MusicLibraryFragment fragment) {
         this.dataset = new ArrayList<>();
@@ -40,6 +40,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         private final View libraryEntry;
         private final TextView libraryEntryTitle;
         private final TextView libraryEntryArtist;
+        private final TextView libraryEntryAlbum;
         private final View playAction;
         private final View queueAction;
         private final View addToPlaylistAction;
@@ -50,6 +51,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             super(view);
             libraryEntry = view.findViewById(R.id.library_entry);
             libraryEntryTitle = view.findViewById(R.id.library_entry_title);
+            libraryEntryAlbum = view.findViewById(R.id.library_entry_album);
             libraryEntryArtist = view.findViewById(R.id.library_entry_artist);
             playAction = view.findViewById(R.id.action_play);
             queueAction = view.findViewById(R.id.action_queue);
@@ -68,9 +70,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         return new SongViewHolder(v);
     }
 
-    void setDataset(List<MediaBrowserCompat.MediaItem> items, boolean searchMode) {
+    void setDataset(List<MediaBrowserCompat.MediaItem> items) {
         this.dataset = items;
-        this.searchMode = searchMode;
         notifyDataSetChanged();
     }
 
@@ -86,11 +87,20 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         final boolean browsable = item.isBrowsable();
         holder.moreActions.setVisibility(View.GONE);
         holder.libraryEntryTitle.setText(title);
-        if (searchMode) {
-            String artist = item.getDescription().getExtras().getString(Meta.METADATA_KEY_ARTIST);
-            holder.libraryEntryArtist.setText(artist);
+        if (entryID.type.equals(Meta.METADATA_KEY_MEDIA_ID)) {
+            fragment.getSongMeta(entryID).thenAccept(meta -> {
+                String artist = meta.getString(Meta.METADATA_KEY_ARTIST);
+                String album = meta.getString(Meta.METADATA_KEY_ALBUM);
+                holder.libraryEntryArtist.setText(artist);
+                holder.libraryEntryAlbum.setText(album);
+                holder.libraryEntryArtist.setVisibility(View.VISIBLE);
+                holder.libraryEntryAlbum.setVisibility(View.VISIBLE);
+            });
         } else {
-            holder.libraryEntryArtist.setText("");
+            holder.libraryEntryArtist.setVisibility(View.GONE);
+            holder.libraryEntryAlbum.setVisibility(View.GONE);
+//            holder.libraryEntryArtist.setText("");
+//            holder.libraryEntryAlbum.setText("");
         }
         if (position % 2 == 0) {
             holder.libraryEntry.setBackgroundColor(
@@ -112,9 +122,23 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             if (browsable) {
                 fragment.browse(entryID);
             } else {
-                holder.moreActions.setVisibility(holder.moreActions.getVisibility() == View.VISIBLE ?
-                        View.GONE : View.VISIBLE
-                );
+                if (holder.moreActions.getVisibility() == View.VISIBLE) {
+                    holder.moreActions.setVisibility(View.GONE);
+                    holder.libraryEntryTitle.setEllipsize(TextUtils.TruncateAt.END);
+                    holder.libraryEntryArtist.setEllipsize(TextUtils.TruncateAt.END);
+                    holder.libraryEntryAlbum.setEllipsize(TextUtils.TruncateAt.END);
+                    holder.libraryEntryTitle.setSingleLine(true);
+                    holder.libraryEntryArtist.setSingleLine(true);
+                    holder.libraryEntryAlbum.setSingleLine(true);
+                } else {
+                    holder.moreActions.setVisibility(View.VISIBLE);
+                    holder.libraryEntryTitle.setEllipsize(null);
+                    holder.libraryEntryArtist.setEllipsize(null);
+                    holder.libraryEntryAlbum.setEllipsize(null);
+                    holder.libraryEntryTitle.setSingleLine(false);
+                    holder.libraryEntryArtist.setSingleLine(false);
+                    holder.libraryEntryAlbum.setSingleLine(false);
+                }
             }
         });
         holder.playAction.setOnClickListener(v -> fragment.play(entryID));
