@@ -224,7 +224,7 @@ public class MetaStorage {
                 if (index != 0) {
                     query.append(" AND ");
                 }
-                query.append(DB.Keyify(key)).append("=?");
+                query.append(DB.Keyify(key)).append(" GLOB ?");
                 index++;
             }
         }

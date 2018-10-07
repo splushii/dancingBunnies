@@ -32,7 +32,7 @@ dependencies {
     implementation 'com.google.android.material:material:1.0.0'
     implementation 'androidx.appcompat:appcompat:1.0.0'
     implementation 'androidx.mediarouter:mediarouter:1.0.0'
-    implementation 'com.google.android.gms:play-services-cast-framework:16.0.2'
+    implementation 'com.google.android.gms:play-services-cast-framework:16.0.3'
     implementation 'com.loopj.android:android-async-http:1.4.9'
     testImplementation 'junit:junit:4.12'
     // Android is missing ClassValue. Needed to update Lucene.
