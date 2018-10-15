@@ -14,7 +14,7 @@ class PlaybackQueue {
     private static final String LC = Util.getLogContext(PlaybackQueue.class);
     private LinkedList<PlaybackEntry> queue;
 
-    public Collection<? extends PlaybackEntry> poll(int num) {
+    Collection<? extends PlaybackEntry> poll(int num) {
         Log.d(LC, "poll(" + num + ")");
         List<PlaybackEntry> playbackEntries = new LinkedList<>();
         for (int i = 0; i < num; i++) {
@@ -31,7 +31,7 @@ class PlaybackQueue {
         return new ArrayList<>(queue);
     }
 
-    public void offer(List<PlaybackEntry> entries) {
+    void offer(List<PlaybackEntry> entries) {
         queue.addAll(0, entries);
     }
 
@@ -48,11 +48,11 @@ class PlaybackQueue {
         return queue.size();
     }
 
-    public boolean isEmpty() {
+    boolean isEmpty() {
         return queue.isEmpty();
     }
 
-    public Collection<? extends PlaybackEntry> getEntries(int max) {
+    Collection<? extends PlaybackEntry> getEntries(int max) {
         return queue.stream().limit(max).collect(Collectors.toList());
     }
 
@@ -91,20 +91,19 @@ class PlaybackQueue {
         return index;
     }
 
-    boolean removeFromQueue(int queuePosition) {
+    PlaybackEntry remove(int queuePosition) {
         if (queuePosition >= queue.size()) {
-            return false;
+            return null;
         }
-        queue.remove(queuePosition);
-        return true;
+        return queue.remove(queuePosition);
     }
 
     PlaybackEntry current() {
         return queue.peekFirst();
     }
 
-    void next() {
-        queue.pollFirst();
+    PlaybackEntry next() {
+        return queue.pollFirst();
     }
 
     PlaybackEntry skipTo(long queuePosition) {

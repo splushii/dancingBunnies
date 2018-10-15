@@ -78,7 +78,7 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.addQueueItem(entryID.toMediaDescriptionCompat());
     }
 
-    protected void dequeue(EntryID entryID, long pos) {
+    public void dequeue(EntryID entryID, long pos) {
         MediaDescriptionCompat mediaDescription = entryID.toMediaDescriptionCompat();
         assert mediaDescription.getExtras() != null;
         mediaDescription.getExtras().putLong(Meta.METADATA_KEY_QUEUE_POS, pos);
@@ -208,8 +208,8 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.getTransportControls().skipToNext();
     }
 
-    protected void skipTo(long position) {
-        mediaController.getTransportControls().skipToQueueItem(position);
+    public void skipItems(long offset) {
+        mediaController.getTransportControls().skipToQueueItem(offset);
     }
 
     public void seekTo(long position) {

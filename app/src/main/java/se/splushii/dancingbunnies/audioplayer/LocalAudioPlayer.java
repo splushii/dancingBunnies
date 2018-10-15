@@ -2,9 +2,11 @@ package se.splushii.dancingbunnies.audioplayer;
 
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
+import android.os.Bundle;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -199,11 +201,69 @@ class LocalAudioPlayer extends AudioPlayer {
 
     @Override
     CompletableFuture<Optional<String>> skipItems(int offset) {
+        Log.d(LC, "skipItems(" + offset + ")");
         if (offset == 0) {
             return actionResult(null);
         }
-        if (offset > getNumPreloaded()) {
-            addNewPreloadEntries(offset - getNumPreloaded());
+        if (offset == 1) {
+            return next();
+        }
+        MediaPlayerInstance nextPlayer = null;
+        if (offset > 0) {
+            // Skip forward
+            int numPlayerQueueEntries = queuePlayers.size();
+            int totalQueueEntries = numPlayerQueueEntries + audioPlayerCallback.getNumQueueEntries();
+            if (offset <= totalQueueEntries) {
+                // Play queue item at offset now
+                if (offset <= numPlayerQueueEntries) {
+                    // Move the queue entry to after current index and skip to next
+                    Log.d(LC, "skipItems short queue offset");
+                    nextPlayer = queuePlayers.remove(offset - 1);
+                } else {
+                    // Get the queue entry from PlaybackController, queue after current and play
+                    Log.d(LC, "skipItems long queue offset");
+                    nextPlayer = new MediaPlayerInstance(
+                            audioPlayerCallback.consumeQueueEntry(offset - 1)
+                    );
+                }
+            } else {
+                // Skip all playlist items until offset
+                offset -= numPlayerQueueEntries;
+                int numPlayerPlaylistEntries = getPreloadedPlaylistEntries(Integer.MAX_VALUE).size();
+                if (offset <= numPlayerPlaylistEntries) {
+                    // Dequeue all playlist items up until offset, then move offset to after current
+                    // index and skip to next
+                    Log.d(LC, "skipItems short playlist offset");
+                    for (int i = 0; i < offset; i++) {
+                        nextPlayer = playlistPlayers.poll();
+                        if (i < offset - 1 && nextPlayer != null) {
+                            nextPlayer.release();
+                        }
+                    }
+                } else {
+                    // Dequeue all playlist items. Consume and throw away all playlist items up
+                    // until offset. Insert and play offset.
+                    Log.d(LC, "skipItems long playlist offset");
+                    int consumeOffset = offset - numPlayerPlaylistEntries;
+                    for (MediaPlayerInstance mediaPlayerInstance: playlistPlayers) {
+                        mediaPlayerInstance.release();
+                    }
+                    playlistPlayers.clear();
+                    for (int i = 0; i < consumeOffset - 1; i++) {
+                        audioPlayerCallback.consumePlaylistEntry();
+                    }
+                    nextPlayer = new MediaPlayerInstance(
+                            audioPlayerCallback.consumePlaylistEntry()
+                    );
+                }
+            }
+        } else {
+            // Skip backward
+            // TODO: implement
+            return actionResult("Not implemented: skipItems backward");
+        }
+        if (nextPlayer == null) {
+            return actionResult("Internal error. Could not skip items.");
         }
         if (player != null) {
             player.stop();
@@ -211,35 +271,7 @@ class LocalAudioPlayer extends AudioPlayer {
             historyPlayers.add(player);
             player = null;
         }
-        MediaPlayerInstance nextPlayer = null;
-        if (offset > 0) {
-            // Skip forward
-            if (offset < queuePlayers.size()) {
-                // Remove the entry in the queue at offset and play that.
-                nextPlayer = queuePlayers.remove(offset);
-            } else {
-                // Do not touch the queue.
-                // Remove all entries in the playlist players list up until offset and play that.
-                offset -= queuePlayers.size();
-                for (;offset > 0; offset--) {
-                    if (nextPlayer != null) {
-                        nextPlayer.release();
-                    }
-                    if (!playlistPlayers.isEmpty()) {
-                        nextPlayer = playlistPlayers.poll();
-                    } else {
-                        break;
-                    }
-                }
-            }
-        } else {
-            // Skip backward
-            // TODO: Implement
-            actionResult("Not implemented");
-        }
-        if (nextPlayer != null) {
-            setCurrentPlayer(nextPlayer);
-        }
+        setCurrentPlayer(nextPlayer);
         updatePlaybackState();
         checkPreload();
         audioPlayerCallback.onPreloadChanged();
@@ -282,32 +314,49 @@ class LocalAudioPlayer extends AudioPlayer {
         return player.getCurrentPosition();
     }
 
-    @Override
-    List<PlaybackEntry> getPreloadedQueueEntries(int maxNum) {
+    private List<PlaybackEntry> getPreloadedEntries(int maxNum, List<MediaPlayerInstance> players) {
         List<PlaybackEntry> entries = new LinkedList<>();
-        for (MediaPlayerInstance p: queuePlayers) {
+        for (MediaPlayerInstance p: players) {
             if (entries.size() >= maxNum) {
                 return entries;
             }
-            entries.add(new PlaybackEntry(p.playbackEntry.meta));
+            Bundle b = p.playbackEntry.meta.getBundle();
+            b.putString(
+                    Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS,
+                    PlaybackEntry.PRELOADSTATUS_PRELOADED
+            );
+            entries.add(new PlaybackEntry(Meta.from(b)));
         }
         return entries;
+    }
+
+    @Override
+    List<PlaybackEntry> getPreloadedQueueEntries(int maxNum) {
+        return getPreloadedEntries(maxNum, queuePlayers);
     }
 
     @Override
     List<PlaybackEntry> getPreloadedPlaylistEntries(int maxNum) {
-        List<PlaybackEntry> entries = new LinkedList<>();
-        for (MediaPlayerInstance p: playlistPlayers) {
-            if (entries.size() >= maxNum) {
-                return entries;
-            }
-            entries.add(new PlaybackEntry(p.playbackEntry.meta));
-        }
-        return entries;
+        return getPreloadedEntries(maxNum, playlistPlayers);
     }
 
     @Override
     CompletableFuture<Optional<String>> queue(PlaybackEntry playbackEntry, PlaybackQueue.QueueOp op) {
+        if (getNumPreloaded() > NUM_TO_PRELOAD) {
+            if (playlistPlayers.isEmpty()) {
+                audioPlayerCallback.dePreload(
+                        Collections.singletonList(playbackEntry),
+                        Collections.emptyList()
+                );
+                return actionResult(null);
+            }
+            PlaybackEntry playbackEntryToRemove =
+                    playlistPlayers.remove(playlistPlayers.size() - 1).playbackEntry;
+            audioPlayerCallback.dePreload(
+                    Collections.emptyList(),
+                    Collections.singletonList(playbackEntryToRemove)
+            );
+        }
         MediaPlayerInstance playerInstance = new MediaPlayerInstance(playbackEntry);
         playerInstance.preload();
         if (player == null) {
@@ -328,6 +377,19 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
+    CompletableFuture<Optional<String>> dequeue(int queuePosition) {
+        if (queuePosition < 0) {
+            return actionResult("Can not dequeue negative index: " + queuePosition);
+        }
+        if (queuePosition < queuePlayers.size()) {
+            queuePlayers.remove(queuePosition).release();
+            return actionResult(null);
+        }
+        audioPlayerCallback.consumeQueueEntry(queuePosition - queuePlayers.size());
+        return actionResult(null);
+    }
+
+    @Override
     public CompletableFuture<Optional<String>> previous() {
         // TODO: implement
         Log.e(LC, "previous not implemented");
@@ -341,6 +403,11 @@ class LocalAudioPlayer extends AudioPlayer {
         private boolean buffering = false;
 
         MediaPlayerInstance(PlaybackEntry playbackEntry) {
+            reconstruct();
+            this.playbackEntry = playbackEntry;
+        }
+
+        private void reconstruct() {
             mediaPlayer = new MediaPlayer();
             mediaPlayer.setAudioAttributes(
                     new AudioAttributes.Builder()
@@ -372,12 +439,14 @@ class LocalAudioPlayer extends AudioPlayer {
                 }
             });
             state = MediaPlayerState.IDLE;
-            this.playbackEntry = playbackEntry;
         }
 
         void preload() {
             switch (state) {
                 case IDLE:
+                    break;
+                case NULL:
+                    reconstruct();
                     break;
                 default:
                     Log.w(LC, "MediaPlayer(" + title() + ") preload in wrong state: " + state);

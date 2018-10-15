@@ -7,13 +7,12 @@ import java.util.concurrent.CompletableFuture;
 
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 
-public abstract class AudioPlayer {
-    public static AudioPlayerState EmptyState = new AudioPlayer.AudioPlayerState(
+abstract class AudioPlayer {
+    static AudioPlayerState EmptyState = new AudioPlayer.AudioPlayerState(
             new LinkedList<>(),
             new LinkedList<>(),
             0
     );
-
 
     enum Type {
         LOCAL,
@@ -31,6 +30,7 @@ public abstract class AudioPlayer {
     abstract List<PlaybackEntry> getPreloadedQueueEntries(int maxNum);
     abstract List<PlaybackEntry> getPreloadedPlaylistEntries(int maxNum);
     abstract CompletableFuture<Optional<String>> queue(PlaybackEntry playbackEntry, PlaybackQueue.QueueOp op);
+    abstract CompletableFuture<Optional<String>> dequeue(int queuePosition);
     abstract CompletableFuture<Optional<String>> play();
     abstract CompletableFuture<Optional<String>> pause();
     abstract CompletableFuture<Optional<String>> stop();
@@ -44,7 +44,10 @@ public abstract class AudioPlayer {
         void onMetaChanged(EntryID entryID);
         void onPreloadChanged();
         void dePreload(List<PlaybackEntry> queueEntries, List<PlaybackEntry> playlistEntries);
+        int getNumQueueEntries();
         List<PlaybackEntry> requestPreload(int num);
+        PlaybackEntry consumeQueueEntry(int offset);
+        PlaybackEntry consumePlaylistEntry();
     }
 
     CompletableFuture<Optional<String>> actionResult(String error) {

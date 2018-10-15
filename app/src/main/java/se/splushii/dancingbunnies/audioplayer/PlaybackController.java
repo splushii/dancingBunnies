@@ -39,7 +39,7 @@ import se.splushii.dancingbunnies.util.Util;
 // It is responsible for shifting state between audio players.
 
 // TODO: Sequentialize control calls to AudioPlayers here, to avoid doing it in every AudioPlayer.
-public class PlaybackController {
+class PlaybackController {
     private static final String LC = Util.getLogContext(PlaybackController.class);
 
     private final Context context;
@@ -63,7 +63,7 @@ public class PlaybackController {
     private long playlistPosition = 0;
 
     // Internal state
-    private boolean playWhenReady;
+    private boolean isPlaying;
 
     PlaybackController(Context context, MusicLibraryService musicLibraryService, Callback callback) {
         this.context = context;
@@ -84,8 +84,8 @@ public class PlaybackController {
         sessionManager.addSessionManagerListener(sessionManagerListener);
     }
 
-    public void initialize() {
-        playWhenReady = false;
+    void initialize() {
+        isPlaying = false;
         audioPlayer.checkPreload();
     }
 
@@ -93,60 +93,57 @@ public class PlaybackController {
         sessionManager.removeSessionManagerListener(sessionManagerListener);
     }
 
-    public long getPlayerSeekPosition() {
+    long getPlayerSeekPosition() {
         return audioPlayer.getSeekPosition();
     }
 
-    public PlaylistItem getCurrentPlaylist() {
+    PlaylistItem getCurrentPlaylist() {
         return currentPlaylist;
     }
 
-    public CompletableFuture<Optional<String>> play() {
-        playWhenReady = true;
+    CompletableFuture<Optional<String>> play() {
         return audioPlayer.play().thenApply(e -> {
             e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
             return e;
         });
     }
 
-    public CompletableFuture<Optional<String>> pause() {
-        playWhenReady = false;
+    CompletableFuture<Optional<String>> pause() {
         return audioPlayer.pause().thenApply(e -> {
             e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
             return e;
         });
     }
 
-    public CompletableFuture<Optional<String>> playPause() {
-        return playWhenReady ? pause() : play();
+    CompletableFuture<Optional<String>> playPause() {
+        return isPlaying ? pause() : play();
     }
 
-    public CompletableFuture<Optional<String>> stop() {
-        playWhenReady = false;
+    CompletableFuture<Optional<String>> stop() {
         return audioPlayer.stop().thenApply(e -> {
             e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
             return e;
         });
     }
 
-    public CompletableFuture<Optional<String>> skipToNext() {
+    CompletableFuture<Optional<String>> skipToNext() {
         return audioPlayer.next().thenApply(e -> {
             e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
             return e;
         });
     }
 
-    public void skipToPrevious() {
+    void skipToPrevious() {
         // TODO: implement
         Log.e(LC, "skipToPrevious not implemented");
     }
 
-    public void skipItems(int offset) {
+    void skipItems(int offset) {
         audioPlayer.skipItems(offset);
     }
 
-    public CompletableFuture<Optional<String>> addToQueue(PlaybackEntry playbackEntry, PlaybackQueue.QueueOp op) {
-        Log.e(LC, "addToQueue: " + playbackEntry.toString());
+    CompletableFuture<Optional<String>> addToQueue(PlaybackEntry playbackEntry, PlaybackQueue.QueueOp op) {
+        Log.d(LC, "addToQueue: " + playbackEntry.toString());
         return audioPlayer.queue(playbackEntry, op).thenApply(e -> {
             if (e.isPresent()) {
                 Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
@@ -157,41 +154,49 @@ public class PlaybackController {
         });
     }
 
-    public void removeFromQueue(int queuePosition) {
-        // TODO: implement
-        Log.e(LC, "removeFromQueue not implemented");
-//        if (queue.removeFromQueue(queuePosition)) {
-//            // Update controller state
-//            callback.onQueueChanged();
-//            updateCurrentEntry();
-//            // Update AudioPlayer preload
-//            updateAudioPlayerPreload().thenAccept(e ->
-//                    e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show())
-//            );
-//        }
+    CompletableFuture<Optional<String>> removeFromQueue(int queuePosition) {
+        return audioPlayer.dequeue(queuePosition).thenApply(e -> {
+            if (e.isPresent()) {
+                Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
+            } else {
+                callback.onQueueChanged(getQueue());
+            }
+            return e;
+        });
     }
 
-    public CompletableFuture<Optional<String>> seekTo(long pos) {
+    CompletableFuture<Optional<String>> seekTo(long pos) {
         return audioPlayer.seekTo(pos).thenApply(e -> {
             e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
             return e;
         });
     }
 
-    public CompletableFuture<Optional<String>> playNow(PlaybackEntry playbackEntry) {
-        playWhenReady = true;
+    CompletableFuture<Optional<String>> playNow(PlaybackEntry playbackEntry) {
         return addToQueue(playbackEntry, PlaybackQueue.QueueOp.NEXT).thenCompose(e -> {
             if (e.isPresent()) {
                 Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
                 return CompletableFuture.completedFuture(Optional.of(""));
             }
             return skipToNext();
+        }).thenCompose(e -> {
+            if (e.isPresent()) {
+                Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
+                return CompletableFuture.completedFuture(Optional.of(""));
+            }
+            return play();
         });
     }
 
-    public List<MediaSessionCompat.QueueItem> getQueue() {
+    List<MediaSessionCompat.QueueItem> getQueue() {
         List<MediaSessionCompat.QueueItem> queueItems = new LinkedList<>();
         List<PlaybackEntry> entries = new LinkedList<>();
+        for (PlaybackEntry entry: audioPlayer.getPreloadedPlaylistEntries(Integer.MAX_VALUE)) {
+            entry.meta.getBundle().putString(
+                    Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS,
+                    PlaybackEntry.PRELOADSTATUS_PRELOADED
+            );
+        }
         entries.addAll(audioPlayer.getPreloadedQueueEntries(Integer.MAX_VALUE));
         entries.addAll(queue.getEntries());
         for (PlaybackEntry playbackEntry: entries) {
@@ -205,7 +210,7 @@ public class PlaybackController {
         return queueItems;
     }
 
-    public List<PlaybackEntry> getPlaylistEntries(int maxNum) {
+    List<PlaybackEntry> getPlaylistEntries(int maxNum) {
         List<PlaybackEntry> entries = audioPlayer.getPreloadedPlaylistEntries(maxNum);
         if (entries.size() < maxNum) {
             entries.addAll(playlistItems.getEntries(maxNum - entries.size()));
@@ -231,9 +236,7 @@ public class PlaybackController {
     private class AudioPlayerCallback implements AudioPlayer.Callback {
         @Override
         public void onStateChanged(int newPlaybackState) {
-            if (PlaybackStateCompat.STATE_STOPPED == newPlaybackState) {
-                playWhenReady = false;
-            }
+            isPlaying = newPlaybackState  == PlaybackStateCompat.STATE_PLAYING;
             callback.onStateChanged(newPlaybackState);
         }
 
@@ -251,6 +254,34 @@ public class PlaybackController {
         @Override
         public List<PlaybackEntry> requestPreload(int num) {
             return pollNextPreloadItems(num);
+        }
+
+        @Override
+        public int getNumQueueEntries() {
+            return queue.size();
+        }
+
+        @Override
+        public PlaybackEntry consumeQueueEntry(int offset) {
+            return queue.remove(offset);
+        }
+
+        @Override
+        public PlaybackEntry consumePlaylistEntry() {
+            if (!playlistItems.isEmpty()) {
+                return playlistItems.next();
+            }
+            List<PlaybackEntry> playbackEntries = musicLibraryService.playlistGetNext(
+                    currentPlaylist.playlistID,
+                    playlistPosition,
+                    1
+            );
+            playlistPosition = musicLibraryService.playlistPosition(
+                    currentPlaylist.playlistID,
+                    playlistPosition,
+                    playbackEntries.size()
+            );
+            return playbackEntries.size() > 0 ? playbackEntries.get(0) : null;
         }
 
         @Override

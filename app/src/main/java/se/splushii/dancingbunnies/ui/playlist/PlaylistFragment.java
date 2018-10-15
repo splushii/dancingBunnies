@@ -2,10 +2,7 @@ package se.splushii.dancingbunnies.ui.playlist;
 
 import android.os.Bundle;
 import android.util.Log;
-import android.view.ContextMenu;
 import android.view.LayoutInflater;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -19,7 +16,6 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
 import se.splushii.dancingbunnies.util.Util;
 
 public class PlaylistFragment extends AudioBrowserFragment {
@@ -96,34 +92,8 @@ public class PlaylistFragment extends AudioBrowserFragment {
     }
 
     @Override
-    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-        super.onCreateContextMenu(menu, v, menuInfo);
-        MenuInflater menuInflater = getActivity().getMenuInflater();
-        menuInflater.inflate(R.menu.playlist_menu, menu);
-    }
-
-    @Override
-    public boolean onContextItemSelected(MenuItem item) {
-        int position = recViewAdapter.getContextMenuHolder().getAdapterPosition();
-        PlaylistItem playlistItem = recViewAdapter.getPlaylistItemData(position);
-        Log.d(LC, "info pos: " + position);
-        switch (item.getItemId()) {
-            case R.id.playlist_context_play:
-                Log.d(LC, "playlist context play");
-                return true;
-            case R.id.playlist_context_dequeue:
-                Log.d(LC, "playlist context dequeue");
-                return true;
-            default:
-                Log.d(LC, "playlist context unknown");
-                return super.onContextItemSelected(item);
-        }
-    }
-
-    @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        registerForContextMenu(recView);
     }
 
     private void addBackButtonHistory(PlaylistUserState libView) {

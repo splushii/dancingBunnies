@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/playlist_context_play"
+        android:id="@+id/nowplaying_queueitem_contextmenu_play"
         android:title="@string/playlist_context_play" />
     <item
-        android:id="@+id/playlist_context_dequeue"
+        android:id="@+id/nowplaying_queueitem_contextmenu_dequeue"
         android:title="@string/playlist_context_dequeue" />
 </menu>

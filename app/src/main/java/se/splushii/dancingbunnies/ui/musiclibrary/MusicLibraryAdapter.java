@@ -66,7 +66,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     public SongViewHolder onCreateViewHolder(@NonNull ViewGroup parent,
                                              int viewType) {
         View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.musiclibrary_item_browsable, parent, false);
+                .inflate(R.layout.musiclibrary_item, parent, false);
         return new SongViewHolder(v);
     }
 

@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
 import se.splushii.dancingbunnies.util.Util;
@@ -61,16 +62,24 @@ public class NowPlayingEntriesAdapter
     }
 
     static class SongViewHolder extends RecyclerView.ViewHolder {
-        private final View queueEntry;
-        private final TextView queueMoreInfo;
-        private final TextView queueArtist;
-        TextView queueTitle;
+        private final View item;
+        private final TextView moreInfo;
+        private final TextView artist;
+        private final View moreActions;
+        private final View actionPlay;
+        private final View actionDequeue;
+        private final View overflowMenu;
+        TextView title;
         SongViewHolder(View v) {
             super(v);
-            queueEntry = v.findViewById(R.id.queue_entry);
-            queueTitle = v.findViewById(R.id.queue_title);
-            queueArtist = v.findViewById(R.id.queue_artist);
-            queueMoreInfo = v.findViewById(R.id.queue_more_info);
+            item = v.findViewById(R.id.nowplaying_item);
+            title = v.findViewById(R.id.nowplaying_item_title);
+            artist = v.findViewById(R.id.nowplaying_item_artist);
+            moreInfo = v.findViewById(R.id.nowplaying_item_more_info);
+            moreActions = v.findViewById(R.id.nowplaying_item_more_actions);
+            actionPlay = v.findViewById(R.id.nowplaying_item_action_play);
+            actionDequeue = v.findViewById(R.id.nowplaying_item_action_dequeue);
+            overflowMenu = v.findViewById(R.id.nowplaying_item_overflow_menu);
         }
     }
 
@@ -103,7 +112,7 @@ public class NowPlayingEntriesAdapter
     }
 
     @Override
-    public void onBindViewHolder(@NonNull final NowPlayingEntriesAdapter.SongViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull final SongViewHolder holder, int position) {
         MediaMetadataCompat meta;
         int queueSize = queueData.size();
         switch (getItemViewType(position)) {
@@ -111,28 +120,45 @@ public class NowPlayingEntriesAdapter
             case VIEWTYPE_QUEUE_ITEM:
                 QueueItem item = queueData.get(position);
                 meta = Meta.desc2meta(item.getDescription());
+                holder.actionDequeue.setVisibility(View.VISIBLE);
                 break;
             case VIEWTYPE_PLAYLIST_NEXT:
                 int nextPos = position - queueSize;
                 PlaybackEntry playbackEntry = playlistNext.get(nextPos);
                 meta = playbackEntry.meta;
+                holder.actionDequeue.setVisibility(View.GONE);
                 break;
 
         }
         String title = meta.getString(Meta.METADATA_KEY_TITLE);
-        holder.queueEntry.setOnClickListener(view -> {
+        holder.item.setOnClickListener(view ->
+                holder.moreActions.setVisibility(
+                        holder.moreActions.getVisibility() == View.VISIBLE ?
+                                View.GONE : View.VISIBLE
+                )
+        );
+        holder.actionPlay.setOnClickListener(view -> {
+            context.skipItems(position + 1);
+            context.play();
+        });
+        holder.actionDequeue.setOnClickListener(view ->
+                context.dequeue(EntryID.from(meta), position)
+        );
+        holder.overflowMenu.setOnClickListener(view -> {
             contextMenuHolder = holder;
             view.showContextMenu();
         });
-        holder.queueEntry.setOnLongClickListener(view -> {
+        holder.item.setOnLongClickListener(view -> {
             Log.d(LC, "onLongClick on " + title);
             return false;
         });
-        holder.queueTitle.setText(title);
+        holder.title.setText(title);
         String artist = meta.getString(Meta.METADATA_KEY_ARTIST);
-        holder.queueArtist.setText(artist);
+        holder.artist.setText(artist);
         String src = meta.getString(Meta.METADATA_KEY_API);
-        holder.queueMoreInfo.setText(src);
+        String preloadStatus = meta.getString(Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS);
+        String moreInfoText = preloadStatus == null ? src : "(" + preloadStatus + ") " + src;
+        holder.moreInfo.setText(moreInfoText);
     }
 
     @Override

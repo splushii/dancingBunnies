@@ -160,27 +160,28 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, v, menuInfo);
         MenuInflater menuInflater = getActivity().getMenuInflater();
-        menuInflater.inflate(R.menu.song_menu, menu);
+        menuInflater.inflate(R.menu.musiclibrary_item_contextmenu, menu);
     }
 
     @Override
     public boolean onContextItemSelected(MenuItem item) {
+        int menuItemId = item.getItemId();
+        if (menuItemId != R.id.musiclibrary_item_contextmenu_play
+                && menuItemId != R.id.musiclibrary_item_contextmenu_queue) {
+            return false;
+        }
         int position = recyclerViewAdapter.getContextMenuHolder().getAdapterPosition();
         EntryID entryID = EntryID.from(recyclerViewAdapter.getItemData(position));
         Log.d(LC, "info pos: " + position);
-        switch (item.getItemId()) {
-            case R.id.song_context_play:
+        switch (menuItemId) {
+            case R.id.musiclibrary_item_contextmenu_play:
                 play(entryID);
                 Log.d(LC, "song context play");
-                return true;
-            case R.id.song_context_queue:
+            case R.id.musiclibrary_item_contextmenu_queue:
                 queue(entryID);
                 Log.d(LC, "song context queue");
-                return true;
-            default:
-                Log.d(LC, "song context unknown");
-                return super.onContextItemSelected(item);
         }
+        return true;
     }
 
     @Override

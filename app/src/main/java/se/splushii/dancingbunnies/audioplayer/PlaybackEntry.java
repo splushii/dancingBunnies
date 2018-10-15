@@ -11,6 +11,10 @@ public class PlaybackEntry implements Parcelable {
     public static final String USER_TYPE_PLAYLIST = "playlist";
     public static final String USER_TYPE_QUEUE = "queue";
     public static final String USER_TYPE_EXTERNAL = "external";
+    public static final String PRELOADSTATUS_NOT_PRELOADED = "not_preloaded";
+    public static final String PRELOADSTATUS_PRELOADED = "preloaded";
+    public static final String PRELOADSTATUS_CACHED = "cached";
+
     public final MediaMetadataCompat meta;
     public final EntryID entryID;
     public final String playbackType;

@@ -29,7 +29,6 @@ public class PlaylistAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private List<LibraryEntry> playlistEntriesDataset;
 
     private final PlaylistFragment fragment;
-    private RecyclerView.ViewHolder contextMenuHolder;
     private boolean playlistMode = true;
     private PlaylistItem currentPlaylistItem;
 
@@ -158,10 +157,6 @@ public class PlaylistAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     @Override
     public int getItemCount() {
         return playlistMode ? playlistDataset.size() : playlistEntriesDataset.size();
-    }
-
-    RecyclerView.ViewHolder getContextMenuHolder() {
-        return contextMenuHolder;
     }
 
     void setPlaylistDataSet(List<PlaylistItem> playlists) {

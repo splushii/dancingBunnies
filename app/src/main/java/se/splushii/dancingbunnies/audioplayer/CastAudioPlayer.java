@@ -1,5 +1,6 @@
 package se.splushii.dancingbunnies.audioplayer;
 
+import android.os.Bundle;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
@@ -16,13 +17,12 @@ import com.google.android.gms.cast.framework.media.RemoteMediaClient;
 import com.google.android.gms.common.api.PendingResult;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -42,13 +42,12 @@ public class CastAudioPlayer extends AudioPlayer {
     private int playerState;
     private int idleReason;
     private SparseArray<MediaQueueItem> queueItemMap;
-    private CompletableFuture<Optional<String>> lastActionFuture;
-    private final Object lastActionFutureLock = new Object();
     private boolean playWhenReady = false;
     private long lastPos = 0;
     private int[] lastItemIds = new int[0];
     private int lastCurrentItemId;
     private SparseArray<MediaQueueItem> lastQueueItemMap;
+    private final Object preloadLock = new Object();
 
     private enum PlayerAction {
         PLAY,
@@ -63,7 +62,6 @@ public class CastAudioPlayer extends AudioPlayer {
         super(audioPlayerCallback);
         this.musicLibraryService = musicLibraryService;
         queueItemMap = new SparseArray<>();
-        lastActionFuture = CompletableFuture.completedFuture(Optional.empty());
         remoteMediaClient = castSession.getRemoteMediaClient();
         remoteMediaClient.registerCallback(remoteMediaClientCallback);
         mediaQueue = remoteMediaClient.getMediaQueue();
@@ -119,16 +117,12 @@ public class CastAudioPlayer extends AudioPlayer {
             return actionResult(null);
         }
         Log.d(LC, "play()");
-        return sequentialize(e -> {
-            Log.d(LC, "play() start");
-            playWhenReady = true;
-            return playerAction(PlayerAction.PLAY).thenCompose(e2 -> {
-                if (e2.isPresent()) {
-                    return CompletableFuture.completedFuture(e2);
-                }
-                return setAutoPlay(playWhenReady);
-            });
-        });
+        playWhenReady = true;
+        return playerAction(
+                PlayerAction.PLAY
+        ).thenCompose(e -> e.isPresent() ? CompletableFuture.completedFuture(e) :
+                setAutoPlay(playWhenReady)
+        );
     }
 
     @Override
@@ -140,16 +134,12 @@ public class CastAudioPlayer extends AudioPlayer {
             return actionResult(null);
         }
         Log.d(LC, "pause()");
-        return sequentialize(e -> {
-            Log.d(LC, "pause() start");
-            playWhenReady = false;
-            return playerAction(PlayerAction.PAUSE).thenCompose(e2 -> {
-                if (e2.isPresent()) {
-                    return CompletableFuture.completedFuture(e2);
-                }
-                return setAutoPlay(playWhenReady);
-            });
-        });
+        playWhenReady = false;
+        return playerAction(
+                PlayerAction.PAUSE
+        ).thenCompose(e -> e.isPresent() ? CompletableFuture.completedFuture(e) :
+                setAutoPlay(playWhenReady)
+        );
     }
 
     @Override
@@ -161,40 +151,33 @@ public class CastAudioPlayer extends AudioPlayer {
             return actionResult(null);
         }
         Log.d(LC, "stop()");
-        return sequentialize(e -> {
-            Log.d(LC, "stop() start");
-            playWhenReady = false;
-            return playerAction(PlayerAction.STOP).thenCompose(e2 -> {
-                if (e2.isPresent()) {
-                    return CompletableFuture.completedFuture(e2);
-                }
-                return setAutoPlay(playWhenReady);
-            });
-        });
+        playWhenReady = false;
+        return playerAction(
+                PlayerAction.STOP
+        ).thenCompose(e -> e.isPresent() ? CompletableFuture.completedFuture(e) :
+                setAutoPlay(playWhenReady)
+        );
     }
 
     @Override
     public CompletableFuture<Optional<String>> seekTo(long pos) {
         Log.d(LC, "seekTo()");
-        return sequentialize(e -> {
-            Log.d(LC, "seekTo() start");
-            CompletableFuture<Optional<String>> result = new CompletableFuture<>();
-            if (remoteMediaClient == null) {
-                return actionResult("seekTo(): remoteMediaClient is null");
+        CompletableFuture<Optional<String>> result = new CompletableFuture<>();
+        if (remoteMediaClient == null) {
+            return actionResult("seekTo(): remoteMediaClient is null");
+        }
+        Log.d(LC, "playerAction: seekTo(" + pos + ") in state: "
+                + getStateString(remoteMediaClient.getPlayerState()));
+        remoteMediaClient.seek(pos).setResultCallback(r -> {
+            logResult("seek", r);
+            if (r.getStatus().isSuccess()) {
+                result.complete(null);
+            } else {
+                result.complete(Optional.of("Could not seek: " + getResultString(r)));
             }
-            Log.d(LC, "playerAction: seekTo(" + pos + ") in state: "
-                    + getStateString(remoteMediaClient.getPlayerState()));
-            remoteMediaClient.seek(pos).setResultCallback(r -> {
-                logResult("seek", r);
-                if (r.getStatus().isSuccess()) {
-                    result.complete(null);
-                } else {
-                    result.complete(Optional.of("Could not seek: " + getResultString(r)));
-                }
-            });
-            remoteMediaClientResultCallbackTimeout(result);
-            return result;
         });
+        remoteMediaClientResultCallbackTimeout(result);
+        return result;
     }
 
     private int getCurrentItemId() {
@@ -219,6 +202,13 @@ public class CastAudioPlayer extends AudioPlayer {
             return 0;
         }
         return mediaQueue.getItemCount() - currentItemIndex;
+    }
+
+    private PlaybackEntry mediaQueueItem2PlaybackEntry(MediaQueueItem mediaQueueItem) {
+        MediaMetadata castMeta = mediaQueueItem == null ?
+                Meta.from(Meta.UNKNOWN_ENTRY, PlaybackEntry.USER_TYPE_EXTERNAL) :
+                mediaQueueItem.getMedia().getMetadata();
+        return new PlaybackEntry(Meta.from(castMeta));
     }
 
     private List<MediaMetadata> getEntriesMeta(boolean excludeCurrentItem) {
@@ -259,7 +249,13 @@ public class CastAudioPlayer extends AudioPlayer {
             if (entries.size() > maxNum) {
                 break;
             }
-            PlaybackEntry playbackEntry = new PlaybackEntry(Meta.from(castMeta));
+            Bundle extras = new Bundle();
+            extras.putString(
+                    Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS,
+                    PlaybackEntry.PRELOADSTATUS_PRELOADED
+            );
+            PlaybackEntry playbackEntry = new PlaybackEntry(Meta.from(castMeta, extras));
+            Meta.print(playbackEntry.meta);
             if (playbackEntry.playbackType.equals(type)) {
                 entries.add(playbackEntry);
             }
@@ -277,29 +273,87 @@ public class CastAudioPlayer extends AudioPlayer {
         return getEntriesOfType(PlaybackEntry.USER_TYPE_PLAYLIST, maxNum);
     }
 
+    private List<Integer> getItemIdsOfType(String type) {
+        List<Integer> itemIds = new LinkedList<>();
+        for (int itemId: mediaQueue.getItemIds()) {
+            if (type.equals(queueItemMap.get(itemId).getMedia().getMetadata().getString(
+                    Meta.METADATA_KEY_PLAYBACK_TYPE))) {
+                itemIds.add(itemId);
+            }
+        }
+        return itemIds;
+    }
+
+    List<Integer> getQueueItemIds() {
+        return getItemIdsOfType(PlaybackEntry.USER_TYPE_QUEUE);
+    }
+
+    List<Integer> getPlaylistItemIds() {
+        return getItemIdsOfType(PlaybackEntry.USER_TYPE_PLAYLIST);
+    }
+
     @Override
     CompletableFuture<Optional<String>> queue(PlaybackEntry playbackEntry, PlaybackQueue.QueueOp op) {
-        Log.d(LC, "queue()");
-        return sequentialize(e -> {
-            Log.d(LC, "queue() start");
-            int currentIndex = getCurrentIndex();
-            int numQueueEntries = getPreloadedQueueEntries(Integer.MAX_VALUE).size();
-            int beforeItemId;
-            switch (op) {
-                case NEXT:
-                    beforeItemId = mediaQueue.itemIdAtIndex(currentIndex + 1);
-                    break;
-                case LAST:
-                default:
-                    beforeItemId = mediaQueue.itemIdAtIndex(currentIndex + numQueueEntries + 1);
-                    break;
+        CompletableFuture<Optional<String>> result = CompletableFuture.completedFuture(Optional.empty());
+        int numQueueEntries = getPreloadedQueueEntries(Integer.MAX_VALUE).size();
+        if (getNumPreloaded() > NUM_TO_PRELOAD) {
+            List<Integer> playlistItemIds = getPlaylistItemIds();
+            if (playlistItemIds.isEmpty()) {
+                audioPlayerCallback.dePreload(
+                        Collections.singletonList(playbackEntry),
+                        Collections.emptyList()
+                );
+                return actionResult(null);
             }
-            if (remoteMediaClient == null) {
-                return actionResult("queue(): remoteMediaClient is null");
-            }
-            CompletableFuture<Optional<String>> result = new CompletableFuture<>();
-            Log.d(LC, "queue() inserting " + playbackEntry.toString()
-                            + " before itemId " + beforeItemId);
+            int itemIdToRemove = playlistItemIds.get(playlistItemIds.size() - 1);
+            PlaybackEntry playlistEntryToRemove = mediaQueueItem2PlaybackEntry(
+                    queueItemMap.get(itemIdToRemove)
+            );
+            result = result.thenCompose(e -> {
+                CompletableFuture<Optional<String>> result2 = new CompletableFuture<>();
+                // Remove last playlistentry
+                remoteMediaClient.queueRemoveItems(
+                        new int[]{itemIdToRemove},
+                        null
+                ).setResultCallback(r -> {
+                    logResult("queue() queueRemoveItems superfluous playlist entry", r);
+                    if (r.getStatus().isSuccess()) {
+                        audioPlayerCallback.dePreload(
+                                Collections.emptyList(),
+                                Collections.singletonList(playlistEntryToRemove)
+                        );
+                        result2.complete(Optional.empty());
+                    } else {
+                        result2.complete(
+                                Optional.of("Could not insert queue item "
+                                        + playbackEntry.toString() + ": " + getResultString(r))
+                        );
+                    }
+                });
+                remoteMediaClientResultCallbackTimeout(result2);
+                return result2;
+            });
+        }
+        int currentIndex = getCurrentIndex();
+        int beforeItemId;
+        switch (op) {
+            case NEXT:
+                beforeItemId = mediaQueue.itemIdAtIndex(currentIndex + 1);
+                break;
+            case LAST:
+            default:
+                beforeItemId = mediaQueue.itemIdAtIndex(currentIndex + numQueueEntries + 1);
+                break;
+        }
+        if (remoteMediaClient == null) {
+            return actionResult("queue(): remoteMediaClient is null");
+        }
+        logCurrentQueue();
+        Log.d(LC, "queue() inserting " + playbackEntry.toString()
+                        + " before itemId " + beforeItemId);
+        result = result.thenCompose(e -> {
+            if (e.isPresent()) { return CompletableFuture.completedFuture(e); }
+            CompletableFuture<Optional<String>> result2 = new CompletableFuture<>();
             remoteMediaClient.queueInsertItems(
                     new MediaQueueItem[]{buildMediaQueueItem(playbackEntry, playWhenReady)},
                     beforeItemId,
@@ -307,17 +361,55 @@ public class CastAudioPlayer extends AudioPlayer {
             ).setResultCallback(r -> {
                 logResult("queue() queueInsertItems", r);
                 if (r.getStatus().isSuccess()) {
+                    result2.complete(Optional.empty());
+                } else {
+                    result2.complete(
+                            Optional.of("Could not insert queue item " + playbackEntry.toString()
+                                    + ": " + getResultString(r))
+                    );
+                }
+            });
+            remoteMediaClientResultCallbackTimeout(result2);
+           return result2;
+        });
+        return result;
+    }
+
+    @Override
+    CompletableFuture<Optional<String>> dequeue(int queuePosition) {
+        if (queuePosition < 0) {
+            return actionResult("Can not dequeue negative index: " + queuePosition);
+        }
+        List<PlaybackEntry> queueEntries = getPreloadedQueueEntries(Integer.MAX_VALUE);
+        if (queuePosition < queueEntries.size()) {
+            CompletableFuture<Optional<String>> result = new CompletableFuture<>();
+            PlaybackEntry playbackEntry = queueEntries.get(queuePosition);
+            int mediaQueueItemIndex = getCurrentIndex() + queuePosition + 1;
+            int mediaQueueItemId = mediaQueue.itemIdAtIndex(mediaQueueItemIndex);
+            logCurrentQueue();
+            Log.d(LC, "dequeue() removing " + playbackEntry.toString()
+                    + " at position " + queuePosition
+                    + " mediaQueue(index: " + mediaQueueItemIndex
+                    + ", id: " + mediaQueueItemId + ")");
+            remoteMediaClient.queueRemoveItems(
+                    new int[]{mediaQueueItemId},
+                    null
+            ).setResultCallback(r -> {
+                logResult("dequeue() queueRemoveItem", r);
+                if (r.getStatus().isSuccess()) {
                     result.complete(Optional.empty());
                 } else {
                     result.complete(
-                            Optional.of("Could not insert queue item " + playbackEntry.toString()
+                            Optional.of("Could not remove queue item " + playbackEntry.toString()
                                     + ": " + getResultString(r))
                     );
                 }
             });
             remoteMediaClientResultCallbackTimeout(result);
             return result;
-        });
+        }
+        audioPlayerCallback.consumeQueueEntry(queuePosition - queueEntries.size());
+        return actionResult(null);
     }
 
     private void remoteMediaClientResultCallbackTimeout(
@@ -325,11 +417,10 @@ public class CastAudioPlayer extends AudioPlayer {
         // Sometimes remoteMediaClient errors with:
         //   E/RemoteMediaClient: Result already set when calling onRequestCompleted
         //   java.lang.IllegalStateException: Results have already been set
-        // No ResultCallback is then issued, which gives a deadlock with sequentialize().
-        // This timeout avoids the deadlock. Sleep time may need to be higher or could be lower.
+        // No ResultCallback is then issued, which deadlocks wrapping futures.
         CompletableFuture.runAsync(() -> {
             try {
-                Thread.sleep(1000);
+                Thread.sleep(5000);
             } catch (InterruptedException e1) {
                 e1.printStackTrace();
             }
@@ -339,20 +430,10 @@ public class CastAudioPlayer extends AudioPlayer {
         });
     }
 
-    private CompletableFuture<Optional<String>> sequentialize(
-            Function<? super Optional<String>, ? extends CompletionStage<Optional<String>>> func) {
-        CompletableFuture<Optional<String>> future;
-        synchronized (lastActionFutureLock) {
-            future = lastActionFuture.thenCompose(func);
-            lastActionFuture = future;
-        }
-        return future;
-    }
-
     public CompletableFuture<Optional<String>> checkPreload() {
         Log.d(LC, "checkPreload()");
-        return sequentialize(e -> {
-            Log.d(LC, "checkPreload start()");
+        synchronized (preloadLock) {
+            Log.d(LC, "checkPreload() start");
             logCurrentQueue();
             int numPreloaded = getNumPreloaded();
             if (numPreloaded < NUM_TO_PRELOAD) {
@@ -360,8 +441,8 @@ public class CastAudioPlayer extends AudioPlayer {
                         audioPlayerCallback.requestPreload(NUM_TO_PRELOAD - numPreloaded);
                 return preload(entries);
             }
-            return actionResult(null);
-        });
+        }
+        return actionResult(null);
     }
 
     private CompletableFuture<Optional<String>> preload(List<PlaybackEntry> entries) {
@@ -430,8 +511,7 @@ public class CastAudioPlayer extends AudioPlayer {
 
     private CompletableFuture<Optional<String>> dePreload() {
         Log.d(LC, "dePreload()");
-        return sequentialize(e -> {
-            Log.d(LC, "dePreload() start");
+        synchronized (preloadLock) {
             List<PlaybackEntry> preloadedEntries = getPreloadedEntries(Integer.MAX_VALUE);
             int numToRemove = preloadedEntries.size() - NUM_TO_PRELOAD;
             if (numToRemove <= 0) {
@@ -453,7 +533,7 @@ public class CastAudioPlayer extends AudioPlayer {
                     // There is an external (or unknown) entry
                     break;
                 }
-                itemIndexesToRemove.add(mediaQueue.getItemCount() - i);
+                itemIndexesToRemove.add(mediaQueue.itemIdAtIndex(mediaQueue.getItemCount() - i - 1));
             }
             if (itemIndexesToRemove.isEmpty()) {
                 return actionResult(null);
@@ -481,7 +561,7 @@ public class CastAudioPlayer extends AudioPlayer {
             });
             remoteMediaClientResultCallbackTimeout(result);
             return result;
-        });
+        }
     }
 
     private CompletableFuture<Optional<String>> resetQueue() {
@@ -513,11 +593,11 @@ public class CastAudioPlayer extends AudioPlayer {
         MediaQueueItem currentItem = remoteMediaClient == null ? null :
                 remoteMediaClient.getCurrentItem();
         int currentItemId = currentItem == null ? 0 : currentItem.getItemId();
-        logCurrentQueue(itemIds, currentItemId);
+        logQueue(itemIds, currentItemId);
     }
 
-    private void logCurrentQueue(int[] itemIds, int currentItemId) {
-        StringBuilder sb = new StringBuilder("currentQueue:\n");
+    private void logQueue(int[] itemIds, int currentItemId) {
+        StringBuilder sb = new StringBuilder("castQueue:\n");
         if (itemIds == null || itemIds.length <= 0) {
             Log.d(LC, sb.append("queue is empty").toString());
             return;
@@ -632,7 +712,7 @@ public class CastAudioPlayer extends AudioPlayer {
     @Override
     CompletableFuture<Optional<String>> next() {
         Log.d(LC, "next()");
-        return sequentialize(e -> {
+        return CompletableFuture.<Optional<String>>completedFuture(Optional.empty()).thenCompose(e -> {
             Log.d(LC, "next() start");
             if (remoteMediaClient == null) {
                 return actionResult("next(): remoteMediaClient is null");
@@ -652,8 +732,8 @@ public class CastAudioPlayer extends AudioPlayer {
             });
             remoteMediaClientResultCallbackTimeout(result);
             return result;
-        }).thenCompose(
-                e -> checkPreload()
+        }).thenCompose(e -> e.isPresent() ? CompletableFuture.completedFuture(e) :
+                checkPreload()
         ).thenApply(e -> {
             audioPlayerCallback.onPreloadChanged();
             return e;
@@ -662,21 +742,167 @@ public class CastAudioPlayer extends AudioPlayer {
 
     @Override
     CompletableFuture<Optional<String>> skipItems(int offset) {
-        // TODO: Implement
-        return actionResult("Not implemented");
+        Log.d(LC, "skipItems(" + offset + ")");
+        if (offset == 0) {
+            return actionResult(null);
+        }
+        if (offset == 1) {
+            return next();
+        }
+        if (offset > 0) {
+            // Skip forward
+            int numCastQueueEntries = getPreloadedQueueEntries(Integer.MAX_VALUE).size();
+            int totalQueueEntries = numCastQueueEntries + audioPlayerCallback.getNumQueueEntries();
+            if (offset <= totalQueueEntries) {
+                // Play queue item at offset now
+                if (offset <= numCastQueueEntries) {
+                    // Move the queue entry to after current index and skip to next
+                    Log.d(LC, "skipItems short queue offset");
+                    int currentIndex = getCurrentIndex();
+                    int itemIndex = currentIndex + offset;
+                    int itemId = mediaQueue.itemIdAtIndex(itemIndex);
+                    int beforeItemId = mediaQueue.itemIdAtIndex(currentIndex + 1);
+                    return CompletableFuture.<Optional<String>>completedFuture(Optional.empty()).thenCompose(e -> {
+                        Log.d(LC, "skipItems move [" + itemIndex + "] " + itemId + " to index " + (currentIndex + 1));
+                        CompletableFuture<Optional<String>> result = new CompletableFuture<>();
+                        remoteMediaClient.queueReorderItems(
+                                new int[]{itemId},
+                                beforeItemId,
+                                null
+                        ).setResultCallback(r -> {
+                            logResult("queueReorderItems(" + itemId + ", "
+                                    + beforeItemId + ")", r);
+                            if (r.getStatus().isSuccess()) {
+                                result.complete(Optional.empty());
+                            } else {
+                                result.complete(
+                                        Optional.of("Could not move queue item to next up: " + getResultString(r))
+                                );
+                            }
+                        });
+                        remoteMediaClientResultCallbackTimeout(result);
+                        return result;
+                    }).thenCompose(e -> e.isPresent() ? CompletableFuture.completedFuture(e) :
+                            next()
+                    );
+                } else {
+                    // Get the queue entry from PlaybackController, queue after current and play
+                    Log.d(LC, "skipItems long queue offset");
+                    PlaybackEntry playbackEntry = audioPlayerCallback.consumeQueueEntry(offset);
+                    return queue(
+                            playbackEntry,
+                            PlaybackQueue.QueueOp.NEXT
+                    ).thenCompose(e -> e.isPresent() ? CompletableFuture.completedFuture(e) :
+                            next()
+                    );
+                }
+            } else {
+                // Skip all playlist items until offset
+                int numCastPlaylistEntries = getPreloadedPlaylistEntries(Integer.MAX_VALUE).size();
+                if (offset <= totalQueueEntries + numCastPlaylistEntries) {
+                    // Dequeue all playlist items up until offset, then move offset to after current
+                    // index and skip to next
+                    Log.d(LC, "skipItems short playlist offset");
+                    int currentIndex = getCurrentIndex();
+                    int removeStartIndex = currentIndex + totalQueueEntries + 1;
+                    int itemIndex = currentIndex + offset;
+                    int itemId = mediaQueue.itemIdAtIndex(itemIndex);
+                    int beforeItemId = mediaQueue.itemIdAtIndex(currentIndex + 1);
+                    CompletableFuture<Optional<String>> result;
+                    if (itemIndex > removeStartIndex) {
+                        // We have playlist items to dequeue
+                        result = removeItems(removeStartIndex, itemIndex - removeStartIndex);
+                    } else {
+                        result = CompletableFuture.completedFuture(Optional.empty());
+                    }
+                    return result.thenCompose(e -> {
+                        Log.d(LC, "skipItems move [" + itemIndex + "] " + itemId + " to index " + (currentIndex + 1));
+                        CompletableFuture<Optional<String>> result2 = new CompletableFuture<>();
+                        remoteMediaClient.queueReorderItems(
+                                new int[]{itemId},
+                                beforeItemId,
+                                null
+                        ).setResultCallback(r -> {
+                            logResult("queueReorderItems(" + itemId + ", "
+                                    + beforeItemId + ")", r);
+                            if (r.getStatus().isSuccess()) {
+                                result2.complete(Optional.empty());
+                            } else {
+                                result2.complete(
+                                        Optional.of("Could not move playlist item to next up: " + getResultString(r))
+                                );
+                            }
+                        });
+                        remoteMediaClientResultCallbackTimeout(result2);
+                        return result2;
+                    }).thenCompose(e -> e.isPresent() ? CompletableFuture.completedFuture(e) :
+                            next()
+                    );
+                } else {
+                    // Dequeue all playlist items. Consume and throw away all playlist items up
+                    // until offset. Insert and play offset.
+                    Log.d(LC, "skipItems long playlist offset");
+                    int currentIndex = getCurrentIndex();
+                    int removeStartIndex = currentIndex + totalQueueEntries + 1;
+                    int consumeOffset = offset - totalQueueEntries - numCastPlaylistEntries;
+                    Log.d(LC, "Consuming " + (consumeOffset - 1) + " playlist entries outside "
+                            + " of player.");
+                    for (int i = 0; i < consumeOffset - 1; i++) {
+                        audioPlayerCallback.consumePlaylistEntry();
+                    }
+                    PlaybackEntry playbackEntry = audioPlayerCallback.consumePlaylistEntry();
+                    return removeItems(
+                            removeStartIndex,
+                            numCastPlaylistEntries
+                    ).thenCompose(e -> e.isPresent() ? CompletableFuture.completedFuture(e) :
+                            queue(playbackEntry, PlaybackQueue.QueueOp.NEXT)
+                    ).thenCompose(e -> e.isPresent() ? CompletableFuture.completedFuture(e) :
+                            next()
+                    );
+                }
+            }
+        } else {
+            // Skip backward
+            // TODO: implement
+            return actionResult("Not implemented: skipItems backward");
+        }
+    }
+
+    private CompletableFuture<Optional<String>> removeItems(int removeStartIndex, int num) {
+        CompletableFuture<Optional<String>> result = new CompletableFuture<>();
+        int[] itemsToRemove = new int[num];
+        for (int i = 0; i < itemsToRemove.length; i++) {
+            itemsToRemove[i] = mediaQueue.itemIdAtIndex(removeStartIndex + i);
+        }
+        Log.d(LC, "removing items with ids: "
+                + Arrays.toString(itemsToRemove));
+        remoteMediaClient.queueRemoveItems(
+                itemsToRemove,
+                null
+        ).setResultCallback(r -> {
+            logResult("queueRemoveItems("
+                    + Arrays.toString(itemsToRemove) + ")", r);
+            if (r.getStatus().isSuccess()) {
+                result.complete(Optional.empty());
+            } else {
+                result.complete(Optional.of(
+                        "Could not remove items " + Arrays.toString(itemsToRemove) + ": "
+                                + getResultString(r)
+                ));
+            }
+        });
+        remoteMediaClientResultCallbackTimeout(result);
+        return result;
     }
 
     @Override
     CompletableFuture<Optional<String>> previous() {
         Log.d(LC, "previous()");
-        return sequentialize(e -> {
-            Log.d(LC, "previous() start");
-            CompletableFuture<Optional<String>> result = new CompletableFuture<>();
-            // TODO: Implement
-            Log.e(LC, "previous not implemented");
-            result.complete(Optional.of("Not implemented"));
-            return result;
-        });
+        CompletableFuture<Optional<String>> result = new CompletableFuture<>();
+        // TODO: Implement
+        Log.e(LC, "previous not implemented");
+        result.complete(Optional.of("Not implemented"));
+        return result;
     }
 
     private void logResult(String action, RemoteMediaClient.MediaChannelResult result) {
@@ -736,6 +962,8 @@ public class CastAudioPlayer extends AudioPlayer {
     }
 
     private class MediaQueueCallback extends MediaQueue.Callback {
+        private int[] preChangeItemIds;
+
         @Override
         public void itemsInsertedInRange(int index, int count) {
             Log.d(LC, "MediaQueue: itemsInsertedInRange(index: " + index
@@ -743,7 +971,8 @@ public class CastAudioPlayer extends AudioPlayer {
             for (int itemIndex = index; itemIndex < index + count; itemIndex++) {
                 MediaQueueItem queueItem = mediaQueue.getItemAtIndex(itemIndex);
                 if (queueItem != null) {
-                    queueItemMap.put(mediaQueue.itemIdAtIndex(itemIndex), queueItem);
+                    int itemId = mediaQueue.itemIdAtIndex(itemIndex);
+                    queueItemMap.put(itemId, queueItem);
                 }
             }
             cleanQueueItemMap();
@@ -757,7 +986,8 @@ public class CastAudioPlayer extends AudioPlayer {
             for (int itemIndex = 0; itemIndex < mediaQueue.getItemCount(); itemIndex++) {
                 MediaQueueItem queueItem = mediaQueue.getItemAtIndex(itemIndex);
                 if (queueItem != null) {
-                    queueItemMap.put(mediaQueue.itemIdAtIndex(itemIndex), queueItem);
+                    int itemId = mediaQueue.itemIdAtIndex(itemIndex);
+                    queueItemMap.put(itemId, queueItem);
                 }
             }
             cleanQueueItemMap();
@@ -769,7 +999,8 @@ public class CastAudioPlayer extends AudioPlayer {
         public void itemsRemovedAtIndexes(int[] indexes) {
             Log.d(LC, "MediaQueue: itemsRemovedAtIndexes(" + Arrays.toString(indexes) + ")");
             for (int itemIndex: indexes) {
-                queueItemMap.remove(mediaQueue.itemIdAtIndex(itemIndex));
+                int itemId = preChangeItemIds[itemIndex];
+                queueItemMap.remove(itemId);
             }
             cleanQueueItemMap();
             logCurrentQueue();
@@ -787,7 +1018,7 @@ public class CastAudioPlayer extends AudioPlayer {
                                 + "mediaQueue to fetch...");
                         break;
                     }
-                    queueItemMap.put(mediaQueue.itemIdAtIndex(itemIndex), queueItem);
+                    queueItemMap.put(itemId, queueItem);
                 }
             }
             cleanQueueItemMap();
@@ -819,6 +1050,7 @@ public class CastAudioPlayer extends AudioPlayer {
 
         @Override
         public void mediaQueueWillChange() {
+            preChangeItemIds = mediaQueue.getItemIds();
             Log.d(LC, "MediaQueue: mediaQueueWillChange()");
         }
     }

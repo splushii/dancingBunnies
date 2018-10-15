@@ -31,6 +31,10 @@ public class Meta {
     }
 
     public static MediaMetadataCompat from(MediaMetadata castMeta) {
+        return from(castMeta, new Bundle());
+    }
+
+    public static MediaMetadataCompat from(MediaMetadata castMeta, Bundle extras) {
         MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder();
         b.putString(METADATA_KEY_TITLE, castMeta.getString(MediaMetadata.KEY_TITLE));
         b.putString(METADATA_KEY_ALBUM, castMeta.getString(MediaMetadata.KEY_ALBUM_TITLE));
@@ -40,6 +44,21 @@ public class Meta {
         b.putString(METADATA_KEY_TYPE, castMeta.getString(METADATA_KEY_TYPE));
         b.putString(METADATA_KEY_PLAYBACK_TYPE, castMeta.getString(METADATA_KEY_PLAYBACK_TYPE));
         // TODO: Put all metadata in there ^
+        for (String key: extras.keySet()) {
+            switch (getType(key)) {
+                case STRING:
+                    b.putString(key, extras.getString(key));
+                    break;
+                case LONG:
+                    b.putLong(key, extras.getLong(key));
+                case RATING:
+                case BITMAP:
+                default:
+                    Log.e(LC, "MediaMetadataCompat from MediaMetadata: "
+                            + typeMap.get(key).name() + " not handled");
+                    break;
+            }
+        }
         return b.build();
     }
 
@@ -97,6 +116,28 @@ public class Meta {
         MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder();
         addFromBundle(b, bundle);
         return b.build();
+    }
+
+    public static void print(MediaMetadataCompat meta) {
+        StringBuilder sb = new StringBuilder("Meta:");
+        for (String key: meta.keySet()) {
+            sb.append("\n").append(getHumanReadable(key));
+            switch (getType(key)) {
+                case STRING:
+                    sb.append(" (string):\t").append(meta.getString(key));
+                    break;
+                case LONG:
+                    sb.append(" (long):\t").append(meta.getLong(key));
+                    break;
+                case RATING:
+                    sb.append(" (rating):\t").append(meta.getRating(key).toString());
+                    break;
+                case BITMAP:
+                    sb.append(" (bitmap):\t").append(meta.getBitmap(key).getByteCount()).append(" bytes");
+                    break;
+            }
+        }
+        Log.d(LC, sb.toString());
     }
 
     public enum Type {
@@ -236,6 +277,10 @@ public class Meta {
     // Only used to identify if playback entry is in queue or in playlist
     public static final String METADATA_KEY_PLAYBACK_TYPE =
             "dancingbunnies.metadata.PLAYBACK_TYPE";
+    // Only used to identify playback entry preload status
+    public static final String METADATA_KEY_PLAYBACK_PRELOADSTATUS =
+            "dancingbunnies.metadata.PLAYBACK_PRELOADSTATUS";
+
 
     public static final String[] db_keys = {
         // DancingBunnies keys
@@ -312,7 +357,8 @@ public class Meta {
         typeMap.put(METADATA_KEY_BOOKMARK_POSITION, LONG);
         typeMap.put(METADATA_KEY_AVERAGE_RATING, STRING);
         typeMap.put(METADATA_KEY_QUEUE_POS, LONG);
-        typeMap.put(METADATA_KEY_PLAYBACK_TYPE, LONG);
+        typeMap.put(METADATA_KEY_PLAYBACK_TYPE, STRING);
+        typeMap.put(METADATA_KEY_PLAYBACK_PRELOADSTATUS, STRING);
         // Android keys
         typeMap.put(METADATA_KEY_ADVERTISEMENT, LONG);
         typeMap.put(METADATA_KEY_ALBUM, STRING);
@@ -379,6 +425,7 @@ public class Meta {
         humanMap.put(METADATA_KEY_AVERAGE_RATING, "average rating");
         humanMap.put(METADATA_KEY_QUEUE_POS, "current queue position");
         humanMap.put(METADATA_KEY_PLAYBACK_TYPE, "entry playback type");
+        humanMap.put(METADATA_KEY_PLAYBACK_PRELOADSTATUS, "entry preload status");
         // Android keys
         humanMap.put(METADATA_KEY_ADVERTISEMENT, "advertisement");
         humanMap.put(METADATA_KEY_ALBUM, "album");

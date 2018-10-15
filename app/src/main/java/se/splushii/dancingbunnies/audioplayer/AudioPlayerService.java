@@ -426,7 +426,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         @Override
         public void onSkipToQueueItem(long queueItemId) {
-            Log.e(LC, "onSkipToQueueItem(" + queueItemId + ") not implemented");
             playbackController.skipItems((int) queueItemId);
         }
 

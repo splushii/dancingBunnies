@@ -370,28 +370,29 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, v, menuInfo);
         MenuInflater menuInflater = getActivity().getMenuInflater();
-        menuInflater.inflate(R.menu.nowplaying_item_menu, menu);
+        menuInflater.inflate(R.menu.nowplaying_queueitem_contextmenu, menu);
     }
 
     @Override
     public boolean onContextItemSelected(MenuItem item) {
+        int menuItemId = item.getItemId();
+        if (menuItemId != R.id.nowplaying_queueitem_contextmenu_play
+                && menuItemId != R.id.nowplaying_queueitem_contextmenu_dequeue) {
+            return false;
+        }
         int position = recViewAdapter.getContextMenuHolder().getAdapterPosition();
         EntryID entryID = EntryID.from(recViewAdapter.getItemData(position));
         Log.d(LC, "info pos: " + position);
-        switch (item.getItemId()) {
-            case R.id.nowplaying_item_context_play:
-                skipTo(position);
+        switch (menuItemId) {
+            case R.id.nowplaying_queueitem_contextmenu_play:
+                skipItems(position);
                 play();
                 Log.d(LC, "nowplaying context play");
-                return true;
-            case R.id.nowplaying_item_context_dequeue:
+            case R.id.nowplaying_queueitem_contextmenu_dequeue:
                 dequeue(entryID, position);
                 Log.d(LC, "nowplaying context dequeue");
-                return true;
-            default:
-                Log.d(LC, "nowplaying context unknown");
-                return super.onContextItemSelected(item);
         }
+        return true;
     }
 
     @Override

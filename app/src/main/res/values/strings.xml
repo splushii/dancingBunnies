@@ -25,19 +25,21 @@
     <string name="play">play</string>
     <string name="song_context_play">Play</string>
     <string name="song_context_queue">Queue</string>
+    <string name="song_context_add_to_playlist">Add to playlist</string>
+    <string name="song_info" />
     <string name="search_hint">…</string>
     <string name="app_label">Dancing Bunnies</string>
     <string name="action_search">Search</string>
-    <string name="song_info" />
+    <string name="enter_filter">Enter filter</string>
     <string name="media_route_menu_title">Cast</string>
     <string name="playlist_context_play">Play</string>
     <string name="playlist_context_dequeue">Dequeue</string>
-    <string name="nowplaying_buffering">buffering…</string>
-    <string name="song_context_add_to_playlist">Add to playlist</string>
     <string name="playlist_context_remove">Remove</string>
-    <string name="enter_filter">Enter filter</string>
+    <string name="nowplaying_buffering">buffering…</string>
     <string name="nowplaying_previous_contentdesc">Skip to previous</string>
     <string name="nowplaying_play_pause_contentdesc">Play or pause</string>
     <string name="nowplaying_next_contentdesc">Skip to next</string>
     <string name="musiclibrary_entry_type_select">Show entries of type:</string>
+    <string name="nowplaying_context_play">Play</string>
+    <string name="nowplaying_context_dequeue">Dequeue</string>
 </resources>
