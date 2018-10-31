@@ -38,6 +38,9 @@ public final class MainActivity extends AppCompatActivity {
     public static final int PAGER_PLAYLIST = 2;
     private static final int NUM_VIEWS = 3;
 
+    public static final String SELECTION_ID_NOWPLAYING = "nowplaying_selection_id";
+    public static final String SELECTION_ID_MUSICLIBRARY = "musiclibrary_selection_id";
+
     private MusicLibraryFragment musicLibraryFragment;
     private NowPlayingFragment nowPlayingFragment;
     private PlaylistFragment playlistFragment;
@@ -52,6 +55,8 @@ public final class MainActivity extends AppCompatActivity {
 
         mViewPager = findViewById(R.id.main_container);
         mViewPager.setAdapter(mSectionsPagerAdapter);
+
+        setSupportActionBar(findViewById(R.id.toolbar));
 
         TabLayout tabLayout = findViewById(R.id.main_tabs);
         tabLayout.setupWithViewPager(mViewPager);

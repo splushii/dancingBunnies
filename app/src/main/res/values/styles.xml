@@ -1,7 +1,36 @@
 <resources>
-    <style name="AppTheme" parent="Theme.MaterialComponents.Light.DarkActionBar">
+    <style name="TabTheme" parent="Widget.MaterialComponents.TabLayout.Colored">
+        <item name="android:background">@color/colorPrimary</item>
+    </style>
+
+    <style name="ToolbarTheme" parent="Widget.MaterialComponents.Toolbar">
+        <item name="titleTextColor">@color/white</item>
+        <item name="subtitleTextColor">@color/white</item>
+        <item name="collapseIcon">@drawable/ic_arrow_back_white_24dp</item>
+    </style>
+
+    <style name="SearchViewTheme" parent="Widget.AppCompat.SearchView">
+        <item name="queryBackground">@color/colorPrimary</item>
+        <item name="searchIcon">@drawable/ic_search_white_24dp</item>
+        <item name="closeIcon">@drawable/ic_dialog_close_dark</item>
+    </style>
+
+    <style name="MediaRouteButtonTheme" parent="Widget.MediaRouter.Light.MediaRouteButton" />
+
+    <style name="ActionModeTheme" parent="Widget.AppCompat.ActionMode">
+        <item name="background">@color/colorPrimary</item>
+        <item name="subtitleTextStyle">@color/white</item>
+    </style>
+
+    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorSecondary">@color/colorAccent</item>
+        <item name="windowActionModeOverlay">true</item>
+        <item name="actionModeStyle">@style/ActionModeTheme</item>
+        <item name="tabStyle">@style/TabTheme</item>
+        <item name="toolbarStyle">@style/ToolbarTheme</item>
+        <item name="searchViewStyle">@style/SearchViewTheme</item>
+        <item name="android:mediaRouteButtonStyle">@style/MediaRouteButtonTheme</item>
     </style>
 </resources>

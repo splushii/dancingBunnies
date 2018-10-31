@@ -12,6 +12,10 @@ import se.splushii.dancingbunnies.util.Util;
 
 class PlaybackQueue {
     private static final String LC = Util.getLogContext(PlaybackQueue.class);
+    enum QueueOp {
+        NEXT,
+        LAST
+    }
     private LinkedList<PlaybackEntry> queue;
 
     Collection<? extends PlaybackEntry> poll(int num) {
@@ -35,9 +39,8 @@ class PlaybackQueue {
         queue.addAll(0, entries);
     }
 
-    enum QueueOp {
-        NEXT,
-        LAST
+    void add(List<PlaybackEntry> entries) {
+        queue.addAll(entries);
     }
 
     PlaybackQueue() {

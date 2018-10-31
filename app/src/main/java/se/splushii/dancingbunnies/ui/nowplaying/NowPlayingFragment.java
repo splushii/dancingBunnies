@@ -8,10 +8,13 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
+import android.view.ActionMode;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
+import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -30,11 +33,17 @@ import java.util.concurrent.TimeUnit;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.selection.MutableSelection;
+import androidx.recyclerview.selection.SelectionPredicates;
+import androidx.recyclerview.selection.SelectionTracker;
+import androidx.recyclerview.selection.StorageStrategy;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
+import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.util.Util;
@@ -59,6 +68,8 @@ public class NowPlayingFragment extends AudioBrowserFragment {
 
     private NowPlayingEntriesAdapter recViewAdapter;
     private RecyclerView recView;
+    private SelectionTracker<Long> selectionTracker;
+    private ActionMode mActionMode;
 
     public NowPlayingFragment() {
         recViewAdapter = new NowPlayingEntriesAdapter(this);
@@ -77,6 +88,72 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         recViewLayoutManager.setReverseLayout(true);
         recView.setLayoutManager(recViewLayoutManager);
         recView.setAdapter(recViewAdapter);
+
+        // TODO:
+        selectionTracker = new SelectionTracker.Builder<>(
+                MainActivity.SELECTION_ID_NOWPLAYING,
+                recView,
+                new NowPlayingKeyProvider(),
+                new NowPlayingDetailsLookup(recView),
+                StorageStrategy.createLongStorage()
+        ).withSelectionPredicate(
+                SelectionPredicates.createSelectAnything()
+        ).withOnItemActivatedListener((item, e) -> {
+            // Respond to taps/enter/double-click on items.
+            Log.e(LC, "ACTION: " + MotionEvent.actionToString(e.getAction())
+                    + " SELECTION: [" + item.getPosition() + "] " + item.getSelectionKey());
+            return false;
+        }).withOnContextClickListener(e -> {
+            // Respond to right-click.
+            Log.e(LC, "ACTION_YEAH: " + MotionEvent.actionToString(e.getAction()));
+            return false;
+        }).withOnDragInitiatedListener(e -> {
+            // Add support for drag and drop.
+            Log.e(LC, "DRAG INITIATED: " + MotionEvent.actionToString(e.getAction()));
+            View view = recView.findChildViewUnder(e.getX(), e.getY());
+            view.startDragAndDrop(null, new View.DragShadowBuilder(view), null, 0);
+            return true;
+        }).build();
+        selectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
+            @Override
+            public void onItemStateChanged(@NonNull Object key, boolean selected) {
+                Log.e(LC, "super.onItemStateChanged("
+                        + key.toString() + ", " + selected + ");");
+                printSelection();
+            }
+
+            @Override
+            public void onSelectionRefresh() {
+                Log.e(LC, "super.onSelectionRefresh();");
+                printSelection();
+            }
+
+            @Override
+            public void onSelectionChanged() {
+                if (selectionTracker.hasSelection() && mActionMode == null) {
+                    mActionMode = getActivity().startActionMode(actionModeCallback);
+                }
+                if (!selectionTracker.hasSelection() && mActionMode != null) {
+                    mActionMode.finish();
+                }
+                Log.e(LC, "super.onSelectionChanged();");
+                printSelection();
+            }
+
+            @Override
+            public void onSelectionRestored() {
+                Log.e(LC, "super.onSelectionRestored();");
+                printSelection();
+            }
+
+            private void printSelection() {
+                Log.e(LC, "selection: " + selectionTracker.getSelection().toString());
+            }
+        });
+        recViewAdapter.setSelectionTracker(selectionTracker);
+        if (savedInstanceState != null) {
+            selectionTracker.onRestoreInstanceState(savedInstanceState);
+        }
 
         nowPlayingTitle = rootView.findViewById(R.id.nowplaying_title);
         nowPlayingArtist = rootView.findViewById(R.id.nowplaying_artist);
@@ -164,18 +241,19 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         }));
         // TODO: Implement playbackhistory in AudioPlayerService/PlaybackController, then in UI.
         //getPlaybackHistory().thenAccept(opt -> opt.ifPresent(recViewAdapter::setPlaybackHistory));
-        List<MediaSessionCompat.QueueItem> queue = getQueue();
+        List<PlaybackEntry> queue = getQueue();
         Log.d(LC, "refreshView: queue(" + queue.size() + ")");
         recViewAdapter.setQueue(queue);
     }
 
-    private List<MediaSessionCompat.QueueItem> getQueue() {
-        List<MediaSessionCompat.QueueItem> queue = mediaController.getQueue();
-        if (queue == null) {
-            Log.w(LC, "queue is null");
-            return new LinkedList<>();
+    private List<PlaybackEntry> getQueue() {
+        List<PlaybackEntry> playbackEntries = new LinkedList<>();
+        for (MediaSessionCompat.QueueItem queueItem: mediaController.getQueue()) {
+            MediaMetadataCompat meta = Meta.desc2meta(queueItem.getDescription());
+            PlaybackEntry playbackEntry = new PlaybackEntry(meta, PlaybackEntry.USER_TYPE_QUEUE);
+            playbackEntries.add(playbackEntry);
         }
-        return queue;
+        return playbackEntries;
     }
 
     @Override
@@ -381,7 +459,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             return false;
         }
         int position = recViewAdapter.getContextMenuHolder().getAdapterPosition();
-        EntryID entryID = EntryID.from(recViewAdapter.getItemData(position));
+        EntryID entryID = recViewAdapter.getItemData(position).entryID;
         Log.d(LC, "info pos: " + position);
         switch (menuItemId) {
             case R.id.nowplaying_queueitem_contextmenu_play:
@@ -402,6 +480,12 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        selectionTracker.onSaveInstanceState(outState);
+    }
+
+    @Override
     protected void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {
         refreshView();
     }
@@ -415,4 +499,52 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 break;
         }
     }
+
+    private final ActionMode.Callback actionModeCallback = new ActionMode.Callback() {
+        // Called when the action mode is created; startActionMode() was called
+        @Override
+        public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+            // Inflate a menu resource providing context menu items
+            MenuInflater inflater = mode.getMenuInflater();
+            inflater.inflate(R.menu.nowplaying_actionmode_menu, menu);
+            return true;
+        }
+
+        // Called each time the action mode is shown. Always called after onCreateActionMode, but
+        // may be called multiple times if the mode is invalidated.
+        @Override
+        public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+            return false; // Return false if nothing is done
+        }
+
+        // Called when the user selects a contextual menu item
+        @Override
+        public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+            switch (item.getItemId()) {
+                case R.id.nowplaying_actionmode_action_play:
+                    Log.e(LC, "actionmode action play");
+                    MutableSelection<Long> selection = new MutableSelection<>();
+                    selectionTracker.copySelection(selection);
+                    List<EntryID> entryIDs = new LinkedList<>();
+                    for (Long key: selection) {
+                        entryIDs.add(recViewAdapter.getPlaybackEntry(key).entryID);
+                    }
+                    queue(entryIDs);
+                    // TODO:
+//                    next();
+//                    play();
+                    mode.finish();
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        // Called when the user exits the action mode
+        @Override
+        public void onDestroyActionMode(ActionMode mode) {
+            selectionTracker.clearSelection();
+            mActionMode = null;
+        }
+    };
 }

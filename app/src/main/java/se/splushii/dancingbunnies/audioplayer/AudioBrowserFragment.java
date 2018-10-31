@@ -78,6 +78,17 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.addQueueItem(entryID.toMediaDescriptionCompat());
     }
 
+    public void queue(List<EntryID> entryIDs) {
+        AudioPlayerService.queue(
+                mediaController,
+                entryIDs
+        ).thenAccept(success -> {
+            if (!success) {
+                Log.e(LC, "queue entryIDs failed");
+            }
+        });
+    }
+
     public void dequeue(EntryID entryID, long pos) {
         MediaDescriptionCompat mediaDescription = entryID.toMediaDescriptionCompat();
         assert mediaDescription.getExtras() != null;

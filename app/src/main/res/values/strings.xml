@@ -42,4 +42,8 @@
     <string name="musiclibrary_entry_type_select">Show entries of type:</string>
     <string name="nowplaying_context_play">Play</string>
     <string name="nowplaying_context_dequeue">Dequeue</string>
+    <string name="queue_item_more_actions">Queue item more actions</string>
+    <string name="playlist_item_more_actions">Playlist item more actions</string>
+    <string name="music_library_item_more_actions">Music library item more actions</string>
+    <string name="nowplaying_actionmode_action_play">Play</string>
 </resources>

@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/library_entry"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical">
+    android:background="@drawable/musiclibrary_item_drawable">
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
@@ -45,53 +46,52 @@
     </LinearLayout>
     <LinearLayout
         android:id="@+id/more_actions"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
         android:orientation="horizontal"
         android:visibility="gone"
         android:background="@color/gray"
         android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp">
-        <TextView
+        android:layout_gravity="end|center_vertical">
+        <ImageButton
             android:id="@+id/action_play"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:drawableTop="@drawable/ic_play_arrow_black_24dp"
-            android:text="@string/song_context_play"
+            android:layout_height="match_parent"
+            android:background="@android:color/transparent"
+            android:src="@drawable/ic_play_arrow_black_24dp"
             android:textColor="@color/bluegrey900"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp" />
-        <TextView
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:contentDescription="@string/song_context_play" />
+        <ImageButton
             android:id="@+id/action_queue"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:drawableTop="@drawable/ic_queue_black_24dp"
-            android:text="@string/song_context_queue"
+            android:layout_height="match_parent"
+            android:background="@android:color/transparent"
+            android:src="@drawable/ic_queue_black_24dp"
             android:textColor="@color/bluegrey900"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp" />
-        <TextView
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:contentDescription="@string/song_context_queue" />
+        <ImageButton
             android:id="@+id/action_add_to_playlist"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:drawableTop="@drawable/ic_playlist_add_black_24dp"
-            android:text="@string/song_context_add_to_playlist"
+            android:layout_height="match_parent"
+            android:background="@android:color/transparent"
+            android:src="@drawable/ic_playlist_add_black_24dp"
             android:textColor="@color/bluegrey900"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp" />
-        <View
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:contentDescription="@string/song_context_add_to_playlist" />
         <ImageButton
             android:id="@+id/overflow_menu"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:background="@android:color/transparent"
             android:src="@drawable/ic_more_vert_black_24dp"
             android:textColor="@color/bluegrey900"
-            android:layout_gravity="center_vertical"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp" />
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:contentDescription="@string/music_library_item_more_actions" />
     </LinearLayout>
-</LinearLayout>
+</FrameLayout>

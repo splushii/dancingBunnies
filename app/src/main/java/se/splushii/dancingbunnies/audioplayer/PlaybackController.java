@@ -13,6 +13,7 @@ import com.google.android.gms.cast.framework.Session;
 import com.google.android.gms.cast.framework.SessionManager;
 import com.google.android.gms.cast.framework.SessionManagerListener;
 
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -142,7 +143,7 @@ class PlaybackController {
         audioPlayer.skipItems(offset);
     }
 
-    CompletableFuture<Optional<String>> addToQueue(PlaybackEntry playbackEntry, PlaybackQueue.QueueOp op) {
+    CompletableFuture<Optional<String>> addToQueue(List<PlaybackEntry> playbackEntry, PlaybackQueue.QueueOp op) {
         Log.d(LC, "addToQueue: " + playbackEntry.toString());
         return audioPlayer.queue(playbackEntry, op).thenApply(e -> {
             if (e.isPresent()) {
@@ -173,7 +174,8 @@ class PlaybackController {
     }
 
     CompletableFuture<Optional<String>> playNow(PlaybackEntry playbackEntry) {
-        return addToQueue(playbackEntry, PlaybackQueue.QueueOp.NEXT).thenCompose(e -> {
+        return addToQueue(Collections.singletonList(playbackEntry),
+                PlaybackQueue.QueueOp.NEXT).thenCompose(e -> {
             if (e.isPresent()) {
                 Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
                 return CompletableFuture.completedFuture(Optional.of(""));
@@ -285,11 +287,23 @@ class PlaybackController {
         }
 
         @Override
-        public void dePreload(List<PlaybackEntry> queueEntries,
-                              List<PlaybackEntry> playlistEntries) {
-            queue.offer(queueEntries);
+        public void dePreloadPlaylistEntries(List<PlaybackEntry> playlistEntries) {
             playlistItems.offer(playlistEntries);
         }
+
+        @Override
+        public void dePreloadQueueEntries(List<PlaybackEntry> queueEntries, PlaybackQueue.QueueOp op) {
+            switch (op) {
+                default:
+                case LAST:
+                    queue.add(queueEntries);
+                    break;
+                case NEXT:
+                    queue.offer(queueEntries);
+                    break;
+            }
+        }
+
     }
 
     private List<PlaybackEntry> pollNextPreloadItems(int num) {

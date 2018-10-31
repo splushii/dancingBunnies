@@ -29,13 +29,17 @@ import java.util.Map;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.selection.SelectionTracker;
+import androidx.recyclerview.selection.StorageStrategy;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
+import se.splushii.dancingbunnies.ui.EntryIDDetailsLookup;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryFragment extends AudioBrowserFragment {
@@ -48,6 +52,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private String currentSubscriptionID;
     private MusicLibraryUserState userState;
     private LinkedList<MusicLibraryUserState> viewBackStack;
+    private SelectionTracker<EntryID> selectionTracker;
 
     private FastScroller fastScroller;
     private FastScrollerBubble fastScrollerBubble;
@@ -191,6 +196,12 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     }
 
     @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        selectionTracker.onSaveInstanceState(outState);
+    }
+
+    @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         final View rootView = inflater.inflate(R.layout.musiclibrary_fragment_layout, container,
@@ -203,6 +214,48 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         recyclerView.setLayoutManager(recViewLayoutManager);
         recyclerViewAdapter = new MusicLibraryAdapter(this);
         recyclerView.setAdapter(recyclerViewAdapter);
+
+        selectionTracker = new SelectionTracker.Builder<>(
+                MainActivity.SELECTION_ID_MUSICLIBRARY,
+                recyclerView,
+                new MusicLibraryKeyProvider(recyclerViewAdapter),
+                new EntryIDDetailsLookup(recyclerView),
+                StorageStrategy.createParcelableStorage(EntryID.class)
+        ).build();
+        recyclerViewAdapter.setSelectionTracker(selectionTracker);
+        selectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
+            @Override
+            public void onItemStateChanged(@NonNull Object key, boolean selected) {
+                Log.e(LC, "super.onItemStateChanged("
+                        + key.toString() + ", " + selected + ");");
+                printSelection();
+            }
+
+            @Override
+            public void onSelectionRefresh() {
+                Log.e(LC, "super.onSelectionRefresh();");
+                printSelection();
+            }
+
+            @Override
+            public void onSelectionChanged() {
+                Log.e(LC, "super.onSelectionChanged();");
+                printSelection();
+            }
+
+            @Override
+            public void onSelectionRestored() {
+                Log.e(LC, "super.onSelectionRestored();");
+                printSelection();
+            }
+
+            private void printSelection() {
+                Log.e(LC, "selection: " + selectionTracker.getSelection().toString());
+            }
+        });
+        if (savedInstanceState != null) {
+            selectionTracker.onRestoreInstanceState(savedInstanceState);
+        }
 
         fastScroller = rootView.findViewById(R.id.musiclibrary_fastscroller);
         fastScroller.setRecyclerView(recyclerView);

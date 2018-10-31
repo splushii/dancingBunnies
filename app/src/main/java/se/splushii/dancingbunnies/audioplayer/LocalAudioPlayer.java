@@ -6,7 +6,6 @@ import android.os.Bundle;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -341,39 +340,81 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    CompletableFuture<Optional<String>> queue(PlaybackEntry playbackEntry, PlaybackQueue.QueueOp op) {
-        if (getNumPreloaded() > NUM_TO_PRELOAD) {
-            if (playlistPlayers.isEmpty()) {
-                audioPlayerCallback.dePreload(
-                        Collections.singletonList(playbackEntry),
-                        Collections.emptyList()
-                );
-                return actionResult(null);
-            }
-            PlaybackEntry playbackEntryToRemove =
-                    playlistPlayers.remove(playlistPlayers.size() - 1).playbackEntry;
-            audioPlayerCallback.dePreload(
-                    Collections.emptyList(),
-                    Collections.singletonList(playbackEntryToRemove)
-            );
-        }
-        MediaPlayerInstance playerInstance = new MediaPlayerInstance(playbackEntry);
-        playerInstance.preload();
-        if (player == null) {
-            setCurrentPlayer(playerInstance);
+    CompletableFuture<Optional<String>> queue(List<PlaybackEntry> playbackEntries, PlaybackQueue.QueueOp op) {
+        if (playbackEntries == null || playbackEntries.isEmpty()) {
             return actionResult(null);
         }
-        switch (op) {
-            case NEXT:
-                queuePlayers.add(0, playerInstance);
-                break;
-            case LAST:
-            default:
-                queuePlayers.add(playerInstance);
-                break;
+        MediaPlayerInstance newCurrentPlayer = null;
+        LinkedList<PlaybackEntry> playlistEntriesToDepreload = new LinkedList<>();
+        LinkedList<PlaybackEntry> queueEntriesToDepreload = new LinkedList<>();
+        List<MediaPlayerInstance> playersToQueue = new LinkedList<>();
+        List<PlaybackEntry> entriesToDePreload = new LinkedList<>();
+
+        // Remove player playlist entries to de-preload if needed.
+        while (queuePlayers.size() + playlistPlayers.size()
+                + playbackEntries.size() > NUM_TO_PRELOAD
+                && playlistEntriesToDepreload.size() <= playbackEntries.size()
+                && !playlistPlayers.isEmpty()) {
+            MediaPlayerInstance m = playlistPlayers.pollLast();
+            m.release();
+            playlistEntriesToDepreload.addFirst(m.playbackEntry);
         }
-        preparePlayers();
-        return CompletableFuture.completedFuture(Optional.empty());
+        if (op.equals(PlaybackQueue.QueueOp.NEXT)) {
+            // Remove player queue entries to de-preload if needed.
+            while (queuePlayers.size() + playlistPlayers.size()
+                    + playbackEntries.size() > NUM_TO_PRELOAD
+                    && playlistEntriesToDepreload.size()
+                    + queueEntriesToDepreload.size() <= playbackEntries.size()
+                    && !queuePlayers.isEmpty()) {
+                MediaPlayerInstance m = queuePlayers.pollLast();
+                m.release();
+                queueEntriesToDepreload.addFirst(m.playbackEntry);
+            }
+        }
+        // Create new players to preload
+        int numToQueue = NUM_TO_PRELOAD
+                - (queuePlayers.size() - queueEntriesToDepreload.size())
+                - (playlistPlayers.size() - playlistEntriesToDepreload.size());
+        numToQueue = numToQueue > playbackEntries.size() ?
+                playbackEntries.size() : numToQueue;
+        for (PlaybackEntry p: playbackEntries.subList(0, numToQueue)) {
+            MediaPlayerInstance m = new MediaPlayerInstance(p);
+            m.preload();
+            if (player == null) {
+                newCurrentPlayer = m;
+            } else {
+                playersToQueue.add(m);
+            }
+        }
+        // Put the rest to de-preload
+        entriesToDePreload.addAll(playbackEntries.subList(numToQueue, playbackEntries.size()));
+        // Perform the actions
+        Log.d(LC, "queue()"
+                + "\nqueueEntriesToDepreload: " + queueEntriesToDepreload.size()
+                + "\nplaylistEntriesToDepreload: " + playlistEntriesToDepreload.size()
+                + "\ncurrentPlayer: " + newCurrentPlayer
+                + "\nplayersToQueue: " + playersToQueue.size()
+                + "\nentriesToDepreload: " + entriesToDePreload.size());
+        if (newCurrentPlayer != null) {
+            setCurrentPlayer(newCurrentPlayer);
+        }
+        if (!playersToQueue.isEmpty()) {
+            if (op.equals(PlaybackQueue.QueueOp.NEXT)) {
+                queuePlayers.addAll(0, playersToQueue);
+            } else {
+                queuePlayers.addAll(playersToQueue);
+            }
+        }
+        if (!playlistEntriesToDepreload.isEmpty()) {
+            audioPlayerCallback.dePreloadPlaylistEntries(playlistEntriesToDepreload);
+        }
+        if (!queueEntriesToDepreload.isEmpty()) {
+            audioPlayerCallback.dePreloadQueueEntries(queueEntriesToDepreload, op);
+        }
+        if (!entriesToDePreload.isEmpty()) {
+            audioPlayerCallback.dePreloadQueueEntries(entriesToDePreload, op);
+        }
+        return actionResult(null);
     }
 
     @Override

@@ -1,8 +1,6 @@
 package se.splushii.dancingbunnies.ui.musiclibrary;
 
 import android.support.v4.media.MediaBrowserCompat;
-import android.text.TextUtils;
-import android.util.Log;
 import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -14,6 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.recyclerview.selection.ItemDetailsLookup;
+import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
@@ -26,6 +27,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     private List<MediaBrowserCompat.MediaItem> dataset;
     private MusicLibraryFragment fragment;
     private RecyclerView.ViewHolder contextMenuHolder;
+    private View selectedItemView;
+    private SelectionTracker<EntryID> selectionTracker;
 
     MusicLibraryAdapter(MusicLibraryFragment fragment) {
         this.dataset = new ArrayList<>();
@@ -36,7 +39,11 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         return dataset.get(childPosition);
     }
 
-    static class SongViewHolder extends RecyclerView.ViewHolder {
+    void setSelectionTracker(SelectionTracker<EntryID> selectionTracker) {
+        this.selectionTracker = selectionTracker;
+    }
+
+    public static class SongViewHolder extends RecyclerView.ViewHolder {
         private final View libraryEntry;
         private final TextView libraryEntryTitle;
         private final TextView libraryEntryArtist;
@@ -46,6 +53,20 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         private final View addToPlaylistAction;
         private final ImageButton overflowMenu;
         private final View moreActions;
+        private EntryID entryId;
+
+        private final ItemDetailsLookup.ItemDetails<EntryID> itemDetails = new ItemDetailsLookup.ItemDetails<EntryID>() {
+            @Override
+            public int getPosition() {
+                return getAdapterPosition();
+            }
+
+            @Nullable
+            @Override
+            public EntryID getSelectionKey() {
+                return getEntryId();
+            }
+        };
 
         SongViewHolder(View view) {
             super(view);
@@ -58,6 +79,18 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             addToPlaylistAction = view.findViewById(R.id.action_add_to_playlist);
             overflowMenu = view.findViewById(R.id.overflow_menu);
             moreActions = view.findViewById(R.id.more_actions);
+        }
+
+        public ItemDetailsLookup.ItemDetails<EntryID> getItemDetails() {
+            return itemDetails;
+        }
+
+        void setEntryId(EntryID entryId) {
+            this.entryId = entryId;
+        }
+
+        EntryID getEntryId() {
+            return entryId;
         }
     }
 
@@ -75,6 +108,22 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         notifyDataSetChanged();
     }
 
+    EntryID getEntryId(int position) {
+        return EntryID.from(dataset.get(position));
+    }
+
+    int getEntryIdPosition(@NonNull EntryID entryID) {
+        int index = 0;
+        for (MediaBrowserCompat.MediaItem item: dataset) {
+            if (entryID.equals(EntryID.from(item))) {
+                return index;
+            }
+            index++;
+        }
+        return RecyclerView.NO_POSITION;
+    }
+
+
     RecyclerView.ViewHolder getContextMenuHolder() {
         return contextMenuHolder;
     }
@@ -84,6 +133,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         final MediaBrowserCompat.MediaItem item = dataset.get(position);
         final String title = item.getDescription().getTitle() + "";
         EntryID entryID = EntryID.from(item);
+        holder.setEntryId(entryID);
         final boolean browsable = item.isBrowsable();
         holder.moreActions.setVisibility(View.GONE);
         holder.libraryEntryTitle.setText(title);
@@ -99,51 +149,41 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         } else {
             holder.libraryEntryArtist.setVisibility(View.GONE);
             holder.libraryEntryAlbum.setVisibility(View.GONE);
-//            holder.libraryEntryArtist.setText("");
-//            holder.libraryEntryAlbum.setText("");
         }
         if (position % 2 == 0) {
-            holder.libraryEntry.setBackgroundColor(
-                    fragment.requireContext().getColor(R.color.grey50)
-            );
+            holder.libraryEntry.setBackgroundResource(R.drawable.musiclibrary_item_drawable);
         } else {
-            holder.libraryEntry.setBackgroundColor(
-                    fragment.requireContext().getColor(R.color.grey100)
-            );
+            holder.libraryEntry.setBackgroundResource(R.drawable.musiclibrary_item_drawable_odd);
         }
-        holder.libraryEntry.setOnLongClickListener(view -> {
-            Log.d(LC, "Long click on " + title);
-            holder.moreActions.setVisibility(holder.moreActions.getVisibility() == View.VISIBLE ?
-                    View.GONE : View.VISIBLE
-            );
-            return true;
-        });
+        boolean selected = selectionTracker != null
+                && selectionTracker.isSelected(holder.getItemDetails().getSelectionKey());
+        holder.libraryEntry.setActivated(selected);
         holder.libraryEntry.setOnClickListener(view -> {
             if (browsable) {
                 fragment.browse(entryID);
             } else {
-                if (holder.moreActions.getVisibility() == View.VISIBLE) {
-                    holder.moreActions.setVisibility(View.GONE);
-                    holder.libraryEntryTitle.setEllipsize(TextUtils.TruncateAt.END);
-                    holder.libraryEntryArtist.setEllipsize(TextUtils.TruncateAt.END);
-                    holder.libraryEntryAlbum.setEllipsize(TextUtils.TruncateAt.END);
-                    holder.libraryEntryTitle.setSingleLine(true);
-                    holder.libraryEntryArtist.setSingleLine(true);
-                    holder.libraryEntryAlbum.setSingleLine(true);
-                } else {
-                    holder.moreActions.setVisibility(View.VISIBLE);
-                    holder.libraryEntryTitle.setEllipsize(null);
-                    holder.libraryEntryArtist.setEllipsize(null);
-                    holder.libraryEntryAlbum.setEllipsize(null);
-                    holder.libraryEntryTitle.setSingleLine(false);
-                    holder.libraryEntryArtist.setSingleLine(false);
-                    holder.libraryEntryAlbum.setSingleLine(false);
+                if (selectedItemView != null && selectedItemView != holder.moreActions) {
+                    selectedItemView.setVisibility(View.GONE);
                 }
+                holder.moreActions.setVisibility(selectionTracker.hasSelection() ? View.GONE :
+                        holder.moreActions.getVisibility() == View.VISIBLE ?
+                                View.GONE : View.VISIBLE
+                );
+                selectedItemView = holder.moreActions;
             }
         });
-        holder.playAction.setOnClickListener(v -> fragment.play(entryID));
-        holder.queueAction.setOnClickListener(v -> fragment.queue(entryID));
-        holder.addToPlaylistAction.setOnClickListener(v -> fragment.addToPlaylist(entryID));
+        holder.playAction.setOnClickListener(v -> {
+            fragment.play(entryID);
+            holder.moreActions.setVisibility(View.GONE);
+        });
+        holder.queueAction.setOnClickListener(v -> {
+            fragment.queue(entryID);
+            holder.moreActions.setVisibility(View.GONE);
+        });
+        holder.addToPlaylistAction.setOnClickListener(v -> {
+            fragment.addToPlaylist(entryID);
+            holder.moreActions.setVisibility(View.GONE);
+        });
         holder.overflowMenu.setOnClickListener(v -> {
             v.setOnCreateContextMenuListener((menu, v1, menuInfo) -> menu.setHeaderTitle(title));
             contextMenuHolder = holder;

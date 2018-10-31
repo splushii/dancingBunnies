@@ -68,6 +68,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public static final String COMMAND_GET_PLAYLIST_PREVIOUS = "GET_PLAYLIST_PREVIOUS";
     public static final String COMMAND_ADD_TO_PLAYLIST = "ADD_TO_PLAYLIST";
     private static final String COMMAND_REMOVE_FROM_PLAYLIST = "REMOVE_FROM_PLAYLIST";
+    private static final String COMMAND_QUEUE_ENTRYIDS = "QUEUE_ENTRYIDS";
 
     public static final String STARTCMD_INTENT_CAST_ACTION = "dancingbunnies.intent.castaction";
 
@@ -354,6 +355,14 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         startForeground(SERVICE_NOTIFICATION_ID, notification);
     }
 
+    private PlaybackEntry createPlaybackEntry(EntryID entryID, String playbackType) {
+        if (!Meta.METADATA_KEY_MEDIA_ID.equals(entryID.type)) {
+            Log.e(LC, "Non-track entry. Unhandled! Beware!");
+        }
+        MediaMetadataCompat meta = musicLibraryService.getSongMetaData(entryID);
+        return new PlaybackEntry(meta, playbackType);
+    }
+
     private class MediaSessionCallback extends MediaSessionCompat.Callback {
         @Override
         public void onPlay() {
@@ -385,7 +394,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     EntryID.from(description),
                     PlaybackEntry.USER_TYPE_QUEUE
             );
-            playbackController.addToQueue(playbackEntry, PlaybackQueue.QueueOp.LAST);
+            playbackController.addToQueue(
+                    Collections.singletonList(playbackEntry),
+                    PlaybackQueue.QueueOp.LAST
+            );
             setToast(playbackEntry.meta, "Adding %s \"%s\" to queue!");
         }
 
@@ -439,14 +451,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         public void onSeekTo(long pos) {
             Log.d(LC, "onSeekTo(" + pos + ")");
             playbackController.seekTo(pos);
-        }
-
-        PlaybackEntry createPlaybackEntry(EntryID entryID, String playbackType) {
-            if (!Meta.METADATA_KEY_MEDIA_ID.equals(entryID.type)) {
-                Log.e(LC, "Non-track entry. Unhandled! Beware!");
-            }
-            MediaMetadataCompat meta = musicLibraryService.getSongMetaData(entryID);
-            return new PlaybackEntry(meta, playbackType);
         }
 
         @Override
@@ -533,11 +537,48 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 case COMMAND_GET_META:
                     getSongMeta(cb, extras);
                     break;
+                case COMMAND_QUEUE_ENTRYIDS:
+                    queue(cb, extras);
+                    break;
                 default:
                     Log.e(LC, "Unhandled MediaSession onCommand: " + command);
                     break;
             }
         }
+    }
+
+    public static CompletableFuture<Boolean> queue(
+            MediaControllerCompat mediaController,
+            List<EntryID> entryIDs
+    ) {
+        Bundle params = new Bundle();
+        params.putParcelableArrayList("entryids", new ArrayList<>(entryIDs));
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        mediaController.sendCommand(
+                AudioPlayerService.COMMAND_QUEUE_ENTRYIDS,
+                params,
+                new ResultReceiver(null) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        future.complete(resultCode == 0);
+                    }
+                }
+        );
+        return future;
+    }
+
+    private void queue(ResultReceiver cb, Bundle b) {
+        ArrayList<EntryID> entryIDs = b.getParcelableArrayList("entryids");
+        if (entryIDs == null) {
+            cb.send(-1, null);
+            return;
+        }
+        List<PlaybackEntry> playbackEntries = new LinkedList<>();
+        for (EntryID entryID: entryIDs) {
+            playbackEntries.add(createPlaybackEntry(entryID, PlaybackEntry.USER_TYPE_QUEUE));
+        }
+        playbackController.addToQueue(playbackEntries, PlaybackQueue.QueueOp.NEXT);
+        cb.send(0, null);
     }
 
     public static CompletableFuture<Boolean> removeFromPlaylist(
