@@ -250,6 +250,7 @@ public class PlaylistStorage {
             return;
         }
         int nextPlaylistEntryPos = getStupidPlaylistEntries(tableID).size();
+        db.beginTransaction();
         for (EntryID entryID: entryIDs) {
             ContentValues c = new ContentValues();
             c.put(DB.COLUMN_PLAYLIST_ENTRIES_PLAYLISTS_TABLE_ID, tableID);
@@ -259,6 +260,8 @@ public class PlaylistStorage {
             db.replaceOrThrow(DB.TABLE_PLAYLIST_ENTRIES, null, c);
             nextPlaylistEntryPos++;
         }
+        db.setTransactionSuccessful();
+        db.endTransaction();
     }
 
     public void removeFromPlaylist(PlaylistID playlistID, int position) {
