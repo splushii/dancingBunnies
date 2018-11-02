@@ -3,8 +3,10 @@ package se.splushii.dancingbunnies.ui.musiclibrary;
 import android.os.Bundle;
 import android.support.v4.media.MediaBrowserCompat;
 import android.util.Log;
+import android.view.ActionMode;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
+import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -29,6 +31,8 @@ import java.util.Map;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.selection.MutableSelection;
+import androidx.recyclerview.selection.SelectionPredicates;
 import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.selection.StorageStrategy;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -36,6 +40,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
+import se.splushii.dancingbunnies.audioplayer.PlaybackQueue;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
@@ -53,6 +58,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private MusicLibraryUserState userState;
     private LinkedList<MusicLibraryUserState> viewBackStack;
     private SelectionTracker<EntryID> selectionTracker;
+    private ActionMode actionMode;
 
     private FastScroller fastScroller;
     private FastScrollerBubble fastScrollerBubble;
@@ -221,38 +227,33 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 new MusicLibraryKeyProvider(recyclerViewAdapter),
                 new EntryIDDetailsLookup(recyclerView),
                 StorageStrategy.createParcelableStorage(EntryID.class)
+        ).withSelectionPredicate(
+                SelectionPredicates.createSelectAnything()
         ).build();
-        recyclerViewAdapter.setSelectionTracker(selectionTracker);
         selectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
             @Override
-            public void onItemStateChanged(@NonNull Object key, boolean selected) {
-                Log.e(LC, "super.onItemStateChanged("
-                        + key.toString() + ", " + selected + ");");
-                printSelection();
-            }
+            public void onItemStateChanged(@NonNull Object key, boolean selected) {}
 
             @Override
-            public void onSelectionRefresh() {
-                Log.e(LC, "super.onSelectionRefresh();");
-                printSelection();
-            }
+            public void onSelectionRefresh() {}
 
             @Override
             public void onSelectionChanged() {
-                Log.e(LC, "super.onSelectionChanged();");
-                printSelection();
+                if (selectionTracker.hasSelection() && actionMode == null) {
+                    actionMode = getActivity().startActionMode(actionModeCallback);
+                }
+                if (!selectionTracker.hasSelection() && actionMode != null) {
+                    actionMode.finish();
+                }
+                if (actionMode != null && selectionTracker.hasSelection()) {
+                    actionMode.setTitle(selectionTracker.getSelection().size() + " entries.");
+                }
             }
 
             @Override
-            public void onSelectionRestored() {
-                Log.e(LC, "super.onSelectionRestored();");
-                printSelection();
-            }
-
-            private void printSelection() {
-                Log.e(LC, "selection: " + selectionTracker.getSelection().toString());
-            }
+            public void onSelectionRestored() {}
         });
+        recyclerViewAdapter.setSelectionTracker(selectionTracker);
         if (savedInstanceState != null) {
             selectionTracker.onRestoreInstanceState(savedInstanceState);
         }
@@ -489,6 +490,63 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         query.removeFromQuery(filterType);
         refreshView(new MusicLibraryUserState(query, 0, 0));
     }
+
+    private final ActionMode.Callback actionModeCallback = new ActionMode.Callback() {
+        // Called when the action mode is created; startActionMode() was called
+        @Override
+        public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+            // Inflate a menu resource providing context menu items
+            MenuInflater inflater = mode.getMenuInflater();
+            inflater.inflate(R.menu.musiclibrary_actionmode_menu, menu);
+            return true;
+        }
+
+        // Called each time the action mode is shown. Always called after onCreateActionMode, but
+        // may be called multiple times if the mode is invalidated.
+        @Override
+        public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+            return false; // Return false if nothing is done
+        }
+
+        // Called when the user selects a contextual menu item
+        @Override
+        public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+            MutableSelection<EntryID> selection = new MutableSelection<>();
+            selectionTracker.copySelection(selection);
+            List<EntryID> selectionList = new LinkedList<>();
+            selection.forEach(selectionList::add);
+            switch (item.getItemId()) {
+                case R.id.musiclibrary_actionmode_action_play_now:
+                    queue(
+                            selectionList,
+                            PlaybackQueue.QueueOp.NEXT
+                    ).thenAccept(success -> {
+                        if (success) {
+                            next();
+                            play();
+                        }
+                    });
+                    break;
+                case R.id.musiclibrary_actionmode_action_queue:
+                    queue(selectionList, PlaybackQueue.QueueOp.LAST);
+                    break;
+                case R.id.musiclibrary_actionmode_action_add_to_playlist:
+                    addToPlaylist(selectionList);
+                    break;
+                default:
+                    return false;
+            }
+            mode.finish();
+            return true;
+        }
+
+        // Called when the user exits the action mode
+        @Override
+        public void onDestroyActionMode(ActionMode mode) {
+            selectionTracker.clearSelection();
+            actionMode = null;
+        }
+    };
 
     public void clearSelection() {
         if (selectionTracker != null) {

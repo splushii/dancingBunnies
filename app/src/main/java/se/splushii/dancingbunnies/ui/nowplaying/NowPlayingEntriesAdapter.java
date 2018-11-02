@@ -1,6 +1,5 @@
 package se.splushii.dancingbunnies.ui.nowplaying;
 
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -169,7 +168,6 @@ public class NowPlayingEntriesAdapter
         boolean selected = selectionTracker != null
                 && selectionTracker.isSelected(holder.getItemDetails().getSelectionKey());
         holder.item.setActivated(selected);
-        Log.e(LC, "nowplaying pos: " + holder.getAdapterPosition() + " selected: " + holder.item.isActivated());
         String title = entry.meta.getString(Meta.METADATA_KEY_TITLE);
         holder.item.setOnClickListener(view -> {
             if (selectedItemView != null && selectedItemView != holder.moreActions) {

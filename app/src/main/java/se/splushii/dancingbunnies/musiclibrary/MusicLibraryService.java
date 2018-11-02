@@ -124,8 +124,8 @@ public class MusicLibraryService extends Service {
         return new LinkedList<>();
     }
 
-    public void playlistAddEntry(PlaylistID playlistID, EntryID entryID) {
-        playlistStorage.addToPlaylist(playlistID, entryID);
+    public void playlistAddEntries(PlaylistID playlistID, List<EntryID> entryIDs) {
+        playlistStorage.addToPlaylist(playlistID, entryIDs);
     }
 
     public void playlistRemoveEntry(PlaylistID playlistID, int position) {

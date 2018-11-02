@@ -507,13 +507,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     cb.send(0, putPlaylistEntries(new ArrayList<>(playlistEntries)));
                     break;
                 case COMMAND_ADD_TO_PLAYLIST:
-                    EntryID entryID = EntryID.from(extras);
-                    musicLibraryService.playlistAddEntry(
-                            playbackController.getCurrentPlaylist().playlistID,
-                            entryID
-                    );
-                    setToast(musicLibraryService.getSongMetaData(entryID),
-                            "Adding %s \"%s\" to current playlist!");
+                    addToPlaylist(cb, extras);
                     break;
                 case COMMAND_GET_CURRENT_PLAYLIST:
                     cb.send(0, putPlaylist(playbackController.getCurrentPlaylist()));
@@ -608,6 +602,34 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private void dequeue(ResultReceiver cb, Bundle extras) {
         long[] positions = extras.getLongArray("positionList");
         playbackController.removeFromQueue(positions);
+        cb.send(0, null);
+    }
+
+
+    public static CompletableFuture<Boolean> addToPlaylist(MediaControllerCompat mediaController,
+                                                           List<EntryID> entryIDs) {
+        Bundle params = new Bundle();
+        params.putParcelableArrayList("entryIDs", new ArrayList<>(entryIDs));
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        mediaController.sendCommand(
+                AudioPlayerService.COMMAND_ADD_TO_PLAYLIST,
+                params,
+                new ResultReceiver(null) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        future.complete(resultCode == 0);
+                    }
+                });
+        return future;
+    }
+
+    private void addToPlaylist(ResultReceiver cb, Bundle extras) {
+        List<EntryID> entryIDs = extras.getParcelableArrayList("entryIDs");
+        musicLibraryService.playlistAddEntries(
+                playbackController.getCurrentPlaylist().playlistID,
+                entryIDs
+        );
+        cb.send(0, null);
     }
 
     public static CompletableFuture<Boolean> removeFromPlaylist(

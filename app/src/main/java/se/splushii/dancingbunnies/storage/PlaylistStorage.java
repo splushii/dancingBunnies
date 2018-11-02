@@ -239,7 +239,7 @@ public class PlaylistStorage {
         return playlistEntries;
     }
 
-    public void addToPlaylist(PlaylistID playlistID, EntryID entryID) {
+    public void addToPlaylist(PlaylistID playlistID, List<EntryID> entryIDs) {
         if (!playlistID.type.equals(PlaylistID.TYPE_STUPID)) {
             Log.w(LC, "addToPlaylist tried to add entry to non-stupid playlist");
             return;
@@ -250,12 +250,15 @@ public class PlaylistStorage {
             return;
         }
         int nextPlaylistEntryPos = getStupidPlaylistEntries(tableID).size();
-        ContentValues c = new ContentValues();
-        c.put(DB.COLUMN_PLAYLIST_ENTRIES_PLAYLISTS_TABLE_ID, tableID);
-        c.put(DB.COLUMN_PLAYLIST_ENTRIES_ENTRY_SRC, entryID.src);
-        c.put(DB.COLUMN_PLAYLIST_ENTRIES_ENTRY_ID, entryID.id);
-        c.put(DB.COLUMN_PLAYLIST_ENTRIES_ENTRY_POSITION, nextPlaylistEntryPos);
-        db.replaceOrThrow(DB.TABLE_PLAYLIST_ENTRIES, null, c);
+        for (EntryID entryID: entryIDs) {
+            ContentValues c = new ContentValues();
+            c.put(DB.COLUMN_PLAYLIST_ENTRIES_PLAYLISTS_TABLE_ID, tableID);
+            c.put(DB.COLUMN_PLAYLIST_ENTRIES_ENTRY_SRC, entryID.src);
+            c.put(DB.COLUMN_PLAYLIST_ENTRIES_ENTRY_ID, entryID.id);
+            c.put(DB.COLUMN_PLAYLIST_ENTRIES_ENTRY_POSITION, nextPlaylistEntryPos);
+            db.replaceOrThrow(DB.TABLE_PLAYLIST_ENTRIES, null, c);
+            nextPlaylistEntryPos++;
+        }
     }
 
     public void removeFromPlaylist(PlaylistID playlistID, int position) {

@@ -78,15 +78,16 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.addQueueItem(entryID.toMediaDescriptionCompat());
     }
 
-    public void queue(List<EntryID> entryIDs, PlaybackQueue.QueueOp op) {
-        AudioPlayerService.queue(
+    public CompletableFuture<Boolean> queue(List<EntryID> entryIDs, PlaybackQueue.QueueOp op) {
+        return AudioPlayerService.queue(
                 mediaController,
                 entryIDs,
                 op
-        ).thenAccept(success -> {
+        ).thenApply(success -> {
             if (!success) {
                 Log.e(LC, "queue entryIDs failed");
             }
+            return success;
         });
     }
 
@@ -108,18 +109,15 @@ public abstract class AudioBrowserFragment extends Fragment {
         });
     }
 
-    public void addToPlaylist(EntryID entryID) {
-        mediaController.sendCommand(
-                AudioPlayerService.COMMAND_ADD_TO_PLAYLIST,
-                entryID.toBundle(),
-                new ResultReceiver(null) {
-                    @Override
-                    protected void onReceiveResult(int resultCode, Bundle resultData) {
-                        if (resultCode != 0) {
-                            Log.e(LC, "error on COMMAND_ADD_TO_PLAYLIST");
-                        }
-                    }
-                });
+    public void addToPlaylist(List<EntryID> entryIDs) {
+        AudioPlayerService.addToPlaylist(
+                mediaController,
+                entryIDs
+        ).thenAccept(success -> {
+            if (!success) {
+                Log.e(LC, "dequeue entries failed");
+            }
+        });
     }
 
     // TODO: Rewrite other commands in the same spirit as removeFromPlaylist

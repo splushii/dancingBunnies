@@ -379,8 +379,7 @@ class LocalAudioPlayer extends AudioPlayer {
         int numToQueue = NUM_TO_PRELOAD
                 - (queuePlayers.size() - queueEntriesToDepreload.size())
                 - (playlistPlayers.size() - playlistEntriesToDepreload.size());
-        numToQueue = numToQueue > playbackEntries.size() ?
-                playbackEntries.size() : numToQueue;
+        numToQueue = Integer.min(numToQueue, playbackEntries.size());
         for (PlaybackEntry p: playbackEntries.subList(0, numToQueue)) {
             MediaPlayerInstance m = new MediaPlayerInstance(p);
             m.preload();

@@ -9,6 +9,7 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import androidx.annotation.NonNull;
@@ -181,7 +182,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             holder.moreActions.setVisibility(View.GONE);
         });
         holder.addToPlaylistAction.setOnClickListener(v -> {
-            fragment.addToPlaylist(entryID);
+            fragment.addToPlaylist(Collections.singletonList(entryID));
             holder.moreActions.setVisibility(View.GONE);
         });
         holder.overflowMenu.setOnClickListener(v -> {
