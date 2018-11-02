@@ -155,8 +155,8 @@ class PlaybackController {
         });
     }
 
-    CompletableFuture<Optional<String>> removeFromQueue(int queuePosition) {
-        return audioPlayer.dequeue(queuePosition).thenApply(e -> {
+    CompletableFuture<Optional<String>> removeFromQueue(long[] queuePositions) {
+        return audioPlayer.dequeue(queuePositions).thenApply(e -> {
             if (e.isPresent()) {
                 Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
             } else {

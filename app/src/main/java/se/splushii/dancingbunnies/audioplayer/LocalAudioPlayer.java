@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -98,8 +99,11 @@ class LocalAudioPlayer extends AudioPlayer {
                 setCurrentPlayer(playerInstance);
             } else if (entry.playbackType.equals(PlaybackEntry.USER_TYPE_QUEUE)) {
                 queuePlayers.add(playerInstance);
-            } else {
+            } else if (entry.playbackType.equals(PlaybackEntry.USER_TYPE_PLAYLIST)){
                 playlistPlayers.add(playerInstance);
+            } else {
+                Log.e(LC, "Unknown playback entry type (" + entry.playbackType + "): "
+                        + entry.toString());
             }
         }
         audioPlayerCallback.onPreloadChanged();
@@ -324,7 +328,7 @@ class LocalAudioPlayer extends AudioPlayer {
                     Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS,
                     PlaybackEntry.PRELOADSTATUS_PRELOADED
             );
-            entries.add(new PlaybackEntry(Meta.from(b)));
+            entries.add(new PlaybackEntry(Meta.from(b), p.playbackEntry.playbackType));
         }
         return entries;
     }
@@ -418,15 +422,20 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    CompletableFuture<Optional<String>> dequeue(int queuePosition) {
-        if (queuePosition < 0) {
-            return actionResult("Can not dequeue negative index: " + queuePosition);
+    CompletableFuture<Optional<String>> dequeue(long[] queuePositions) {
+        Arrays.sort(queuePositions);
+        for (int i = 0; i < queuePositions.length; i++) {
+            int queuePosition = (int) queuePositions[queuePositions.length - 1 - i];
+            if (queuePosition < 0) {
+                Log.e(LC, "Can not dequeue negative index: " + queuePosition);
+                continue;
+            }
+            if (queuePosition < queuePlayers.size()) {
+                queuePlayers.remove(queuePosition).release();
+            } else {
+                audioPlayerCallback.consumeQueueEntry(queuePosition - queuePlayers.size());
+            }
         }
-        if (queuePosition < queuePlayers.size()) {
-            queuePlayers.remove(queuePosition).release();
-            return actionResult(null);
-        }
-        audioPlayerCallback.consumeQueueEntry(queuePosition - queuePlayers.size());
         return actionResult(null);
     }
 

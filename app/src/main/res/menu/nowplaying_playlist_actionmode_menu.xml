@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nowplaying_actionmode_action_queue"
+        android:title="@string/song_context_queue"
+        android:icon="@drawable/ic_queue_white_24dp"/>
+</menu>

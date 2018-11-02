@@ -1,6 +1,5 @@
 package se.splushii.dancingbunnies.ui;
 
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -10,11 +9,8 @@ import androidx.recyclerview.selection.ItemDetailsLookup;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.ui.musiclibrary.MusicLibraryAdapter;
-import se.splushii.dancingbunnies.util.Util;
 
 public class EntryIDDetailsLookup extends ItemDetailsLookup<EntryID> {
-    private static final String LC = Util.getLogContext(EntryIDDetailsLookup.class);
-
     private final RecyclerView recyclerView;
 
     public EntryIDDetailsLookup(RecyclerView recyclerView) {
@@ -28,7 +24,6 @@ public class EntryIDDetailsLookup extends ItemDetailsLookup<EntryID> {
         if (view != null) {
             RecyclerView.ViewHolder viewHolder = recyclerView.getChildViewHolder(view);
             if (viewHolder instanceof MusicLibraryAdapter.SongViewHolder) {
-                Log.e(LC, MotionEvent.actionToString(e.getAction()));
                 return ((MusicLibraryAdapter.SongViewHolder) viewHolder).getItemDetails();
             }
         }

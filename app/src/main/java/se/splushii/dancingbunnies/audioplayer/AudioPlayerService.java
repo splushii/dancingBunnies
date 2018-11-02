@@ -69,6 +69,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public static final String COMMAND_ADD_TO_PLAYLIST = "ADD_TO_PLAYLIST";
     private static final String COMMAND_REMOVE_FROM_PLAYLIST = "REMOVE_FROM_PLAYLIST";
     private static final String COMMAND_QUEUE_ENTRYIDS = "QUEUE_ENTRYIDS";
+    private static final String COMMAND_DEQUEUE = "DEQUEUE";
 
     public static final String STARTCMD_INTENT_CAST_ACTION = "dancingbunnies.intent.castaction";
 
@@ -421,7 +422,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             Log.d(LC, "onRemoveQueueItem");
             assert description.getExtras() != null;
             long pos = description.getExtras().getLong(Meta.METADATA_KEY_QUEUE_POS);
-            playbackController.removeFromQueue((int) pos);
+            playbackController.removeFromQueue(new long[]{pos});
         }
 
         @Override
@@ -540,6 +541,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 case COMMAND_QUEUE_ENTRYIDS:
                     queue(cb, extras);
                     break;
+                case COMMAND_DEQUEUE:
+                    dequeue(cb, extras);
+                    break;
                 default:
                     Log.e(LC, "Unhandled MediaSession onCommand: " + command);
                     break;
@@ -549,10 +553,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     public static CompletableFuture<Boolean> queue(
             MediaControllerCompat mediaController,
-            List<EntryID> entryIDs
+            List<EntryID> entryIDs,
+            PlaybackQueue.QueueOp op
     ) {
         Bundle params = new Bundle();
         params.putParcelableArrayList("entryids", new ArrayList<>(entryIDs));
+        params.putSerializable("queueOp", op);
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
                 AudioPlayerService.COMMAND_QUEUE_ENTRYIDS,
@@ -569,6 +575,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void queue(ResultReceiver cb, Bundle b) {
         ArrayList<EntryID> entryIDs = b.getParcelableArrayList("entryids");
+        PlaybackQueue.QueueOp op = (PlaybackQueue.QueueOp) b.getSerializable("queueOp");
         if (entryIDs == null) {
             cb.send(-1, null);
             return;
@@ -577,8 +584,30 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         for (EntryID entryID: entryIDs) {
             playbackEntries.add(createPlaybackEntry(entryID, PlaybackEntry.USER_TYPE_QUEUE));
         }
-        playbackController.addToQueue(playbackEntries, PlaybackQueue.QueueOp.NEXT);
+        playbackController.addToQueue(playbackEntries, op);
         cb.send(0, null);
+    }
+
+    public static CompletableFuture<Boolean> dequeue(MediaControllerCompat mediaController, List<Long> positionList) {
+        Bundle params = new Bundle();
+        params.putLongArray("positionList", positionList.stream().mapToLong(l -> l).toArray());
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        mediaController.sendCommand(
+                AudioPlayerService.COMMAND_DEQUEUE,
+                params,
+                new ResultReceiver(null) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        future.complete(resultCode == 0);
+                    }
+                }
+        );
+        return future;
+    }
+
+    private void dequeue(ResultReceiver cb, Bundle extras) {
+        long[] positions = extras.getLongArray("positionList");
+        playbackController.removeFromQueue(positions);
     }
 
     public static CompletableFuture<Boolean> removeFromPlaylist(

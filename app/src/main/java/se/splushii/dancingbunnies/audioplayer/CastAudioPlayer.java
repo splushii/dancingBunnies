@@ -432,40 +432,42 @@ public class CastAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    CompletableFuture<Optional<String>> dequeue(int queuePosition) {
-        if (queuePosition < 0) {
-            return actionResult("Can not dequeue negative index: " + queuePosition);
-        }
-        List<PlaybackEntry> queueEntries = getPreloadedQueueEntries(Integer.MAX_VALUE);
-        if (queuePosition < queueEntries.size()) {
-            CompletableFuture<Optional<String>> result = new CompletableFuture<>();
-            PlaybackEntry playbackEntry = queueEntries.get(queuePosition);
-            int mediaQueueItemIndex = getCurrentIndex() + queuePosition + 1;
-            int mediaQueueItemId = mediaQueue.itemIdAtIndex(mediaQueueItemIndex);
-            logCurrentQueue();
-            Log.d(LC, "dequeue() removing " + playbackEntry.toString()
-                    + " at position " + queuePosition
-                    + " mediaQueue(index: " + mediaQueueItemIndex
-                    + ", id: " + mediaQueueItemId + ")");
-            remoteMediaClient.queueRemoveItems(
-                    new int[]{mediaQueueItemId},
-                    null
-            ).setResultCallback(r -> {
-                logResult("dequeue() queueRemoveItem", r);
-                if (r.getStatus().isSuccess()) {
-                    result.complete(Optional.empty());
-                } else {
-                    result.complete(
-                            Optional.of("Could not remove queue item " + playbackEntry.toString()
-                                    + ": " + getResultString(r))
-                    );
-                }
-            });
-            remoteMediaClientResultCallbackTimeout(result);
-            return result;
-        }
-        audioPlayerCallback.consumeQueueEntry(queuePosition - queueEntries.size());
-        return actionResult(null);
+    CompletableFuture<Optional<String>> dequeue(long[] queuePosition) {
+        // TODO: implement
+        return actionResult("dequeue not implemented");
+//        if (queuePosition < 0) {
+//            return actionResult("Can not dequeue negative index: " + queuePosition);
+//        }
+//        List<PlaybackEntry> queueEntries = getPreloadedQueueEntries(Integer.MAX_VALUE);
+//        if (queuePosition < queueEntries.size()) {
+//            CompletableFuture<Optional<String>> result = new CompletableFuture<>();
+//            PlaybackEntry playbackEntry = queueEntries.get(queuePosition);
+//            int mediaQueueItemIndex = getCurrentIndex() + queuePosition + 1;
+//            int mediaQueueItemId = mediaQueue.itemIdAtIndex(mediaQueueItemIndex);
+//            logCurrentQueue();
+//            Log.d(LC, "dequeue() removing " + playbackEntry.toString()
+//                    + " at position " + queuePosition
+//                    + " mediaQueue(index: " + mediaQueueItemIndex
+//                    + ", id: " + mediaQueueItemId + ")");
+//            remoteMediaClient.queueRemoveItems(
+//                    new int[]{mediaQueueItemId},
+//                    null
+//            ).setResultCallback(r -> {
+//                logResult("dequeue() queueRemoveItem", r);
+//                if (r.getStatus().isSuccess()) {
+//                    result.complete(Optional.empty());
+//                } else {
+//                    result.complete(
+//                            Optional.of("Could not remove queue item " + playbackEntry.toString()
+//                                    + ": " + getResultString(r))
+//                    );
+//                }
+//            });
+//            remoteMediaClientResultCallbackTimeout(result);
+//            return result;
+//        }
+//        audioPlayerCallback.consumeQueueEntry(queuePosition - queueEntries.size());
+//        return actionResult(null);
     }
 
     private void remoteMediaClientResultCallbackTimeout(
@@ -961,8 +963,7 @@ public class CastAudioPlayer extends AudioPlayer {
         CompletableFuture<Optional<String>> result = new CompletableFuture<>();
         // TODO: Implement
         Log.e(LC, "previous not implemented");
-        result.complete(Optional.of("Not implemented"));
-        return result;
+        return actionResult("Not implemented");
     }
 
     private void logResult(String action, RemoteMediaClient.MediaChannelResult result) {

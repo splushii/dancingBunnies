@@ -14,7 +14,6 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -34,7 +33,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.selection.MutableSelection;
-import androidx.recyclerview.selection.SelectionPredicates;
 import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.selection.StorageStrategy;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -44,6 +42,7 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
+import se.splushii.dancingbunnies.audioplayer.PlaybackQueue;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.util.Util;
@@ -69,7 +68,8 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private NowPlayingEntriesAdapter recViewAdapter;
     private RecyclerView recView;
     private SelectionTracker<Long> selectionTracker;
-    private ActionMode mActionMode;
+    private NowPlayingSelectionPredicate nowPlayingSelectionPredicate;
+    private ActionMode actionMode;
 
     public NowPlayingFragment() {
         recViewAdapter = new NowPlayingEntriesAdapter(this);
@@ -89,66 +89,50 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         recView.setLayoutManager(recViewLayoutManager);
         recView.setAdapter(recViewAdapter);
 
-        // TODO:
+        NowPlayingKeyProvider nowPlayingSelectionKeyProvider = new NowPlayingKeyProvider();
+        nowPlayingSelectionPredicate = new NowPlayingSelectionPredicate(
+                recViewAdapter,
+                nowPlayingSelectionKeyProvider
+        );
         selectionTracker = new SelectionTracker.Builder<>(
                 MainActivity.SELECTION_ID_NOWPLAYING,
                 recView,
-                new NowPlayingKeyProvider(),
+                nowPlayingSelectionKeyProvider,
                 new NowPlayingDetailsLookup(recView),
                 StorageStrategy.createLongStorage()
         ).withSelectionPredicate(
-                SelectionPredicates.createSelectAnything()
-        ).withOnItemActivatedListener((item, e) -> {
-            // Respond to taps/enter/double-click on items.
-            Log.e(LC, "ACTION: " + MotionEvent.actionToString(e.getAction())
-                    + " SELECTION: [" + item.getPosition() + "] " + item.getSelectionKey());
-            return false;
-        }).withOnContextClickListener(e -> {
-            // Respond to right-click.
-            Log.e(LC, "ACTION_YEAH: " + MotionEvent.actionToString(e.getAction()));
-            return false;
-        }).withOnDragInitiatedListener(e -> {
+                nowPlayingSelectionPredicate
+        ).withOnDragInitiatedListener(e -> {
             // Add support for drag and drop.
-            Log.e(LC, "DRAG INITIATED: " + MotionEvent.actionToString(e.getAction()));
             View view = recView.findChildViewUnder(e.getX(), e.getY());
             view.startDragAndDrop(null, new View.DragShadowBuilder(view), null, 0);
             return true;
         }).build();
         selectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
             @Override
-            public void onItemStateChanged(@NonNull Object key, boolean selected) {
-                Log.e(LC, "super.onItemStateChanged("
-                        + key.toString() + ", " + selected + ");");
-                printSelection();
-            }
+            public void onItemStateChanged(@NonNull Object key, boolean selected) {}
 
             @Override
-            public void onSelectionRefresh() {
-                Log.e(LC, "super.onSelectionRefresh();");
-                printSelection();
-            }
+            public void onSelectionRefresh() {}
 
             @Override
             public void onSelectionChanged() {
-                if (selectionTracker.hasSelection() && mActionMode == null) {
-                    mActionMode = getActivity().startActionMode(actionModeCallback);
+                if (selectionTracker.hasSelection() && actionMode == null) {
+                    actionMode = getActivity().startActionMode(actionModeCallback);
                 }
-                if (!selectionTracker.hasSelection() && mActionMode != null) {
-                    mActionMode.finish();
+                if (!selectionTracker.hasSelection() && actionMode != null) {
+                    actionMode.finish();
+                    nowPlayingSelectionPredicate.reset();
                 }
-                Log.e(LC, "super.onSelectionChanged();");
-                printSelection();
+                if (actionMode != null && selectionTracker.hasSelection()) {
+                    String type = nowPlayingSelectionPredicate.getCurrentType();
+                    actionMode.setTitle(selectionTracker.getSelection().size()
+                            + " " + type + " entries.");
+                }
             }
 
             @Override
-            public void onSelectionRestored() {
-                Log.e(LC, "super.onSelectionRestored();");
-                printSelection();
-            }
-
-            private void printSelection() {
-                Log.e(LC, "selection: " + selectionTracker.getSelection().toString());
-            }
+            public void onSelectionRestored() {}
         });
         recViewAdapter.setSelectionTracker(selectionTracker);
         if (savedInstanceState != null) {
@@ -506,7 +490,11 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         public boolean onCreateActionMode(ActionMode mode, Menu menu) {
             // Inflate a menu resource providing context menu items
             MenuInflater inflater = mode.getMenuInflater();
-            inflater.inflate(R.menu.nowplaying_actionmode_menu, menu);
+            if (PlaybackEntry.USER_TYPE_QUEUE.equals(nowPlayingSelectionPredicate.getCurrentType())) {
+                inflater.inflate(R.menu.nowplaying_queue_actionmode_menu, menu);
+            } else {
+                inflater.inflate(R.menu.nowplaying_playlist_actionmode_menu, menu);
+            }
             return true;
         }
 
@@ -520,19 +508,21 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         // Called when the user selects a contextual menu item
         @Override
         public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+            MutableSelection<Long> selection = new MutableSelection<>();
+            selectionTracker.copySelection(selection);
+            List<Long> selectionList = new LinkedList<>();
+            selection.forEach(selectionList::add);
             switch (item.getItemId()) {
-                case R.id.nowplaying_actionmode_action_play:
-                    Log.e(LC, "actionmode action play");
-                    MutableSelection<Long> selection = new MutableSelection<>();
-                    selectionTracker.copySelection(selection);
+                case R.id.nowplaying_actionmode_action_queue:
                     List<EntryID> entryIDs = new LinkedList<>();
                     for (Long key: selection) {
                         entryIDs.add(recViewAdapter.getPlaybackEntry(key).entryID);
                     }
-                    queue(entryIDs);
-                    // TODO:
-//                    next();
-//                    play();
+                    queue(entryIDs, PlaybackQueue.QueueOp.LAST);
+                    mode.finish();
+                    return true;
+                case R.id.nowplaying_actionmode_action_dequeue:
+                    dequeue(selectionList);
                     mode.finish();
                     return true;
                 default:
@@ -544,7 +534,13 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         @Override
         public void onDestroyActionMode(ActionMode mode) {
             selectionTracker.clearSelection();
-            mActionMode = null;
+            actionMode = null;
         }
     };
+
+    public void clearSelection() {
+        if (selectionTracker != null) {
+            selectionTracker.clearSelection();
+        }
+    }
 }

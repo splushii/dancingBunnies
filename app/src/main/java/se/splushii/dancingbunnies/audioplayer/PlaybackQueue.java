@@ -10,9 +10,9 @@ import java.util.stream.Collectors;
 
 import se.splushii.dancingbunnies.util.Util;
 
-class PlaybackQueue {
+public class PlaybackQueue {
     private static final String LC = Util.getLogContext(PlaybackQueue.class);
-    enum QueueOp {
+    public enum QueueOp {
         NEXT,
         LAST
     }

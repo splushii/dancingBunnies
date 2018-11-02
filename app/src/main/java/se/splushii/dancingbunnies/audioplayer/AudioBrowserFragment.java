@@ -78,10 +78,11 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.addQueueItem(entryID.toMediaDescriptionCompat());
     }
 
-    public void queue(List<EntryID> entryIDs) {
+    public void queue(List<EntryID> entryIDs, PlaybackQueue.QueueOp op) {
         AudioPlayerService.queue(
                 mediaController,
-                entryIDs
+                entryIDs,
+                op
         ).thenAccept(success -> {
             if (!success) {
                 Log.e(LC, "queue entryIDs failed");
@@ -94,6 +95,17 @@ public abstract class AudioBrowserFragment extends Fragment {
         assert mediaDescription.getExtras() != null;
         mediaDescription.getExtras().putLong(Meta.METADATA_KEY_QUEUE_POS, pos);
         mediaController.removeQueueItem(mediaDescription);
+    }
+
+    public void dequeue(List<Long> positionList) {
+        AudioPlayerService.dequeue(
+                mediaController,
+                positionList
+        ).thenAccept(success -> {
+            if (!success) {
+                Log.e(LC, "dequeue entries failed");
+            }
+        });
     }
 
     public void addToPlaylist(EntryID entryID) {

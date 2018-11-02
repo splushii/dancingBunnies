@@ -118,7 +118,6 @@ public class NowPlayingEntriesAdapter
 
     @Override
     public long getItemId(int position) {
-        Log.e(LC, "THA ITEM ID SHOULD BE POSITION: " + position);
         return position;
     }
 

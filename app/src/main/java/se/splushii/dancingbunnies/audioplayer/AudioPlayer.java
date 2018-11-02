@@ -30,7 +30,7 @@ abstract class AudioPlayer {
     abstract List<PlaybackEntry> getPreloadedQueueEntries(int maxNum);
     abstract List<PlaybackEntry> getPreloadedPlaylistEntries(int maxNum);
     abstract CompletableFuture<Optional<String>> queue(List<PlaybackEntry> playbackEntry, PlaybackQueue.QueueOp op);
-    abstract CompletableFuture<Optional<String>> dequeue(int queuePosition);
+    abstract CompletableFuture<Optional<String>> dequeue(long[] queuePositions);
     abstract CompletableFuture<Optional<String>> play();
     abstract CompletableFuture<Optional<String>> pause();
     abstract CompletableFuture<Optional<String>> stop();

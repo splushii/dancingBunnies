@@ -64,6 +64,27 @@ public final class MainActivity extends AppCompatActivity {
         musicLibraryFragment = new MusicLibraryFragment();
         nowPlayingFragment = new NowPlayingFragment();
         playlistFragment = new PlaylistFragment();
+        mViewPager.addOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
+            private int lastPosition = -1;
+
+            @Override
+            public void onPageSelected(int position) {
+                checkPositionChanged(position);
+            }
+
+            @Override
+            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
+                checkPositionChanged(position);
+            }
+
+            void checkPositionChanged(int position) {
+                if (position != lastPosition) {
+                    lastPosition = position;
+                    musicLibraryFragment.clearSelection();
+                    nowPlayingFragment.clearSelection();
+                }
+            }
+        });
 
         MediaRouteButton mediaRouteButton = findViewById(R.id.media_route_button);
         CastButtonFactory.setUpMediaRouteButton(getApplicationContext(), mediaRouteButton);

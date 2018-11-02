@@ -489,4 +489,10 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         query.removeFromQuery(filterType);
         refreshView(new MusicLibraryUserState(query, 0, 0));
     }
+
+    public void clearSelection() {
+        if (selectionTracker != null) {
+            selectionTracker.clearSelection();
+        }
+    }
 }
