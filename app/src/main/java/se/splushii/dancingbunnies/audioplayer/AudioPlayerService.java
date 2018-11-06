@@ -358,6 +358,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private PlaybackEntry createPlaybackEntry(EntryID entryID, String playbackType) {
         if (!Meta.METADATA_KEY_MEDIA_ID.equals(entryID.type)) {
+            // TODO: implement
             Log.e(LC, "Non-track entry. Unhandled! Beware!");
         }
         MediaMetadataCompat meta = musicLibraryService.getSongMetaData(entryID);

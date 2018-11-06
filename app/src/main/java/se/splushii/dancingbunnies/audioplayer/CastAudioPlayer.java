@@ -370,7 +370,6 @@ public class CastAudioPlayer extends AudioPlayer {
                 + "[" + queueInsertBeforeIndex + "] " + queueInsertBeforeItemId
                 + "\nentriesToDepreload: " + entriesToDePreload.size());
 
-
         CompletableFuture<Optional<String>> result = CompletableFuture.completedFuture(Optional.empty());
         if (entriesToQueue.size() > 0) {
             result = result.thenCompose(e -> {
@@ -398,9 +397,7 @@ public class CastAudioPlayer extends AudioPlayer {
                     Arrays.stream(playlistEntriesToDepreloadItemIds)
             ).toArray();
             result = result.thenCompose(e -> {
-                if (e.isPresent()) {
-                    return CompletableFuture.completedFuture(e);
-                }
+                if (e.isPresent()) { return CompletableFuture.completedFuture(e); }
                 CompletableFuture<Optional<String>> req = new CompletableFuture<>();
                 remoteMediaClient.queueRemoveItems(
                         itemIdsToRemove,
@@ -417,7 +414,6 @@ public class CastAudioPlayer extends AudioPlayer {
                 });
                 remoteMediaClientResultCallbackTimeout(req);
                 return req;
-
             });
         }
 
@@ -432,42 +428,71 @@ public class CastAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    CompletableFuture<Optional<String>> dequeue(long[] queuePosition) {
-        // TODO: implement
-        return actionResult("dequeue not implemented");
-//        if (queuePosition < 0) {
-//            return actionResult("Can not dequeue negative index: " + queuePosition);
-//        }
-//        List<PlaybackEntry> queueEntries = getPreloadedQueueEntries(Integer.MAX_VALUE);
-//        if (queuePosition < queueEntries.size()) {
-//            CompletableFuture<Optional<String>> result = new CompletableFuture<>();
-//            PlaybackEntry playbackEntry = queueEntries.get(queuePosition);
-//            int mediaQueueItemIndex = getCurrentIndex() + queuePosition + 1;
-//            int mediaQueueItemId = mediaQueue.itemIdAtIndex(mediaQueueItemIndex);
-//            logCurrentQueue();
-//            Log.d(LC, "dequeue() removing " + playbackEntry.toString()
-//                    + " at position " + queuePosition
-//                    + " mediaQueue(index: " + mediaQueueItemIndex
-//                    + ", id: " + mediaQueueItemId + ")");
-//            remoteMediaClient.queueRemoveItems(
-//                    new int[]{mediaQueueItemId},
-//                    null
-//            ).setResultCallback(r -> {
-//                logResult("dequeue() queueRemoveItem", r);
-//                if (r.getStatus().isSuccess()) {
-//                    result.complete(Optional.empty());
-//                } else {
-//                    result.complete(
-//                            Optional.of("Could not remove queue item " + playbackEntry.toString()
-//                                    + ": " + getResultString(r))
-//                    );
-//                }
-//            });
-//            remoteMediaClientResultCallbackTimeout(result);
-//            return result;
-//        }
-//        audioPlayerCallback.consumeQueueEntry(queuePosition - queueEntries.size());
-//        return actionResult(null);
+    CompletableFuture<Optional<String>> dequeue(long[] queuePositions) {
+        Arrays.sort(queuePositions);
+        List<PlaybackEntry> queueEntries = getPreloadedQueueEntries(Integer.MAX_VALUE);
+        List<Integer> queueItemIdsToRemoveFromPlayer = new LinkedList<>();
+        List<Integer> queuePositionsToRemoveFromController = new LinkedList<>();
+        for (long queuePosition: queuePositions) {
+            if (queuePosition < 0) {
+                Log.e(LC, "Can not dequeue negative index: " + queuePosition);
+                continue;
+            }
+            if (queuePosition < queueEntries.size()) {
+                int mediaQueueItemIndex = getCurrentIndex() + (int) queuePosition + 1;
+                int mediaQueueItemId = mediaQueue.itemIdAtIndex(mediaQueueItemIndex);
+                queueItemIdsToRemoveFromPlayer.add(mediaQueueItemId);
+            } else {
+                queuePositionsToRemoveFromController.add((int) queuePosition - queueEntries.size());
+            }
+        }
+
+        logCurrentQueue();
+        Log.d(LC, "dequeue()"
+                + "\nqueueItemIdsToRemoveFromPlayer: "
+                + queueItemIdsToRemoveFromPlayer.size()
+                + ": " + queueItemIdsToRemoveFromPlayer
+                + "\nqueueEntriesToRemoveFromController: "
+                + queuePositionsToRemoveFromController.size()
+                + ": " + queuePositionsToRemoveFromController);
+
+        CompletableFuture<Optional<String>> result = actionResult(null);
+        if (queueItemIdsToRemoveFromPlayer.size() > 0) {
+            result = result.thenCompose(e -> {
+                CompletableFuture<Optional<String>> req = new CompletableFuture<>();
+                remoteMediaClient.queueRemoveItems(
+                        queueItemIdsToRemoveFromPlayer.stream().mapToInt(i -> i).toArray(),
+                        null
+                ).setResultCallback(r -> {
+                    logResult("dequeue() queueRemoveItems ", r);
+                    if (r.getStatus().isSuccess()) {
+                        req.complete(Optional.empty());
+                    } else {
+                        req.complete(Optional.of("Could not remove queue items"));
+                    }
+                });
+                remoteMediaClientResultCallbackTimeout(req);
+                return req;
+            });
+        }
+
+        if (!queuePositionsToRemoveFromController.isEmpty()) {
+            result = result.thenApply(e -> {
+                if (e.isPresent()) { return e; }
+                int len = queuePositionsToRemoveFromController.size();
+                for (int i = 0; i < len; i++) {
+                    audioPlayerCallback.consumeQueueEntry(
+                            queuePositionsToRemoveFromController.get(len - 1 - i)
+                    );
+                }
+                return Optional.empty();
+            });
+        }
+        result = result.thenCompose(e -> {
+            if (e.isPresent()) { return actionResult(e.get()); }
+            return checkPreload();
+        });
+        return result;
     }
 
     private void remoteMediaClientResultCallbackTimeout(
