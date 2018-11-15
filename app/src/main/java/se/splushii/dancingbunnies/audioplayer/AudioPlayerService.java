@@ -70,6 +70,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static final String COMMAND_REMOVE_FROM_PLAYLIST = "REMOVE_FROM_PLAYLIST";
     private static final String COMMAND_QUEUE_ENTRYIDS = "QUEUE_ENTRYIDS";
     private static final String COMMAND_DEQUEUE = "DEQUEUE";
+    private static final String COMMAND_MOVE_QUEUE_ITEMS = "MOVE_QUEUE_ITEMS";
 
     public static final String STARTCMD_INTENT_CAST_ACTION = "dancingbunnies.intent.castaction";
 
@@ -539,6 +540,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 case COMMAND_DEQUEUE:
                     dequeue(cb, extras);
                     break;
+                case COMMAND_MOVE_QUEUE_ITEMS:
+                    moveQueueItems(cb, extras);
+                    break;
                 default:
                     Log.e(LC, "Unhandled MediaSession onCommand: " + command);
                     break;
@@ -606,6 +610,32 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         cb.send(0, null);
     }
 
+    public static CompletableFuture<Boolean> moveQueueItems(MediaControllerCompat mediaController,
+                                                            List<Long> positionList,
+                                                            int toPosition) {
+        Bundle params = new Bundle();
+        params.putLongArray("positionList", positionList.stream().mapToLong(l -> l).toArray());
+        params.putInt("toPosition", toPosition);
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        mediaController.sendCommand(
+                AudioPlayerService.COMMAND_MOVE_QUEUE_ITEMS,
+                params,
+                new ResultReceiver(null) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        future.complete(resultCode == 0);
+                    }
+                }
+        );
+        return future;
+    }
+
+    private void moveQueueItems(ResultReceiver cb, Bundle extras) {
+        long[] positions = extras.getLongArray("positionList");
+        int toPosition = extras.getInt("toPosition");
+        playbackController.moveQueueItems(positions, toPosition);
+        cb.send(0, null);
+    }
 
     public static CompletableFuture<Boolean> addToPlaylist(MediaControllerCompat mediaController,
                                                            List<EntryID> entryIDs) {

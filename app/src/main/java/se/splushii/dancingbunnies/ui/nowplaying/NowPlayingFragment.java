@@ -35,6 +35,7 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.selection.MutableSelection;
 import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.selection.StorageStrategy;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.MainActivity;
@@ -70,6 +71,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private SelectionTracker<Long> selectionTracker;
     private NowPlayingSelectionPredicate nowPlayingSelectionPredicate;
     private ActionMode actionMode;
+    private ItemTouchHelper itemTouchHelper;
 
     public NowPlayingFragment() {
         recViewAdapter = new NowPlayingEntriesAdapter(this);
@@ -83,11 +85,15 @@ public class NowPlayingFragment extends AudioBrowserFragment {
 
         recView = rootView.findViewById(R.id.nowplaying_recyclerview);
         recView.setHasFixedSize(true);
-        LinearLayoutManager recViewLayoutManager =
-                new LinearLayoutManager(this.getContext());
+        LinearLayoutManager recViewLayoutManager = new LinearLayoutManager(this.getContext());
         recViewLayoutManager.setReverseLayout(true);
         recView.setLayoutManager(recViewLayoutManager);
         recView.setAdapter(recViewAdapter);
+
+        NowPlayingItemTouchHelperCallback itemTouchCallback =
+                new NowPlayingItemTouchHelperCallback(this, recViewAdapter);
+        itemTouchHelper = new ItemTouchHelper(itemTouchCallback);
+        itemTouchHelper.attachToRecyclerView(recView);
 
         NowPlayingKeyProvider nowPlayingSelectionKeyProvider = new NowPlayingKeyProvider();
         nowPlayingSelectionPredicate = new NowPlayingSelectionPredicate(
@@ -105,7 +111,12 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         ).withOnDragInitiatedListener(e -> {
             // Add support for drag and drop.
             View view = recView.findChildViewUnder(e.getX(), e.getY());
-            view.startDragAndDrop(null, new View.DragShadowBuilder(view), null, 0);
+            RecyclerView.ViewHolder viewHolder = recView.findContainingViewHolder(view);
+            // TODO: Add support for dragging playlist entries (prolly for queueing them?)
+            if (viewHolder.getItemViewType() == NowPlayingEntriesAdapter.VIEWTYPE_QUEUE_ITEM) {
+                itemTouchCallback.prepareDrag(actionMode, selectionTracker, viewHolder);
+                itemTouchHelper.startDrag(viewHolder);
+            }
             return true;
         }).build();
         selectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
@@ -134,6 +145,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             @Override
             public void onSelectionRestored() {}
         });
+
         recViewAdapter.setSelectionTracker(selectionTracker);
         if (savedInstanceState != null) {
             selectionTracker.onRestoreInstanceState(savedInstanceState);
@@ -211,7 +223,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         refreshView();
     }
 
-    private void refreshView() {
+    void refreshView() {
         if (mediaController == null || !mediaController.isSessionReady()) {
             Log.w(LC, "Media session not ready");
             return;

@@ -109,6 +109,19 @@ public abstract class AudioBrowserFragment extends Fragment {
         });
     }
 
+    public CompletableFuture<Boolean> moveQueueItems(List<Long> positionList, int toPosition) {
+        return AudioPlayerService.moveQueueItems(
+                mediaController,
+                positionList,
+                toPosition
+        ).thenApply(success -> {
+            if (!success) {
+                Log.e(LC, "dequeue entries failed");
+            }
+            return success;
+        });
+    }
+
     public void addToPlaylist(List<EntryID> entryIDs) {
         AudioPlayerService.addToPlaylist(
                 mediaController,

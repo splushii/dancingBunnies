@@ -428,12 +428,12 @@ public class CastAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    CompletableFuture<Optional<String>> dequeue(long[] queuePositions) {
-        Arrays.sort(queuePositions);
+    CompletableFuture<Optional<String>> dequeue(long[] positions) {
+        Arrays.sort(positions);
         List<PlaybackEntry> queueEntries = getPreloadedQueueEntries(Integer.MAX_VALUE);
         List<Integer> queueItemIdsToRemoveFromPlayer = new LinkedList<>();
         List<Integer> queuePositionsToRemoveFromController = new LinkedList<>();
-        for (long queuePosition: queuePositions) {
+        for (long queuePosition: positions) {
             if (queuePosition < 0) {
                 Log.e(LC, "Can not dequeue negative index: " + queuePosition);
                 continue;
@@ -493,6 +493,12 @@ public class CastAudioPlayer extends AudioPlayer {
             return checkPreload();
         });
         return result;
+    }
+
+    @Override
+    CompletableFuture<Optional<String>> moveQueueItems(long[] positions, int toPosition) {
+        return actionResult("moveQueueItems(" + Arrays.toString(positions) + ", "
+                + toPosition + ") not implemented");
     }
 
     private void remoteMediaClientResultCallbackTimeout(

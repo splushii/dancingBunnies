@@ -30,7 +30,8 @@ abstract class AudioPlayer {
     abstract List<PlaybackEntry> getPreloadedQueueEntries(int maxNum);
     abstract List<PlaybackEntry> getPreloadedPlaylistEntries(int maxNum);
     abstract CompletableFuture<Optional<String>> queue(List<PlaybackEntry> playbackEntry, PlaybackQueue.QueueOp op);
-    abstract CompletableFuture<Optional<String>> dequeue(long[] queuePositions);
+    abstract CompletableFuture<Optional<String>> dequeue(long[] positions);
+    abstract CompletableFuture<Optional<String>> moveQueueItems(long[] positions, int toPosition);
     abstract CompletableFuture<Optional<String>> play();
     abstract CompletableFuture<Optional<String>> pause();
     abstract CompletableFuture<Optional<String>> stop();
@@ -44,6 +45,7 @@ abstract class AudioPlayer {
         void onMetaChanged(EntryID entryID);
         void onPreloadChanged();
         void dePreloadQueueEntries(List<PlaybackEntry> queueEntries, PlaybackQueue.QueueOp op);
+        void dePreloadQueueEntries(List<PlaybackEntry> queueEntries, int offset);
         void dePreloadPlaylistEntries(List<PlaybackEntry> playlistEntries);
         int getNumQueueEntries();
         List<PlaybackEntry> requestPreload(int num);

@@ -6,7 +6,9 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.TreeMap;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -31,10 +33,11 @@ public class NowPlayingEntriesAdapter
     private RecyclerView.ViewHolder contextMenuHolder;
 
     private static final int VIEWTYPE_UNKNOWN = -1;
-    private static final int VIEWTYPE_QUEUE_ITEM = 0;
-    private static final int VIEWTYPE_PLAYLIST_NEXT = 1;
+    static final int VIEWTYPE_QUEUE_ITEM = 0;
+    static final int VIEWTYPE_PLAYLIST_NEXT = 1;
     private SelectionTracker<Long> selectionTracker;
     private View selectedItemView;
+    private Long dragEntryPos = -1L;
 
     NowPlayingEntriesAdapter(NowPlayingFragment context) {
         this.context = context;
@@ -74,15 +77,68 @@ public class NowPlayingEntriesAdapter
         return playlistNext.get(key.intValue());
     }
 
+    private PlaybackEntry removePlaybackEntry(Long key) {
+        if (key < queueData.size()) {
+            return queueData.remove(key.intValue());
+        }
+        return playlistNext.remove(key.intValue() - queueData.size());
+    }
+
+    void insertPlaybackEntry(PlaybackEntry entry, int position) {
+        if (position <= queueData.size()) {
+            queueData.add(position, entry);
+        } else {
+            playlistNext.add(position - queueData.size(), entry);
+        }
+    }
+
+    TreeMap<Integer, PlaybackEntry> removeItems(List<Long> positions) {
+        positions.sort(Comparator.reverseOrder());
+        TreeMap<Integer, PlaybackEntry> entries = new TreeMap<>();
+        for (Long pos: positions) {
+            entries.put(pos.intValue(), getPlaybackEntry(pos));
+            if (pos < queueData.size()) {
+                entries.put(
+                        pos.intValue(),
+                        queueData.remove(pos.intValue())
+                );
+            } else {
+                entries.put(
+                        pos.intValue(),
+                        playlistNext.remove(pos.intValue() - queueData.size())
+                );
+            }
+            notifyItemRemoved(pos.intValue());
+        }
+        return entries;
+    }
+
+    void insertItems(TreeMap<Integer, PlaybackEntry> selectedPlaybackEntries) {
+        selectedPlaybackEntries.forEach((k, v) -> {
+            if (v.playbackType.equals(PlaybackEntry.USER_TYPE_QUEUE)) {
+                queueData.add(k, v);
+            } else {
+                playlistNext.add(k, v);
+            }
+            notifyItemInserted(k);
+        });
+    }
+
+    void moveItem(int from, int to) {
+        PlaybackEntry entry = removePlaybackEntry((long) from);
+        insertPlaybackEntry(entry, to);
+        notifyItemMoved(from, to);
+    }
+
     static class SongViewHolder extends RecyclerView.ViewHolder {
         private final View item;
-        private final TextView moreInfo;
-        private final TextView artist;
+        final TextView title;
+        final TextView moreInfo;
+        final TextView artist;
         private final View moreActions;
         private final View actionPlay;
         private final View actionDequeue;
         private final View overflowMenu;
-        TextView title;
 
         private final ItemDetailsLookup.ItemDetails<Long> itemDetails = new ItemDetailsLookup.ItemDetails<Long>() {
             @Override

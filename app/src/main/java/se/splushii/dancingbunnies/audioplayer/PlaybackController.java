@@ -155,8 +155,19 @@ class PlaybackController {
         });
     }
 
-    CompletableFuture<Optional<String>> removeFromQueue(long[] queuePositions) {
-        return audioPlayer.dequeue(queuePositions).thenApply(e -> {
+    CompletableFuture<Optional<String>> removeFromQueue(long[] positions) {
+        return audioPlayer.dequeue(positions).thenApply(e -> {
+            if (e.isPresent()) {
+                Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
+            } else {
+                callback.onQueueChanged(getQueue());
+            }
+            return e;
+        });
+    }
+
+    CompletableFuture<Optional<String>> moveQueueItems(long[] positions, int toPosition) {
+        return audioPlayer.moveQueueItems(positions, toPosition).thenApply(e -> {
             if (e.isPresent()) {
                 Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
             } else {
@@ -288,7 +299,7 @@ class PlaybackController {
 
         @Override
         public void dePreloadPlaylistEntries(List<PlaybackEntry> playlistEntries) {
-            playlistItems.offer(playlistEntries);
+            playlistItems.addFirst(playlistEntries);
         }
 
         @Override
@@ -299,11 +310,15 @@ class PlaybackController {
                     queue.add(queueEntries);
                     break;
                 case NEXT:
-                    queue.offer(queueEntries);
+                    queue.addFirst(queueEntries);
                     break;
             }
         }
 
+        @Override
+        public void dePreloadQueueEntries(List<PlaybackEntry> queueEntries, int offset) {
+            queue.add(offset, queueEntries);
+        }
     }
 
     private List<PlaybackEntry> pollNextPreloadItems(int num) {
