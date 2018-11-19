@@ -373,7 +373,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private Void handleControllerResult(Void result, Throwable t) {
         if (t != null) {
-            Log.e(LC, t.getMessage());
+            Log.e(LC, Log.getStackTraceString(t));
             Toast.makeText(AudioPlayerService.this, t.getMessage(), Toast.LENGTH_SHORT).show();
         }
         return result;

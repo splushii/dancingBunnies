@@ -32,7 +32,7 @@ import se.splushii.dancingbunnies.util.Util;
 
 public class CastAudioPlayer extends AudioPlayer {
     private static final String LC = Util.getLogContext(CastAudioPlayer.class);
-    private static final int NUM_TO_PRELOAD = 10;
+    private static final int NUM_TO_PRELOAD = 3;
 
     private final RemoteMediaClientCallback remoteMediaClientCallback = new RemoteMediaClientCallback();
     private final MediaQueueCallback mediaQueueCallback = new MediaQueueCallback();
@@ -597,6 +597,9 @@ public class CastAudioPlayer extends AudioPlayer {
     }
 
     private CompletableFuture<Void> preload(List<PlaybackEntry> entries) {
+        if (entries == null || entries.isEmpty()) {
+            return actionResult(null);
+        }
         if (remoteMediaClient == null) {
             return actionResult("remoteMediaClient is null");
         }
@@ -614,14 +617,19 @@ public class CastAudioPlayer extends AudioPlayer {
 
     private CompletableFuture<Void> setAutoPlay(boolean playWhenReady) {
         int[] itemIds = mediaQueue.getItemIds();
-        int index = 0;
         int currentIndex = getCurrentIndex();
-        MediaQueueItem[] queueItems = new MediaQueueItem[itemIds.length - currentIndex];
+        List<MediaQueueItem> queueItems = new LinkedList<>();
         for (int itemIndex = currentIndex; itemIndex < itemIds.length; itemIndex++) {
-            queueItems[index++] = new MediaQueueItem.Builder(
-                    queueItemMap.get(itemIds[itemIndex]))
+            MediaQueueItem currentItem = queueItemMap.get(itemIds[itemIndex]);
+            if (currentItem == null) {
+                Log.w(LC, "setAutoPlay(): A mediaQueueItem is null: [" + itemIndex + "]"
+                        + itemIds[itemIndex]);
+                continue;
+            }
+            MediaQueueItem newItem = new MediaQueueItem.Builder(currentItem)
                     .setAutoplay(playWhenReady)
                     .build();
+            queueItems.add(newItem);
         }
         if (remoteMediaClient == null) {
             return actionResult("setAutoPlay(): remoteMediaClient is null");
@@ -630,7 +638,7 @@ public class CastAudioPlayer extends AudioPlayer {
         return handleMediaClientRequest(
                 "setAutoPlay() queueUpdateItems",
                 "Could not set autoplay to " + playWhenReady,
-                remoteMediaClient.queueUpdateItems(queueItems, null)
+                remoteMediaClient.queueUpdateItems(queueItems.toArray(new MediaQueueItem[0]), null)
         );
     }
 
@@ -824,7 +832,7 @@ public class CastAudioPlayer extends AudioPlayer {
                 "next",
                 "Could not go to next",
                 remoteMediaClient.queueNext(null))
-                .thenCompose(r -> checkPreload())
+                .thenRun(() -> preload(controller.requestPreload(1)))
                 .thenRun(controller::onPreloadChanged);
     }
 
