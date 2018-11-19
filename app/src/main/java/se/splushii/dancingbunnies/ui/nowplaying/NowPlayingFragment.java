@@ -43,7 +43,6 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
-import se.splushii.dancingbunnies.audioplayer.PlaybackQueue;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.util.Util;
@@ -231,7 +230,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         getCurrentPlaylist().thenAccept(opt -> opt.ifPresent(
                 recViewAdapter::setCurrentPlaylistItem
         ));
-        getPlaylistNext(3).thenAccept(opt -> opt.ifPresent(entries -> {
+        getPlaylistNext(100).thenAccept(opt -> opt.ifPresent(entries -> {
             Log.d(LC, "refreshView: playlist(" + entries.size() + ")");
             recViewAdapter.setPlaylistNext(entries);
         }));
@@ -530,7 +529,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                     for (Long key: selection) {
                         entryIDs.add(recViewAdapter.getPlaybackEntry(key).entryID);
                     }
-                    queue(entryIDs, PlaybackQueue.QueueOp.LAST);
+                    queue(entryIDs, AudioPlayerService.QUEUE_LAST);
                     mode.finish();
                     return true;
                 case R.id.nowplaying_actionmode_action_dequeue:

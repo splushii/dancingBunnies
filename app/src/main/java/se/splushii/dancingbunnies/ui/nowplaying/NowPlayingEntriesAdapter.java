@@ -70,11 +70,12 @@ public class NowPlayingEntriesAdapter
     }
 
     PlaybackEntry getPlaybackEntry(Long key) {
-        if (key < queueData.size()) {
-            return queueData.get(key.intValue());
+        int index = key.intValue();
+        if (index < queueData.size()) {
+            return queueData.get(index);
         }
-        key -= queueData.size();
-        return playlistNext.get(key.intValue());
+        index -= queueData.size();
+        return index < playlistNext.size() ? playlistNext.get(index) : null;
     }
 
     private PlaybackEntry removePlaybackEntry(Long key) {
@@ -84,7 +85,7 @@ public class NowPlayingEntriesAdapter
         return playlistNext.remove(key.intValue() - queueData.size());
     }
 
-    void insertPlaybackEntry(PlaybackEntry entry, int position) {
+    private void insertPlaybackEntry(PlaybackEntry entry, int position) {
         if (position <= queueData.size()) {
             queueData.add(position, entry);
         } else {

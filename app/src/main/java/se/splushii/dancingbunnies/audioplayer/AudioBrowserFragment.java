@@ -78,11 +78,11 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.addQueueItem(entryID.toMediaDescriptionCompat());
     }
 
-    public CompletableFuture<Boolean> queue(List<EntryID> entryIDs, PlaybackQueue.QueueOp op) {
+    public CompletableFuture<Boolean> queue(List<EntryID> entryIDs, int toPosition) {
         return AudioPlayerService.queue(
                 mediaController,
                 entryIDs,
-                op
+                toPosition
         ).thenApply(success -> {
             if (!success) {
                 Log.e(LC, "queue entryIDs failed");

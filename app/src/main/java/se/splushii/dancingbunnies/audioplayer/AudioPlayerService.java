@@ -72,6 +72,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static final String COMMAND_DEQUEUE = "DEQUEUE";
     private static final String COMMAND_MOVE_QUEUE_ITEMS = "MOVE_QUEUE_ITEMS";
 
+    public static final int QUEUE_LAST = -1;
+
     public static final String STARTCMD_INTENT_CAST_ACTION = "dancingbunnies.intent.castaction";
 
     public static final String CAST_ACTION_TOGGLE_PLAYBACK = "TOGGLE_PLAYBACK";
@@ -399,7 +401,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             );
             playbackController.addToQueue(
                     Collections.singletonList(playbackEntry),
-                    PlaybackQueue.QueueOp.LAST
+                    AudioPlayerService.QUEUE_LAST
             );
             setToast(playbackEntry.meta, "Adding %s \"%s\" to queue!");
         }
@@ -553,11 +555,11 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public static CompletableFuture<Boolean> queue(
             MediaControllerCompat mediaController,
             List<EntryID> entryIDs,
-            PlaybackQueue.QueueOp op
+            int toPosition
     ) {
         Bundle params = new Bundle();
         params.putParcelableArrayList("entryids", new ArrayList<>(entryIDs));
-        params.putSerializable("queueOp", op);
+        params.putInt("toPosition", toPosition);
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
                 AudioPlayerService.COMMAND_QUEUE_ENTRYIDS,
@@ -574,7 +576,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void queue(ResultReceiver cb, Bundle b) {
         ArrayList<EntryID> entryIDs = b.getParcelableArrayList("entryids");
-        PlaybackQueue.QueueOp op = (PlaybackQueue.QueueOp) b.getSerializable("queueOp");
+        int toPosition = b.getInt("toPosition");
         if (entryIDs == null) {
             cb.send(-1, null);
             return;
@@ -583,7 +585,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         for (EntryID entryID: entryIDs) {
             playbackEntries.add(createPlaybackEntry(entryID, PlaybackEntry.USER_TYPE_QUEUE));
         }
-        playbackController.addToQueue(playbackEntries, op);
+        playbackController.addToQueue(playbackEntries, toPosition);
         cb.send(0, null);
     }
 

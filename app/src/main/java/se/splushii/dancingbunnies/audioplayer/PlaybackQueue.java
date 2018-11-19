@@ -12,10 +12,6 @@ import se.splushii.dancingbunnies.util.Util;
 
 public class PlaybackQueue {
     private static final String LC = Util.getLogContext(PlaybackQueue.class);
-    public enum QueueOp {
-        NEXT,
-        LAST
-    }
     private LinkedList<PlaybackEntry> queue;
 
     Collection<? extends PlaybackEntry> poll(int num) {
@@ -39,12 +35,9 @@ public class PlaybackQueue {
         queue.addAll(0, entries);
     }
 
-    void add(List<PlaybackEntry> entries) {
-        queue.addAll(entries);
-    }
-
-    void add(int offset, List<PlaybackEntry> entries) {
-        queue.addAll(offset, entries);
+    void add(int toPosition, List<PlaybackEntry> entries) {
+        int index = toPosition == AudioPlayerService.QUEUE_LAST ? queue.size() : toPosition;
+        queue.addAll(index, entries);
     }
 
     PlaybackQueue() {
@@ -64,10 +57,11 @@ public class PlaybackQueue {
     }
 
     PlaybackEntry remove(int queuePosition) {
-        if (queuePosition >= queue.size()) {
-            return null;
-        }
-        return queue.remove(queuePosition);
+        return queuePosition < queue.size() ? queue.remove(queuePosition) : null;
+    }
+
+    PlaybackEntry get(int queuePosition) {
+        return queuePosition < queue.size() ? queue.get(queuePosition) : null;
     }
 
     PlaybackEntry next() {

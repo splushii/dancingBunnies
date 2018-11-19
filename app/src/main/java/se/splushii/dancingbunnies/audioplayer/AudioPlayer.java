@@ -19,17 +19,17 @@ abstract class AudioPlayer {
         CAST
     }
 
-    final Callback audioPlayerCallback;
+    final Callback controller;
 
-    AudioPlayer(Callback audioPlayerCallback) {
-        this.audioPlayerCallback = audioPlayerCallback;
+    AudioPlayer(Callback controller) {
+        this.controller = controller;
     }
     abstract CompletableFuture<Optional<String>> checkPreload();
     abstract AudioPlayerState getLastState();
     abstract long getSeekPosition();
     abstract List<PlaybackEntry> getPreloadedQueueEntries(int maxNum);
     abstract List<PlaybackEntry> getPreloadedPlaylistEntries(int maxNum);
-    abstract CompletableFuture<Optional<String>> queue(List<PlaybackEntry> playbackEntry, PlaybackQueue.QueueOp op);
+    abstract CompletableFuture<Optional<String>> queue(List<PlaybackEntry> playbackEntry, int toPosition);
     abstract CompletableFuture<Optional<String>> dequeue(long[] positions);
     abstract CompletableFuture<Optional<String>> moveQueueItems(long[] positions, int toPosition);
     abstract CompletableFuture<Optional<String>> play();
@@ -44,11 +44,11 @@ abstract class AudioPlayer {
         void onStateChanged(int playBackState);
         void onMetaChanged(EntryID entryID);
         void onPreloadChanged();
-        void dePreloadQueueEntries(List<PlaybackEntry> queueEntries, PlaybackQueue.QueueOp op);
         void dePreloadQueueEntries(List<PlaybackEntry> queueEntries, int offset);
         void dePreloadPlaylistEntries(List<PlaybackEntry> playlistEntries);
         int getNumQueueEntries();
         List<PlaybackEntry> requestPreload(int num);
+        PlaybackEntry getQueueEntry(int offset);
         PlaybackEntry consumeQueueEntry(int offset);
         PlaybackEntry consumePlaylistEntry();
     }

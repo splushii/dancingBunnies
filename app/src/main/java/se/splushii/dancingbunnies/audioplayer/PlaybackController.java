@@ -13,6 +13,7 @@ import com.google.android.gms.cast.framework.Session;
 import com.google.android.gms.cast.framework.SessionManager;
 import com.google.android.gms.cast.framework.SessionManagerListener;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -143,9 +144,9 @@ class PlaybackController {
         audioPlayer.skipItems(offset);
     }
 
-    CompletableFuture<Optional<String>> addToQueue(List<PlaybackEntry> playbackEntry, PlaybackQueue.QueueOp op) {
+    CompletableFuture<Optional<String>> addToQueue(List<PlaybackEntry> playbackEntry, int toPosition) {
         Log.d(LC, "addToQueue: " + playbackEntry.toString());
-        return audioPlayer.queue(playbackEntry, op).thenApply(e -> {
+        return audioPlayer.queue(playbackEntry, toPosition).thenApply(e -> {
             if (e.isPresent()) {
                 Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
             } else {
@@ -167,6 +168,7 @@ class PlaybackController {
     }
 
     CompletableFuture<Optional<String>> moveQueueItems(long[] positions, int toPosition) {
+        Log.d(LC, "moveQueueItems(" + Arrays.toString(positions) + ", " + toPosition + ")");
         return audioPlayer.moveQueueItems(positions, toPosition).thenApply(e -> {
             if (e.isPresent()) {
                 Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
@@ -185,8 +187,7 @@ class PlaybackController {
     }
 
     CompletableFuture<Optional<String>> playNow(PlaybackEntry playbackEntry) {
-        return addToQueue(Collections.singletonList(playbackEntry),
-                PlaybackQueue.QueueOp.NEXT).thenCompose(e -> {
+        return addToQueue(Collections.singletonList(playbackEntry), 0).thenCompose(e -> {
             if (e.isPresent()) {
                 Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
                 return CompletableFuture.completedFuture(Optional.of(""));
@@ -275,6 +276,11 @@ class PlaybackController {
         }
 
         @Override
+        public PlaybackEntry getQueueEntry(int offset) {
+            return queue.get(offset);
+        }
+
+        @Override
         public PlaybackEntry consumeQueueEntry(int offset) {
             return queue.remove(offset);
         }
@@ -303,21 +309,8 @@ class PlaybackController {
         }
 
         @Override
-        public void dePreloadQueueEntries(List<PlaybackEntry> queueEntries, PlaybackQueue.QueueOp op) {
-            switch (op) {
-                default:
-                case LAST:
-                    queue.add(queueEntries);
-                    break;
-                case NEXT:
-                    queue.addFirst(queueEntries);
-                    break;
-            }
-        }
-
-        @Override
-        public void dePreloadQueueEntries(List<PlaybackEntry> queueEntries, int offset) {
-            queue.add(offset, queueEntries);
+        public void dePreloadQueueEntries(List<PlaybackEntry> queueEntries, int toPosition) {
+            queue.add(toPosition, queueEntries);
         }
     }
 

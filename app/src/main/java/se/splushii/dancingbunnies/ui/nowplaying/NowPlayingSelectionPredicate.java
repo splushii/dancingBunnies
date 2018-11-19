@@ -22,6 +22,9 @@ class NowPlayingSelectionPredicate extends SelectionTracker.SelectionPredicate<L
     @Override
     public boolean canSetStateForKey(@NonNull Long key, boolean nextState) {
         PlaybackEntry playbackEntry = adapter.getPlaybackEntry(key);
+        if (playbackEntry == null) {
+            return false;
+        }
         String playbackType = playbackEntry.playbackType;
         Log.d(LC, "currentType: " + currentSelectionType);
         if (currentSelectionType == null) {
