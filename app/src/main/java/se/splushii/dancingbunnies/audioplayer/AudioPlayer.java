@@ -2,7 +2,6 @@ package se.splushii.dancingbunnies.audioplayer;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -24,21 +23,21 @@ abstract class AudioPlayer {
     AudioPlayer(Callback controller) {
         this.controller = controller;
     }
-    abstract CompletableFuture<Optional<String>> checkPreload();
+    abstract CompletableFuture<Void> checkPreload();
     abstract AudioPlayerState getLastState();
     abstract long getSeekPosition();
     abstract List<PlaybackEntry> getPreloadedQueueEntries(int maxNum);
     abstract List<PlaybackEntry> getPreloadedPlaylistEntries(int maxNum);
-    abstract CompletableFuture<Optional<String>> queue(List<PlaybackEntry> playbackEntry, int toPosition);
-    abstract CompletableFuture<Optional<String>> dequeue(long[] positions);
-    abstract CompletableFuture<Optional<String>> moveQueueItems(long[] positions, int toPosition);
-    abstract CompletableFuture<Optional<String>> play();
-    abstract CompletableFuture<Optional<String>> pause();
-    abstract CompletableFuture<Optional<String>> stop();
-    abstract CompletableFuture<Optional<String>> seekTo(long pos);
-    abstract CompletableFuture<Optional<String>> next();
-    abstract CompletableFuture<Optional<String>> skipItems(int offset);
-    abstract CompletableFuture<Optional<String>> previous();
+    abstract CompletableFuture<Void> queue(List<PlaybackEntry> playbackEntry, int toPosition);
+    abstract CompletableFuture<Void> dequeue(long[] positions);
+    abstract CompletableFuture<Void> moveQueueItems(long[] positions, int toPosition);
+    abstract CompletableFuture<Void> play();
+    abstract CompletableFuture<Void> pause();
+    abstract CompletableFuture<Void> stop();
+    abstract CompletableFuture<Void> seekTo(long pos);
+    abstract CompletableFuture<Void> next();
+    abstract CompletableFuture<Void> skipItems(int offset);
+    abstract CompletableFuture<Void> previous();
 
     interface Callback {
         void onStateChanged(int playBackState);
@@ -53,13 +52,26 @@ abstract class AudioPlayer {
         PlaybackEntry consumePlaylistEntry();
     }
 
-    CompletableFuture<Optional<String>> actionResult(String error) {
-        CompletableFuture<Optional<String>> result = new CompletableFuture<>();
+    public class AudioPlayerException extends Throwable {
+        String msg;
+        AudioPlayerException(String msg) {
+            super(msg);
+            this.msg = msg;
+        }
+
+        @Override
+        public String toString() {
+            return msg;
+        }
+    }
+
+    CompletableFuture<Void> actionResult(String error) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
         if (error != null) {
-            result.complete(Optional.of(error));
+            result.completeExceptionally(new AudioPlayerException(error));
             return result;
         }
-        result.complete(Optional.empty());
+        result.complete(null);
         return result;
     }
 

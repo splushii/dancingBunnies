@@ -10,7 +10,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -83,7 +82,7 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    public CompletableFuture<Optional<String>> checkPreload() {
+    public CompletableFuture<Void> checkPreload() {
         Log.d(LC, "checkPreload()");
         int numPreloaded = getNumPreloaded();
         if (numPreloaded < NUM_TO_PRELOAD) {
@@ -141,7 +140,7 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    public CompletableFuture<Optional<String>> play() {
+    public CompletableFuture<Void> play() {
         playWhenReady = true;
         if (player == null) {
             return actionResult("Player is null");
@@ -173,7 +172,7 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    public CompletableFuture<Optional<String>> pause() {
+    public CompletableFuture<Void> pause() {
         playWhenReady = false;
         if (player == null) {
             return actionResult("Player is null");
@@ -184,7 +183,7 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    public CompletableFuture<Optional<String>> stop() {
+    public CompletableFuture<Void> stop() {
         playWhenReady = false;
         if (player == null) {
             return actionResult("Player is null");
@@ -201,7 +200,7 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    public CompletableFuture<Optional<String>> next() {
+    public CompletableFuture<Void> next() {
         MediaPlayerInstance previousPlayer = player;
         MediaPlayerInstance nextPlayer = queuePlayers.poll();
         if (nextPlayer == null) {
@@ -225,7 +224,7 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    CompletableFuture<Optional<String>> skipItems(int offset) {
+    CompletableFuture<Void> skipItems(int offset) {
         Log.d(LC, "skipItems(" + offset + ")");
         if (offset == 0) {
             return actionResult(null);
@@ -322,7 +321,7 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    public CompletableFuture<Optional<String>> seekTo(long pos) {
+    public CompletableFuture<Void> seekTo(long pos) {
         if (player == null) {
             return actionResult("Player is null");
         }
@@ -366,7 +365,7 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    CompletableFuture<Optional<String>> queue(List<PlaybackEntry> playbackEntries, int toPosition) {
+    CompletableFuture<Void> queue(List<PlaybackEntry> playbackEntries, int toPosition) {
         return actionResult("queue not implemented");
 //        if (playbackEntries == null || playbackEntries.isEmpty()) {
 //            return actionResult(null);
@@ -445,7 +444,7 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    CompletableFuture<Optional<String>> dequeue(long[] positions) {
+    CompletableFuture<Void> dequeue(long[] positions) {
         Arrays.sort(positions);
         // Start from largest index because queues are modified
         for (int i = 0; i < positions.length; i++) {
@@ -464,7 +463,7 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    CompletableFuture<Optional<String>> moveQueueItems(long[] positions, int toPosition) {
+    CompletableFuture<Void> moveQueueItems(long[] positions, int toPosition) {
         LinkedList<MediaPlayerInstance> playersToMove = new LinkedList<>();
         LinkedList<MediaPlayerInstance> itemsToQueue = new LinkedList<>();
         LinkedList<PlaybackEntry> itemsToDepreload = new LinkedList<>();
@@ -574,7 +573,7 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    public CompletableFuture<Optional<String>> previous() {
+    public CompletableFuture<Void> previous() {
         // TODO: implement
         Log.e(LC, "previous not implemented");
         return actionResult("Not implemented");

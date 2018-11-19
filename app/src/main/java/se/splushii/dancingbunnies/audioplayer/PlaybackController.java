@@ -5,7 +5,6 @@ import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.google.android.gms.cast.framework.CastContext;
 import com.google.android.gms.cast.framework.CastSession;
@@ -17,7 +16,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -103,103 +101,64 @@ class PlaybackController {
         return currentPlaylist;
     }
 
-    CompletableFuture<Optional<String>> play() {
-        return audioPlayer.play().thenApply(e -> {
-            e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
-            return e;
-        });
+    CompletableFuture<Void> play() {
+        return audioPlayer.play();
     }
 
-    CompletableFuture<Optional<String>> pause() {
-        return audioPlayer.pause().thenApply(e -> {
-            e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
-            return e;
-        });
+    CompletableFuture<Void> pause() {
+        return audioPlayer.pause();
     }
 
-    CompletableFuture<Optional<String>> playPause() {
+    CompletableFuture<Void> playPause() {
         return isPlaying ? pause() : play();
     }
 
-    CompletableFuture<Optional<String>> stop() {
-        return audioPlayer.stop().thenApply(e -> {
-            e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
-            return e;
-        });
+    CompletableFuture<Void> stop() {
+        return audioPlayer.stop();
     }
 
-    CompletableFuture<Optional<String>> skipToNext() {
-        return audioPlayer.next().thenApply(e -> {
-            e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
-            return e;
-        });
+    CompletableFuture<Void> skipToNext() {
+        return audioPlayer.next();
     }
 
-    void skipToPrevious() {
+    CompletableFuture<Void> skipToPrevious() {
         // TODO: implement
         Log.e(LC, "skipToPrevious not implemented");
+        return audioPlayer.previous();
     }
 
-    void skipItems(int offset) {
-        audioPlayer.skipItems(offset);
+    CompletableFuture<Void> skipItems(int offset) {
+        return audioPlayer.skipItems(offset);
     }
 
-    CompletableFuture<Optional<String>> addToQueue(List<PlaybackEntry> playbackEntry, int toPosition) {
+    CompletableFuture<Void> addToQueue(List<PlaybackEntry> playbackEntry, int toPosition) {
         Log.d(LC, "addToQueue: " + playbackEntry.toString());
-        return audioPlayer.queue(playbackEntry, toPosition).thenApply(e -> {
-            if (e.isPresent()) {
-                Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
-            } else {
-                callback.onQueueChanged(getQueue());
-            }
-            return e;
-        });
+        return audioPlayer.queue(playbackEntry, toPosition).thenRun(() ->
+                callback.onQueueChanged(getQueue())
+        );
     }
 
-    CompletableFuture<Optional<String>> removeFromQueue(long[] positions) {
-        return audioPlayer.dequeue(positions).thenApply(e -> {
-            if (e.isPresent()) {
-                Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
-            } else {
-                callback.onQueueChanged(getQueue());
-            }
-            return e;
-        });
+    CompletableFuture<Void> removeFromQueue(long[] positions) {
+        return audioPlayer.dequeue(positions).thenRun(() ->
+                callback.onQueueChanged(getQueue())
+        );
     }
 
-    CompletableFuture<Optional<String>> moveQueueItems(long[] positions, int toPosition) {
+    CompletableFuture<Void> moveQueueItems(long[] positions, int toPosition) {
         Log.d(LC, "moveQueueItems(" + Arrays.toString(positions) + ", " + toPosition + ")");
-        return audioPlayer.moveQueueItems(positions, toPosition).thenApply(e -> {
-            if (e.isPresent()) {
-                Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
-            } else {
-                callback.onQueueChanged(getQueue());
-            }
-            return e;
-        });
+        return audioPlayer.moveQueueItems(positions, toPosition).thenRun(() ->
+                callback.onQueueChanged(getQueue())
+        );
     }
 
-    CompletableFuture<Optional<String>> seekTo(long pos) {
-        return audioPlayer.seekTo(pos).thenApply(e -> {
-            e.ifPresent(s -> Toast.makeText(context, s, Toast.LENGTH_SHORT).show());
-            return e;
-        });
+    CompletableFuture<Void> seekTo(long pos) {
+        return audioPlayer.seekTo(pos);
     }
 
-    CompletableFuture<Optional<String>> playNow(PlaybackEntry playbackEntry) {
-        return addToQueue(Collections.singletonList(playbackEntry), 0).thenCompose(e -> {
-            if (e.isPresent()) {
-                Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
-                return CompletableFuture.completedFuture(Optional.of(""));
-            }
-            return skipToNext();
-        }).thenCompose(e -> {
-            if (e.isPresent()) {
-                Toast.makeText(context, e.get(), Toast.LENGTH_SHORT).show();
-                return CompletableFuture.completedFuture(Optional.of(""));
-            }
-            return play();
-        });
+    CompletableFuture<Void> playNow(PlaybackEntry playbackEntry) {
+        return addToQueue(Collections.singletonList(playbackEntry), 0)
+                .thenCompose(r -> skipToNext())
+                .thenCompose(r -> play());
     }
 
     List<MediaSessionCompat.QueueItem> getQueue() {

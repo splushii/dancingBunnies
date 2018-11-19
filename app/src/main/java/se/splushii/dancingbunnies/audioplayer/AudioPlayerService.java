@@ -200,19 +200,22 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             return;
         }
         Log.d(LC, "CAST_ACTION: " + action);
+        CompletableFuture<Void> result;
         switch (action) {
             case CAST_ACTION_TOGGLE_PLAYBACK:
-                playbackController.playPause();
+                result = playbackController.playPause();
                 break;
             case CAST_ACTION_PREVIOUS:
-                playbackController.skipToPrevious();
+                result = playbackController.skipToPrevious();
                 break;
             case CAST_ACTION_NEXT:
-                playbackController.skipToNext();
+                result = playbackController.skipToNext();
                 break;
             default:
+                result = CompletableFuture.completedFuture(null);
                 break;
         }
+        result.handle(this::handleControllerResult);
     }
 
     @Override
@@ -368,17 +371,27 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         return new PlaybackEntry(meta, playbackType);
     }
 
+    private Void handleControllerResult(Void result, Throwable t) {
+        if (t != null) {
+            Log.e(LC, t.getMessage());
+            Toast.makeText(AudioPlayerService.this, t.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+        return result;
+    }
+
     private class MediaSessionCallback extends MediaSessionCompat.Callback {
         @Override
         public void onPlay() {
             Log.d(LC, "onPlay");
-            playbackController.play();
+            playbackController.play()
+                    .handle(AudioPlayerService.this::handleControllerResult);
         }
 
         @Override
         public void onPause() {
             Log.d(LC, "onPause");
-            playbackController.pause();
+            playbackController.pause()
+                    .handle(AudioPlayerService.this::handleControllerResult);
         }
 
         @Override
@@ -388,8 +401,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     EntryID.from(extras),
                     PlaybackEntry.USER_TYPE_QUEUE
             );
-            playbackController.playNow(playbackEntry);
-            setToast(playbackEntry.meta, "Playing %s \"%s\" now!");
+            playbackController.playNow(playbackEntry)
+                    .thenRun(() -> setToast(playbackEntry.meta, "Playing %s \"%s\" now!"))
+                    .handle(AudioPlayerService.this::handleControllerResult);
         }
 
         @Override
@@ -401,9 +415,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             );
             playbackController.addToQueue(
                     Collections.singletonList(playbackEntry),
-                    AudioPlayerService.QUEUE_LAST
-            );
-            setToast(playbackEntry.meta, "Adding %s \"%s\" to queue!");
+                    AudioPlayerService.QUEUE_LAST)
+                    .thenRun(() -> setToast(playbackEntry.meta, "Adding %s \"%s\" to queue!"))
+                    .handle(AudioPlayerService.this::handleControllerResult);
         }
 
         private void setToast(MediaMetadataCompat meta, String format) {
@@ -426,36 +440,42 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             Log.d(LC, "onRemoveQueueItem");
             assert description.getExtras() != null;
             long pos = description.getExtras().getLong(Meta.METADATA_KEY_QUEUE_POS);
-            playbackController.removeFromQueue(new long[]{pos});
+            playbackController.removeFromQueue(new long[]{pos})
+                    .handle(AudioPlayerService.this::handleControllerResult);
         }
 
         @Override
         public void onSkipToNext() {
             Log.d(LC, "onSkipToNext");
-            playbackController.skipToNext();
+            playbackController.skipToNext()
+                    .handle(AudioPlayerService.this::handleControllerResult);
         }
 
         @Override
         public void onSkipToPrevious() {
             Log.d(LC, "onSkipToPrevious");
-            playbackController.skipToPrevious();
+            playbackController.skipToPrevious()
+                    .handle(AudioPlayerService.this::handleControllerResult);
         }
 
         @Override
         public void onSkipToQueueItem(long queueItemId) {
-            playbackController.skipItems((int) queueItemId);
+            playbackController.skipItems((int) queueItemId)
+                    .handle(AudioPlayerService.this::handleControllerResult);
         }
 
         @Override
         public void onStop() {
             Log.d(LC, "onStop");
-            playbackController.stop();
+            playbackController.stop()
+                    .handle(AudioPlayerService.this::handleControllerResult);
         }
 
         @Override
         public void onSeekTo(long pos) {
             Log.d(LC, "onSeekTo(" + pos + ")");
-            playbackController.seekTo(pos);
+            playbackController.seekTo(pos)
+                    .handle(AudioPlayerService.this::handleControllerResult);
         }
 
         @Override
@@ -585,8 +605,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         for (EntryID entryID: entryIDs) {
             playbackEntries.add(createPlaybackEntry(entryID, PlaybackEntry.USER_TYPE_QUEUE));
         }
-        playbackController.addToQueue(playbackEntries, toPosition);
-        cb.send(0, null);
+        playbackController.addToQueue(playbackEntries, toPosition).handle((r, t) -> {
+            cb.send(t == null ? 0 : 1, null);
+            return handleControllerResult(r, t);
+        });
     }
 
     public static CompletableFuture<Boolean> dequeue(MediaControllerCompat mediaController, List<Long> positionList) {
@@ -608,8 +630,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void dequeue(ResultReceiver cb, Bundle extras) {
         long[] positions = extras.getLongArray("positionList");
-        playbackController.removeFromQueue(positions);
-        cb.send(0, null);
+        playbackController.removeFromQueue(positions).handle((r, t) -> {
+            cb.send(t == null ? 0 : 1, null);
+            return handleControllerResult(r, t);
+        });
     }
 
     public static CompletableFuture<Boolean> moveQueueItems(MediaControllerCompat mediaController,
@@ -635,8 +659,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private void moveQueueItems(ResultReceiver cb, Bundle extras) {
         long[] positions = extras.getLongArray("positionList");
         int toPosition = extras.getInt("toPosition");
-        playbackController.moveQueueItems(positions, toPosition);
-        cb.send(0, null);
+        playbackController.moveQueueItems(positions, toPosition).handle((r, t) -> {
+            cb.send(t == null ? 0 : 1, null);
+            return handleControllerResult(r, t);
+        });
     }
 
     public static CompletableFuture<Boolean> addToPlaylist(MediaControllerCompat mediaController,
