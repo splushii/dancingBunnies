@@ -70,7 +70,7 @@ public class MusicLibraryService extends Service {
         }
         for (int count = 0; count < maxEntries && index < entryIDS.size(); count++, index++) {
             EntryID entryID = entryIDS.get((int)index);
-            MediaMetadataCompat meta = getSongMetaData(entryID);
+            Meta meta = getSongMetaData(entryID);
             playbackEntries.add(new PlaybackEntry(meta, PlaybackEntry.USER_TYPE_PLAYLIST));
         }
         return playbackEntries;
@@ -112,7 +112,7 @@ public class MusicLibraryService extends Service {
             case PlaylistID.TYPE_STUPID:
                 List<LibraryEntry> entries = new LinkedList<>();
                 for (EntryID entryID: ((StupidPlaylist) playlist).getEntries()) {
-                    MediaMetadataCompat meta = getSongMetaData(entryID);
+                    Meta meta = getSongMetaData(entryID);
                     String title = meta.getString(Meta.METADATA_KEY_TITLE);
                     entries.add(new LibraryEntry(entryID, title));
                 }
@@ -176,9 +176,9 @@ public class MusicLibraryService extends Service {
         long startTime = System.currentTimeMillis();
         int numDocs = 0;
         // TODO: Do this one item at a time when fetching from backend API instead...
-        List<MediaMetadataCompat> songs = metaStorage.getMetadataEntries(null);
+        List<Meta> songs = metaStorage.getMetadataEntries(null);
         Log.d(LC, "Songs: " + songs.size());
-        for (MediaMetadataCompat meta: songs) {
+        for (Meta meta: songs) {
             numDocs = indexer.indexSong(meta);
         }
         indexer.close();
@@ -220,7 +220,7 @@ public class MusicLibraryService extends Service {
         audioStorage.download(entryID, handler);
     }
 
-    public MediaMetadataCompat getSongMetaData(EntryID entryID) {
+    public Meta getSongMetaData(EntryID entryID) {
         if (EntryID.UnknownEntryID.equals(entryID)) {
             return Meta.UNKNOWN_ENTRY;
         }

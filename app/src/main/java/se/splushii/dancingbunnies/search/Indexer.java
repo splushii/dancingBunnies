@@ -1,7 +1,5 @@
 package se.splushii.dancingbunnies.search;
 
-import android.support.v4.media.MediaMetadataCompat;
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
@@ -62,7 +60,7 @@ public class Indexer {
         }
     }
 
-    public int indexSong(MediaMetadataCompat meta) {
+    public int indexSong(Meta meta) {
         Document doc = new Document();
         for (String key: meta.keySet()) {
             if (meta2fieldNameMap.containsKey(key)) {

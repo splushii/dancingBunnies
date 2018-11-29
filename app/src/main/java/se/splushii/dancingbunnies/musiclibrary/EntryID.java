@@ -95,6 +95,10 @@ public class EntryID implements Parcelable {
                 .build();
     }
 
+    public static EntryID from(Meta meta) {
+        return from(meta.getBundle());
+    }
+
     public static EntryID from(MediaItem item) {
         Bundle b = item.getDescription().getExtras();
         return from(b);

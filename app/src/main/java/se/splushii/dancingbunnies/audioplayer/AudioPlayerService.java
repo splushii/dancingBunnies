@@ -15,7 +15,6 @@ import android.os.IBinder;
 import android.os.ResultReceiver;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaDescriptionCompat;
-import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
@@ -278,7 +277,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         PendingIntent pi = PendingIntent.getActivity(this, 99 /*request code*/,
                 intent, PendingIntent.FLAG_UPDATE_CURRENT);
         mediaSession.setSessionActivity(pi);
-        mediaSession.setMetadata(Meta.UNKNOWN_ENTRY);
+        mediaSession.setMetadata(Meta.UNKNOWN_ENTRY.toMediaMetadataCompat());
 
         mediaSession.setQueue(new LinkedList<>());
     }
@@ -367,7 +366,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             // TODO: implement
             Log.e(LC, "Non-track entry. Unhandled! Beware!");
         }
-        MediaMetadataCompat meta = musicLibraryService.getSongMetaData(entryID);
+        Meta meta = musicLibraryService.getSongMetaData(entryID);
         return new PlaybackEntry(meta, playbackType);
     }
 
@@ -420,7 +419,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     .handle(AudioPlayerService.this::handleControllerResult);
         }
 
-        private void setToast(MediaMetadataCompat meta, String format) {
+        private void setToast(Meta meta, String format) {
             String entryType = meta.getString(Meta.METADATA_KEY_TYPE);
             if (Meta.METADATA_KEY_MEDIA_ID.equals(entryType)) {
                 entryType = Meta.METADATA_KEY_TITLE;
@@ -721,9 +720,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         cb.send(0, null);
     }
 
-    public static CompletableFuture<MediaMetadataCompat> getSongMeta(MediaControllerCompat mediaController,
+    public static CompletableFuture<Meta> getSongMeta(MediaControllerCompat mediaController,
                                                       EntryID entryID) {
-        CompletableFuture<MediaMetadataCompat> future = new CompletableFuture<>();
+        CompletableFuture<Meta> future = new CompletableFuture<>();
         Bundle params = new Bundle();
         params.putParcelable("entryID", entryID);
         mediaController.sendCommand(
@@ -736,7 +735,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                             future.complete(Meta.UNKNOWN_ENTRY);
                             return;
                         }
-                        future.complete(Meta.from(resultData));
+                        future.complete(new Meta(resultData));
                     }
                 }
         );
@@ -909,8 +908,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         @Override
         public void onMetaChanged(EntryID entryID) {
-            MediaMetadataCompat meta = musicLibraryService.getSongMetaData(entryID);
-            mediaSession.setMetadata(meta);
+            Meta meta = musicLibraryService.getSongMetaData(entryID);
+            mediaSession.setMetadata(meta.toMediaMetadataCompat());
         }
 
         @Override

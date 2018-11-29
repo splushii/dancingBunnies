@@ -173,7 +173,7 @@ class PlaybackController {
         entries.addAll(audioPlayer.getPreloadedQueueEntries(Integer.MAX_VALUE));
         entries.addAll(queue.getEntries());
         for (PlaybackEntry playbackEntry: entries) {
-            MediaDescriptionCompat description = Meta.meta2desc(playbackEntry.meta);
+            MediaDescriptionCompat description = playbackEntry.meta.toMediaDescriptionCompat();
             MediaSessionCompat.QueueItem queueItem = new MediaSessionCompat.QueueItem(
                     description,
                     playbackEntry.entryID.hashCode()
@@ -222,6 +222,11 @@ class PlaybackController {
         public void onPreloadChanged() {
             callback.onQueueChanged(getQueue());
             callback.onPlaylistPositionChanged();
+        }
+
+        @Override
+        public void onQueueChanged() {
+            callback.onQueueChanged(getQueue());
         }
 
         @Override

@@ -62,7 +62,7 @@ public abstract class AudioBrowserFragment extends Fragment {
         }
     }
 
-    public CompletableFuture<MediaMetadataCompat> getSongMeta(EntryID entryID) {
+    public CompletableFuture<Meta> getSongMeta(EntryID entryID) {
         return AudioPlayerService.getSongMeta(mediaController, entryID);
     }
 

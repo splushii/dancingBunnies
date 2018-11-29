@@ -5,7 +5,6 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.RatingCompat;
@@ -88,9 +87,9 @@ public class MetaStorage {
         db.replace(DB.TABLE_SONGS, null, c);
     }
 
-    public MediaMetadataCompat getMetadataEntry(EntryID entryID) {
+    public Meta getMetadataEntry(EntryID entryID) {
         Cursor cursor = getBundleQueryCursor(entryID.toBundleQuery());
-        List<MediaMetadataCompat> list = getMetaFromCursor(cursor);
+        List<Meta> list = getMetaFromCursor(cursor);
         cursor.close();
         if (list.isEmpty()) {
             return Meta.UNKNOWN_ENTRY;
@@ -133,11 +132,11 @@ public class MetaStorage {
         return db.rawQuery(query.toString(), args);
     }
 
-    public List<MediaMetadataCompat> getMetadataEntries(Bundle bundleQuery) {
+    public List<Meta> getMetadataEntries(Bundle bundleQuery) {
         long start = System.currentTimeMillis();
         Log.d(LC, "getMetadataEntries bundleQuery start");
         Cursor cursor = getBundleQueryCursor(bundleQuery);
-        List<MediaMetadataCompat> list = getMetaFromCursor(cursor);
+        List<Meta> list = getMetaFromCursor(cursor);
         cursor.close();
         Log.d(LC, "getMetadataEntries bundleQuery finish " + (System.currentTimeMillis() - start));
         return list;
@@ -245,13 +244,13 @@ public class MetaStorage {
         }
     }
 
-    private List<MediaMetadataCompat> getMetaFromCursor(Cursor cursor) {
+    private List<Meta> getMetaFromCursor(Cursor cursor) {
         ColumnIndexCache cache = new ColumnIndexCache();
-        LinkedList<MediaMetadataCompat> list = new LinkedList<>();
+        LinkedList<Meta> list = new LinkedList<>();
         Log.i(LC, "Cursor entries: " + cursor.getCount());
         if (cursor.moveToFirst()) {
             while (!cursor.isAfterLast()) {
-                MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder();
+                Bundle b = new Bundle();
                 for (String key: Meta.db_keys) {
                     Meta.Type type = Meta.getType(key);
                     int index = cache.getColumnIndex(cursor, DB.Keyify(key));
@@ -277,14 +276,13 @@ public class MetaStorage {
                             if (array == null) {
                                 break;
                             }
-                            Bitmap bitmap = BitmapFactory.decodeByteArray(array, 0, array.length);
-                            b.putBitmap(key, bitmap);
+                            b.putByteArray(key, array);
                             break;
                         case RATING:
                             // Fixme: May give '0' value when it in fact is null.
                             float stars = cursor.getFloat(index);
                             RatingCompat rating = RatingCompat.newStarRating(RatingCompat.RATING_5_STARS, stars);
-                            b.putRating(key, rating);
+                            b.putParcelable(key, rating);
                             break;
                         default:
                             Log.w(LC, "Unhandled type: " + type);
@@ -292,7 +290,7 @@ public class MetaStorage {
                     }
                 }
                 b.putString(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_MEDIA_ID);
-                list.add(b.build());
+                list.add(new Meta(b));
                 cursor.moveToNext();
             }
         }

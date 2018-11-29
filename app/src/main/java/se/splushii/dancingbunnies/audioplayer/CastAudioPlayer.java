@@ -1,7 +1,5 @@
 package se.splushii.dancingbunnies.audioplayer;
 
-import android.os.Bundle;
-import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 import android.util.SparseArray;
@@ -32,7 +30,6 @@ import se.splushii.dancingbunnies.util.Util;
 
 public class CastAudioPlayer extends AudioPlayer {
     private static final String LC = Util.getLogContext(CastAudioPlayer.class);
-    private static final int NUM_TO_PRELOAD = 3;
 
     private final RemoteMediaClientCallback remoteMediaClientCallback = new RemoteMediaClientCallback();
     private final MediaQueueCallback mediaQueueCallback = new MediaQueueCallback();
@@ -88,7 +85,7 @@ public class CastAudioPlayer extends AudioPlayer {
             if (queueItem == null) {
                 continue;
             }
-            PlaybackEntry entry = new PlaybackEntry(Meta.from(queueItem.getMedia().getMetadata()));
+            PlaybackEntry entry = new PlaybackEntry(new Meta(queueItem.getMedia().getMetadata()));
             if (isHistory) {
                 history.add(entry);
             } else {
@@ -209,9 +206,9 @@ public class CastAudioPlayer extends AudioPlayer {
 
     private PlaybackEntry mediaQueueItem2PlaybackEntry(MediaQueueItem mediaQueueItem) {
         MediaMetadata castMeta = mediaQueueItem == null ?
-                Meta.from(Meta.UNKNOWN_ENTRY, PlaybackEntry.USER_TYPE_EXTERNAL) :
+                Meta.UNKNOWN_ENTRY.toCastMediaMetadata(PlaybackEntry.USER_TYPE_EXTERNAL) :
                 mediaQueueItem.getMedia().getMetadata();
-        return new PlaybackEntry(Meta.from(castMeta));
+        return new PlaybackEntry(new Meta(castMeta));
     }
 
     private List<MediaMetadata> getEntriesMeta(boolean excludeCurrentItem) {
@@ -228,20 +225,9 @@ public class CastAudioPlayer extends AudioPlayer {
             }
             MediaQueueItem mediaQueueItem = queueItemMap.get(itemId);
             MediaMetadata castMeta = mediaQueueItem == null ?
-                    Meta.from(Meta.UNKNOWN_ENTRY, PlaybackEntry.USER_TYPE_EXTERNAL) :
+                    Meta.UNKNOWN_ENTRY.toCastMediaMetadata(PlaybackEntry.USER_TYPE_EXTERNAL) :
                     mediaQueueItem.getMedia().getMetadata();
             entries.add(castMeta);
-        }
-        return entries;
-    }
-
-    private List<PlaybackEntry> getPreloadedEntries(int maxNum) {
-        LinkedList<PlaybackEntry> entries = new LinkedList<>();
-        for (MediaMetadata castMeta: getEntriesMeta(false)) {
-            if (entries.size() >= maxNum) {
-                break;
-            }
-            entries.add(new PlaybackEntry(Meta.from(castMeta)));
         }
         return entries;
     }
@@ -252,12 +238,8 @@ public class CastAudioPlayer extends AudioPlayer {
             if (entries.size() > maxNum) {
                 break;
             }
-            Bundle extras = new Bundle();
-            extras.putString(
-                    Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS,
-                    PlaybackEntry.PRELOADSTATUS_PRELOADED
-            );
-            PlaybackEntry playbackEntry = new PlaybackEntry(Meta.from(castMeta, extras));
+            PlaybackEntry playbackEntry = new PlaybackEntry(new Meta(castMeta));
+            playbackEntry.setPreloadStatus(PlaybackEntry.PRELOADSTATUS_PRELOADED);
             if (playbackEntry.playbackType.equals(type)) {
                 entries.add(playbackEntry);
             }
@@ -275,212 +257,113 @@ public class CastAudioPlayer extends AudioPlayer {
         return getEntriesOfType(PlaybackEntry.USER_TYPE_PLAYLIST, maxNum);
     }
 
-    private List<Integer> getItemIdsOfType(String type) {
-        List<Integer> itemIds = new LinkedList<>();
-        for (int itemId: mediaQueue.getItemIds()) {
-            if (type.equals(queueItemMap.get(itemId).getMedia().getMetadata().getString(
-                    Meta.METADATA_KEY_PLAYBACK_TYPE))) {
-                itemIds.add(itemId);
-            }
-        }
-        return itemIds;
+    @Override
+    protected PlaybackEntry getQueueEntry(int queuePosition) {
+        int mediaQueueItemIndex = getCurrentIndex() + queuePosition + 1;
+        int mediaQueueItemId = mediaQueue.itemIdAtIndex(mediaQueueItemIndex);
+        return mediaQueueItem2PlaybackEntry(queueItemMap.get(mediaQueueItemId));
     }
 
-    List<Integer> getQueueItemIds() {
-        return getItemIdsOfType(PlaybackEntry.USER_TYPE_QUEUE);
-    }
 
-    List<Integer> getPlaylistItemIds() {
-        return getItemIdsOfType(PlaybackEntry.USER_TYPE_PLAYLIST);
+    @Override
+    protected int getNumPlaylistEntries() {
+        return getPreloadedPlaylistEntries(Integer.MAX_VALUE).size();
     }
 
     @Override
-    CompletableFuture<Void> queue(List<PlaybackEntry> playbackEntries, int toPosition) {
-        if (!remoteMediaClient.hasMediaSession()) {
-            return setQueue(playbackEntries, 0);
-        }
+    protected int getNumQueueEntries() {
+        return getPreloadedQueueEntries(Integer.MAX_VALUE).size();
+    }
 
-        List<PlaybackEntry> queueEntries = getPreloadedQueueEntries(Integer.MAX_VALUE);
-        List<PlaybackEntry> playlistEntries = getPreloadedPlaylistEntries(Integer.MAX_VALUE);
-        int numToDepreload = queueEntries.size() + playlistEntries.size()
-                + playbackEntries.size() - (NUM_TO_PRELOAD - 1);
-
-        // Get playlistEntries to de-preload
-        int playlistEntriesToDepreloadItemIds[] = getPlaylistItemIdsToDepreload(
-                numToDepreload,
-                queueEntries.size(),
-                playlistEntries.size()
+    protected CompletableFuture<Void> dePreload(int numQueueEntriesToDepreload,
+                                                int queueOffset,
+                                                int numPlaylistEntriesToDepreload,
+                                                int playlistOffset) {
+        int queueEntriesToDepreloadItemIds[] = getItemIds(numQueueEntriesToDepreload, queueOffset);
+        int playlistEntriesToDepreloadItemIds[] = getItemIds(
+                numPlaylistEntriesToDepreload,
+                getNumQueueEntries() + playlistOffset
         );
-        numToDepreload -= playlistEntriesToDepreloadItemIds.length;
-
-        // Get queueEntries to de-preload
-        int queueEntriesToDepreloadItemIds[] = getQueueItemIdsToDepreload(
-                numToDepreload,
-                toPosition,
-                queueEntries.size()
-        );
-        numToDepreload -= queueEntriesToDepreloadItemIds.length;
-
-        // Fill with entries from controller if needed
-        int filledFromController = 0;
-        int maxToFill = toPosition == AudioPlayerService.QUEUE_LAST ? NUM_TO_PRELOAD - 1 : toPosition;
-        for (; queueEntries.size() + filledFromController < maxToFill; filledFromController++) {
-            PlaybackEntry entry = controller.consumeQueueEntry(0);
-            if (entry == null) {
-                Log.w(LC, "getQueueItemsToQueue(): " +
-                        "Could not get enough items from controller.");
-                break;
-            }
-            playbackEntries.add(filledFromController, entry);
-        }
-        numToDepreload += filledFromController;
-
-        // Get new entries to queue
-        MediaQueueItem[] queueItemsToQueue = getQueueItemsToQueue(
-                numToDepreload,
-                toPosition,
-                playbackEntries
-        );
-        int queueInsertBeforeItemId = getInsertBeforeItemId(toPosition, queueEntries.size());
-
-        // Get new entries to de-preload
-        List<PlaybackEntry> entriesToDePreload = playbackEntries.subList(
-                queueItemsToQueue.length,
-                playbackEntries.size()
-        );
-        int targetQueueSize = queueEntries.size()
-                - queueEntriesToDepreloadItemIds.length
-                + queueItemsToQueue.length;
-        int entriesToDepreloadOffset = getDepreloadOffset(toPosition, filledFromController, targetQueueSize);
-
         logCurrentQueue();
-        Log.d(LC, "queue()"
+        Log.d(LC, "dePreload()"
                 + "\nQueue entries to de-preload: "
                 + queueEntriesToDepreloadItemIds.length + " items "
                 + Arrays.toString(queueEntriesToDepreloadItemIds)
                 + "\nPlaylist entries to de-preload: "
                 + playlistEntriesToDepreloadItemIds.length + " items "
-                + Arrays.toString(playlistEntriesToDepreloadItemIds)
-                + "\nFilled from controller: " + filledFromController
+                + Arrays.toString(playlistEntriesToDepreloadItemIds));
+        int[] itemIdsToRemove = IntStream.concat(
+                Arrays.stream(queueEntriesToDepreloadItemIds),
+                Arrays.stream(playlistEntriesToDepreloadItemIds)
+        ).toArray();
+        if (itemIdsToRemove.length <= 0) {
+            return actionResult(null);
+        }
+        return handleMediaClientRequest(
+                "dePreload() queueRemoveItems superfluous entries",
+                "Could not depreload superfluous items",
+                remoteMediaClient.queueRemoveItems(itemIdsToRemove, null)
+        );
+    }
+
+    @Override
+    protected CompletableFuture<Void> playerQueue(List<PlaybackEntry> newEntriesToQueue,
+                                                  int newEntriesToQueueOffset) {
+        if (!remoteMediaClient.hasMediaSession()) {
+            return setQueue(newEntriesToQueue, 0);
+        }
+
+        MediaQueueItem[] queueItemsToQueue = getQueueItemsToQueue(newEntriesToQueue);
+        int queueInsertBeforeItemId = getInsertBeforeItemId(newEntriesToQueueOffset);
+
+        logCurrentQueue();
+        Log.d(LC, "queue()"
                 + "\nNew entries to queue: " + queueItemsToQueue.length
-                + " before "+ queueInsertBeforeItemId
-                + "\nNew entries to de-preload: " + entriesToDePreload.size()
-                + " at " + entriesToDepreloadOffset);
+                + " before "+ queueInsertBeforeItemId);
 
-        CompletableFuture<Void> result = CompletableFuture.completedFuture(null);
-        if (queueItemsToQueue.length > 0) {
-            result = result.thenCompose(e -> handleMediaClientRequest(
-                    "queue() queueInsertItems",
-                    "Could not insert queue items.",
-                    remoteMediaClient.queueInsertItems(
-                            queueItemsToQueue,
-                            queueInsertBeforeItemId,
-                            null
-                    )
-            ));
-        }
-
-        if (queueEntriesToDepreloadItemIds.length > 0 || playlistEntriesToDepreloadItemIds.length > 0) {
-            List<PlaybackEntry> playlistEntriesToDepreload = getPlaybackEntries(playlistEntriesToDepreloadItemIds);
-            List<PlaybackEntry> queueEntriesToDepreload = getPlaybackEntries(queueEntriesToDepreloadItemIds);
-            int[] itemIdsToRemove = IntStream.concat(
-                    Arrays.stream(queueEntriesToDepreloadItemIds),
-                    Arrays.stream(playlistEntriesToDepreloadItemIds)
-            ).toArray();
-            result = result.thenCompose(r -> handleMediaClientRequest(
-                    "queue() queueRemoveItems superfluous entries",
-                    "Could not depreload superfluous items",
-                    remoteMediaClient.queueRemoveItems(itemIdsToRemove, null)
-            )).thenRun(() -> {
-                controller.dePreloadQueueEntries(queueEntriesToDepreload, 0);
-                controller.dePreloadPlaylistEntries(playlistEntriesToDepreload);
-            });
-        }
-
-        if (entriesToDePreload.size() > 0) {
-            result.thenRun(() ->
-                    controller.dePreloadQueueEntries(entriesToDePreload, entriesToDepreloadOffset)
-            );
-        }
-        return result;
+        return handleMediaClientRequest(
+                "queue() queueInsertItems",
+                "Could not insert queue items.",
+                remoteMediaClient.queueInsertItems(
+                        queueItemsToQueue,
+                        queueInsertBeforeItemId,
+                        null
+                )
+        );
     }
 
-    private int getDepreloadOffset(int toPosition, int filledFromController, int numPlayerQueueEntries) {
-        if (toPosition == AudioPlayerService.QUEUE_LAST) {
-            return AudioPlayerService.QUEUE_LAST;
-        }
-        return toPosition < numPlayerQueueEntries + filledFromController ? 0 :
-                toPosition - numPlayerQueueEntries - filledFromController;
-    }
-
-    private int getInsertBeforeItemId(int toPosition, int numQueueEntries) {
+    private int getInsertBeforeItemId(int offset) {
         int currentIndex = getCurrentIndex();
-        int queueInsertBeforeIndex = toPosition == AudioPlayerService.QUEUE_LAST ?
-                currentIndex + 1 + numQueueEntries: currentIndex + 1 + toPosition;
+        int queueInsertBeforeIndex = currentIndex + 1 + offset;
         return mediaQueue.itemIdAtIndex(queueInsertBeforeIndex);
+    }
+
+    private MediaQueueItem[] getQueueItemsToQueue(List<PlaybackEntry> entriesToQueue) {
+        if (entriesToQueue.isEmpty()) {
+            return new MediaQueueItem[0];
+        }
+        return buildMediaQueueItems(entriesToQueue, playWhenReady);
     }
 
     private MediaQueueItem[] getQueueItemsToQueue(int numToDepreload,
                                                   int toPosition,
                                                   List<PlaybackEntry> newEntries) {
-        if (toPosition >= NUM_TO_PRELOAD - 1
-                || newEntries.isEmpty()
-                || numToDepreload >= newEntries.size() ) {
+        int numToQueue = getNumQueueEntriesToQueue(toPosition, numToDepreload, newEntries);
+        if (numToQueue <= 0) {
             return new MediaQueueItem[0];
         }
-        int numToQueue = numToDepreload <= 0 ?
-                newEntries.size() : newEntries.size() - numToDepreload;
         List<PlaybackEntry> entriesToQueue = newEntries.subList(0, numToQueue);
         return buildMediaQueueItems(entriesToQueue, playWhenReady);
     }
 
-    private int[] getQueueItemIdsToDepreload(int maxToDepreload,
-                                             int toPosition,
-                                             int numQueueEntries) {
-        if (maxToDepreload <= 0
-                || numQueueEntries <= 0
-                || toPosition >= NUM_TO_PRELOAD
-                || toPosition == AudioPlayerService.QUEUE_LAST) {
-            return new int[0];
+    private int[] getItemIds(int num, int offset) {
+        int startIndex = getCurrentIndex() + 1 + offset;
+        int itemIds[] = new int[num];
+        for (int i = 0; i < num; i++) {
+            int itemId = mediaQueue.itemIdAtIndex( startIndex + i);
+            itemIds[i] = itemId;
         }
-
-        int numQueueEntriesToDepreload = Integer.min(NUM_TO_PRELOAD - toPosition, numQueueEntries);
-        numQueueEntriesToDepreload = Integer.min(numQueueEntriesToDepreload, maxToDepreload);
-        int queueEntriesToDepreloadStartIndex = getCurrentIndex() + 1 + toPosition;
-        int queueEntriesToDepreloadItemIds[] = new int[numQueueEntriesToDepreload];
-        for (int i = 0; i < numQueueEntriesToDepreload; i++) {
-            int itemId = mediaQueue.itemIdAtIndex(
-                    queueEntriesToDepreloadStartIndex + numQueueEntries - i - 1
-            );
-            queueEntriesToDepreloadItemIds[i] = itemId;
-        }
-        return queueEntriesToDepreloadItemIds;
-    }
-
-    private List<PlaybackEntry> getPlaybackEntries(int[] itemIds) {
-        LinkedList<PlaybackEntry> playbackEntries = new LinkedList<>();
-        for (int itemId: itemIds) {
-            playbackEntries.addFirst(mediaQueueItem2PlaybackEntry(queueItemMap.get(itemId)));
-        }
-        return playbackEntries;
-    }
-
-    private int[] getPlaylistItemIdsToDepreload(int maxToDepreload,
-                                                int numQueueEntries,
-                                                int numPlaylistEntries) {
-        if (maxToDepreload <= 0 || numPlaylistEntries <= 0) {
-            return new int[0];
-        }
-        int numPlaylistEntriesToDepreload = Integer.min(maxToDepreload, numPlaylistEntries);
-        int playlistEntriesToDepreloadStartIndex = getCurrentIndex() + 1 + numQueueEntries;
-        int playlistEntriesToDepreloadItemIds[] = new int[numPlaylistEntriesToDepreload];
-        for (int i = 0; i < numPlaylistEntriesToDepreload; i++) {
-            int itemId = mediaQueue.itemIdAtIndex(
-                    playlistEntriesToDepreloadStartIndex + numPlaylistEntries - i - 1
-            );
-            playlistEntriesToDepreloadItemIds[i] = itemId;
-        }
-        return playlistEntriesToDepreloadItemIds;
+        return itemIds;
     }
 
     @Override
@@ -537,30 +420,6 @@ public class CastAudioPlayer extends AudioPlayer {
         return result;
     }
 
-    @Override
-    CompletableFuture<Void> moveQueueItems(long[] positions, int toPosition) {
-        Arrays.sort(positions);
-        List<PlaybackEntry> queueEntries = getPreloadedQueueEntries(Integer.MAX_VALUE);
-        List<PlaybackEntry> moveEntries = new LinkedList<>();
-        for (long queuePosition: positions) {
-            if (queuePosition < 0) {
-                Log.e(LC, "Can not dequeue negative index: " + queuePosition);
-                continue;
-            }
-            PlaybackEntry entry;
-            if (queuePosition < queueEntries.size()) {
-                int mediaQueueItemIndex = getCurrentIndex() + (int) queuePosition + 1;
-                int mediaQueueItemId = mediaQueue.itemIdAtIndex(mediaQueueItemIndex);
-                entry = mediaQueueItem2PlaybackEntry(queueItemMap.get(mediaQueueItemId));
-            } else {
-                entry = controller.getQueueEntry((int) queuePosition - queueEntries.size());
-            }
-            moveEntries.add(entry);
-        }
-        return dequeue(positions)
-                .thenCompose(v -> queue(moveEntries, toPosition));
-    }
-
     private void remoteMediaClientResultCallbackTimeout(
             CompletableFuture<Void> result) {
         // Sometimes remoteMediaClient errors with:
@@ -581,15 +440,20 @@ public class CastAudioPlayer extends AudioPlayer {
         });
     }
 
+    @Override
+    int getMaxToPreload() {
+        return 3;
+    }
+
     public CompletableFuture<Void> checkPreload() {
         Log.d(LC, "checkPreload()");
         synchronized (preloadLock) {
             Log.d(LC, "checkPreload() start");
             logCurrentQueue();
             int numPreloaded = getNumPreloaded();
-            if (numPreloaded < NUM_TO_PRELOAD) {
+            if (numPreloaded < getMaxToPreload()) {
                 List<PlaybackEntry> entries =
-                        controller.requestPreload(NUM_TO_PRELOAD - numPreloaded);
+                        controller.requestPreload(getMaxToPreload() - numPreloaded);
                 return preload(entries);
             }
         }
@@ -640,54 +504,6 @@ public class CastAudioPlayer extends AudioPlayer {
                 "Could not set autoplay to " + playWhenReady,
                 remoteMediaClient.queueUpdateItems(queueItems.toArray(new MediaQueueItem[0]), null)
         );
-    }
-
-    private CompletableFuture<Void> dePreload() {
-        Log.d(LC, "dePreload()");
-        synchronized (preloadLock) {
-            List<PlaybackEntry> preloadedEntries = getPreloadedEntries(Integer.MAX_VALUE);
-            int numToRemove = preloadedEntries.size() - NUM_TO_PRELOAD;
-            if (numToRemove <= 0) {
-                return actionResult(null);
-            }
-            List<PlaybackEntry> playlistEntriesToRemove = new LinkedList<>();
-            List<PlaybackEntry> queueEntriesToRemove = new LinkedList<>();
-            List<Integer> itemIndexesToRemove = new LinkedList<>();
-            for (int i = 0; i < preloadedEntries.size(); i++) {
-                if (itemIndexesToRemove.size() >= numToRemove) {
-                    break;
-                }
-                PlaybackEntry entry = preloadedEntries.get(preloadedEntries.size() - 1 - i);
-                if (PlaybackEntry.USER_TYPE_PLAYLIST.equals(entry.playbackType)) {
-                    playlistEntriesToRemove.add(entry);
-                } else if (PlaybackEntry.USER_TYPE_QUEUE.equals(entry.playbackType)) {
-                    queueEntriesToRemove.add(entry);
-                } else {
-                    // There is an external (or unknown) entry
-                    break;
-                }
-                itemIndexesToRemove.add(mediaQueue.itemIdAtIndex(mediaQueue.getItemCount() - i - 1));
-            }
-            if (itemIndexesToRemove.isEmpty()) {
-                return actionResult(null);
-            }
-            if (remoteMediaClient == null) {
-                return actionResult("dePreload(): remoteMediaClient is null");
-            }
-            Log.d(LC, "Removing " + itemIndexesToRemove.size() + " superfluous preload items: "
-                    + itemIndexesToRemove.toString());
-            return handleMediaClientRequest(
-                    "dePreload queueRemoveItems",
-                    "Could not dePreload items",
-                    remoteMediaClient.queueRemoveItems(
-                            itemIndexesToRemove.stream().mapToInt(i -> i).toArray(),
-                            null
-                    )
-            ).thenRun(() -> {
-                controller.dePreloadQueueEntries(queueEntriesToRemove, 0);
-                controller.dePreloadPlaylistEntries(playlistEntriesToRemove);
-            });
-        }
     }
 
     private CompletableFuture<Void> resetQueue() {
@@ -751,7 +567,7 @@ public class CastAudioPlayer extends AudioPlayer {
         int startIndex = 0;
         int repeatMode = MediaStatus.REPEAT_MODE_REPEAT_OFF;
         Log.d(LC, "setQueue, creating a new queue");
-        int numToDepreload = playbackEntries.size() - NUM_TO_PRELOAD;
+        int numToDepreload = playbackEntries.size() - getMaxToPreload();
         MediaQueueItem[] queueItems = getQueueItemsToQueue(
                 numToDepreload,
                 0,
@@ -805,13 +621,13 @@ public class CastAudioPlayer extends AudioPlayer {
     }
 
     private MediaInfo buildMediaInfo(PlaybackEntry playbackEntry) {
-        MediaMetadataCompat meta = playbackEntry.meta;
+        Meta meta = playbackEntry.meta;
         String URL = musicLibraryService.getAudioURL(playbackEntry.entryID);
         if (URL == null) {
             Log.e(LC, "Could not get URL for " + meta.getString(Meta.METADATA_KEY_TITLE));
             return null;
         }
-        MediaMetadata castMeta = Meta.from(meta, playbackEntry.playbackType);
+        MediaMetadata castMeta = meta.toCastMediaMetadata(playbackEntry.playbackType);
         long duration = meta.getLong(Meta.METADATA_KEY_DURATION);
         String contentType = meta.getString(Meta.METADATA_KEY_CONTENT_TYPE);
         return new MediaInfo.Builder(URL)
@@ -832,8 +648,7 @@ public class CastAudioPlayer extends AudioPlayer {
                 "next",
                 "Could not go to next",
                 remoteMediaClient.queueNext(null))
-                .thenRun(() -> preload(controller.requestPreload(1)))
-                .thenRun(controller::onPreloadChanged);
+                .thenRun(() -> preload(controller.requestPreload(1)));
     }
 
     @Override
@@ -879,7 +694,7 @@ public class CastAudioPlayer extends AudioPlayer {
                 }
             } else {
                 // Skip all playlist items until offset
-                int numCastPlaylistEntries = getPreloadedPlaylistEntries(Integer.MAX_VALUE).size();
+                int numCastPlaylistEntries = getNumPlaylistEntries();
                 if (offset <= totalQueueEntries + numCastPlaylistEntries) {
                     // Dequeue all playlist items up until offset, then move offset to after current
                     // index and skip to next

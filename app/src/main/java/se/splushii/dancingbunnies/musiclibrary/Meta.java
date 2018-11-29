@@ -1,6 +1,8 @@
 package se.splushii.dancingbunnies.musiclibrary;
 
 import android.os.Bundle;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.util.Log;
@@ -10,6 +12,7 @@ import com.google.android.gms.cast.MediaMetadata;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Set;
 
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.util.Util;
@@ -20,22 +23,39 @@ import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.RATING;
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.STRING;
 
 // TODO: Use Meta throughout app. To convert, do for example "new Meta(metaCompat).toCastMeta()".
-public class Meta {
+public class Meta implements Parcelable {
     private static String LC = Util.getLogContext(Meta.class);
 
-    public static String getLongDescription(MediaMetadataCompat metadata) {
-        String artist = metadata.getString(METADATA_KEY_ARTIST);
-        String album = metadata.getString(METADATA_KEY_ALBUM);
-        String title = metadata.getString(METADATA_KEY_TITLE);
-        return title + " - " + artist + " [" + album + "]";
+    public enum Type {
+        STRING, BITMAP, RATING, LONG
     }
 
-    public static MediaMetadataCompat from(MediaMetadata castMeta) {
-        return from(castMeta, new Bundle());
+    private final Bundle bundle;
+
+    public Meta() {
+        bundle = new Bundle();
     }
 
-    public static MediaMetadataCompat from(MediaMetadata castMeta, Bundle extras) {
+    public Meta(Bundle b) {
+        bundle = b;
+    }
+
+    public Meta(MediaDescriptionCompat description) {
+        bundle = description.getExtras();
+    }
+
+    public MediaMetadataCompat toMediaMetadataCompat() {
         MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder();
+        addFromBundle(b, bundle);
+        return b.build();
+    }
+
+    public Meta(MediaMetadata castMeta) {
+        bundle = bundleFromCastMeta(castMeta);
+    }
+
+    private Bundle bundleFromCastMeta(MediaMetadata castMeta) {
+        Bundle b = new Bundle();
         b.putString(METADATA_KEY_TITLE, castMeta.getString(MediaMetadata.KEY_TITLE));
         b.putString(METADATA_KEY_ALBUM, castMeta.getString(MediaMetadata.KEY_ALBUM_TITLE));
         b.putString(METADATA_KEY_ARTIST, castMeta.getString(MediaMetadata.KEY_ARTIST));
@@ -44,42 +64,27 @@ public class Meta {
         b.putString(METADATA_KEY_TYPE, castMeta.getString(METADATA_KEY_TYPE));
         b.putString(METADATA_KEY_PLAYBACK_TYPE, castMeta.getString(METADATA_KEY_PLAYBACK_TYPE));
         // TODO: Put all metadata in there ^
-        for (String key: extras.keySet()) {
-            switch (getType(key)) {
-                case STRING:
-                    b.putString(key, extras.getString(key));
-                    break;
-                case LONG:
-                    b.putLong(key, extras.getLong(key));
-                case RATING:
-                case BITMAP:
-                default:
-                    Log.e(LC, "MediaMetadataCompat from MediaMetadata: "
-                            + typeMap.get(key).name() + " not handled");
-                    break;
-            }
-        }
-        return b.build();
+        return b;
     }
 
-    public static MediaMetadata from(MediaMetadataCompat meta, String playbackType) {
+    public MediaMetadata toCastMediaMetadata(String playbackType) {
         MediaMetadata castMeta = new MediaMetadata();
-        castMeta.putString(MediaMetadata.KEY_TITLE, meta.getString(METADATA_KEY_TITLE));
-        castMeta.putString(MediaMetadata.KEY_ALBUM_TITLE, meta.getString(METADATA_KEY_ALBUM));
-        castMeta.putString(MediaMetadata.KEY_ARTIST, meta.getString(METADATA_KEY_ARTIST));
-        castMeta.putString(METADATA_KEY_API, meta.getString(METADATA_KEY_API));
-        castMeta.putString(METADATA_KEY_MEDIA_ID, meta.getString(METADATA_KEY_MEDIA_ID));
-        castMeta.putString(METADATA_KEY_TYPE, meta.getString(METADATA_KEY_TYPE));
-        castMeta.putString(METADATA_KEY_TITLE, meta.getString(METADATA_KEY_TITLE));
+        castMeta.putString(MediaMetadata.KEY_TITLE, getString(METADATA_KEY_TITLE));
+        castMeta.putString(MediaMetadata.KEY_ALBUM_TITLE, getString(METADATA_KEY_ALBUM));
+        castMeta.putString(MediaMetadata.KEY_ARTIST, getString(METADATA_KEY_ARTIST));
+        castMeta.putString(METADATA_KEY_API, getString(METADATA_KEY_API));
+        castMeta.putString(METADATA_KEY_MEDIA_ID, getString(METADATA_KEY_MEDIA_ID));
+        castMeta.putString(METADATA_KEY_TYPE, getString(METADATA_KEY_TYPE));
+        castMeta.putString(METADATA_KEY_TITLE, getString(METADATA_KEY_TITLE));
         castMeta.putString(METADATA_KEY_PLAYBACK_TYPE, playbackType);
         // TODO: Put all metadata in there ^
         return castMeta;
     }
 
-    public static MediaDescriptionCompat meta2desc(MediaMetadataCompat meta) {
-        EntryID entryID = EntryID.from(meta);
+    public MediaDescriptionCompat toMediaDescriptionCompat() {
+        EntryID entryID = EntryID.from(this);
         Bundle extras = new Bundle();
-        extras.putAll(meta.getBundle());
+        extras.putAll(bundle);
         return new MediaDescriptionCompat.Builder()
                 .setMediaId(entryID.key())
                 .setExtras(extras)
@@ -87,11 +92,57 @@ public class Meta {
                 .build();
     }
 
-    public static MediaMetadataCompat desc2meta(MediaDescriptionCompat desc) {
-        MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder();
-        Bundle descExtras = desc.getExtras();
-        addFromBundle(b, descExtras);
-        return b.build();
+    public Bundle getBundle() {
+        return bundle;
+    }
+
+    public void setString(String key, String value) {
+        bundle.putString(key, value);
+    }
+
+    public String getString(String key) {
+        return bundle.getString(key);
+    }
+
+    public long getLong(String key) {
+        return bundle.getLong(key);
+    }
+
+    public Set<String> keySet() {
+        return bundle.keySet();
+    }
+
+    protected Meta(Parcel in) {
+        bundle = in.readBundle(getClass().getClassLoader());
+    }
+
+    public static final Creator<Meta> CREATOR = new Creator<Meta>() {
+        @Override
+        public Meta createFromParcel(Parcel in) {
+            return new Meta(in);
+        }
+
+        @Override
+        public Meta[] newArray(int size) {
+            return new Meta[size];
+        }
+    };
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeBundle(bundle);
+    }
+
+    public static String getLongDescription(MediaMetadataCompat metadata) {
+        String artist = metadata.getString(METADATA_KEY_ARTIST);
+        String album = metadata.getString(METADATA_KEY_ALBUM);
+        String title = metadata.getString(METADATA_KEY_TITLE);
+        return title + " - " + artist + " [" + album + "]";
     }
 
     private static void addFromBundle(MediaMetadataCompat.Builder b, Bundle bundle) {
@@ -110,12 +161,6 @@ public class Meta {
                     break;
             }
         }
-    }
-
-    public static MediaMetadataCompat from(Bundle bundle) {
-        MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder();
-        addFromBundle(b, bundle);
-        return b.build();
     }
 
     public static void print(MediaMetadataCompat meta) {
@@ -140,19 +185,17 @@ public class Meta {
         Log.d(LC, sb.toString());
     }
 
-    public enum Type {
-        STRING, BITMAP, RATING, LONG
+    private static final Bundle UNKNOWN_ENTRY_BUNDLE = new Bundle();
+    static {
+        UNKNOWN_ENTRY_BUNDLE.putString(Meta.METADATA_KEY_API, Meta.METADATA_VALUE_UNKNOWN_SRC);
+        UNKNOWN_ENTRY_BUNDLE.putString(Meta.METADATA_KEY_MEDIA_ID, Meta.METADATA_VALUE_UNKNOWN_ID);
+        UNKNOWN_ENTRY_BUNDLE.putString(Meta.METADATA_KEY_TYPE, Meta.METADATA_VALUE_UNKNOWN_TYPE);
+        UNKNOWN_ENTRY_BUNDLE.putString(Meta.METADATA_KEY_ALBUM, Meta.METADATA_VALUE_UNKNOWN_ALBUM);
+        UNKNOWN_ENTRY_BUNDLE.putString(Meta.METADATA_KEY_ARTIST, Meta.METADATA_VALUE_UNKNOWN_ARTIST);
+        UNKNOWN_ENTRY_BUNDLE.putString(Meta.METADATA_KEY_TITLE, Meta.METADATA_VALUE_UNKNOWN_TITLE);
+        UNKNOWN_ENTRY_BUNDLE.putString(Meta.METADATA_KEY_PLAYBACK_TYPE, PlaybackEntry.USER_TYPE_EXTERNAL);
     }
-
-    public static final MediaMetadataCompat UNKNOWN_ENTRY = new MediaMetadataCompat.Builder()
-            .putString(Meta.METADATA_KEY_API, Meta.METADATA_VALUE_UNKNOWN_SRC)
-            .putString(Meta.METADATA_KEY_MEDIA_ID, Meta.METADATA_VALUE_UNKNOWN_ID)
-            .putString(Meta.METADATA_KEY_TYPE, Meta.METADATA_VALUE_UNKNOWN_TYPE)
-            .putString(Meta.METADATA_KEY_ALBUM, Meta.METADATA_VALUE_UNKNOWN_ALBUM)
-            .putString(Meta.METADATA_KEY_ARTIST, Meta.METADATA_VALUE_UNKNOWN_ARTIST)
-            .putString(Meta.METADATA_KEY_TITLE, Meta.METADATA_VALUE_UNKNOWN_TITLE)
-            .putString(Meta.METADATA_KEY_PLAYBACK_TYPE, PlaybackEntry.USER_TYPE_EXTERNAL)
-            .build();
+    public static final Meta UNKNOWN_ENTRY = new Meta(UNKNOWN_ENTRY_BUNDLE);
 
     // Special keys/values
     public static final String METADATA_VALUE_UNKNOWN_SRC =

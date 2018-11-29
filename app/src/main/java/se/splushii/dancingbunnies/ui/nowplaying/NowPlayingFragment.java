@@ -244,7 +244,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private List<PlaybackEntry> getQueue() {
         List<PlaybackEntry> playbackEntries = new LinkedList<>();
         for (MediaSessionCompat.QueueItem queueItem: mediaController.getQueue()) {
-            MediaMetadataCompat meta = Meta.desc2meta(queueItem.getDescription());
+            Meta meta = new Meta(queueItem.getDescription());
             PlaybackEntry playbackEntry = new PlaybackEntry(meta, PlaybackEntry.USER_TYPE_QUEUE);
             playbackEntries.add(playbackEntry);
         }

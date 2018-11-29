@@ -2,12 +2,10 @@ package se.splushii.dancingbunnies.audioplayer;
 
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
-import android.os.Bundle;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -24,7 +22,6 @@ import se.splushii.dancingbunnies.util.Util;
 // TODO: Make it thread-safe. A lock is probably needed for player and nextplayers.
 class LocalAudioPlayer extends AudioPlayer {
     private static final String LC = Util.getLogContext(LocalAudioPlayer.class);
-    private static final int NUM_TO_PRELOAD = 3;
 
     private enum MediaPlayerState {
         NULL,
@@ -82,13 +79,18 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
+    int getMaxToPreload() {
+        return 3;
+    }
+
+    @Override
     public CompletableFuture<Void> checkPreload() {
         Log.d(LC, "checkPreload()");
         int numPreloaded = getNumPreloaded();
-        if (numPreloaded < NUM_TO_PRELOAD) {
-            addNewPreloadEntries(NUM_TO_PRELOAD - numPreloaded);
-        } else if (numPreloaded > NUM_TO_PRELOAD) {
-            depreloadEntries(numPreloaded - NUM_TO_PRELOAD);
+        if (numPreloaded < getMaxToPreload()) {
+            addNewPreloadEntries(getMaxToPreload()- numPreloaded);
+        } else if (numPreloaded > getMaxToPreload()) {
+            depreloadEntries(numPreloaded - getMaxToPreload());
         }
         return actionResult(null);
     }
@@ -154,7 +156,7 @@ class LocalAudioPlayer extends AudioPlayer {
     private void preparePlayers() {
         int count = 0;
         for (MediaPlayerInstance mediaPlayerInstance: queuePlayers) {
-            if (count >= NUM_TO_PRELOAD) {
+            if (count >= getMaxToPreload()) {
                 mediaPlayerInstance.release();
             } else {
                 mediaPlayerInstance.getReady();
@@ -162,7 +164,7 @@ class LocalAudioPlayer extends AudioPlayer {
             count++;
         }
         for (MediaPlayerInstance mediaPlayerInstance: playlistPlayers) {
-            if (count >= NUM_TO_PRELOAD) {
+            if (count >= getMaxToPreload()) {
                 mediaPlayerInstance.release();
             } else {
                 mediaPlayerInstance.getReady();
@@ -253,7 +255,7 @@ class LocalAudioPlayer extends AudioPlayer {
             } else {
                 // Skip all playlist items until offset
                 offset -= numPlayerQueueEntries;
-                int numPlayerPlaylistEntries = getPreloadedPlaylistEntries(Integer.MAX_VALUE).size();
+                int numPlayerPlaylistEntries = getNumPlaylistEntries();
                 if (offset <= numPlayerPlaylistEntries) {
                     // Dequeue all playlist items up until offset, then move offset to after current
                     // index and skip to next
@@ -344,12 +346,8 @@ class LocalAudioPlayer extends AudioPlayer {
             if (entries.size() >= maxNum) {
                 return entries;
             }
-            Bundle b = p.playbackEntry.meta.getBundle();
-            b.putString(
-                    Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS,
-                    PlaybackEntry.PRELOADSTATUS_PRELOADED
-            );
-            entries.add(new PlaybackEntry(Meta.from(b), p.playbackEntry.playbackType));
+            p.playbackEntry.setPreloadStatus(PlaybackEntry.PRELOADSTATUS_PRELOADED);
+            entries.add(p.playbackEntry);
         }
         return entries;
     }
@@ -365,82 +363,53 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    CompletableFuture<Void> queue(List<PlaybackEntry> playbackEntries, int toPosition) {
-        return actionResult("queue not implemented");
-//        if (playbackEntries == null || playbackEntries.isEmpty()) {
-//            return actionResult(null);
-//        }
-//        MediaPlayerInstance newCurrentPlayer = null;
-//        LinkedList<PlaybackEntry> playlistEntriesToDepreload = new LinkedList<>();
-//        LinkedList<PlaybackEntry> queueEntriesToDepreload = new LinkedList<>();
-//        List<MediaPlayerInstance> playersToQueue = new LinkedList<>();
-//        List<PlaybackEntry> entriesToDePreload = new LinkedList<>();
-//
-//        int playerSize = player == null ? 0 : 1;
-//
-//        // Remove player playlist entries to de-preload if needed.
-//        while (playerSize + queuePlayers.size() + playlistPlayers.size()
-//                + playbackEntries.size() >= NUM_TO_PRELOAD
-//                && playlistEntriesToDepreload.size() <= playbackEntries.size()
-//                && !playlistPlayers.isEmpty()) {
-//            MediaPlayerInstance m = playlistPlayers.pollLast();
-//            m.release();
-//            playlistEntriesToDepreload.addFirst(m.playbackEntry);
-//        }
-//        if (op.equals(PlaybackQueue.QueueOp.NEXT)) {
-//            // Remove player queue entries to de-preload if needed.
-//            while (playerSize + queuePlayers.size() + playlistPlayers.size()
-//                    + playbackEntries.size() >= NUM_TO_PRELOAD
-//                    && playlistEntriesToDepreload.size()
-//                    + queueEntriesToDepreload.size() <= playbackEntries.size()
-//                    && !queuePlayers.isEmpty()) {
-//                MediaPlayerInstance m = queuePlayers.pollLast();
-//                m.release();
-//                queueEntriesToDepreload.addFirst(m.playbackEntry);
-//            }
-//        }
-//        // Create new players to preload
-//        int numToQueue = NUM_TO_PRELOAD - playerSize - queuePlayers.size() - playlistPlayers.size();
-//        Log.e(LC, "numToQueue: " + numToQueue);
-//        numToQueue = numToQueue > 0 ? Integer.min(numToQueue, playbackEntries.size()) : 0;
-//        for (PlaybackEntry p: playbackEntries.subList(0, numToQueue)) {
-//            MediaPlayerInstance m = new MediaPlayerInstance(p);
-//            m.preload();
-//            if (player == null) {
-//                newCurrentPlayer = m;
-//            } else {
-//                playersToQueue.add(m);
-//            }
-//        }
-//        // Put the rest to de-preload
-//        entriesToDePreload.addAll(playbackEntries.subList(numToQueue, playbackEntries.size()));
-//        // Perform the actions
-//        Log.d(LC, "queue()"
-//                + "\nqueueEntriesToDepreload: " + queueEntriesToDepreload.size()
-//                + "\nplaylistEntriesToDepreload: " + playlistEntriesToDepreload.size()
-//                + "\nnewCurrentPlayer: " + newCurrentPlayer
-//                + "\nentriesToQueue: " + playersToQueue.size()
-//                + "\nentriesToDepreload: " + entriesToDePreload.size());
-//        if (newCurrentPlayer != null) {
-//            setCurrentPlayer(newCurrentPlayer);
-//        }
-//        if (!playersToQueue.isEmpty()) {
-//            if (op.equals(PlaybackQueue.QueueOp.NEXT)) {
-//                queuePlayers.addAll(0, playersToQueue);
-//            } else {
-//                queuePlayers.addAll(playersToQueue);
-//            }
-//        }
-//        if (!playlistEntriesToDepreload.isEmpty()) {
-//            controller.dePreloadPlaylistEntries(playlistEntriesToDepreload);
-//        }
-//        if (!queueEntriesToDepreload.isEmpty()) {
-//            controller.dePreloadQueueEntries(queueEntriesToDepreload, op);
-//        }
-//        if (!entriesToDePreload.isEmpty()) {
-//            controller.dePreloadQueueEntries(entriesToDePreload, op);
-//        }
-//        return actionResult(null);
+    protected PlaybackEntry getQueueEntry(int queuePosition) {
+        return queuePlayers.isEmpty() || queuePosition >= queuePlayers.size() ? null :
+                queuePlayers.get(queuePosition).playbackEntry;
+    }
+
+    @Override
+    protected int getNumQueueEntries() {
+        return queuePlayers.size();
+    }
+
+    @Override
+    protected int getNumPlaylistEntries() {
+        return playlistPlayers.size();
+    }
+
+    @Override
+    protected CompletableFuture<Void> dePreload(int numQueueEntriesToDepreload,
+                                                int queueOffset,
+                                                int numPlaylistEntriesToDepreload,
+                                                int playlistOffset) {
+        for (int i = 0; i < numPlaylistEntriesToDepreload; i++) {
+            MediaPlayerInstance m = playlistPlayers.pollLast();
+            m.release();
+        }
+        for (int i = 0; i < numQueueEntriesToDepreload; i++) {
+            MediaPlayerInstance m = queuePlayers.pollLast();
+            m.release();
+        }
+        return actionResult(null);
+    }
+
+    @Override
+    protected CompletableFuture<Void> playerQueue(List<PlaybackEntry> newEntriesToQueue,
+                                                  int newEntriesToQueueOffset) {
+        if (!newEntriesToQueue.isEmpty()) {
+            List<MediaPlayerInstance> playersToQueue = new LinkedList<>();
+            for (PlaybackEntry entry: newEntriesToQueue) {
+                MediaPlayerInstance instance = new MediaPlayerInstance(entry);
+                instance.preload();
+                playersToQueue.add(instance);
+            }
+            queuePlayers.addAll(newEntriesToQueueOffset, playersToQueue);
+        }
+        if (player == null) {
+            return next();
+        }
+        return actionResult(null);
     }
 
     @Override
@@ -458,116 +427,6 @@ class LocalAudioPlayer extends AudioPlayer {
             } else {
                 queuePlayers.remove(queuePosition).release();
             }
-        }
-        return actionResult(null);
-    }
-
-    @Override
-    CompletableFuture<Void> moveQueueItems(long[] positions, int toPosition) {
-        LinkedList<MediaPlayerInstance> playersToMove = new LinkedList<>();
-        LinkedList<MediaPlayerInstance> itemsToQueue = new LinkedList<>();
-        LinkedList<PlaybackEntry> itemsToDepreload = new LinkedList<>();
-
-        // Sort positions
-        Arrays.sort(positions);
-
-        // Remove positions, which creates array of playersToMove
-        for (int i = 0; i < positions.length; i++) {
-            // Start from largest index because queues are modified
-            int queuePosition = (int) positions[positions.length - 1 - i];
-            if (queuePosition < 0) {
-                Log.e(LC, "Can not move negative index: " + queuePosition);
-                continue;
-            }
-            MediaPlayerInstance playerInstance;
-            if (queuePosition >= queuePlayers.size()) {
-                // Get items from controller
-                PlaybackEntry entry = controller.consumeQueueEntry(
-                        queuePosition - queuePlayers.size()
-                );
-                playerInstance = new MediaPlayerInstance(entry);
-            } else {
-                // Get items from player queue
-                playerInstance = queuePlayers.remove(queuePosition);
-            }
-            playersToMove.addFirst(playerInstance);
-        }
-
-        int playerSize = player == null ? 0 : 1;
-
-        // May need to fill queuePlayers from controller
-        int numFromController = Integer.min(
-                toPosition - queuePlayers.size(),
-                NUM_TO_PRELOAD - playerSize
-        );
-        numFromController = numFromController > 0 ? numFromController : 0;
-        for (int i = 0; i < numFromController; i++) {
-            PlaybackEntry entry = controller.consumeQueueEntry(0);
-            if (entry == null) {
-                return actionResult("Internal error: Not enough queue entries in controller "
-                        + "to fill player.");
-            }
-            MediaPlayerInstance playerInstance = new MediaPlayerInstance(entry);
-            playerInstance.getReady();
-            queuePlayers.addLast(playerInstance);
-        }
-
-        // Calculate how many to queue into player
-        int numToQueue = Integer.min(NUM_TO_PRELOAD - toPosition - playerSize, playersToMove.size());
-        numToQueue = numToQueue > 0 ? numToQueue : 0;
-        while (itemsToQueue.size() < numToQueue) {
-            MediaPlayerInstance playerInstance = playersToMove.pollFirst();
-            if (playerInstance == null) {
-                return actionResult("Internal error: Not enough players to move "
-                        + "to player queue");
-            }
-            playerInstance.getReady();
-            itemsToQueue.add(playerInstance);
-        }
-
-        // Calculate how many to de-preload into controller
-        int numToDepreload = playersToMove.size();
-        while (itemsToDepreload.size() < numToDepreload) {
-            MediaPlayerInstance playerInstance = playersToMove.pollFirst();
-            if (playerInstance == null) {
-                return actionResult("Internal error: Not enough players to move "
-                        + " to controller queue");
-            }
-            playerInstance.release();
-            itemsToDepreload.add(playerInstance.playbackEntry);
-        }
-
-        int numToController = Integer.max(
-                playerSize + queuePlayers.size() + itemsToQueue.size() - NUM_TO_PRELOAD,
-                0
-        );
-
-        Log.d(LC, "moveQueueItems()"
-                + " moving " + positions.length + " items to index " + toPosition
-                + "\nfilled from controller: " + numFromController
-                + "\nde-preloaded to controller: " + numToController
-                + "\nitemsToQueue: " + itemsToQueue.size()
-                + "\nitemsToDepreload: " + itemsToDepreload.size());
-
-        if (!itemsToQueue.isEmpty()) {
-            queuePlayers.addAll(toPosition, itemsToQueue);
-        }
-
-        // May need to de-preload queuePlayers to controller
-        for (int i = 0; i < numToController; i++) {
-            MediaPlayerInstance playerInstance = queuePlayers.pollLast();
-            playerInstance.release();
-            controller.dePreloadQueueEntries(
-                    Collections.singletonList(playerInstance.playbackEntry),
-                    0
-            );
-        }
-
-        if (!itemsToDepreload.isEmpty()) {
-            controller.dePreloadQueueEntries(
-                    itemsToDepreload,
-                    toPosition + numToQueue - queuePlayers.size()
-            );
         }
         return actionResult(null);
     }
