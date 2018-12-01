@@ -127,8 +127,8 @@ class PlaybackController {
         return audioPlayer.previous();
     }
 
-    CompletableFuture<Void> skipItems(int offset) {
-        return audioPlayer.skipItems(offset);
+    CompletableFuture<Void> skip(int offset) {
+        return audioPlayer.skip(offset);
     }
 
     CompletableFuture<Void> addToQueue(List<PlaybackEntry> playbackEntry, int toPosition) {
@@ -139,7 +139,7 @@ class PlaybackController {
     }
 
     CompletableFuture<Void> removeFromQueue(long[] positions) {
-        return audioPlayer.dequeue(positions).thenRun(() ->
+        return audioPlayer.deQueue(positions).thenRun(() ->
                 callback.onQueueChanged(getQueue())
         );
     }

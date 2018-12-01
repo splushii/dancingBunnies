@@ -5,7 +5,6 @@ import android.media.MediaPlayer;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -226,89 +225,6 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    CompletableFuture<Void> skipItems(int offset) {
-        Log.d(LC, "skipItems(" + offset + ")");
-        if (offset == 0) {
-            return actionResult(null);
-        }
-        if (offset == 1) {
-            return next();
-        }
-        MediaPlayerInstance nextPlayer = null;
-        if (offset > 0) {
-            // Skip forward
-            int numPlayerQueueEntries = queuePlayers.size();
-            int totalQueueEntries = numPlayerQueueEntries + controller.getNumQueueEntries();
-            if (offset <= totalQueueEntries) {
-                // Play queue item at offset now
-                if (offset <= numPlayerQueueEntries) {
-                    // Move the queue entry to after current index and skip to next
-                    Log.d(LC, "skipItems short queue offset");
-                    nextPlayer = queuePlayers.remove(offset - 1);
-                } else {
-                    // Get the queue entry from PlaybackController, queue after current and play
-                    Log.d(LC, "skipItems long queue offset");
-                    nextPlayer = new MediaPlayerInstance(
-                            controller.consumeQueueEntry(offset - 1)
-                    );
-                }
-            } else {
-                // Skip all playlist items until offset
-                offset -= numPlayerQueueEntries;
-                int numPlayerPlaylistEntries = getNumPlaylistEntries();
-                if (offset <= numPlayerPlaylistEntries) {
-                    // Dequeue all playlist items up until offset, then move offset to after current
-                    // index and skip to next
-                    Log.d(LC, "skipItems short playlist offset");
-                    for (int i = 0; i < offset; i++) {
-                        nextPlayer = playlistPlayers.poll();
-                        if (i < offset - 1 && nextPlayer != null) {
-                            nextPlayer.release();
-                        }
-                    }
-                } else {
-                    // Dequeue all playlist items. Consume and throw away all playlist items up
-                    // until offset. Insert and play offset.
-                    Log.d(LC, "skipItems long playlist offset");
-                    int consumeOffset = offset - numPlayerPlaylistEntries;
-                    for (MediaPlayerInstance mediaPlayerInstance: playlistPlayers) {
-                        mediaPlayerInstance.release();
-                    }
-                    playlistPlayers.clear();
-                    for (int i = 0; i < consumeOffset - 1; i++) {
-                        controller.consumePlaylistEntry();
-                    }
-                    nextPlayer = new MediaPlayerInstance(
-                            controller.consumePlaylistEntry()
-                    );
-                }
-            }
-        } else {
-            // Skip backward
-            // TODO: implement
-            return actionResult("Not implemented: skipItems backward");
-        }
-        if (nextPlayer == null) {
-            return actionResult("Internal error. Could not skip items.");
-        }
-        if (player != null) {
-            player.stop();
-            player.release();
-            historyPlayers.add(player);
-            player = null;
-        }
-        setCurrentPlayer(nextPlayer);
-        updatePlaybackState();
-        checkPreload();
-        controller.onPreloadChanged();
-        preparePlayers();
-        if (playWhenReady) {
-            return play();
-        }
-        return actionResult(null);
-    }
-
-    @Override
     AudioPlayerState getLastState() {
         long lastPos = player == null ? 0 : player.getCurrentPosition();
         List<PlaybackEntry> history = historyPlayers.stream()
@@ -369,6 +285,12 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
+    protected PlaybackEntry getPlaylistEntry(int playlistPosition) {
+        return playlistPlayers.isEmpty() || playlistPosition >= playlistPlayers.size() ? null :
+                playlistPlayers.get(playlistPosition).playbackEntry;
+    }
+
+    @Override
     protected int getNumQueueEntries() {
         return queuePlayers.size();
     }
@@ -379,10 +301,10 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    protected CompletableFuture<Void> dePreload(int numQueueEntriesToDepreload,
-                                                int queueOffset,
-                                                int numPlaylistEntriesToDepreload,
-                                                int playlistOffset) {
+    protected CompletableFuture<Void> playerDePreload(int numQueueEntriesToDepreload,
+                                                      int queueOffset,
+                                                      int numPlaylistEntriesToDepreload,
+                                                      int playlistOffset) {
         for (int i = 0; i < numPlaylistEntriesToDepreload; i++) {
             MediaPlayerInstance m = playlistPlayers.pollLast();
             m.release();
@@ -413,20 +335,11 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    CompletableFuture<Void> dequeue(long[] positions) {
-        Arrays.sort(positions);
+    protected CompletableFuture<Void> playerDeQueue(List<Integer> positions) {
         // Start from largest index because queues are modified
-        for (int i = 0; i < positions.length; i++) {
-            int queuePosition = (int) positions[positions.length - 1 - i];
-            if (queuePosition < 0) {
-                Log.e(LC, "Can not dequeue negative index: " + queuePosition);
-                continue;
-            }
-            if (queuePosition >= queuePlayers.size()) {
-                controller.consumeQueueEntry(queuePosition - queuePlayers.size());
-            } else {
-                queuePlayers.remove(queuePosition).release();
-            }
+        for (int i = 0; i < positions.size(); i++) {
+            int queuePosition = positions.get(positions.size() - 1 - i);
+            queuePlayers.remove(queuePosition).release();
         }
         return actionResult(null);
     }
