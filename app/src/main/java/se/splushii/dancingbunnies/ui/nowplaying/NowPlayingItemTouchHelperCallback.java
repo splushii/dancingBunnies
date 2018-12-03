@@ -17,8 +17,8 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 final class NowPlayingItemTouchHelperCallback extends ItemTouchHelper.Callback {
     private final NowPlayingEntriesAdapter adapter;
     private final NowPlayingFragment fragment;
+    private final List<Long> selection;
     private ActionMode actionMode;
-    private List<Long> selection;
     private TreeMap<Integer, PlaybackEntry> selectedPlaybackEntries;
     private int secondarySelectionId;
     private int lastDragPos = -1;
@@ -131,7 +131,7 @@ final class NowPlayingItemTouchHelperCallback extends ItemTouchHelper.Callback {
     public boolean canDropOver(@NonNull RecyclerView recyclerView,
                                @NonNull RecyclerView.ViewHolder current,
                                @NonNull RecyclerView.ViewHolder target) {
-        return !movingQueueToPlaylist(current, target);
+        return invalidMove(current, target);
     }
 
     @Override
@@ -141,7 +141,7 @@ final class NowPlayingItemTouchHelperCallback extends ItemTouchHelper.Callback {
         int from = current.getAdapterPosition();
         int to = target.getAdapterPosition();
         if (to != lastDragPos) {
-            if (!movingQueueToPlaylist(current, target)) {
+            if (invalidMove(current, target)) {
                 if (abort) {
                     setDropMode();
                 }
@@ -152,10 +152,10 @@ final class NowPlayingItemTouchHelperCallback extends ItemTouchHelper.Callback {
         return true;
     }
 
-    private boolean movingQueueToPlaylist(RecyclerView.ViewHolder current,
-                                          RecyclerView.ViewHolder target) {
-        return current.getItemViewType() == NowPlayingEntriesAdapter.VIEWTYPE_QUEUE_ITEM
-                && target.getItemViewType() == NowPlayingEntriesAdapter.VIEWTYPE_PLAYLIST_NEXT;
+    private boolean invalidMove(RecyclerView.ViewHolder current,
+                                RecyclerView.ViewHolder target) {
+        return current.getItemViewType() != NowPlayingEntriesAdapter.VIEWTYPE_QUEUE_ITEM
+                || target.getItemViewType() != NowPlayingEntriesAdapter.VIEWTYPE_PLAYLIST_NEXT;
     }
 
     @Override

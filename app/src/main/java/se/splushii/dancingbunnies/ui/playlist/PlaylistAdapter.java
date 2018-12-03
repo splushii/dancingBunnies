@@ -20,7 +20,7 @@ import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
 import se.splushii.dancingbunnies.util.Util;
 
-public class PlaylistAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+class PlaylistAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private static final String LC = Util.getLogContext(PlaylistAdapter.class);
     private static final int VIEWTYPE_PLAYLIST = 0;
     private static final int VIEWTYPE_PLAYLIST_ENTRIES = 1;

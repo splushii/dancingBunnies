@@ -17,11 +17,8 @@ import java.util.ArrayList;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.util.Util;
 
 public class FastScroller extends LinearLayout {
-    private static final String LC = Util.getLogContext(FastScroller.class);
-
     private View handle;
     private RecyclerView.OnScrollListener scrollListener;
     private RecyclerView recyclerView;

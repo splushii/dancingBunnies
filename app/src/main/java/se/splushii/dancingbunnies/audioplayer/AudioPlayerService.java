@@ -48,13 +48,13 @@ import se.splushii.dancingbunnies.util.Util;
 // TODO: Handle audio output switching. AudioManager.ACTION_AUDIO_BECOMING_NOISY.
 // TODO: Handle incoming call. PhoneStateListener.LISTEN_CALL_STATE.
 public class AudioPlayerService extends MediaBrowserServiceCompat {
-    private static String LC = Util.getLogContext(AudioPlayerService.class);
+    private static final String LC = Util.getLogContext(AudioPlayerService.class);
     private static final String NOTIFICATION_CHANNEL_ID = "dancingbunnies.notification.channel";
     private static final String NOTIFICATION_CHANNEL_NAME = "DancingBunnies";
     private static final int SERVICE_NOTIFICATION_ID = 1337;
     private static final float PLAYBACK_SPEED_PAUSED = 0f;
     private static final float PLAYBACK_SPEED_PLAYING = 1f;
-    public static final String MEDIA_ID_ROOT = "dancingbunnies.media.id.root";
+    private static final String MEDIA_ID_ROOT = "dancingbunnies.media.id.root";
 
     public static final String SESSION_EVENT_PLAYLIST_POSITION_CHANGED = "PLAYLIST_POSITION_CHANGED";
     public static final String SESSION_EVENT_PLAYLIST_CHANGED = "PLAYLIST_CHANGED";
@@ -65,7 +65,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public static final String COMMAND_GET_PLAYLIST_ENTRIES = "GET_PLAYLIST_ENTRIES";
     public static final String COMMAND_GET_PLAYLIST_NEXT = "GET_PLAYLIST_NEXT";
     public static final String COMMAND_GET_PLAYLIST_PREVIOUS = "GET_PLAYLIST_PREVIOUS";
-    public static final String COMMAND_ADD_TO_PLAYLIST = "ADD_TO_PLAYLIST";
+    private static final String COMMAND_ADD_TO_PLAYLIST = "ADD_TO_PLAYLIST";
     private static final String COMMAND_REMOVE_FROM_PLAYLIST = "REMOVE_FROM_PLAYLIST";
     private static final String COMMAND_QUEUE_ENTRYIDS = "QUEUE_ENTRYIDS";
     private static final String COMMAND_DEQUEUE = "DEQUEUE";
@@ -85,10 +85,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private PlaybackStateCompat.Builder playbackStateBuilder;
     private PlaybackStateCompat playbackState;
     private boolean notify = true;
-    private String currentParentId = MEDIA_ID_ROOT;
 
     private MusicLibraryService musicLibraryService;
-    private ServiceConnection serviceConnection = new ServiceConnection() {
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             Log.d(LC, "Connected MusicLibraryService");
@@ -133,7 +132,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         // Make a EntryID.toMusicLibraryQueryOptions()
         // parentId is now usable!
         Log.d(LC, "onLoadChildren parentId: " + parentId);
-        currentParentId = parentId;
         List<LibraryEntry> entries = musicLibraryService.getSubscriptionEntries(new MusicLibraryQuery(options));
         Log.d(LC, "onLoadChildren entries: " + entries.size());
         Collections.sort(entries);

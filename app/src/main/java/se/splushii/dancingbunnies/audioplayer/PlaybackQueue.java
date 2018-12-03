@@ -10,9 +10,9 @@ import java.util.stream.Collectors;
 
 import se.splushii.dancingbunnies.util.Util;
 
-public class PlaybackQueue {
+class PlaybackQueue {
     private static final String LC = Util.getLogContext(PlaybackQueue.class);
-    private LinkedList<PlaybackEntry> queue;
+    private final LinkedList<PlaybackEntry> queue;
 
     Collection<? extends PlaybackEntry> poll(int num) {
         Log.d(LC, "poll(" + num + ")");

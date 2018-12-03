@@ -42,7 +42,6 @@ import se.splushii.dancingbunnies.util.Util;
 class PlaybackController {
     private static final String LC = Util.getLogContext(PlaybackController.class);
 
-    private final Context context;
     private final MusicLibraryService musicLibraryService;
     private final Callback callback;
     private final SessionManagerListener<Session> sessionManagerListener = new SessionManagerListenerImpl();
@@ -50,23 +49,22 @@ class PlaybackController {
 
     // Audio players
     private AudioPlayer audioPlayer;
-    private AudioPlayer.Callback audioPlayerCallback = new AudioPlayerCallback();
+    private final AudioPlayer.Callback audioPlayerCallback = new AudioPlayerCallback();
 
     // Internal queue items
-    private PlaybackQueue queue;
+    private final PlaybackQueue queue;
 
     // Internal playlist items
-    private PlaybackQueue playlistItems;
+    private final PlaybackQueue playlistItems;
 
     // Current playlist reference
-    private PlaylistItem currentPlaylist = PlaylistItem.defaultPlaylist;
+    private final PlaylistItem currentPlaylist = PlaylistItem.defaultPlaylist;
     private long playlistPosition = 0;
 
     // Internal state
     private boolean isPlaying;
 
     PlaybackController(Context context, MusicLibraryService musicLibraryService, Callback callback) {
-        this.context = context;
         this.musicLibraryService = musicLibraryService;
         this.callback = callback;
 
@@ -509,7 +507,7 @@ class PlaybackController {
                 .thenCompose(r -> play());
     }
 
-    List<MediaSessionCompat.QueueItem> getQueue() {
+    private List<MediaSessionCompat.QueueItem> getQueue() {
         List<MediaSessionCompat.QueueItem> queueItems = new LinkedList<>();
         List<PlaybackEntry> entries = new LinkedList<>();
         for (PlaybackEntry entry: audioPlayer.getPlaylistEntries(Integer.MAX_VALUE)) {

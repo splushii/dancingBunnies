@@ -16,13 +16,10 @@ import java.io.IOException;
 import java.util.HashMap;
 
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.util.Util;
 
 // TODO: Properly handle exceptions
 public class Indexer {
-    private static final String LC = Util.getLogContext(Indexer.class);
-
-    public static final Version LUCENE_VERSION = Version.LUCENE_48;
+    static final Version LUCENE_VERSION = Version.LUCENE_48;
 
     private static final String FIELD_API = "src";
     private static final String FIELD_MEDIA_ID = "id";

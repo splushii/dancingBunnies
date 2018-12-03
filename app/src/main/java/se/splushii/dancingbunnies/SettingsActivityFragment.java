@@ -5,21 +5,22 @@ import android.app.job.JobScheduler;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Bundle;
 import android.os.PersistableBundle;
 import android.preference.EditTextPreference;
 import android.preference.Preference;
 import android.preference.PreferenceFragment;
-import android.os.Bundle;
 import android.support.v4.media.MediaBrowserCompat;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.core.content.ContextCompat;
+import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.jobs.BackendRefreshJob;
 import se.splushii.dancingbunnies.jobs.Jobs;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
-import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.util.Util;
 
 /**
@@ -27,7 +28,7 @@ import se.splushii.dancingbunnies.util.Util;
  */
 public class SettingsActivityFragment extends PreferenceFragment
         implements SharedPreferences.OnSharedPreferenceChangeListener{
-    private static String LC = Util.getLogContext(SettingsActivityFragment.class);
+    private static final String LC = Util.getLogContext(SettingsActivityFragment.class);
     private MediaBrowserCompat mediaBrowser;
 
     public SettingsActivityFragment() {
@@ -104,6 +105,7 @@ public class SettingsActivityFragment extends PreferenceFragment
         SSrefresh.setOnPreferenceClickListener(preference -> {
             JobScheduler jobScheduler =
                     (JobScheduler) getContext().getSystemService(Context.JOB_SCHEDULER_SERVICE);
+            assert jobScheduler != null;
             PersistableBundle backendRefreshBundle = new PersistableBundle();
             backendRefreshBundle.putString(
                     BackendRefreshJob.ACTION,
@@ -132,7 +134,9 @@ public class SettingsActivityFragment extends PreferenceFragment
             ViewGroup container,
             Bundle savedInstanceState) {
         View view = super.onCreateView(inflater, container, savedInstanceState);
-        view.setBackgroundColor(getResources().getColor(android.R.color.white));
+        if (view != null) {
+            view.setBackgroundColor(ContextCompat.getColor(getContext(), R.color.bluegrey900));
+        }
         return view;
     }
 

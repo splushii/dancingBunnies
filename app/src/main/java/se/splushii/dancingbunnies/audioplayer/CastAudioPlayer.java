@@ -30,15 +30,13 @@ import se.splushii.dancingbunnies.util.Util;
 public class CastAudioPlayer implements AudioPlayer {
     private static final String LC = Util.getLogContext(CastAudioPlayer.class);
 
-    private final RemoteMediaClientCallback remoteMediaClientCallback = new RemoteMediaClientCallback();
-    private final MediaQueueCallback mediaQueueCallback = new MediaQueueCallback();
     private final MusicLibraryService musicLibraryService;
     private final Callback callback;
-    private RemoteMediaClient remoteMediaClient;
-    private MediaQueue mediaQueue;
+    private final RemoteMediaClient remoteMediaClient;
+    private final MediaQueue mediaQueue;
+    private final SparseArray<MediaQueueItem> queueItemMap;
     private int playerState;
     private int idleReason;
-    private SparseArray<MediaQueueItem> queueItemMap;
     private boolean playWhenReady = false;
     private long lastPos = 0;
     private int[] lastItemIds = new int[0];
@@ -58,8 +56,10 @@ public class CastAudioPlayer implements AudioPlayer {
         this.musicLibraryService = musicLibraryService;
         queueItemMap = new SparseArray<>();
         remoteMediaClient = castSession.getRemoteMediaClient();
+        RemoteMediaClientCallback remoteMediaClientCallback = new RemoteMediaClientCallback();
         remoteMediaClient.registerCallback(remoteMediaClientCallback);
         mediaQueue = remoteMediaClient.getMediaQueue();
+        MediaQueueCallback mediaQueueCallback = new MediaQueueCallback();
         mediaQueue.registerCallback(mediaQueueCallback);
     }
 
@@ -455,18 +455,6 @@ public class CastAudioPlayer implements AudioPlayer {
         );
     }
 
-    private CompletableFuture<Void> resetQueue() {
-        Log.d(LC, "resetQueue, clearing queue");
-        if (remoteMediaClient == null) {
-            return Util.futureResult("resetQueue(): remoteMediaClient is null");
-        }
-        return handleMediaClientRequest(
-                "queueRemoveItems",
-                "Could not reset queue by removing all items",
-                remoteMediaClient.queueRemoveItems(mediaQueue.getItemIds(), null)
-        );
-    }
-
     private void logCurrentQueue() {
         int[] itemIds = mediaQueue.getItemIds();
         MediaQueueItem currentItem = remoteMediaClient == null ? null :
@@ -591,24 +579,10 @@ public class CastAudioPlayer implements AudioPlayer {
         );
     }
 
-    private CompletableFuture<Void> removeItems(int removeStartIndex, int num) {
-        int[] itemsToRemove = new int[num];
-        for (int i = 0; i < itemsToRemove.length; i++) {
-            itemsToRemove[i] = mediaQueue.itemIdAtIndex(removeStartIndex + i);
-        }
-        Log.d(LC, "removing items with ids: "
-                + Arrays.toString(itemsToRemove));
-        return handleMediaClientRequest(
-                "queueRemoveItems(" + Arrays.toString(itemsToRemove) + ")",
-                "Could not remove items " + Arrays.toString(itemsToRemove),
-                remoteMediaClient.queueRemoveItems(itemsToRemove, null)
-        );
-    }
 
     @Override
     public CompletableFuture<Void> previous() {
         Log.d(LC, "previous()");
-        CompletableFuture<Void> result = new CompletableFuture<>();
         // TODO: Implement
         Log.e(LC, "previous not implemented");
         return Util.futureResult("Not implemented");

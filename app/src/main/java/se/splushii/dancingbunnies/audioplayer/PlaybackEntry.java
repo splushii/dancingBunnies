@@ -11,9 +11,8 @@ public class PlaybackEntry implements Parcelable {
     public static final String USER_TYPE_PLAYLIST = "playlist";
     public static final String USER_TYPE_QUEUE = "queue";
     public static final String USER_TYPE_EXTERNAL = "external";
-    public static final String PRELOADSTATUS_NOT_PRELOADED = "not_preloaded";
-    public static final String PRELOADSTATUS_PRELOADED = "preloaded";
-    public static final String PRELOADSTATUS_CACHED = "cached";
+    static final String PRELOADSTATUS_PRELOADED = "preloaded";
+    static final String PRELOADSTATUS_CACHED = "cached";
 
     public final Meta meta;
     public final EntryID entryID;
@@ -32,7 +31,7 @@ public class PlaybackEntry implements Parcelable {
         this.playbackType = playbackType;
     }
 
-    protected PlaybackEntry(Parcel in) {
+    private PlaybackEntry(Parcel in) {
         meta = in.readParcelable(MediaMetadataCompat.class.getClassLoader());
         entryID = in.readParcelable(EntryID.class.getClassLoader());
         playbackType = in.readString();
@@ -87,7 +86,7 @@ public class PlaybackEntry implements Parcelable {
         dest.writeString(playbackType);
     }
 
-    public void setPreloadStatus(String preloadStatus) {
+    void setPreloadStatus(String preloadStatus) {
         meta.setString(Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS, preloadStatus);
     }
 }

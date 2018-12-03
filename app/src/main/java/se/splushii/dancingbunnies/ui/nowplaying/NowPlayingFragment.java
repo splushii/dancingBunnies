@@ -63,9 +63,9 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private TextView durationText;
     private TextView mediaInfoText;
     private TextView bufferingText;
-    private MediaMetadataCompat currentMeta;
+    private Meta currentMeta;
 
-    private NowPlayingEntriesAdapter recViewAdapter;
+    private final NowPlayingEntriesAdapter recViewAdapter;
     private RecyclerView recView;
     private SelectionTracker<Long> selectionTracker;
     private NowPlayingSelectionPredicate nowPlayingSelectionPredicate;
@@ -318,14 +318,14 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     @Override
-    protected void onMetadataChanged(MediaMetadataCompat metadata) {
+    protected void onMetadataChanged(Meta metadata) {
         currentMeta = metadata;
         updateDescription(metadata);
         updateDuration(metadata);
         updateProgress();
     }
 
-    private void updateDescription(MediaMetadataCompat metadata) {
+    private void updateDescription(Meta metadata) {
         updateMediaInfo(metadata);
         String title = metadata.getString(Meta.METADATA_KEY_TITLE);
         String album = metadata.getString(Meta.METADATA_KEY_ALBUM);
@@ -349,7 +349,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         nowPlayingArtist.setText(artist);
     }
 
-    private void updateMediaInfo(MediaMetadataCompat metadata) {
+    private void updateMediaInfo(Meta metadata) {
         String contentType = metadata.getString(Meta.METADATA_KEY_CONTENT_TYPE);
         String suffix = metadata.getString(Meta.METADATA_KEY_FILE_SUFFIX);
         long bitrate = metadata.getLong(Meta.METADATA_KEY_BITRATE);
@@ -370,10 +370,11 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     protected void onMediaBrowserConnected() {
         PlaybackStateCompat state = mediaController.getPlaybackState();
         updatePlaybackState(state);
-        MediaMetadataCompat metadata = mediaController.getMetadata();
-        if (metadata != null) {
-            updateDescription(metadata);
-            updateDuration(metadata);
+        MediaMetadataCompat mediaMetadataCompat = mediaController.getMetadata();
+        if (mediaMetadataCompat != null) {
+            Meta meta = new Meta(mediaMetadataCompat);
+            updateDescription(meta);
+            updateDuration(meta);
         }
         updateProgress();
         if (playbackState.getState() == PlaybackStateCompat.STATE_PLAYING) {
@@ -408,7 +409,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         return String.format(Locale.getDefault(), "%d:%02d", minutes, seconds);
     }
 
-    private void updateDuration(MediaMetadataCompat metadata) {
+    private void updateDuration(Meta metadata) {
         int duration = (int) metadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
         seekBar.setMax(duration);
         durationText.setText(getDurationString(duration));

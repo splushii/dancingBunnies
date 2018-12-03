@@ -4,10 +4,7 @@ import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import se.splushii.dancingbunnies.util.Util;
-
 public class PlaylistID implements Parcelable {
-    private static final String LC = Util.getLogContext(PlaylistID.class);
     public static final PlaylistID defaultPlaylistID = new PlaylistID(
             "dancingbunnies", "default", PlaylistID.TYPE_STUPID
     );
@@ -67,7 +64,7 @@ public class PlaylistID implements Parcelable {
         return src.equals(e.src) && id.equals(e.id) && type.equals(e.type);
     }
 
-    public String key() {
+    private String key() {
         return src + id + type;
     }
 

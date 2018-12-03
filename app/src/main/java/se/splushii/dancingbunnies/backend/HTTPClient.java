@@ -9,7 +9,7 @@ import java.util.concurrent.Executors;
 
 class HTTPClient {
 
-    private AsyncHttpClient client;
+    private final AsyncHttpClient client;
 
     HTTPClient() {
         client = new AsyncHttpClient();

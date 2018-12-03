@@ -3,7 +3,7 @@ package se.splushii.dancingbunnies.ui.playlist;
 import androidx.core.util.Pair;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 
-public class PlaylistUserState {
+class PlaylistUserState {
     public final int pos;
     final int pad;
     final boolean playlistMode;

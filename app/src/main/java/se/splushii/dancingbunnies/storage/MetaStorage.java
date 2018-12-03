@@ -4,14 +4,11 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.graphics.Bitmap;
 import android.os.Bundle;
-import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.RatingCompat;
 import android.util.ArrayMap;
 import android.util.Log;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -25,8 +22,8 @@ import se.splushii.dancingbunnies.util.Util;
 public class MetaStorage {
     private static final String LC = Util.getLogContext(MetaStorage.class);
 
-    private DB dbHandler;
-    private SQLiteDatabase db;
+    private final DB dbHandler;
+    private final SQLiteDatabase db;
 
     public MetaStorage(Context context) {
         dbHandler = DB.getInstance(context);
@@ -37,11 +34,11 @@ public class MetaStorage {
         dbHandler.closeDB();
     }
 
-    public void insertSongs(List<MediaMetadataCompat> metaList) {
+    public void insertSongs(List<Meta> metaList) {
         long start = System.currentTimeMillis();
         Log.d(LC, "insertSongs start");
         db.beginTransaction();
-        for (MediaMetadataCompat meta: metaList) {
+        for (Meta meta: metaList) {
             insertSong(meta);
         }
         db.setTransactionSuccessful();
@@ -49,7 +46,7 @@ public class MetaStorage {
         Log.d(LC, "insertSongs finish " + (System.currentTimeMillis() - start));
     }
 
-    private void insertSong(MediaMetadataCompat meta) {
+    private void insertSong(Meta meta) {
         ContentValues c = new ContentValues();
         for (String key: meta.keySet()) {
             Meta.Type type = Meta.getType(key);
@@ -61,11 +58,7 @@ public class MetaStorage {
                     c.put(DB.Keyify(key), meta.getLong(key));
                     break;
                 case BITMAP:
-                    Bitmap b = meta.getBitmap(key);
-                    int bytes = b.getByteCount();
-                    ByteBuffer buffer = ByteBuffer.allocate(bytes);
-                    b.copyPixelsToBuffer(buffer);
-                    byte[] array = buffer.array(); //Get the underlying array containing the data.
+                    byte[] array = meta.getBitmap(key);
                     c.put(DB.Keyify(key), array);
                     break;
                 case RATING:
@@ -108,9 +101,6 @@ public class MetaStorage {
         String args[] = new String[bundleQuery.size()];
         int index = 0;
         for (String key: bundleQuery.keySet()) {
-            if (Meta.METADATA_KEY_TYPE.equals(key)) {
-
-            }
             switch (Meta.getType(key)) {
                 case LONG:
                     args[index] = Long.toString(bundleQuery.getLong(key));
@@ -231,7 +221,7 @@ public class MetaStorage {
     }
 
     private class ColumnIndexCache {
-        private ArrayMap<String, Integer> mMap = new ArrayMap<>();
+        private final ArrayMap<String, Integer> mMap = new ArrayMap<>();
 
         private int getColumnIndex(Cursor cursor, String columnName) {
             if (!mMap.containsKey(columnName))

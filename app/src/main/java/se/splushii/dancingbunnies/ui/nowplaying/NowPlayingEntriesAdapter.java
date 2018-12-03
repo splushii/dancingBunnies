@@ -20,15 +20,11 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
-import se.splushii.dancingbunnies.util.Util;
 
 public class NowPlayingEntriesAdapter
         extends RecyclerView.Adapter<NowPlayingEntriesAdapter.SongViewHolder> {
-    private static final String LC = Util.getLogContext(NowPlayingEntriesAdapter.class);
-
     private final NowPlayingFragment context;
     private List<PlaybackEntry> queueData;
-    private PlaylistItem currentPlaylistItem;
     private List<PlaybackEntry> playlistNext;
     private RecyclerView.ViewHolder contextMenuHolder;
 
@@ -37,12 +33,10 @@ public class NowPlayingEntriesAdapter
     static final int VIEWTYPE_PLAYLIST_NEXT = 1;
     private SelectionTracker<Long> selectionTracker;
     private View selectedItemView;
-    private Long dragEntryPos = -1L;
 
     NowPlayingEntriesAdapter(NowPlayingFragment context) {
         this.context = context;
         queueData = new ArrayList<>();
-        currentPlaylistItem = PlaylistItem.defaultPlaylist;
         playlistNext = new ArrayList<>();
     }
 
@@ -56,7 +50,6 @@ public class NowPlayingEntriesAdapter
     }
 
     void setCurrentPlaylistItem(PlaylistItem playlistItem) {
-        currentPlaylistItem = playlistItem;
         notifyDataSetChanged();
     }
 

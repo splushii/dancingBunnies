@@ -8,7 +8,7 @@ import androidx.annotation.Nullable;
 import androidx.recyclerview.selection.ItemDetailsLookup;
 import androidx.recyclerview.widget.RecyclerView;
 
-public class NowPlayingDetailsLookup extends ItemDetailsLookup<Long> {
+class NowPlayingDetailsLookup extends ItemDetailsLookup<Long> {
     private final RecyclerView recyclerView;
 
     NowPlayingDetailsLookup(RecyclerView recyclerView) {

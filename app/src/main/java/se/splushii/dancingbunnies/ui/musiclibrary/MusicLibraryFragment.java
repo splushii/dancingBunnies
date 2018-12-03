@@ -48,7 +48,7 @@ import se.splushii.dancingbunnies.ui.EntryIDDetailsLookup;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryFragment extends AudioBrowserFragment {
-    private static String LC = Util.getLogContext(MusicLibraryFragment.class);
+    private static final String LC = Util.getLogContext(MusicLibraryFragment.class);
 
     private static final String INITIAL_DISPLAY_TYPE = Meta.METADATA_KEY_ARTIST;
 

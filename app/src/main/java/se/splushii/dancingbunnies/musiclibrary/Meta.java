@@ -5,6 +5,7 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.RatingCompat;
 import android.util.Log;
 
 import com.google.android.gms.cast.MediaMetadata;
@@ -24,7 +25,11 @@ import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.STRING;
 
 // TODO: Use Meta throughout app. To convert, do for example "new Meta(metaCompat).toCastMeta()".
 public class Meta implements Parcelable {
-    private static String LC = Util.getLogContext(Meta.class);
+    private static final String LC = Util.getLogContext(Meta.class);
+
+    public byte[] getBitmap(String key) {
+        return bundle.getByteArray(key);
+    }
 
     public enum Type {
         STRING, BITMAP, RATING, LONG
@@ -42,6 +47,10 @@ public class Meta implements Parcelable {
 
     public Meta(MediaDescriptionCompat description) {
         bundle = description.getExtras();
+    }
+
+    public Meta(MediaMetadataCompat metadata) {
+        bundle = metadata.getBundle();
     }
 
     public MediaMetadataCompat toMediaMetadataCompat() {
@@ -96,23 +105,38 @@ public class Meta implements Parcelable {
         return bundle;
     }
 
-    public void setString(String key, String value) {
+    public Meta setString(String key, String value) {
         bundle.putString(key, value);
+        return this;
     }
 
     public String getString(String key) {
         return bundle.getString(key);
     }
 
+    public Meta setLong(String key, long value) {
+        bundle.putLong(key, value);
+        return this;
+    }
+
     public long getLong(String key) {
         return bundle.getLong(key);
+    }
+
+    public Meta setRating(String key, RatingCompat rating) {
+        bundle.putParcelable(key, rating);
+        return this;
+    }
+
+    public RatingCompat getRating(String key) {
+        return bundle.getParcelable(key);
     }
 
     public Set<String> keySet() {
         return bundle.keySet();
     }
 
-    protected Meta(Parcel in) {
+    private Meta(Parcel in) {
         bundle = in.readBundle(getClass().getClassLoader());
     }
 

@@ -6,7 +6,6 @@ import android.content.SharedPreferences;
 import android.os.Binder;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
-import android.support.v4.media.MediaMetadataCompat;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -35,7 +34,7 @@ import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryService extends Service {
-    private static String LC = Util.getLogContext(MusicLibraryService.class);
+    private static final String LC = Util.getLogContext(MusicLibraryService.class);
 
     public static final String API_ID_DANCINGBUNNIES = "dancingbunnies";
     public static final String API_ID_SUBSONIC = "subsonic";
@@ -274,7 +273,7 @@ public class MusicLibraryService extends Service {
         }
     }
 
-    private void saveLibraryToStorage(List<MediaMetadataCompat> data) {
+    private void saveLibraryToStorage(List<Meta> data) {
         long start = System.currentTimeMillis();
         Log.d(LC, "saveLibraryToStorage start");
         metaStorage.insertSongs(data);
@@ -321,7 +320,7 @@ public class MusicLibraryService extends Service {
                     }
         }).thenAccept(opt -> {
             if (opt.isPresent()) {
-                final List<MediaMetadataCompat> data = opt.get();
+                final List<Meta> data = opt.get();
                 Log.d(LC, "Fetched library from " + api + ": " + data.size() + " entries.");
                 handler.onProgress("Saving entries to local meta storage...");
                 // TODO: Possible to perform a smart merge instead?

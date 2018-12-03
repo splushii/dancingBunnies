@@ -21,12 +21,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapter.SongViewHolder> {
-    private static String LC = Util.getLogContext(MusicLibraryAdapter.class);
+    private final MusicLibraryFragment fragment;
     private List<MediaBrowserCompat.MediaItem> dataset;
-    private MusicLibraryFragment fragment;
     private RecyclerView.ViewHolder contextMenuHolder;
     private View selectedItemView;
     private SelectionTracker<EntryID> selectionTracker;

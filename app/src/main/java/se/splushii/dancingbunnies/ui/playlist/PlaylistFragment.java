@@ -9,7 +9,6 @@ import android.view.ViewGroup;
 import java.util.LinkedList;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
@@ -21,7 +20,7 @@ import se.splushii.dancingbunnies.util.Util;
 public class PlaylistFragment extends AudioBrowserFragment {
 
     private static final String LC = Util.getLogContext(PlaylistFragment.class);
-    private PlaylistAdapter recViewAdapter;
+    private final PlaylistAdapter recViewAdapter;
     private RecyclerView recView;
     private PlaylistUserState userState;
     private LinkedList<PlaylistUserState> viewBackStack;
@@ -89,11 +88,6 @@ public class PlaylistFragment extends AudioBrowserFragment {
         recView.setLayoutManager(recViewLayoutManager);
         recView.setAdapter(recViewAdapter);
         return rootView;
-    }
-
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
     }
 
     private void addBackButtonHistory(PlaylistUserState libView) {

@@ -3,7 +3,6 @@ package se.splushii.dancingbunnies.backend;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
-import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.RatingCompat;
 import android.util.Log;
 
@@ -39,7 +38,7 @@ import se.splushii.dancingbunnies.util.Util;
 public class SubsonicAPIClient extends APIClient {
     private static final String LC = Util.getLogContext(SubsonicAPIClient.class);
     private static final Integer REQ_RETRY_COUNT = 3;
-    private HashMap<String, Integer> retries;
+    private final HashMap<String, Integer> retries;
 
     public enum RequestType {
         GET_INDEXES, GET_MUSIC_DIRECTORY, GET_MUSIC_FOLDERS, GET_PLAYLIST, GET_PLAYLISTS
@@ -104,7 +103,7 @@ public class SubsonicAPIClient extends APIClient {
     private static final String FORMAT = "json";
 
     private SecureRandom rand;
-    private HTTPClient httpClient;
+    private final HTTPClient httpClient;
 
     public SubsonicAPIClient() {
         retries = new HashMap<>();
@@ -125,7 +124,7 @@ public class SubsonicAPIClient extends APIClient {
                                String query,
                                String musicFolder,
                                String errorMsg,
-                               ConcurrentLinkedQueue<MediaMetadataCompat> metaList,
+                               ConcurrentLinkedQueue<Meta> metaList,
                                ConcurrentLinkedQueue<Playlist> playlists,
                                ConcurrentLinkedQueue<EntryID> playlistEntries,
                                APIClientRequestHandler handler) {
@@ -174,14 +173,14 @@ public class SubsonicAPIClient extends APIClient {
         return true;
     }
 
-    private CompletableFuture<Void> getMusicFolders(final ConcurrentLinkedQueue<MediaMetadataCompat> metaList,
+    private CompletableFuture<Void> getMusicFolders(final ConcurrentLinkedQueue<Meta> metaList,
                                                      final APIClientRequestHandler handler) {
         String query = baseURL + "getMusicFolders" + getBaseQuery();
         return getMusicFoldersQuery(query, metaList, handler);
     }
 
     private CompletableFuture<Void> getMusicFoldersQuery(final String query,
-                                                         final ConcurrentLinkedQueue<MediaMetadataCompat> metaList,
+                                                         final ConcurrentLinkedQueue<Meta> metaList,
                                                          final APIClientRequestHandler handler) {
         final CompletableFuture<Void> ret = new CompletableFuture<>();
         final CompletableFuture<Optional<List<Pair<String, String>>>> req = new CompletableFuture<>();
@@ -256,9 +255,8 @@ public class SubsonicAPIClient extends APIClient {
 
     private CompletableFuture<Void> getIndexes(final String musicFolderId,
                                                final String musicFolder,
-                                               final ConcurrentLinkedQueue<MediaMetadataCompat> metaList,
+                                               final ConcurrentLinkedQueue<Meta> metaList,
                                                final APIClientRequestHandler handler) {
-
         final String query = baseURL + "getIndexes" + getBaseQuery()
                 + "&musicFolderId=" + musicFolderId;
         return getIndexesQuery(query, musicFolder, metaList, handler);
@@ -266,7 +264,7 @@ public class SubsonicAPIClient extends APIClient {
 
     private CompletableFuture<Void> getIndexesQuery(final String query,
                                                     final String musicFolder,
-                                                    final ConcurrentLinkedQueue<MediaMetadataCompat> metaList,
+                                                    final ConcurrentLinkedQueue<Meta> metaList,
                                                     final APIClientRequestHandler handler) {
         final CompletableFuture<Void> ret = new CompletableFuture<>();
         httpClient.get(query, null, new AsyncHttpResponseHandler() {
@@ -349,8 +347,8 @@ public class SubsonicAPIClient extends APIClient {
         return ret;
     }
 
-    private void addMeta(MediaMetadataCompat meta,
-                         ConcurrentLinkedQueue<MediaMetadataCompat> metaList,
+    private void addMeta(Meta meta,
+                         ConcurrentLinkedQueue<Meta> metaList,
                          APIClientRequestHandler handler) {
         metaList.add(meta);
         if (metaList.size() % 100 == 0) {
@@ -358,7 +356,7 @@ public class SubsonicAPIClient extends APIClient {
         }
     }
 
-    private Optional<MediaMetadataCompat> handleJSONChild(JSONObject jChild, String musicFolder)
+    private Optional<Meta> handleJSONChild(JSONObject jChild, String musicFolder)
             throws JSONException {
         // Required attributes
         String id = jChild.getString(JSON_ID);
@@ -366,12 +364,11 @@ public class SubsonicAPIClient extends APIClient {
             return Optional.empty();
         }
         String title = jChild.getString(JSON_TITLE);
-        MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder();
-        builder
-                .putString(Meta.METADATA_KEY_API, MusicLibraryService.API_ID_SUBSONIC)
-                .putString(Meta.METADATA_KEY_MEDIA_ROOT, musicFolder)
-                .putString(Meta.METADATA_KEY_MEDIA_ID, id)
-                .putString(Meta.METADATA_KEY_TITLE, title);
+        Meta meta = new Meta();
+        meta.setString(Meta.METADATA_KEY_API, MusicLibraryService.API_ID_SUBSONIC)
+                .setString(Meta.METADATA_KEY_MEDIA_ROOT, musicFolder)
+                .setString(Meta.METADATA_KEY_MEDIA_ID, id)
+                .setString(Meta.METADATA_KEY_TITLE, title);
         // Optional attributes
         Iterator<String> keys = jChild.keys();
         while (keys.hasNext()) {
@@ -383,49 +380,49 @@ public class SubsonicAPIClient extends APIClient {
                     // Already handled
                     break;
                 case JSON_PARENT:
-                    builder.putString(Meta.METADATA_KEY_PARENT_ID, jChild.getString(JSON_PARENT));
+                    meta.setString(Meta.METADATA_KEY_PARENT_ID, jChild.getString(JSON_PARENT));
                     break;
                 case JSON_ALBUM:
-                    builder.putString(Meta.METADATA_KEY_ALBUM, jChild.getString(JSON_ALBUM));
+                    meta.setString(Meta.METADATA_KEY_ALBUM, jChild.getString(JSON_ALBUM));
                     break;
                 case JSON_ARTIST:
-                    builder.putString(Meta.METADATA_KEY_ARTIST, jChild.getString(JSON_ARTIST));
+                    meta.setString(Meta.METADATA_KEY_ARTIST, jChild.getString(JSON_ARTIST));
                     break;
                 case JSON_TRACK:
-                    builder.putLong(Meta.METADATA_KEY_TRACK_NUMBER, jChild.getInt(JSON_TRACK));
+                    meta.setLong(Meta.METADATA_KEY_TRACK_NUMBER, jChild.getInt(JSON_TRACK));
                     break;
                 case JSON_YEAR:
-                    builder.putLong(Meta.METADATA_KEY_YEAR, jChild.getInt(JSON_YEAR));
+                    meta.setLong(Meta.METADATA_KEY_YEAR, jChild.getInt(JSON_YEAR));
                     break;
                 case JSON_GENRE:
-                    builder.putString(Meta.METADATA_KEY_GENRE, jChild.getString(JSON_GENRE));
+                    meta.setString(Meta.METADATA_KEY_GENRE, jChild.getString(JSON_GENRE));
                     break;
                 case JSON_COVER_ART:
-                    builder.putString(Meta.METADATA_KEY_ALBUM_ART_URI, jChild.getString(JSON_COVER_ART));
+                    meta.setString(Meta.METADATA_KEY_ALBUM_ART_URI, jChild.getString(JSON_COVER_ART));
                     break;
                 case JSON_SIZE:
-                    builder.putLong(Meta.METADATA_KEY_FILE_SIZE, jChild.getLong(JSON_SIZE));
+                    meta.setLong(Meta.METADATA_KEY_FILE_SIZE, jChild.getLong(JSON_SIZE));
                     break;
                 case JSON_CONTENT_TYPE:
-                    builder.putString(Meta.METADATA_KEY_CONTENT_TYPE, jChild.getString(JSON_CONTENT_TYPE));
+                    meta.setString(Meta.METADATA_KEY_CONTENT_TYPE, jChild.getString(JSON_CONTENT_TYPE));
                     break;
                 case JSON_SUFFIX:
-                    builder.putString(Meta.METADATA_KEY_FILE_SUFFIX, jChild.getString(JSON_SUFFIX));
+                    meta.setString(Meta.METADATA_KEY_FILE_SUFFIX, jChild.getString(JSON_SUFFIX));
                     break;
                 case JSON_TRANSCODED_CONTENT_TYPE:
-                    builder.putString(Meta.METADATA_KEY_TRANSCODED_TYPE, jChild.getString(JSON_TRANSCODED_CONTENT_TYPE));
+                    meta.setString(Meta.METADATA_KEY_TRANSCODED_TYPE, jChild.getString(JSON_TRANSCODED_CONTENT_TYPE));
                     break;
                 case JSON_TRANSCODED_SUFFIX:
-                    builder.putString(Meta.METADATA_KEY_TRANSCODED_SUFFIX, jChild.getString(JSON_TRANSCODED_SUFFIX));
+                    meta.setString(Meta.METADATA_KEY_TRANSCODED_SUFFIX, jChild.getString(JSON_TRANSCODED_SUFFIX));
                     break;
                 case JSON_DURATION:
-                    builder.putLong(Meta.METADATA_KEY_DURATION, jChild.getInt(JSON_DURATION) * 1000L);
+                    meta.setLong(Meta.METADATA_KEY_DURATION, jChild.getInt(JSON_DURATION) * 1000L);
                     break;
                 case JSON_BITRATE:
-                    builder.putLong(Meta.METADATA_KEY_BITRATE, jChild.getInt(JSON_BITRATE));
+                    meta.setLong(Meta.METADATA_KEY_BITRATE, jChild.getInt(JSON_BITRATE));
                     break;
                 case JSON_PATH:
-                    builder.putString(Meta.METADATA_KEY_MEDIA_URI, jChild.getString(JSON_PATH));
+                    meta.setString(Meta.METADATA_KEY_MEDIA_URI, jChild.getString(JSON_PATH));
                     break;
                 case JSON_IS_VIDEO:
                     if (jChild.getBoolean(JSON_IS_VIDEO)) {
@@ -433,30 +430,30 @@ public class SubsonicAPIClient extends APIClient {
                     }
                     break;
                 case JSON_USER_RATING:
-                    builder.putRating(Meta.METADATA_KEY_USER_RATING, RatingCompat.newStarRating(RatingCompat.RATING_5_STARS, jChild.getInt(JSON_USER_RATING)));
+                    meta.setRating(Meta.METADATA_KEY_USER_RATING, RatingCompat.newStarRating(RatingCompat.RATING_5_STARS, jChild.getInt(JSON_USER_RATING)));
                     break;
                 case JSON_AVERAGE_RATING:
-                    builder.putRating(Meta.METADATA_KEY_AVERAGE_RATING, RatingCompat.newStarRating(RatingCompat.RATING_5_STARS, (float) jChild.getDouble(JSON_AVERAGE_RATING)));
+                    meta.setRating(Meta.METADATA_KEY_AVERAGE_RATING, RatingCompat.newStarRating(RatingCompat.RATING_5_STARS, (float) jChild.getDouble(JSON_AVERAGE_RATING)));
                     break;
                 case JSON_PLAY_COUNT:
                     // Do not care about subsonic play count
 //                  jChild.getLong(JSON_PLAY_COUNT);
                     break;
                 case JSON_DISC_NUMBER:
-                    builder.putLong(Meta.METADATA_KEY_DISC_NUMBER, jChild.getInt(JSON_DISC_NUMBER));
+                    meta.setLong(Meta.METADATA_KEY_DISC_NUMBER, jChild.getInt(JSON_DISC_NUMBER));
                     break;
                 case JSON_CREATED:
-                    builder.putString(Meta.METADATA_KEY_DATE_ADDED, jChild.getString(JSON_CREATED));
+                    meta.setString(Meta.METADATA_KEY_DATE_ADDED, jChild.getString(JSON_CREATED));
                     break;
                 case JSON_STARRED:
-                    builder.putString(Meta.METADATA_KEY_DATE_STARRED, jChild.getString(JSON_STARRED));
-                    builder.putRating(Meta.METADATA_KEY_HEART_RATING, RatingCompat.newHeartRating(true));
+                    meta.setString(Meta.METADATA_KEY_DATE_STARRED, jChild.getString(JSON_STARRED));
+                    meta.setRating(Meta.METADATA_KEY_HEART_RATING, RatingCompat.newHeartRating(true));
                     break;
                 case JSON_ALBUM_ID:
-                    builder.putString(Meta.METADATA_KEY_ALBUM_ID, jChild.getString(JSON_ALBUM_ID));
+                    meta.setString(Meta.METADATA_KEY_ALBUM_ID, jChild.getString(JSON_ALBUM_ID));
                     break;
                 case JSON_ARTIST_ID:
-                    builder.putString(Meta.METADATA_KEY_ARTIST_ID, jChild.getString(JSON_ARTIST_ID));
+                    meta.setString(Meta.METADATA_KEY_ARTIST_ID, jChild.getString(JSON_ARTIST_ID));
                     break;
                 case JSON_TYPE:
                     if (!jChild.getString(JSON_TYPE).equals(JSON_TYPE_MUSIC)) {
@@ -464,20 +461,20 @@ public class SubsonicAPIClient extends APIClient {
                     }
                     break;
                 case JSON_BOOKMARK_POSITION:
-                    builder.putLong(Meta.METADATA_KEY_BOOKMARK_POSITION, jChild.getLong(JSON_BOOKMARK_POSITION));
+                    meta.setLong(Meta.METADATA_KEY_BOOKMARK_POSITION, jChild.getLong(JSON_BOOKMARK_POSITION));
                     break;
                 default:
                     Log.w(LC, "Unhandled JSON attribute in child (" + title + "): " + key);
                     break;
             }
         }
-        return Optional.of(builder.build());
+        return Optional.of(meta);
     }
 
     private CompletableFuture<Void>
     getMusicDirectory(final String folderId,
                       final String musicFolder,
-                      final ConcurrentLinkedQueue<MediaMetadataCompat> metaList,
+                      final ConcurrentLinkedQueue<Meta> metaList,
                       final APIClientRequestHandler handler) {
         String query = baseURL + "getMusicDirectory" + getBaseQuery() + "&id=" + folderId;
         return getMusicDirectoryQuery(query, musicFolder, metaList, handler);
@@ -486,7 +483,7 @@ public class SubsonicAPIClient extends APIClient {
     private CompletableFuture<Void>
     getMusicDirectoryQuery(final String query,
                            final String musicFolder,
-                           final ConcurrentLinkedQueue<MediaMetadataCompat> metaList,
+                           final ConcurrentLinkedQueue<Meta> metaList,
                            final APIClientRequestHandler handler) {
         final CompletableFuture<Void> ret = new CompletableFuture<>();
         final List<CompletableFuture<Void>> reqList = new ArrayList<>();
@@ -554,9 +551,9 @@ public class SubsonicAPIClient extends APIClient {
     }
 
     @Override
-    public CompletableFuture<Optional<List<MediaMetadataCompat>>> getLibrary(APIClientRequestHandler handler) {
-        CompletableFuture<Optional<List<MediaMetadataCompat>>> getLibraryFuture = new CompletableFuture<>();
-        ConcurrentLinkedQueue<MediaMetadataCompat> metadataList = new ConcurrentLinkedQueue<>();
+    public CompletableFuture<Optional<List<Meta>>> getLibrary(APIClientRequestHandler handler) {
+        CompletableFuture<Optional<List<Meta>>> getLibraryFuture = new CompletableFuture<>();
+        ConcurrentLinkedQueue<Meta> metadataList = new ConcurrentLinkedQueue<>();
         handler.onProgress("Fetching music folders...");
         getMusicFolders(metadataList, handler).thenRun(() ->
                 getLibraryFuture.complete(Optional.of(new ArrayList<>(metadataList))));

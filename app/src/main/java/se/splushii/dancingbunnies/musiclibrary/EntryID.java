@@ -13,10 +13,8 @@ import com.google.android.gms.cast.MediaMetadata;
 import org.apache.lucene.document.Document;
 
 import se.splushii.dancingbunnies.search.Indexer;
-import se.splushii.dancingbunnies.util.Util;
 
 public class EntryID implements Parcelable {
-    private static final String LC = Util.getLogContext(EntryID.class);
     static final EntryID UnknownEntryID = EntryID.from(Meta.UNKNOWN_ENTRY);
     public final String src;
     public final String id;

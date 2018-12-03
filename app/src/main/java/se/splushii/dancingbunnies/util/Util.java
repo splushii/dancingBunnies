@@ -49,7 +49,7 @@ public class Util {
     }
 
     public static class FutureException extends Throwable {
-        String msg;
+        final String msg;
         public FutureException(String msg) {
             super(msg);
             this.msg = msg;

@@ -78,7 +78,7 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.addQueueItem(entryID.toMediaDescriptionCompat());
     }
 
-    public CompletableFuture<Boolean> queue(List<EntryID> entryIDs, int toPosition) {
+    protected CompletableFuture<Boolean> queue(List<EntryID> entryIDs, int toPosition) {
         return AudioPlayerService.queue(
                 mediaController,
                 entryIDs,
@@ -98,7 +98,7 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.removeQueueItem(mediaDescription);
     }
 
-    public void dequeue(List<Long> positionList) {
+    protected void dequeue(List<Long> positionList) {
         AudioPlayerService.dequeue(
                 mediaController,
                 positionList
@@ -230,15 +230,15 @@ public abstract class AudioBrowserFragment extends Fragment {
         return future;
     }
 
-    public void pause() {
+    protected void pause() {
         mediaController.getTransportControls().pause();
     }
 
-    public void previous() {
+    protected void previous() {
         mediaController.getTransportControls().skipToPrevious();
     }
 
-    public void next() {
+    protected void next() {
         mediaController.getTransportControls().skipToNext();
     }
 
@@ -246,7 +246,7 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.getTransportControls().skipToQueueItem(offset);
     }
 
-    public void seekTo(long position) {
+    protected void seekTo(long position) {
         mediaController.getTransportControls().seekTo(position);
     }
 
@@ -283,7 +283,7 @@ public abstract class AudioBrowserFragment extends Fragment {
 
                 @Override
                 public void onMetadataChanged(MediaMetadataCompat metadata) {
-                    AudioBrowserFragment.this.onMetadataChanged(metadata);
+                    AudioBrowserFragment.this.onMetadataChanged(new Meta(metadata));
                 }
 
                 @Override
@@ -309,7 +309,7 @@ public abstract class AudioBrowserFragment extends Fragment {
 
     protected void onMediaBrowserConnected() {}
     protected void onPlaybackStateChanged(PlaybackStateCompat state) {}
-    protected void onMetadataChanged(MediaMetadataCompat metadata) {}
+    protected void onMetadataChanged(Meta metadata) {}
     protected void onSessionEvent(String event, Bundle extras) {}
     private void onSessionDestroyed() {}
     protected void onSessionReady() {}

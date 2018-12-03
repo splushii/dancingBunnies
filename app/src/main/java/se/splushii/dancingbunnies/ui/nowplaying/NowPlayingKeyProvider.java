@@ -4,7 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.selection.ItemKeyProvider;
 
-public class NowPlayingKeyProvider extends ItemKeyProvider<Long> {
+class NowPlayingKeyProvider extends ItemKeyProvider<Long> {
 
     NowPlayingKeyProvider() {
         super(ItemKeyProvider.SCOPE_MAPPED);

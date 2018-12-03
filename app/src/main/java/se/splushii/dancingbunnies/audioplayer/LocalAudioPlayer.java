@@ -35,9 +35,9 @@ class LocalAudioPlayer implements AudioPlayer {
     private boolean playWhenReady = false;
     private final MusicLibraryService musicLibraryService;
     private MediaPlayerInstance player;
-    private LinkedList<MediaPlayerInstance> queuePlayers;
-    private LinkedList<MediaPlayerInstance> playlistPlayers;
-    private LinkedList<MediaPlayerInstance> historyPlayers;
+    private final LinkedList<MediaPlayerInstance> queuePlayers;
+    private final LinkedList<MediaPlayerInstance> playlistPlayers;
+    private final LinkedList<MediaPlayerInstance> historyPlayers;
 
     LocalAudioPlayer(Callback audioPlayerCallback,
                      MusicLibraryService musicLibraryService) {
@@ -287,9 +287,9 @@ class LocalAudioPlayer implements AudioPlayer {
     }
 
     private class MediaPlayerInstance {
+        private final PlaybackEntry playbackEntry;
         private MediaPlayer mediaPlayer;
         private MediaPlayerState state;
-        private PlaybackEntry playbackEntry;
         private boolean buffering = false;
         private long initialSeek = -1;
 
@@ -514,18 +514,6 @@ class LocalAudioPlayer implements AudioPlayer {
             }
             Log.d(LC, "MediaPlayer(" + title() + ") getPlayerSeekPosition");
             return mediaPlayer.getCurrentPosition();
-        }
-
-        boolean isReady() {
-            switch (state) {
-                case PREPARED:
-                case STARTED:
-                case PAUSED:
-                case PLAYBACK_COMPLETED:
-                    return true;
-                default:
-                    return false;
-            }
         }
 
         boolean isStopped() {

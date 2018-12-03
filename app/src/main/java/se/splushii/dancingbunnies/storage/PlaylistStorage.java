@@ -21,7 +21,7 @@ import se.splushii.dancingbunnies.util.Util;
 public class PlaylistStorage {
     private static final String LC = Util.getLogContext(PlaylistStorage.class);
 
-    private DB dbHandler;
+    private final DB dbHandler;
     private final SQLiteDatabase db;
 
     public PlaylistStorage(Context context) {

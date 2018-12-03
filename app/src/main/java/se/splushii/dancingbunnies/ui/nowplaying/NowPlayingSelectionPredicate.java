@@ -10,7 +10,7 @@ import se.splushii.dancingbunnies.util.Util;
 class NowPlayingSelectionPredicate extends SelectionTracker.SelectionPredicate<Long> {
     private static final String LC = Util.getLogContext(NowPlayingSelectionPredicate.class);
     private final NowPlayingEntriesAdapter adapter;
-    private NowPlayingKeyProvider keyProvider;
+    private final NowPlayingKeyProvider keyProvider;
     private String currentSelectionType = null;
 
     NowPlayingSelectionPredicate(NowPlayingEntriesAdapter adapter,

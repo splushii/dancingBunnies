@@ -4,7 +4,7 @@ import android.os.Parcel;
 import android.os.Parcelable;
 
 public class PlaylistItem implements Parcelable {
-    public static PlaylistItem defaultPlaylist = new PlaylistItem(
+    public static final PlaylistItem defaultPlaylist = new PlaylistItem(
             PlaylistID.defaultPlaylistID,
             "Default"
     );
@@ -15,7 +15,7 @@ public class PlaylistItem implements Parcelable {
         this.name = name;
     }
 
-    protected PlaylistItem(Parcel in) {
+    private PlaylistItem(Parcel in) {
         playlistID = in.readParcelable(PlaylistID.class.getClassLoader());
         name = in.readString();
     }

@@ -7,10 +7,8 @@ import java.util.List;
 import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.util.Util;
 
 public class AudioStorage {
-    private static final String LC = Util.getLogContext(AudioStorage.class);
     private final HashMap<EntryID, AudioDataSource> audioMap;
     private final HashMap<EntryID, List<AudioDataDownloadHandler>> handlerMap;
 

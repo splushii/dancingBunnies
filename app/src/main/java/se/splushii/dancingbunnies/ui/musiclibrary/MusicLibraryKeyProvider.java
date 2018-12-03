@@ -5,7 +5,7 @@ import androidx.annotation.Nullable;
 import androidx.recyclerview.selection.ItemKeyProvider;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 
-public class MusicLibraryKeyProvider extends ItemKeyProvider<EntryID> {
+class MusicLibraryKeyProvider extends ItemKeyProvider<EntryID> {
     private final MusicLibraryAdapter adapter;
 
     MusicLibraryKeyProvider(MusicLibraryAdapter adapter) {
