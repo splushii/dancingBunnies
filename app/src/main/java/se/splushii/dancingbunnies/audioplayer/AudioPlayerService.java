@@ -412,7 +412,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     EntryID.from(description),
                     PlaybackEntry.USER_TYPE_QUEUE
             );
-            playbackController.addToQueue(
+            playbackController.queue(
                     Collections.singletonList(playbackEntry),
                     AudioPlayerService.QUEUE_LAST)
                     .thenRun(() -> setToast(playbackEntry.meta, "Adding %s \"%s\" to queue!"))
@@ -439,7 +439,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             Log.d(LC, "onRemoveQueueItem");
             assert description.getExtras() != null;
             long pos = description.getExtras().getLong(Meta.METADATA_KEY_QUEUE_POS);
-            playbackController.removeFromQueue(new long[]{pos})
+            playbackController.deQueue(new long[]{pos})
                     .handle(AudioPlayerService.this::handleControllerResult);
         }
 
@@ -604,7 +604,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         for (EntryID entryID: entryIDs) {
             playbackEntries.add(createPlaybackEntry(entryID, PlaybackEntry.USER_TYPE_QUEUE));
         }
-        playbackController.addToQueue(playbackEntries, toPosition).handle((r, t) -> {
+        playbackController.queue(playbackEntries, toPosition).handle((r, t) -> {
             cb.send(t == null ? 0 : 1, null);
             return handleControllerResult(r, t);
         });
@@ -629,7 +629,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void dequeue(ResultReceiver cb, Bundle extras) {
         long[] positions = extras.getLongArray("positionList");
-        playbackController.removeFromQueue(positions).handle((r, t) -> {
+        playbackController.deQueue(positions).handle((r, t) -> {
             cb.send(t == null ? 0 : 1, null);
             return handleControllerResult(r, t);
         });

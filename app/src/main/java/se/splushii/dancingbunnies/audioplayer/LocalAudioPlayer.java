@@ -17,10 +17,9 @@ import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.util.Util;
 
-// TODO: Set error state if a triggered action is unsuccessful
-// TODO: Make it thread-safe. A lock is probably needed for player and nextplayers.
-class LocalAudioPlayer extends AudioPlayer {
+class LocalAudioPlayer implements AudioPlayer {
     private static final String LC = Util.getLogContext(LocalAudioPlayer.class);
+    private final Callback callback;
 
     private enum MediaPlayerState {
         NULL,
@@ -41,61 +40,21 @@ class LocalAudioPlayer extends AudioPlayer {
     private LinkedList<MediaPlayerInstance> historyPlayers;
 
     LocalAudioPlayer(Callback audioPlayerCallback,
-                     MusicLibraryService musicLibraryService,
-                     AudioPlayerState state) {
-        super(audioPlayerCallback);
+                     MusicLibraryService musicLibraryService) {
+        this.callback = audioPlayerCallback;
         this.musicLibraryService = musicLibraryService;
         queuePlayers = new LinkedList<>();
         playlistPlayers = new LinkedList<>();
         historyPlayers = new LinkedList<>();
-        loadState(state);
-    }
-
-    private void loadState(AudioPlayerState state) {
-        for (PlaybackEntry entry: state.history) {
-            historyPlayers.add(new MediaPlayerInstance(entry));
-        }
-        for (PlaybackEntry entry: state.entries) {
-            if (!PlaybackEntry.USER_TYPE_QUEUE.equals(entry.playbackType)
-                    && !PlaybackEntry.USER_TYPE_PLAYLIST.equals(entry.playbackType)) {
-                continue;
-            }
-            MediaPlayerInstance playerInstance = new MediaPlayerInstance(entry);
-            playerInstance.preload();
-            if (player == null) {
-                player = playerInstance;
-            } else if (PlaybackEntry.USER_TYPE_QUEUE.equals(entry.playbackType)) {
-                queuePlayers.add(playerInstance);
-            } else {
-                playlistPlayers.add(playerInstance);
-            }
-        }
-        if (player != null) {
-            player.seekTo(state.lastPos);
-        }
-        setCurrentPlayer(player);
-        preparePlayers();
     }
 
     @Override
-    int getMaxToPreload() {
+    public int getMaxToPreload() {
         return 3;
     }
 
     @Override
-    public CompletableFuture<Void> checkPreload() {
-        Log.d(LC, "checkPreload()");
-        int numPreloaded = getNumPreloaded();
-        if (numPreloaded < getMaxToPreload()) {
-            addNewPreloadEntries(getMaxToPreload()- numPreloaded);
-        } else if (numPreloaded > getMaxToPreload()) {
-            depreloadEntries(numPreloaded - getMaxToPreload());
-        }
-        return actionResult(null);
-    }
-
-    private void addNewPreloadEntries(int num) {
-        List<PlaybackEntry> entries = controller.requestPreload(num);
+    public CompletableFuture<Void> preload(List<PlaybackEntry> entries) {
         for (PlaybackEntry entry: entries) {
             MediaPlayerInstance playerInstance = new MediaPlayerInstance(entry);
             if (player == null) {
@@ -109,47 +68,25 @@ class LocalAudioPlayer extends AudioPlayer {
                         + entry.toString());
             }
         }
-        controller.onPreloadChanged();
+        callback.onPreloadChanged();
         preparePlayers();
+        return Util.futureResult(null);
     }
 
-    private void depreloadEntries(int numToDepreload) {
-        LinkedList<PlaybackEntry> playlistEntriesToDepreload = new LinkedList<>();
-        LinkedList<PlaybackEntry> queueEntriesToDepreload= new LinkedList<>();
-        while (numToDepreload > 0 && !playlistPlayers.isEmpty()) {
-            MediaPlayerInstance playerInstance = playlistPlayers.pollLast();
-            playerInstance.release();
-            playlistEntriesToDepreload.addFirst(playerInstance.playbackEntry);
-            numToDepreload--;
-        }
-        while (numToDepreload > 0 && !queuePlayers.isEmpty()) {
-            MediaPlayerInstance playerInstance = queuePlayers.pollLast();
-            playerInstance.release();
-            queueEntriesToDepreload.addFirst(playerInstance.playbackEntry);
-            numToDepreload--;
-        }
-        if (!playlistEntriesToDepreload.isEmpty()) {
-            controller.dePreloadPlaylistEntries(playlistEntriesToDepreload);
-        }
-        if (!queueEntriesToDepreload.isEmpty()) {
-            controller.dePreloadQueueEntries(queueEntriesToDepreload, 0);
-        }
-    }
-
-    private int getNumPreloaded() {
-        return queuePlayers.size() + playlistPlayers.size() + (player == null ? 0 : 1);
+    public int getNumPreloaded() {
+        return queuePlayers.size() + playlistPlayers.size();
     }
 
     @Override
     public CompletableFuture<Void> play() {
         playWhenReady = true;
         if (player == null) {
-            return actionResult("Player is null");
+            return Util.futureResult("Player is null");
         }
         player.play();
         preparePlayers();
         updatePlaybackState();
-        return actionResult(null);
+        return Util.futureResult(null);
     }
 
     private void preparePlayers() {
@@ -176,18 +113,18 @@ class LocalAudioPlayer extends AudioPlayer {
     public CompletableFuture<Void> pause() {
         playWhenReady = false;
         if (player == null) {
-            return actionResult("Player is null");
+            return Util.futureResult("Player is null");
         }
         player.pause();
         updatePlaybackState();
-        return actionResult(null);
+        return Util.futureResult(null);
     }
 
     @Override
     public CompletableFuture<Void> stop() {
         playWhenReady = false;
         if (player == null) {
-            return actionResult("Player is null");
+            return Util.futureResult("Player is null");
         }
         player.stop();
         for (MediaPlayerInstance mediaPlayerInstance: queuePlayers) {
@@ -197,7 +134,7 @@ class LocalAudioPlayer extends AudioPlayer {
             mediaPlayerInstance.stop();
         }
         updatePlaybackState();
-        return actionResult(null);
+        return Util.futureResult(null);
     }
 
     @Override
@@ -215,17 +152,16 @@ class LocalAudioPlayer extends AudioPlayer {
             historyPlayers.add(previousPlayer);
         }
         updatePlaybackState();
-        checkPreload();
-        controller.onPreloadChanged();
+        callback.onPreloadChanged();
         preparePlayers();
         if (playWhenReady) {
             return play();
         }
-        return actionResult(null);
+        return Util.futureResult(null);
     }
 
     @Override
-    AudioPlayerState getLastState() {
+    public AudioPlayerState getLastState() {
         long lastPos = player == null ? 0 : player.getCurrentPosition();
         List<PlaybackEntry> history = historyPlayers.stream()
                 .map(p -> p.playbackEntry).collect(Collectors.toCollection(LinkedList::new));
@@ -241,11 +177,11 @@ class LocalAudioPlayer extends AudioPlayer {
     @Override
     public CompletableFuture<Void> seekTo(long pos) {
         if (player == null) {
-            return actionResult("Player is null");
+            return Util.futureResult("Player is null");
         }
         player.seekTo(pos);
         updatePlaybackState();
-        return actionResult(null);
+        return Util.futureResult(null);
     }
 
     @Override
@@ -269,42 +205,42 @@ class LocalAudioPlayer extends AudioPlayer {
     }
 
     @Override
-    List<PlaybackEntry> getPreloadedQueueEntries(int maxNum) {
+    public List<PlaybackEntry> getQueueEntries(int maxNum) {
         return getPreloadedEntries(maxNum, queuePlayers);
     }
 
     @Override
-    List<PlaybackEntry> getPreloadedPlaylistEntries(int maxNum) {
+    public List<PlaybackEntry> getPlaylistEntries(int maxNum) {
         return getPreloadedEntries(maxNum, playlistPlayers);
     }
 
     @Override
-    protected PlaybackEntry getQueueEntry(int queuePosition) {
+    public PlaybackEntry getQueueEntry(int queuePosition) {
         return queuePlayers.isEmpty() || queuePosition >= queuePlayers.size() ? null :
                 queuePlayers.get(queuePosition).playbackEntry;
     }
 
     @Override
-    protected PlaybackEntry getPlaylistEntry(int playlistPosition) {
+    public PlaybackEntry getPlaylistEntry(int playlistPosition) {
         return playlistPlayers.isEmpty() || playlistPosition >= playlistPlayers.size() ? null :
                 playlistPlayers.get(playlistPosition).playbackEntry;
     }
 
     @Override
-    protected int getNumQueueEntries() {
+    public int getNumQueueEntries() {
         return queuePlayers.size();
     }
 
     @Override
-    protected int getNumPlaylistEntries() {
+    public int getNumPlaylistEntries() {
         return playlistPlayers.size();
     }
 
     @Override
-    protected CompletableFuture<Void> playerDePreload(int numQueueEntriesToDepreload,
-                                                      int queueOffset,
-                                                      int numPlaylistEntriesToDepreload,
-                                                      int playlistOffset) {
+    public CompletableFuture<Void> dePreload(int numQueueEntriesToDepreload,
+                                             int queueOffset,
+                                             int numPlaylistEntriesToDepreload,
+                                             int playlistOffset) {
         for (int i = 0; i < numPlaylistEntriesToDepreload; i++) {
             MediaPlayerInstance m = playlistPlayers.pollLast();
             m.release();
@@ -313,42 +249,41 @@ class LocalAudioPlayer extends AudioPlayer {
             MediaPlayerInstance m = queuePlayers.pollLast();
             m.release();
         }
-        return actionResult(null);
+        return Util.futureResult(null);
     }
 
     @Override
-    protected CompletableFuture<Void> playerQueue(List<PlaybackEntry> newEntriesToQueue,
-                                                  int newEntriesToQueueOffset) {
-        if (!newEntriesToQueue.isEmpty()) {
+    public CompletableFuture<Void> queue(List<PlaybackEntry> entries, int offset) {
+        if (!entries.isEmpty()) {
             List<MediaPlayerInstance> playersToQueue = new LinkedList<>();
-            for (PlaybackEntry entry: newEntriesToQueue) {
+            for (PlaybackEntry entry: entries) {
                 MediaPlayerInstance instance = new MediaPlayerInstance(entry);
                 instance.preload();
                 playersToQueue.add(instance);
             }
-            queuePlayers.addAll(newEntriesToQueueOffset, playersToQueue);
+            queuePlayers.addAll(offset, playersToQueue);
         }
         if (player == null) {
             return next();
         }
-        return actionResult(null);
+        return Util.futureResult(null);
     }
 
     @Override
-    protected CompletableFuture<Void> playerDeQueue(List<Integer> positions) {
+    public CompletableFuture<Void> deQueue(List<Integer> positions) {
         // Start from largest index because queues are modified
         for (int i = 0; i < positions.size(); i++) {
             int queuePosition = positions.get(positions.size() - 1 - i);
             queuePlayers.remove(queuePosition).release();
         }
-        return actionResult(null);
+        return Util.futureResult(null);
     }
 
     @Override
     public CompletableFuture<Void> previous() {
         // TODO: implement
         Log.e(LC, "previous not implemented");
-        return actionResult("Not implemented");
+        return Util.futureResult("Not implemented");
     }
 
     private class MediaPlayerInstance {
@@ -356,6 +291,7 @@ class LocalAudioPlayer extends AudioPlayer {
         private MediaPlayerState state;
         private PlaybackEntry playbackEntry;
         private boolean buffering = false;
+        private long initialSeek = -1;
 
         MediaPlayerInstance(PlaybackEntry playbackEntry) {
             reconstruct();
@@ -378,6 +314,10 @@ class LocalAudioPlayer extends AudioPlayer {
                 if (this.equals(player)) {
                     Log.d(LC, "onReady: " + title());
                     updatePlaybackState();
+                    if (initialSeek != -1) {
+                        seekTo(initialSeek);
+                        initialSeek = -1;
+                    }
                     if (playWhenReady) {
                         play();
                         updatePlaybackState();
@@ -409,7 +349,7 @@ class LocalAudioPlayer extends AudioPlayer {
             }
             buffering = true;
             if (this.equals(player)) {
-                controller.onStateChanged(PlaybackStateCompat.STATE_BUFFERING);
+                callback.onStateChanged(PlaybackStateCompat.STATE_BUFFERING);
             }
             musicLibraryService.getAudioData(playbackEntry.entryID, new AudioDataDownloadHandler() {
                 @Override
@@ -537,6 +477,14 @@ class LocalAudioPlayer extends AudioPlayer {
 
         boolean seekTo(long pos) {
             switch (state) {
+                case IDLE:
+                case INITIALIZED:
+                case PREPARING:
+                case STOPPED:
+                case NULL:
+                    initialSeek = pos;
+                    Log.d(LC, "Setting initial seek to: " + initialSeek);
+                    return true;
                 case PREPARED:
                 case STARTED:
                 case PAUSED:
@@ -667,20 +615,20 @@ class LocalAudioPlayer extends AudioPlayer {
 
     private void updatePlaybackState() {
         if (player == null) {
-            controller.onStateChanged(PlaybackStateCompat.STATE_STOPPED);
+            callback.onStateChanged(PlaybackStateCompat.STATE_STOPPED);
             return;
         }
-        controller.onStateChanged(player.getPlaybackState());
+        callback.onStateChanged(player.getPlaybackState());
     }
 
     private void setCurrentPlayer(MediaPlayerInstance mediaPlayerInstance) {
         player = mediaPlayerInstance;
         Log.d(LC, "setCurrentPlayer: " + (player == null ? "null" : player.title()));
         if (player == null) {
-            controller.onMetaChanged(EntryID.from(Meta.UNKNOWN_ENTRY));
+            callback.onMetaChanged(EntryID.from(Meta.UNKNOWN_ENTRY));
         } else {
             player.preload();
-            controller.onMetaChanged(player.playbackEntry.entryID);
+            callback.onMetaChanged(player.playbackEntry.entryID);
         }
     }
 }

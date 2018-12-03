@@ -7,6 +7,7 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.concurrent.CompletableFuture;
 
 public class Util {
     private static final String LC = getLogContext(Util.class);
@@ -43,7 +44,30 @@ public class Util {
         return hex(saltBytes);
     }
 
-    public static String hex(byte[] in) {
+    private static String hex(byte[] in) {
         return String.format("%0" + (in.length * 2) + "x", new BigInteger(1, in));
+    }
+
+    public static class FutureException extends Throwable {
+        String msg;
+        public FutureException(String msg) {
+            super(msg);
+            this.msg = msg;
+        }
+
+        @Override
+        public String toString() {
+            return msg;
+        }
+    }
+
+    public static CompletableFuture<Void> futureResult(String error) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        if (error != null) {
+            result.completeExceptionally(new FutureException(error));
+            return result;
+        }
+        result.complete(null);
+        return result;
     }
 }
