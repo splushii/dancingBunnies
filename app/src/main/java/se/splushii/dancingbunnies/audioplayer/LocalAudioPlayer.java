@@ -328,6 +328,7 @@ class LocalAudioPlayer implements AudioPlayer {
                 Log.d(LC, "MediaPlayer(" + title() + ") completed");
                 state = MediaPlayerState.PLAYBACK_COMPLETED;
                 if (this.equals(player)) {
+                    callback.onSongEnded();
                     next();
                 } else {
                     Log.e(LC, "This should never happen...");
@@ -519,7 +520,6 @@ class LocalAudioPlayer implements AudioPlayer {
         boolean isStopped() {
             return MediaPlayerState.STOPPED.equals(state);
         }
-
 
         boolean isIdle() {
             return MediaPlayerState.IDLE.equals(state) && !buffering;

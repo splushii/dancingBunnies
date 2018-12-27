@@ -38,6 +38,7 @@ interface AudioPlayer {
         void onStateChanged(int playBackState);
         void onMetaChanged(EntryID entryID);
         void onPreloadChanged();
+        void onSongEnded();
     }
 
     class AudioPlayerState {

@@ -202,12 +202,17 @@ class PlaybackController {
         return toPosition < targetPlayerQueueSize? 0 : toPosition - targetPlayerQueueSize;
     }
 
-    private CompletableFuture<Void> checkPreload() {
-        Log.d(LC, "checkPreload()");
+    private int numPreloadNeeded() {
         int numPreloaded = audioPlayer.getNumPreloaded();
         int maxToPreload = audioPlayer.getMaxToPreload();
-        if (numPreloaded < maxToPreload) {
-            List<PlaybackEntry> entries = pollNextPreloadItems(maxToPreload - numPreloaded);
+        return maxToPreload - numPreloaded;
+    }
+
+    private CompletableFuture<Void> checkPreload() {
+        Log.d(LC, "checkPreload()");
+        int numToPreload = numPreloadNeeded();
+        if (numToPreload > 0) {
+            List<PlaybackEntry> entries = pollNextPreloadItems(numToPreload);
             return audioPlayer.preload(entries);
         }
         return Util.futureResult(null);
@@ -498,7 +503,8 @@ class PlaybackController {
     }
 
     CompletableFuture<Void> seekTo(long pos) {
-        return audioPlayer.seekTo(pos);
+        return audioPlayer.seekTo(pos)
+                .thenRun(() -> callback.onPlayerSeekPositionChanged(pos));
     }
 
     CompletableFuture<Void> playNow(PlaybackEntry playbackEntry) {
@@ -550,6 +556,7 @@ class PlaybackController {
         void onMetaChanged(EntryID entryID);
         void onQueueChanged(List<MediaSessionCompat.QueueItem> queue);
         void onPlaylistPositionChanged();
+        void onPlayerSeekPositionChanged(long pos);
     }
 
     private class AudioPlayerCallback implements AudioPlayer.Callback {
@@ -561,6 +568,7 @@ class PlaybackController {
 
         @Override
         public void onMetaChanged(EntryID entryID) {
+            Log.d(LC, "onMetaChanged: " + entryID.toString());
             callback.onMetaChanged(entryID);
         }
 
@@ -568,6 +576,15 @@ class PlaybackController {
         public void onPreloadChanged() {
             callback.onQueueChanged(getQueue());
             callback.onPlaylistPositionChanged();
+        }
+
+        @Override
+        public void onSongEnded() {
+            int numToPreload = numPreloadNeeded() + 1;
+            if (numToPreload > 0) {
+                List<PlaybackEntry> entries = pollNextPreloadItems(numToPreload);
+                audioPlayer.preload(entries);
+            }
         }
     }
 

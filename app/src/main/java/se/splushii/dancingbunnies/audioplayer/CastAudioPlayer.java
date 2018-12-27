@@ -166,8 +166,10 @@ public class CastAudioPlayer implements AudioPlayer {
         if (remoteMediaClient == null) {
             return Util.futureResult("seekTo(): remoteMediaClient is null");
         }
-        Log.d(LC, "playerAction: seekTo(" + pos + ") in state: "
-                + getStateString(remoteMediaClient.getPlayerState()));
+        Log.d(LC, "playerAction: seekTo(" + pos + ") in state: " + getStateString(
+                remoteMediaClient.getPlayerState(),
+                remoteMediaClient.getIdleReason()
+        ));
         return handleMediaClientRequest("seek", "Could not seek", remoteMediaClient.seek(pos));
     }
 
@@ -597,7 +599,10 @@ public class CastAudioPlayer implements AudioPlayer {
                     + result.getStatus().getStatusMessage();
             Log.e(LC, msg);
             if (remoteMediaClient != null) {
-                Log.e(LC, "state: " + getStateString(remoteMediaClient.getPlayerState()));
+                Log.e(LC, "state: " + getStateString(
+                        remoteMediaClient.getPlayerState(),
+                        remoteMediaClient.getIdleReason()
+                ));
             }
             logCurrentQueue();
         }
@@ -613,8 +618,10 @@ public class CastAudioPlayer implements AudioPlayer {
             return Util.futureResult("playerAction(" + action.name()
                     + "): remoteMediaClient is null");
         }
-        Log.d(LC, "playerAction: " + action.name() + " in state: "
-                + getStateString(remoteMediaClient.getPlayerState()));
+        Log.d(LC, "playerAction: " + action.name() + " in state: " + getStateString(
+                remoteMediaClient.getPlayerState(),
+                remoteMediaClient.getIdleReason()
+        ));
         PendingResult<RemoteMediaClient.MediaChannelResult> request;
         switch (action) {
             case PLAY:
@@ -735,21 +742,17 @@ public class CastAudioPlayer implements AudioPlayer {
             if (remoteMediaClient == null) {
                 return;
             }
-            int newPlayerState = remoteMediaClient.getPlayerState();
-            Log.d(LC, "onStatusUpdated state:" + getStateString(newPlayerState));
-            if (newPlayerState == playerState) {
-                return;
-            }
-            playerState = newPlayerState;
-            switch (newPlayerState) {
+            int oldPlayerState = playerState;
+            int oldIdleReason = idleReason;
+            playerState = remoteMediaClient.getPlayerState();
+            idleReason = remoteMediaClient.getIdleReason();
+            Log.d(LC, "onStatusUpdated from " + getStateString(oldPlayerState, oldIdleReason)
+                            + " to " + getStateString(playerState, idleReason));
+            switch (playerState) {
                 case MediaStatus.PLAYER_STATE_IDLE:
-                    int newIdleReason = remoteMediaClient.getIdleReason();
-                    if (newIdleReason == idleReason) {
-                        return;
-                    }
-                    idleReason = newIdleReason;
-                    switch (newIdleReason) {
+                    switch (idleReason) {
                         case MediaStatus.IDLE_REASON_FINISHED:
+                            callback.onSongEnded();
                             break;
                         case MediaStatus.IDLE_REASON_CANCELED:
                             callback.onStateChanged(PlaybackStateCompat.STATE_STOPPED);
@@ -812,10 +815,9 @@ public class CastAudioPlayer implements AudioPlayer {
         }
     }
 
-    private String getStateString(int state) {
+    private String getStateString(int state, int idleReason) {
         switch (state) {
             case MediaStatus.PLAYER_STATE_IDLE:
-                int idleReason = remoteMediaClient.getIdleReason();
                 switch (idleReason) {
                     case MediaStatus.IDLE_REASON_FINISHED:
                         return "IDLE_FINISHED";

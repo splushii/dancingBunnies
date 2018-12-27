@@ -84,7 +84,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private MediaSessionCompat mediaSession;
     private PlaybackStateCompat.Builder playbackStateBuilder;
     private PlaybackStateCompat playbackState;
-    private boolean notify = true;
+    private boolean foregroundNotification = true;
 
     private MusicLibraryService musicLibraryService;
     private final ServiceConnection serviceConnection = new ServiceConnection() {
@@ -289,7 +289,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     @SuppressLint("SwitchIntDef")
     private void setNotification() {
-        if (!notify || isStoppedState()) {
+        if (!foregroundNotification || isStoppedState()) {
             stopForeground(true);
             return;
         }
@@ -799,11 +799,11 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         public void onPlayerChanged(AudioPlayer.Type audioPlayerType) {
             switch (audioPlayerType) {
                 case LOCAL:
-                    notify = true;
+                    foregroundNotification = true;
                     break;
                 case CAST:
                 default:
-                    notify = false;
+                    foregroundNotification = false;
                     break;
             }
             setNotification();
@@ -898,6 +898,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         }
 
         private void setPlaybackState(int newPlaybackState, long position, float playbackSpeed) {
+            Log.d(LC, "setPlaybackState: " + getPlaybackStateString(newPlaybackState)
+                    + " pos: " + position + " speed: " + playbackSpeed);
             playbackState = playbackStateBuilder
                     .setState(newPlaybackState, position, playbackSpeed)
                     .build();
@@ -921,6 +923,11 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     AudioPlayerService.SESSION_EVENT_PLAYLIST_POSITION_CHANGED,
                     null
             );
+        }
+
+        @Override
+        public void onPlayerSeekPositionChanged(long pos) {
+            setPlaybackState(playbackState.getState(), pos, playbackState.getPlaybackSpeed());
         }
     }
 }
