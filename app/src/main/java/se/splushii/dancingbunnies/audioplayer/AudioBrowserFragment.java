@@ -1,7 +1,11 @@
 package se.splushii.dancingbunnies.audioplayer;
 
 import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.os.RemoteException;
 import android.os.ResultReceiver;
 import android.support.v4.media.MediaBrowserCompat;
@@ -21,6 +25,7 @@ import androidx.fragment.app.Fragment;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
 import se.splushii.dancingbunnies.util.Util;
@@ -30,6 +35,22 @@ public abstract class AudioBrowserFragment extends Fragment {
     protected MediaBrowserCompat mediaBrowser;
     protected MediaControllerCompat mediaController;
 
+    private MusicLibraryService musicLibraryService;
+    private final ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.d(LC, "Connected MusicLibraryService");
+            MusicLibraryService.MusicLibraryBinder binder = (MusicLibraryService.MusicLibraryBinder) service;
+            musicLibraryService = binder.getService();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            musicLibraryService = null;
+            Log.d(LC, "Disconnected from MusicLibraryService");
+        }
+    };
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -37,6 +58,12 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaBrowser = new MediaBrowserCompat(getActivity(), new ComponentName(requireContext(),
                 AudioPlayerService.class), mediaBrowserConnectionCallback, null);
         mediaBrowser.connect();
+
+        getActivity().bindService(
+                new Intent(getActivity(), MusicLibraryService.class),
+                serviceConnection,
+                Context.BIND_AUTO_CREATE
+        );
     }
 
     @Override
@@ -50,6 +77,8 @@ public abstract class AudioBrowserFragment extends Fragment {
             mediaBrowser.disconnect();
             mediaBrowser = null;
         }
+        getActivity().unbindService(serviceConnection);
+        musicLibraryService = null;
         super.onDestroy();
     }
 
@@ -60,6 +89,10 @@ public abstract class AudioBrowserFragment extends Fragment {
         if (mediaController.isSessionReady()) {
             onSessionReady();
         }
+    }
+
+    public boolean isCached(EntryID entryID) {
+        return musicLibraryService.isCached(entryID);
     }
 
     public CompletableFuture<Meta> getSongMeta(EntryID entryID) {

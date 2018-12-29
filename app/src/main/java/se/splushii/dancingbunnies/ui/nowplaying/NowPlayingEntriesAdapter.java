@@ -23,7 +23,7 @@ import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
 
 public class NowPlayingEntriesAdapter
         extends RecyclerView.Adapter<NowPlayingEntriesAdapter.SongViewHolder> {
-    private final NowPlayingFragment context;
+    private final NowPlayingFragment fragment;
     private List<PlaybackEntry> queueData;
     private List<PlaybackEntry> playlistNext;
     private RecyclerView.ViewHolder contextMenuHolder;
@@ -34,8 +34,8 @@ public class NowPlayingEntriesAdapter
     private SelectionTracker<Long> selectionTracker;
     private View selectedItemView;
 
-    NowPlayingEntriesAdapter(NowPlayingFragment context) {
-        this.context = context;
+    NowPlayingEntriesAdapter(NowPlayingFragment fragment) {
+        this.fragment = fragment;
         queueData = new ArrayList<>();
         playlistNext = new ArrayList<>();
     }
@@ -206,7 +206,7 @@ public class NowPlayingEntriesAdapter
             case VIEWTYPE_QUEUE_ITEM:
                 entry = queueData.get(position);
                 holder.actionDequeue.setOnClickListener(view -> {
-                    context.dequeue(EntryID.from(entry.meta), position);
+                    fragment.dequeue(EntryID.from(entry.meta), position);
                     holder.moreActions.setVisibility(View.GONE);
                 });
                 break;
@@ -230,8 +230,8 @@ public class NowPlayingEntriesAdapter
             selectedItemView = holder.moreActions;
         });
         holder.actionPlay.setOnClickListener(view -> {
-            context.skipItems(position + 1);
-            context.play();
+            fragment.skipItems(position + 1);
+            fragment.play();
             holder.moreActions.setVisibility(View.GONE);
         });
         holder.overflowMenu.setOnClickListener(view -> {
@@ -242,8 +242,12 @@ public class NowPlayingEntriesAdapter
         String artist = entry.meta.getString(Meta.METADATA_KEY_ARTIST);
         holder.artist.setText(artist);
         String src = entry.meta.getString(Meta.METADATA_KEY_API);
+        String cacheStatus = fragment.isCached(entry.entryID) ? " C" : "";
         String preloadStatus = entry.meta.getString(Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS);
-        String moreInfoText = preloadStatus == null ? src : "(" + preloadStatus + ") " + src;
+        String moreInfoText = src + cacheStatus;
+        if (preloadStatus != null) {
+            moreInfoText = "(" + preloadStatus + ") " + moreInfoText;
+        }
         holder.moreInfo.setText(moreInfoText);
     }
 

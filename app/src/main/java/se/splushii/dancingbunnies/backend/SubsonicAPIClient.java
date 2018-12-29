@@ -39,6 +39,7 @@ public class SubsonicAPIClient extends APIClient {
     private static final String LC = Util.getLogContext(SubsonicAPIClient.class);
     private static final Integer REQ_RETRY_COUNT = 3;
     private final HashMap<String, Integer> retries;
+    private final Context context;
 
     public enum RequestType {
         GET_INDEXES, GET_MUSIC_DIRECTORY, GET_MUSIC_FOLDERS, GET_PLAYLIST, GET_PLAYLISTS
@@ -105,7 +106,8 @@ public class SubsonicAPIClient extends APIClient {
     private SecureRandom rand;
     private final HTTPClient httpClient;
 
-    public SubsonicAPIClient() {
+    public SubsonicAPIClient(Context context) {
+        this.context = context;
         retries = new HashMap<>();
         try {
             rand = SecureRandom.getInstance("SHA1PRNG");
@@ -712,7 +714,7 @@ public class SubsonicAPIClient extends APIClient {
     public AudioDataSource getAudioData(EntryID entryID) {
         // TODO(kringlan): Add subsonic setting for max bitrate and FORMAT.
         String query = baseURL + "stream" + getBaseQuery() + "&id=" + entryID.id + "&format=raw";
-        return new AudioDataSource(query, entryID);
+        return new AudioDataSource(context, query, entryID);
     }
 
     @Override

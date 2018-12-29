@@ -1,5 +1,9 @@
 package se.splushii.dancingbunnies.storage;
 
+import android.content.Context;
+import android.util.Log;
+
+import java.io.File;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -7,8 +11,10 @@ import java.util.List;
 import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.util.Util;
 
 public class AudioStorage {
+    private static final String LC = Util.getLogContext(AudioStorage.class);
     private final HashMap<EntryID, AudioDataSource> audioMap;
     private final HashMap<EntryID, List<AudioDataDownloadHandler>> handlerMap;
 
@@ -17,12 +23,26 @@ public class AudioStorage {
         handlerMap = new HashMap<>();
     }
 
+    public static File getCacheFile(Context context, EntryID entryID) {
+        return new File(
+                context.getFilesDir()
+                        + "/" + entryID.src
+                        + "/" + entryID.id
+        );
+    }
+
     public synchronized AudioDataSource get(EntryID entryID) {
         return audioMap.get(entryID);
     }
 
     public synchronized AudioDataSource put(EntryID entryID, AudioDataSource audioDataSource) {
         return audioMap.put(entryID, audioDataSource);
+    }
+
+    private synchronized void release(EntryID entryID) {
+        audioMap.remove(entryID);
+        Log.d(LC, audioMap.keySet().size() + " AudioDataSource entries in memory. "
+                + "Released entryID: " + entryID);
     }
 
     public void download(EntryID entryID, AudioDataDownloadHandler handler) {
@@ -81,7 +101,7 @@ public class AudioStorage {
         }
     }
 
-    private void onDownloadSuccessEvent(EntryID entryID) {
+    private synchronized void onDownloadSuccessEvent(EntryID entryID) {
         synchronized (handlerMap) {
             List<AudioDataDownloadHandler> handlers = handlerMap.get(entryID);
             if (handlers != null) {
@@ -96,9 +116,10 @@ public class AudioStorage {
             }
             handlerMap.remove(entryID);
         }
+        release(entryID);
     }
 
-    private void onDownloadFailureEvent(EntryID entryID, String message) {
+    private synchronized void onDownloadFailureEvent(EntryID entryID, String message) {
         synchronized (handlerMap) {
             List<AudioDataDownloadHandler> handlers = handlerMap.get(entryID);
             if (handlers != null) {
@@ -106,5 +127,6 @@ public class AudioStorage {
             }
             handlerMap.remove(entryID);
         }
+        release(entryID);
     }
 }

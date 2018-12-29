@@ -190,25 +190,28 @@ public class MusicLibraryService extends Service {
         Log.e(LC, "notifyLibraryChange not implemented");
     }
 
-    public String getAudioURL(EntryID entryID) {
+    private AudioDataSource getAudioDataSource(EntryID entryID) {
         if (!apis.containsKey(entryID.src)) {
             return null;
         }
-        AudioDataSource audioDataSource = apis.get(entryID.src).getAudioData(entryID);
-        return audioDataSource.getURL();
+        return apis.get(entryID.src).getAudioData(entryID);
+    }
+
+    public String getAudioURL(EntryID entryID) {
+        AudioDataSource audioDataSource = getAudioDataSource(entryID);
+        return audioDataSource == null ? null : audioDataSource.getURL();
     }
 
     public void getAudioData(EntryID entryID, AudioDataDownloadHandler handler) {
         AudioDataSource audioDataSource = audioStorage.get(entryID);
         if (audioDataSource == null) {
-            if (apis.containsKey(entryID.src)) {
-                audioDataSource = apis.get(entryID.src).getAudioData(entryID);
-                audioStorage.put(entryID, audioDataSource);
-            } else {
-                handler.onFailure("Could not find api for song with src: " + entryID.src
-                        + ", id: " + entryID.id);
+            audioDataSource = getAudioDataSource(entryID);
+            if (audioDataSource == null) {
+                handler.onFailure("Could not get AudioDataSource for song with src: "
+                        + entryID.src + ", id: " + entryID.id);
                 return;
             }
+            audioStorage.put(entryID, audioDataSource);
         }
         if (audioDataSource.isFinished()) {
             handler.onStart();
@@ -217,6 +220,11 @@ public class MusicLibraryService extends Service {
         }
         // TODO: JobSchedule this with AudioDataDownloadJob
         audioStorage.download(entryID, handler);
+    }
+
+    public boolean isCached(EntryID entryID) {
+        File cacheFile = AudioStorage.getCacheFile(this, entryID);
+        return cacheFile.isFile();
     }
 
     public Meta getSongMetaData(EntryID entryID) {
@@ -266,7 +274,7 @@ public class MusicLibraryService extends Service {
         if (!settings.getBoolean("pref_subsonic", false)) {
             apis.remove(API_ID_SUBSONIC);
         } else if (!apis.containsKey(API_ID_SUBSONIC)) {
-            apis.put(API_ID_SUBSONIC, new SubsonicAPIClient());
+            apis.put(API_ID_SUBSONIC, new SubsonicAPIClient(this));
         }
         for (String key: apis.keySet()) {
             apis.get(key).loadSettings(this);

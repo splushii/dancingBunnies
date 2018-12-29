@@ -39,7 +39,7 @@ class PlaybackQueue {
         int index = toPosition == AudioPlayerService.QUEUE_LAST ? queue.size() : toPosition;
         int offset = 0;
         for (PlaybackEntry entry: entries) {
-            entry.setPreloadStatus(PlaybackEntry.PRELOADSTATUS_CACHED);
+            entry.setPreloadStatus(null);
             queue.add( index + offset, entry);
         }
     }
