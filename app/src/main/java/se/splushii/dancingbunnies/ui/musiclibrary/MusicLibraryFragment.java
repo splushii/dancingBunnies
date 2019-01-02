@@ -31,6 +31,7 @@ import java.util.Map;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.selection.MutableSelection;
 import androidx.recyclerview.selection.SelectionPredicates;
 import androidx.recyclerview.selection.SelectionTracker;
@@ -50,13 +51,8 @@ import se.splushii.dancingbunnies.util.Util;
 public class MusicLibraryFragment extends AudioBrowserFragment {
     private static final String LC = Util.getLogContext(MusicLibraryFragment.class);
 
-    private static final String INITIAL_DISPLAY_TYPE = Meta.METADATA_KEY_ARTIST;
-
     private RecyclerView recyclerView;
     private MusicLibraryAdapter recyclerViewAdapter;
-    private String currentSubscriptionID;
-    private MusicLibraryUserState userState;
-    private LinkedList<MusicLibraryUserState> viewBackStack;
     private SelectionTracker<EntryID> selectionTracker;
     private ActionMode actionMode;
 
@@ -76,42 +72,29 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private View filterNew;
     private Spinner filterNewType;
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        viewBackStack = new LinkedList<>();
-    }
+    private MusicLibraryFragmentModel model;
 
     @Override
-    public void onStart() {
-        super.onStart();
-        refreshView(userState);
-        Log.d(LC, "onStart");
+    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        Log.d(LC, "onActivityCreated");
+        super.onActivityCreated(savedInstanceState);
+        model = ViewModelProviders.of(getActivity()).get(MusicLibraryFragmentModel.class);
+        model.getUserState().observe(this, this::refreshView);
     }
 
     @Override
     public void onStop() {
-        super.onStop();
         Log.d(LC, "onStop");
-        if (userState != null) {
-            userState = new MusicLibraryUserState(
-                    userState.query,
-                    recyclerViewAdapter.getCurrentPosition());
-        }
+        model.updateUserState(recyclerViewAdapter.getCurrentPosition());
+        super.onStop();
     }
 
     @Override
     protected void onMediaBrowserConnected() {
-        refreshView(userState);
+        refreshView(model.getUserState().getValue());
     }
 
-    public void refreshView(final MusicLibraryUserState newUserState) {
-        if (newUserState == null) {
-            MusicLibraryQuery query = new MusicLibraryQuery();
-            setDisplayType(query, INITIAL_DISPLAY_TYPE);
-            refreshView(new MusicLibraryUserState(query, 0, 0));
-            return;
-        }
+    private void refreshView(final MusicLibraryUserState newUserState) {
         entryTypeSelect.setVisibility(View.GONE);
         filterEdit.setVisibility(View.GONE);
         filterNew.setVisibility(View.GONE);
@@ -142,18 +125,19 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             filterChips.setVisibility(View.GONE);
         }
         unsubscribe();
-        currentSubscriptionID = newUserState.query.query(mediaBrowser, new MusicLibraryQuery.MusicLibraryQueryCallback() {
+        String currentSubscriptionID = newUserState.query.query(mediaBrowser, new MusicLibraryQuery.MusicLibraryQueryCallback() {
             @Override
             public void onQueryResult(@NonNull List<MediaBrowserCompat.MediaItem> items) {
                 recyclerViewAdapter.setDataset(items);
-                userState = newUserState;
                 LinearLayoutManager llm = (LinearLayoutManager) recyclerView.getLayoutManager();
                 llm.scrollToPositionWithOffset(newUserState.pos, newUserState.pad);
             }
         });
+        model.setCurrentSubscriptionID(currentSubscriptionID);
     }
 
     private void unsubscribe() {
+        String currentSubscriptionID = model.getCurrentSubscriptionID();
         if (currentSubscriptionID != null && mediaBrowser.isConnected()) {
             mediaBrowser.unsubscribe(currentSubscriptionID);
         }
@@ -278,7 +262,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             }
             filterTypes.add(entry.getValue());
             metaKeys.add(key);
-            if (key.equals(INITIAL_DISPLAY_TYPE)) {
+            if (key.equals(MusicLibraryFragmentModel.INITIAL_DISPLAY_TYPE)) {
                 initialSelectionPos = index;
             }
             index++;
@@ -305,15 +289,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                         "Showing entries of type: " + filterType,
                         Toast.LENGTH_SHORT
                 ).show();
-                addBackButtonHistory(
-                        new MusicLibraryUserState(
-                                userState.query,
-                                recyclerViewAdapter.getCurrentPosition()
-                        )
-                );
-                MusicLibraryQuery query = new MusicLibraryQuery(userState.query);
-                query.addToQuery(Meta.METADATA_KEY_TYPE, metaKey);
-                refreshView(new MusicLibraryUserState(query, 0, 0));
+                displayType(metaKey);
                 entryTypeSelect.setVisibility(View.GONE);
             }
 
@@ -352,56 +328,23 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         return rootView;
     }
 
-    private void addBackButtonHistory(MusicLibraryUserState userState) {
-        viewBackStack.push(userState);
+    public boolean onBackPressed() {
+        return model.popBackStack();
     }
 
-    public boolean onBackPressed() {
-        if (viewBackStack.size() > 0) {
-            refreshView(viewBackStack.pop());
-            return true;
-        }
-        refreshView(null);
-        return false;
+    private void displayType(String displayType) {
+        model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
+        model.displayType(displayType);
     }
 
     private void filter(String filterType, String filter) {
-        addBackButtonHistory(
-                new MusicLibraryUserState(
-                        userState.query,
-                        recyclerViewAdapter.getCurrentPosition()
-                )
-        );
-        MusicLibraryQuery query = new MusicLibraryQuery(userState.query);
-        query.addToQuery(filterType, filter);
-        refreshView(new MusicLibraryUserState(query, 0, 0));
+        model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
+        model.filter(filterType, filter);
     }
 
     void browse(EntryID entryID) {
-        addBackButtonHistory(
-                new MusicLibraryUserState(
-                        userState.query,
-                        recyclerViewAdapter.getCurrentPosition()
-                )
-        );
-        MusicLibraryQuery query = new MusicLibraryQuery(userState.query);
-        String displayType = entryID.type.equals(Meta.METADATA_KEY_ARTIST) ?
-                Meta.METADATA_KEY_ALBUM : Meta.METADATA_KEY_MEDIA_ID;
-        setDisplayType(query, displayType);
-        if (entryID.id != null) {
-            query.addToQuery(entryID.type, entryID.id);
-        }
-        refreshView(new MusicLibraryUserState(query, 0, 0));
-    }
-
-    private void setDisplayType(MusicLibraryQuery query, String metaKey) {
-        query.addToQuery(Meta.METADATA_KEY_TYPE, metaKey);
-        setEntryTypeSelectSpinnerSelectionFromMetaKey(metaKey);
-    }
-
-    private void setEntryTypeSelectSpinnerSelectionFromMetaKey(String metaKey) {
-        String filterType = Meta.humanMap.get(metaKey);
-        setEntryTypeSelectSpinnerSelection(filterType);
+        model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
+        model.browse(entryID);
     }
 
     private void setEntryTypeSelectSpinnerSelection(String filterType) {
@@ -480,15 +423,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     }
 
     private void clearFilter(String filterType) {
-        addBackButtonHistory(
-                new MusicLibraryUserState(
-                        userState.query,
-                        recyclerViewAdapter.getCurrentPosition()
-                )
-        );
-        MusicLibraryQuery query = new MusicLibraryQuery(userState.query);
-        query.removeFromQuery(filterType);
-        refreshView(new MusicLibraryUserState(query, 0, 0));
+        model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
+        model.clearFilter(filterType);
     }
 
     private final ActionMode.Callback actionModeCallback = new ActionMode.Callback() {

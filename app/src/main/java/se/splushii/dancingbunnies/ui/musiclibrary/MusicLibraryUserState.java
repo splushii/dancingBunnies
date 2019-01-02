@@ -8,7 +8,7 @@ public class MusicLibraryUserState {
     public final MusicLibraryQuery query;
     public final int pos;
     final int pad;
-    public MusicLibraryUserState(MusicLibraryQuery query, int pos, int pad) {
+    MusicLibraryUserState(MusicLibraryQuery query, int pos, int pad) {
         this.query = query;
         this.pos = pos;
         this.pad = pad;
