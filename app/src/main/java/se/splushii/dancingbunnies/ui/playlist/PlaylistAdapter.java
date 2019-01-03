@@ -29,10 +29,10 @@ class PlaylistAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private List<LibraryEntry> playlistEntriesDataset;
 
     private final PlaylistFragment fragment;
-    private boolean playlistMode = true;
-    private PlaylistItem currentPlaylistItem;
+    private PlaylistID playlistID;
 
     PlaylistAdapter(PlaylistFragment playlistFragment) {
+        playlistID = null;
         playlistDataset = new LinkedList<>();
         playlistEntriesDataset = new LinkedList<>();
         fragment = playlistFragment;
@@ -72,7 +72,7 @@ class PlaylistAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     @Override
     public int getItemViewType(int position) {
-        return playlistMode ? VIEWTYPE_PLAYLIST : VIEWTYPE_PLAYLIST_ENTRIES;
+        return playlistID == null ? VIEWTYPE_PLAYLIST : VIEWTYPE_PLAYLIST_ENTRIES;
     }
 
     @NonNull
@@ -112,10 +112,10 @@ class PlaylistAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                     View.GONE : View.VISIBLE
             );
         });
-        if (currentPlaylistItem.playlistID.src.equals(MusicLibraryService.API_ID_DANCINGBUNNIES)
-                && currentPlaylistItem.playlistID.type.equals(PlaylistID.TYPE_STUPID)) {
+        if (playlistID.src.equals(MusicLibraryService.API_ID_DANCINGBUNNIES)
+                && playlistID.type.equals(PlaylistID.TYPE_STUPID)) {
             holder.deleteAction.setOnClickListener(v ->
-                    fragment.removeFromPlaylist(currentPlaylistItem.playlistID, position)
+                    fragment.removeFromPlaylist(playlistID, position)
             );
             holder.deleteAction.setVisibility(View.VISIBLE);
         } else {
@@ -132,10 +132,9 @@ class PlaylistAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     }
 
     private void onBindPlaylistHolder(PlaylistHolder holder, int position) {
-        holder.entry.setOnClickListener(view -> {
-            currentPlaylistItem = playlistDataset.get(position);
-            fragment.browsePlaylist(currentPlaylistItem.playlistID);
-        });
+        holder.entry.setOnClickListener(view ->
+                fragment.browsePlaylist(playlistDataset.get(position).playlistID)
+        );
         String name = playlistDataset.get(position).name;
         String src = playlistDataset.get(position).playlistID.src;
         holder.entry.setOnLongClickListener(view -> {
@@ -156,17 +155,17 @@ class PlaylistAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     @Override
     public int getItemCount() {
-        return playlistMode ? playlistDataset.size() : playlistEntriesDataset.size();
+        return playlistID == null ? playlistDataset.size() : playlistEntriesDataset.size();
     }
 
     void setPlaylistDataSet(List<PlaylistItem> playlists) {
-        playlistMode = true;
+        playlistID = null;
         playlistDataset = playlists;
         notifyDataSetChanged();
     }
 
-    void setPlaylistEntriesDataSet(List<LibraryEntry> entries) {
-        playlistMode = false;
+    void setPlaylistEntriesDataSet(PlaylistID id, List<LibraryEntry> entries) {
+        playlistID = id;
         playlistEntriesDataset = entries;
         notifyDataSetChanged();
     }

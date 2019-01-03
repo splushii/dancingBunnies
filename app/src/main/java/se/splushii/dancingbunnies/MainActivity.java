@@ -229,8 +229,12 @@ public final class MainActivity extends AppCompatActivity {
         private void checkPositionChanged(int position) {
             if (position != lastPosition) {
                 lastPosition = position;
-                musicLibraryFragment.clearSelection();
-                nowPlayingFragment.clearSelection();
+                if (musicLibraryFragment != null) {
+                    musicLibraryFragment.clearSelection();
+                }
+                if (nowPlayingFragment != null) {
+                    nowPlayingFragment.clearSelection();
+                }
             }
         }
 

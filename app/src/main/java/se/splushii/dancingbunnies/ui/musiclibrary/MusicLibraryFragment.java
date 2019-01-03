@@ -91,7 +91,9 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
 
     @Override
     protected void onMediaBrowserConnected() {
-        refreshView(model.getUserState().getValue());
+        if (model != null) {
+            refreshView(model.getUserState().getValue());
+        }
     }
 
     private void refreshView(final MusicLibraryUserState newUserState) {
@@ -188,7 +190,9 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        selectionTracker.onSaveInstanceState(outState);
+        if (selectionTracker != null) {
+            selectionTracker.onSaveInstanceState(outState);
+        }
     }
 
     @Override

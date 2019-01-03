@@ -23,7 +23,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
         return new MusicLibraryUserState(query, 0, 0);
     }
 
-    public MutableLiveData<MusicLibraryUserState> getUserState() {
+    MutableLiveData<MusicLibraryUserState> getUserState() {
         if (userState == null) {
             userState = new MutableLiveData<>();
             userState.setValue(initialUserState());

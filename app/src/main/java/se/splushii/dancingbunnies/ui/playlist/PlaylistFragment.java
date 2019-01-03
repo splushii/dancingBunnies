@@ -6,9 +6,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import java.util.LinkedList;
-
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
@@ -20,52 +20,42 @@ import se.splushii.dancingbunnies.util.Util;
 public class PlaylistFragment extends AudioBrowserFragment {
 
     private static final String LC = Util.getLogContext(PlaylistFragment.class);
-    private final PlaylistAdapter recViewAdapter;
+    private PlaylistAdapter recViewAdapter;
     private RecyclerView recView;
-    private PlaylistUserState userState;
-    private LinkedList<PlaylistUserState> viewBackStack;
 
-    public PlaylistFragment() {
-        recViewAdapter = new PlaylistAdapter(this);
-    }
+    private PlaylistFragmentModel model;
 
     @Override
-    public void onStart() {
-        super.onStart();
-        viewBackStack = new LinkedList<>();
-        refreshView(userState);
-        Log.d(LC, "onStart");
+    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        Log.d(LC, "onActivityCreated");
+        super.onActivityCreated(savedInstanceState);
+        model = ViewModelProviders.of(getActivity()).get(PlaylistFragmentModel.class);
+        model.getUserState().observe(this, this::refreshView);
     }
 
     @Override
     public void onStop() {
-        super.onStop();
-        if (userState != null) {
-            userState = new PlaylistUserState(userState, recViewAdapter.getCurrentPosition());
-        }
         Log.d(LC, "onStop");
+        model.updateUserState(recViewAdapter.getCurrentPosition());
+        super.onStop();
     }
 
     @Override
     protected void onSessionReady() {
         super.onSessionReady();
-        refreshView(userState);
+        refreshView(model.getUserState().getValue());
     }
 
     @Override
     protected void onSessionEvent(String event, Bundle extras) {
         switch (event) {
             case AudioPlayerService.SESSION_EVENT_PLAYLIST_CHANGED:
-                refreshView(userState);
+                refreshView(model.getUserState().getValue());
                 break;
         }
     }
 
     private void refreshView(PlaylistUserState newUserState) {
-        if (newUserState == null) {
-            refreshView(new PlaylistUserState(0, 0));
-            return;
-        }
         if (mediaController == null || !mediaController.isSessionReady()) {
             Log.w(LC, "Media session not ready");
             return;
@@ -86,47 +76,38 @@ public class PlaylistFragment extends AudioBrowserFragment {
         LinearLayoutManager recViewLayoutManager =
                 new LinearLayoutManager(this.getContext());
         recView.setLayoutManager(recViewLayoutManager);
+        recViewAdapter = new PlaylistAdapter(this);
         recView.setAdapter(recViewAdapter);
         return rootView;
     }
 
-    private void addBackButtonHistory(PlaylistUserState libView) {
-        viewBackStack.push(libView);
-    }
-
     public boolean onBackPressed() {
-        if (viewBackStack.size() > 0) {
-            refreshView(viewBackStack.pop());
-            return true;
-        }
-        refreshView(null);
-        return false;
+        return model.popBackStack();
     }
 
     void browsePlaylist(PlaylistID playlistID) {
-        addBackButtonHistory(userState);
-        refreshView(new PlaylistUserState(playlistID, 0, 0));
+        model.addBackStackHistory(recViewAdapter.getCurrentPosition());
+        model.browsePlaylist(playlistID);
     }
 
     private void fetchPlaylistView(PlaylistUserState newUserState) {
         getPlaylists().thenAccept(opt -> opt.ifPresent(playlists -> {
             Log.d(LC, "playlists size: " + playlists.size());
             recViewAdapter.setPlaylistDataSet(playlists);
-            setNewState(newUserState);
+            scrollTo(newUserState.pos, newUserState.pad);
         }));
     }
 
     private void fetchPlaylistEntriesView(PlaylistUserState newUserState) {
         getPlaylistEntries(newUserState.playlistID).thenAccept(opt -> opt.ifPresent(entries -> {
             Log.d(LC, "playlist entries size: " + entries.size());
-            recViewAdapter.setPlaylistEntriesDataSet(entries);
-            setNewState(newUserState);
+            recViewAdapter.setPlaylistEntriesDataSet(newUserState.playlistID, entries);
+            scrollTo(newUserState.pos, newUserState.pad);
         }));
     }
 
-    private void setNewState(PlaylistUserState newUserState) {
-        userState = newUserState;
+    private void scrollTo(int pos, int pad) {
         LinearLayoutManager llm = (LinearLayoutManager) recView.getLayoutManager();
-        llm.scrollToPositionWithOffset(newUserState.pos, newUserState.pad);
+        llm.scrollToPositionWithOffset(pos, pad);
     }
 }

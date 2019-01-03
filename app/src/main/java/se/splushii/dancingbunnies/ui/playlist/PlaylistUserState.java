@@ -1,6 +1,5 @@
 package se.splushii.dancingbunnies.ui.playlist;
 
-import androidx.core.util.Pair;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 
 class PlaylistUserState {
@@ -23,10 +22,10 @@ class PlaylistUserState {
         this.playlistID = playlistID;
     }
 
-    PlaylistUserState(PlaylistUserState userState, Pair<Integer, Integer> currentPosition) {
-        pos = currentPosition.first;
-        pad = currentPosition.second;
-        playlistMode = userState.playlistMode;
-        playlistID = userState.playlistID;
+    PlaylistUserState(PlaylistUserState userState, int pos, int pad) {
+        this.pos = pos;
+        this.pad = pad;
+        this.playlistMode = userState.playlistMode;
+        this.playlistID = userState.playlistID;
     }
 }
