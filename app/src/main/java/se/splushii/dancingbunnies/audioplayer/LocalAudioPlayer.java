@@ -348,14 +348,15 @@ class LocalAudioPlayer implements AudioPlayer {
                     Log.w(LC, "MediaPlayer(" + title() + ") preload in wrong state: " + state);
                     return;
             }
+            Log.d(LC, "MediaPlayer(" + title() + ") preload");
             buffering = true;
             if (this.equals(player)) {
                 callback.onStateChanged(PlaybackStateCompat.STATE_BUFFERING);
             }
             musicLibraryService.getAudioData(playbackEntry.entryID, new AudioDataDownloadHandler() {
                 @Override
-                public void onStart() {
-                    Log.d(LC, "MediaPlayer(" + title() + ") getting audio data");
+                public void onDownloading() {
+                    Log.d(LC, "MediaPlayer(" + title() + ") downloading audio data");
                 }
 
                 @Override

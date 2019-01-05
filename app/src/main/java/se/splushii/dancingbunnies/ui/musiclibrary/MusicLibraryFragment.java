@@ -1,7 +1,6 @@
 package se.splushii.dancingbunnies.ui.musiclibrary;
 
 import android.os.Bundle;
-import android.support.v4.media.MediaBrowserCompat;
 import android.util.Log;
 import android.view.ActionMode;
 import android.view.ContextMenu;
@@ -44,7 +43,7 @@ import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
+import se.splushii.dancingbunnies.storage.RoomMetaSong;
 import se.splushii.dancingbunnies.ui.EntryIDDetailsLookup;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -79,7 +78,11 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         Log.d(LC, "onActivityCreated");
         super.onActivityCreated(savedInstanceState);
         model = ViewModelProviders.of(getActivity()).get(MusicLibraryFragmentModel.class);
-        model.getUserState().observe(this, this::refreshView);
+        model.getUserState().observe(getViewLifecycleOwner(), state -> {
+            refreshView(state);
+            model.query(mediaBrowser);
+        });
+        recyclerViewAdapter.setModel(model);
     }
 
     @Override
@@ -93,10 +96,12 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     protected void onMediaBrowserConnected() {
         if (model != null) {
             refreshView(model.getUserState().getValue());
+            model.query(mediaBrowser);
         }
     }
 
     private void refreshView(final MusicLibraryUserState newUserState) {
+        Log.d(LC, "refreshView");
         entryTypeSelect.setVisibility(View.GONE);
         filterEdit.setVisibility(View.GONE);
         filterNew.setVisibility(View.GONE);
@@ -126,27 +131,11 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         } else {
             filterChips.setVisibility(View.GONE);
         }
-        unsubscribe();
-        String currentSubscriptionID = newUserState.query.query(mediaBrowser, new MusicLibraryQuery.MusicLibraryQueryCallback() {
-            @Override
-            public void onQueryResult(@NonNull List<MediaBrowserCompat.MediaItem> items) {
-                recyclerViewAdapter.setDataset(items);
-                LinearLayoutManager llm = (LinearLayoutManager) recyclerView.getLayoutManager();
-                llm.scrollToPositionWithOffset(newUserState.pos, newUserState.pad);
-            }
-        });
-        model.setCurrentSubscriptionID(currentSubscriptionID);
-    }
-
-    private void unsubscribe() {
-        String currentSubscriptionID = model.getCurrentSubscriptionID();
-        if (currentSubscriptionID != null && mediaBrowser.isConnected()) {
-            mediaBrowser.unsubscribe(currentSubscriptionID);
-        }
     }
 
     @Override
     public void onDestroyView() {
+        Log.d(LC, "onDestroyView");
         fastScroller.onDestroy();
         fastScroller = null;
         fastScrollerBubble = null;
@@ -206,7 +195,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         LinearLayoutManager recViewLayoutManager =
                 new LinearLayoutManager(this.getContext());
         recyclerView.setLayoutManager(recViewLayoutManager);
-        recyclerViewAdapter = new MusicLibraryAdapter(this);
+        recyclerViewAdapter = new MusicLibraryAdapter(this, recViewLayoutManager);
         recyclerView.setAdapter(recyclerViewAdapter);
 
         selectionTracker = new SelectionTracker.Builder<>(
@@ -261,7 +250,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         int index = 0;
         for (Map.Entry<String, String> entry: metaValuesMap) {
             String key = entry.getKey();
-            if (!Meta.DBKeysSet.contains(key)) {
+            if (!RoomMetaSong.DBKeysSet.contains(key)) {
                 continue;
             }
             filterTypes.add(entry.getValue());

@@ -12,10 +12,6 @@ import se.splushii.dancingbunnies.util.Util;
 public class MusicLibraryQuery {
     private static final String LC = Util.getLogContext(MusicLibraryQuery.class);
 
-    Bundle subQuery() {
-        return subQuery;
-    }
-
     public enum MusicLibraryQueryType {
         SUBSCRIPTION,
         SEARCH
@@ -38,6 +34,10 @@ public class MusicLibraryQuery {
     public MusicLibraryQuery(Bundle query) {
         this.type = MusicLibraryQueryType.SUBSCRIPTION;
         this.subQuery = query;
+    }
+
+    Bundle subQuery() {
+        return subQuery;
     }
 
     public void addToQuery(String key, String value) {

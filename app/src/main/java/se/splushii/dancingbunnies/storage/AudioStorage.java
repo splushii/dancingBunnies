@@ -45,41 +45,37 @@ public class AudioStorage {
                 + "Released entryID: " + entryID);
     }
 
-    public void download(EntryID entryID, AudioDataDownloadHandler handler) {
+    public void fetch(EntryID entryID, AudioDataDownloadHandler handler) {
         if (!audioMap.containsKey(entryID)) {
-            handler.onFailure("EntryID to download not found in AudioStorage");
+            handler.onFailure("EntryID to fetch not found in AudioStorage");
             return;
         }
         AudioDataSource audioDataSource = audioMap.get(entryID);
         synchronized (handlerMap) {
-            List<AudioDataDownloadHandler> handlers = handlerMap.get(entryID);
-            if (handlers == null) {
-                handlers = new LinkedList<>();
-                handlerMap.put(entryID, handlers);
-                // TODO: Change to audioDataSource.buffer, and use a callback to play when buffered enough
-                audioDataSource.download(new AudioDataSource.Handler() {
-                    @Override
-                    public void onStart() {
-                        onDownloadStartEvent(entryID);
-                    }
-
-                    @Override
-                    public void onFailure(String message) {
-                        onDownloadFailureEvent(entryID, message);
-                    }
-
-                    @Override
-                    public void onSuccess() {
-                        onDownloadSuccessEvent(entryID);
-                    }
-
-                    @Override
-                    public void onProgress(long i, long max) {
-                        onDownloadProgressEvent(entryID, i, max);
-                    }
-                });
-            }
+            List<AudioDataDownloadHandler> handlers = handlerMap.computeIfAbsent(entryID, k -> new LinkedList<>());
             handlers.add(handler);
+            // TODO: Change to audioDataSource.buffer, and use a callback to play when buffered enough
+            audioDataSource.fetch(new AudioDataSource.Handler() {
+                @Override
+                public void onDownloading() {
+                    onDownloadStartEvent(entryID);
+                }
+
+                @Override
+                public void onFailure(String message) {
+                    onDownloadFailureEvent(entryID, message);
+                }
+
+                @Override
+                public void onSuccess() {
+                    onDownloadSuccessEvent(entryID);
+                }
+
+                @Override
+                public void onProgress(long i, long max) {
+                    onDownloadProgressEvent(entryID, i, max);
+                }
+            });
         }
     }
 
@@ -87,7 +83,7 @@ public class AudioStorage {
         synchronized (handlerMap) {
             List<AudioDataDownloadHandler> handlers = handlerMap.get(entryID);
             if (handlers != null) {
-                handlers.forEach(AudioDataDownloadHandler::onStart);
+                handlers.forEach(AudioDataDownloadHandler::onDownloading);
             }
         }
     }

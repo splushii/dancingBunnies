@@ -39,10 +39,10 @@ public class AudioDataSource extends MediaDataSource {
 //        buffer = new byte[0];
     }
 
-    public void download(final Handler handler) {
+    public void fetch(final Handler handler) {
         synchronized (lock) {
             if (isFinished) {
-                Log.d(LC, "download() when already finished.");
+                Log.d(LC, "fetch() when already finished.");
                 handler.onSuccess();
                 return;
             }
@@ -54,7 +54,6 @@ public class AudioDataSource extends MediaDataSource {
                     isFinished = true;
                     return;
                 }
-
                 HttpURLConnection conn = null;
                 if (url != null) {
                     try {
@@ -73,7 +72,7 @@ public class AudioDataSource extends MediaDataSource {
                 }
                 isDownloading = true;
                 downloadThread = new Thread(() -> {
-                    handler.onStart();
+                    handler.onDownloading();
                     try {
                         ByteArrayOutputStream arrayOutputStream = new ByteArrayOutputStream();
                         InputStream in = new BufferedInputStream(connection.getInputStream());
@@ -92,7 +91,6 @@ public class AudioDataSource extends MediaDataSource {
                         connection.disconnect();
                         arrayOutputStream.flush();
                         FileOutputStream fileOutputStream = getCacheFileOutputStream();
-
                         arrayOutputStream.writeTo(fileOutputStream);
 //                        buffer = arrayOutputStream.toByteArray();
                         fileOutputStream.flush();
@@ -236,7 +234,7 @@ public class AudioDataSource extends MediaDataSource {
     }
 
     public interface Handler {
-        void onStart();
+        void onDownloading();
         void onFailure(String message);
         void onSuccess();
         void onProgress(long i, long max);

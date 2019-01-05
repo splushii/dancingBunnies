@@ -24,14 +24,25 @@ import se.splushii.dancingbunnies.musiclibrary.Meta;
 
 public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapter.SongViewHolder> {
     private final MusicLibraryFragment fragment;
+    private final LinearLayoutManager layoutManager;
     private List<MediaBrowserCompat.MediaItem> dataset;
     private RecyclerView.ViewHolder contextMenuHolder;
     private View selectedItemView;
     private SelectionTracker<EntryID> selectionTracker;
 
-    MusicLibraryAdapter(MusicLibraryFragment fragment) {
+    MusicLibraryAdapter(MusicLibraryFragment fragment,
+                        LinearLayoutManager recViewLayoutManager) {
         this.dataset = new ArrayList<>();
         this.fragment = fragment;
+        this.layoutManager = recViewLayoutManager;
+    }
+
+    void setModel(MusicLibraryFragmentModel model) {
+        model.getDataSet().observe(fragment.getViewLifecycleOwner(), dataset -> {
+            setDataset(dataset);
+            MusicLibraryUserState state = model.getUserState().getValue();
+            layoutManager.scrollToPositionWithOffset(state.pos, state.pad);
+        });
     }
 
     MediaBrowserCompat.MediaItem getItemData(int childPosition) {

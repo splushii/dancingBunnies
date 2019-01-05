@@ -104,18 +104,6 @@ public final class MainActivity extends AppCompatActivity {
         menuInflater.inflate(R.menu.main_activity_menu, menu);
         SearchManager searchManager = (SearchManager) getSystemService(SEARCH_SERVICE);
         MenuItem searchMenuItem = menu.findItem(R.id.action_search);
-        searchMenuItem.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
-            @Override
-            public boolean onMenuItemActionExpand(MenuItem menuItem) {
-                return true;
-            }
-
-            @Override
-            public boolean onMenuItemActionCollapse(MenuItem menuItem) {
-                onBackPressed();
-                return true;
-            }
-        });
         searchView = (SearchView) searchMenuItem.getActionView();
         searchView.setSearchableInfo(Objects.requireNonNull(searchManager).getSearchableInfo(getComponentName()));
         searchView.setIconifiedByDefault(false);

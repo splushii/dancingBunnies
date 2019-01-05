@@ -10,12 +10,12 @@ import android.util.Log;
 
 import com.google.android.gms.cast.MediaMetadata;
 
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
 
+import androidx.annotation.NonNull;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
+import se.splushii.dancingbunnies.storage.RoomMetaSong;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.BITMAP;
@@ -26,11 +26,6 @@ import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.STRING;
 // TODO: Use Meta throughout app. To convert, do for example "new Meta(metaCompat).toCastMeta()".
 public class Meta implements Parcelable {
     private static final String LC = Util.getLogContext(Meta.class);
-
-    public byte[] getBitmap(String key) {
-        return bundle.getByteArray(key);
-    }
-
     public enum Type {
         STRING, BITMAP, RATING, LONG
     }
@@ -90,6 +85,13 @@ public class Meta implements Parcelable {
         return castMeta;
     }
 
+    public RoomMetaSong toRoomSong() {
+        RoomMetaSong song = new RoomMetaSong();
+        song.from(this);
+        return song;
+    }
+
+
     public MediaDescriptionCompat toMediaDescriptionCompat() {
         EntryID entryID = EntryID.from(this);
         Bundle extras = new Bundle();
@@ -130,6 +132,10 @@ public class Meta implements Parcelable {
 
     public RatingCompat getRating(String key) {
         return bundle.getParcelable(key);
+    }
+
+    public byte[] getBitmap(String key) {
+        return bundle.getByteArray(key);
     }
 
     public Set<String> keySet() {
@@ -187,26 +193,28 @@ public class Meta implements Parcelable {
         }
     }
 
-    public static void print(MediaMetadataCompat meta) {
+    @NonNull
+    @Override
+    public String toString() {
         StringBuilder sb = new StringBuilder("Meta:");
-        for (String key: meta.keySet()) {
+        for (String key: keySet()) {
             sb.append("\n").append(getHumanReadable(key));
             switch (getType(key)) {
                 case STRING:
-                    sb.append(" (string):\t").append(meta.getString(key));
+                    sb.append(" (string):\t").append(getString(key));
                     break;
                 case LONG:
-                    sb.append(" (long):\t").append(meta.getLong(key));
+                    sb.append(" (long):\t").append(getLong(key));
                     break;
                 case RATING:
-                    sb.append(" (rating):\t").append(meta.getRating(key).toString());
+                    sb.append(" (rating):\t").append(getRating(key).toString());
                     break;
                 case BITMAP:
-                    sb.append(" (bitmap):\t").append(meta.getBitmap(key).getByteCount()).append(" bytes");
+                    sb.append(" (bitmap):\t").append(getBitmap(key).length).append(" bytes");
                     break;
             }
         }
-        Log.d(LC, sb.toString());
+        return sb.toString();
     }
 
     private static final Bundle UNKNOWN_ENTRY_BUNDLE = new Bundle();
@@ -347,61 +355,6 @@ public class Meta implements Parcelable {
     // Only used to identify playback entry preload status
     public static final String METADATA_KEY_PLAYBACK_PRELOADSTATUS =
             "dancingbunnies.metadata.PLAYBACK_PRELOADSTATUS";
-
-
-    public static final String[] db_keys = {
-        // DancingBunnies keys
-        METADATA_KEY_ALBUM_ID,
-        METADATA_KEY_API,
-        METADATA_KEY_ARTIST_ID,
-        METADATA_KEY_AVERAGE_RATING,
-        METADATA_KEY_BITRATE,
-        METADATA_KEY_BOOKMARK_POSITION,
-        METADATA_KEY_CONTENT_TYPE,
-        METADATA_KEY_DATE_ADDED,
-        METADATA_KEY_DATE_STARRED,
-        METADATA_KEY_FILE_SIZE,
-        METADATA_KEY_FILE_SUFFIX,
-        METADATA_KEY_HEART_RATING,
-        METADATA_KEY_MEDIA_ROOT,
-        METADATA_KEY_PARENT_ID,
-        METADATA_KEY_TYPE,
-        METADATA_KEY_TRANSCODED_SUFFIX,
-        METADATA_KEY_TRANSCODED_TYPE,
-        // Android MediaMetadataCompat keys
-        METADATA_KEY_ADVERTISEMENT,
-        METADATA_KEY_ALBUM,
-        METADATA_KEY_ALBUM_ART,
-        METADATA_KEY_ALBUM_ARTIST,
-        METADATA_KEY_ALBUM_ART_URI,
-        METADATA_KEY_ART,
-        METADATA_KEY_ARTIST,
-        METADATA_KEY_ART_URI,
-        METADATA_KEY_AUTHOR,
-        METADATA_KEY_BT_FOLDER_TYPE,
-        METADATA_KEY_COMPILATION,
-        METADATA_KEY_COMPOSER,
-        METADATA_KEY_DATE,
-        METADATA_KEY_DISC_NUMBER,
-        METADATA_KEY_DISPLAY_DESCRIPTION,
-        METADATA_KEY_DISPLAY_ICON,
-        METADATA_KEY_DISPLAY_ICON_URI,
-        METADATA_KEY_DISPLAY_SUBTITLE,
-        METADATA_KEY_DISPLAY_TITLE,
-        METADATA_KEY_DOWNLOAD_STATUS,
-        METADATA_KEY_DURATION,
-        METADATA_KEY_GENRE,
-        METADATA_KEY_MEDIA_ID,
-        METADATA_KEY_MEDIA_URI,
-        METADATA_KEY_NUM_TRACKS,
-        METADATA_KEY_RATING,
-        METADATA_KEY_TITLE,
-        METADATA_KEY_TRACK_NUMBER,
-        METADATA_KEY_USER_RATING,
-        METADATA_KEY_WRITER,
-        METADATA_KEY_YEAR
-    };
-    public static final HashSet DBKeysSet = new HashSet<>(Arrays.asList(db_keys));
 
     private static final HashMap<String, Type> typeMap;
     static {

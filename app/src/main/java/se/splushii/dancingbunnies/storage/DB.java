@@ -74,7 +74,7 @@ public class DB extends SQLiteOpenHelper {
 
     private void createSongsTable(SQLiteDatabase db) {
         StringBuilder query = new StringBuilder("CREATE TABLE " + TABLE_SONGS + "(");
-        for (String metaKey: Meta.db_keys) {
+        for (String metaKey: RoomMetaSong.db_keys) {
             Meta.Type type = Meta.getType(metaKey);
             switch (type) {
                 case STRING:

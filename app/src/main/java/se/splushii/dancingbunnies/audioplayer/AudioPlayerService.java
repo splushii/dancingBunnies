@@ -23,6 +23,7 @@ import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -31,6 +32,8 @@ import java.util.concurrent.CompletableFuture;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Observer;
 import androidx.media.MediaBrowserServiceCompat;
 import androidx.media.app.NotificationCompat.MediaStyle;
 import androidx.media.session.MediaButtonReceiver;
@@ -119,28 +122,54 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         return new BrowserRoot(MEDIA_ID_ROOT, null);
     }
 
+    // TODO: Implement notifyChildrenChanged() with help from onSubscribe()/onUnsubscribe().
+    private HashSet<String> subscriptionIDs = new HashSet<>();
     @Override
-    public void onLoadChildren(@NonNull String parentId, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
+    public void onSubscribe(String id, Bundle option) {
+        subscriptionIDs.add(id);
+        Log.d(LC, "onSubscribe subscriptions: " + subscriptionIDs.size()
+                + " id: " + id + " options: " + option.toString());
+    }
+
+    @Override
+    public void onUnsubscribe(String id) {
+        subscriptionIDs.remove(id);
+        Log.d(LC, "onUnsubscribe subscriptions: " + subscriptionIDs.size() + " id: " + id);
+    }
+
+    @Override
+    public void onLoadChildren(@NonNull String parentId,
+                               @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
         Bundle options = new Bundle();
         onLoadChildren(parentId, result, options);
     }
 
     @Override
-    public void onLoadChildren(@NonNull String parentId, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result, @NonNull Bundle options) {
-        List<MediaBrowserCompat.MediaItem> mediaItems = new ArrayList<>();
+    public void onLoadChildren(@NonNull String parentId,
+                               @NonNull Result<List<MediaBrowserCompat.MediaItem>> result,
+                               @NonNull Bundle options) {
         // TODO: Put EntryID.key() in parentId. Make a EntryID.from(key).
         // Make a EntryID.toMusicLibraryQueryOptions()
         // parentId is now usable!
+        result.detach();
         Log.d(LC, "onLoadChildren parentId: " + parentId);
-        List<LibraryEntry> entries = musicLibraryService.getSubscriptionEntries(new MusicLibraryQuery(options));
-        Log.d(LC, "onLoadChildren entries: " + entries.size());
-        Collections.sort(entries);
-        for (LibraryEntry entry: entries) {
-            MediaBrowserCompat.MediaItem item = generateMediaItem(entry);
-            mediaItems.add(item);
-        }
-        Log.d(LC, "onLoadChildren mediaItems: " + mediaItems.size());
-        result.sendResult(mediaItems);
+        LiveData<List<LibraryEntry>> entries =
+                musicLibraryService.getSubscriptionEntries(new MusicLibraryQuery(options));
+        entries.observeForever(new Observer<List<LibraryEntry>>() {
+            @Override
+            public void onChanged(List<LibraryEntry> libraryEntries) {
+                List<MediaBrowserCompat.MediaItem> mediaItems = new ArrayList<>();
+                Log.d(LC, "onLoadChildren entries: " + libraryEntries.size());
+                Collections.sort(libraryEntries);
+                for (LibraryEntry entry: libraryEntries) {
+                    MediaBrowserCompat.MediaItem item = generateMediaItem(entry);
+                    mediaItems.add(item);
+                }
+                Log.d(LC, "onLoadChildren mediaItems: " + mediaItems.size());
+                result.sendResult(mediaItems);
+                entries.removeObserver(this);
+            }
+        });
     }
 
     @Override

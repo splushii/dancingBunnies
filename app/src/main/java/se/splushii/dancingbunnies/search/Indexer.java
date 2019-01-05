@@ -68,6 +68,9 @@ public class Indexer {
                         || key.equals(Meta.METADATA_KEY_API)
                         || key.equals(Meta.METADATA_KEY_TITLE) ?
                         Field.Store.YES : Field.Store.NO;
+                if (fieldValue == null) {
+                    continue;
+                }
                 Field field = new TextField(fieldName, fieldValue, store);
                 doc.add(field);
             }

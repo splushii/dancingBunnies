@@ -20,6 +20,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 import androidx.annotation.Nullable;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Observer;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.backend.APIClientRequestHandler;
@@ -46,6 +48,8 @@ public class MusicLibraryService extends Service {
     private MetaStorage metaStorage;
     private AudioStorage audioStorage;
     private PlaylistStorage playlistStorage;
+    private LiveData<List<Meta>> metaData;
+    private HashMap<EntryID, Meta> metaMap;
 
     private final IBinder binder = new MusicLibraryBinder();
 
@@ -137,6 +141,23 @@ public class MusicLibraryService extends Service {
         }
     }
 
+    private final Observer<List<Meta>> metaObserver = metas -> {
+        long start = System.currentTimeMillis();
+        Log.d(LC, "metaObserver: " + metas.size() + " entries. Building meta index...");
+        metaMap = new HashMap<>();
+        for (Meta meta: metas) {
+            meta.setString(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_MEDIA_ID);
+            metaMap.put(EntryID.from(meta), meta);
+        }
+        Log.d(LC, "metaObserver: Finished building meta index. "
+                + (System.currentTimeMillis() - start) + "ms.");
+        start = System.currentTimeMillis();
+        Log.d(LC, "metaObserver: Building search index...");
+        reIndex(metas);
+        Log.d(LC, "metaObserver: Finished building search index. "
+                + (System.currentTimeMillis() - start) + "ms.");
+    };
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -144,6 +165,8 @@ public class MusicLibraryService extends Service {
         apis = new HashMap<>();
         loadSettings();
         metaStorage = new MetaStorage(this);
+        metaData = metaStorage.getAllSongMetaData();
+        metaData.observeForever(metaObserver);
         playlistStorage = new PlaylistStorage(this);
         audioStorage = new AudioStorage();
         indexDirectoryPath = new File(getFilesDir(), LUCENE_INDEX_PATH);
@@ -157,10 +180,10 @@ public class MusicLibraryService extends Service {
 
     @Override
     public void onDestroy() {
-        super.onDestroy();
         Log.d(LC, "onDestroy");
         playlistStorage.close();
-        metaStorage.close();
+        metaData.removeObserver(metaObserver);
+        super.onDestroy();
     }
 
     @Nullable
@@ -169,15 +192,13 @@ public class MusicLibraryService extends Service {
         return binder;
     }
 
-    private void reIndex() {
+    private void reIndex(List<Meta> metas) {
         Log.d(LC, "Indexing library...");
         Indexer indexer = new Indexer(indexDirectoryPath);
         long startTime = System.currentTimeMillis();
         int numDocs = 0;
-        // TODO: Do this one item at a time when fetching from backend API instead...
-        List<Meta> songs = metaStorage.getMetadataEntries(null);
-        Log.d(LC, "Songs: " + songs.size());
-        for (Meta meta: songs) {
+        Log.d(LC, "Songs: " + metas.size());
+        for (Meta meta: metas) {
             numDocs = indexer.indexSong(meta);
         }
         indexer.close();
@@ -214,12 +235,11 @@ public class MusicLibraryService extends Service {
             audioStorage.put(entryID, audioDataSource);
         }
         if (audioDataSource.isFinished()) {
-            handler.onStart();
             handler.onSuccess(audioDataSource);
             return;
         }
         // TODO: JobSchedule this with AudioDataDownloadJob
-        audioStorage.download(entryID, handler);
+        audioStorage.fetch(entryID, handler);
     }
 
     public boolean isCached(EntryID entryID) {
@@ -228,14 +248,13 @@ public class MusicLibraryService extends Service {
     }
 
     public Meta getSongMetaData(EntryID entryID) {
-        if (EntryID.UnknownEntryID.equals(entryID)) {
-            return Meta.UNKNOWN_ENTRY;
+        if (metaMap.containsKey(entryID)) {
+            return metaMap.get(entryID);
         }
-        // TODO: Add cache here?
-        return metaStorage.getMetadataEntry(entryID);
+        return Meta.UNKNOWN_ENTRY;
     }
 
-    public List<LibraryEntry> getSubscriptionEntries(MusicLibraryQuery q) {
+    public LiveData<List<LibraryEntry>> getSubscriptionEntries(MusicLibraryQuery q) {
         return metaStorage.getEntries(q.subQuery());
     }
 
@@ -335,8 +354,6 @@ public class MusicLibraryService extends Service {
                 clearLibraryStorageEntries(api);
                 saveLibraryToStorage(data);
                 Log.d(LC, "Saved library to local meta storage.");
-                handler.onProgress("Indexing entries...");
-                reIndex();
                 notifyLibraryChanged();
                 handler.onSuccess("Successfully processed "
                         + data.size() + " library entries from " + api + ".");

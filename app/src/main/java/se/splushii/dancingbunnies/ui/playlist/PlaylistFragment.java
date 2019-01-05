@@ -30,7 +30,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         Log.d(LC, "onActivityCreated");
         super.onActivityCreated(savedInstanceState);
         model = ViewModelProviders.of(getActivity()).get(PlaylistFragmentModel.class);
-        model.getUserState().observe(this, this::refreshView);
+        model.getUserState().observe(getViewLifecycleOwner(), this::refreshView);
     }
 
     @Override
