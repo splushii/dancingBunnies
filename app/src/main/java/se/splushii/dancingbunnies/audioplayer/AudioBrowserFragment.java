@@ -288,6 +288,9 @@ public abstract class AudioBrowserFragment extends Fragment {
                 @Override
                 public void onConnected() {
                     Log.d(LC, "MediaBrowser connected");
+                    // TODO: Change to use MediaControllerCompat.setMediaController
+                    // TODO: See https://developer.android.com/guide/topics/media-apps/audio-app/building-a-mediabrowser-client#customize-mediabrowser-connectioncallback
+                    // TODO: Then put this in the Activity instead. Single controller for all fragments.
                     try {
                         connectMediaController(mediaBrowser.getSessionToken());
                     } catch (RemoteException e) {

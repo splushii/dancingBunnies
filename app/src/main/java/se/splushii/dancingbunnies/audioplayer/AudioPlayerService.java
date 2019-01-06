@@ -5,10 +5,13 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.media.AudioManager;
 import android.media.session.PlaybackState;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -88,6 +91,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private PlaybackStateCompat.Builder playbackStateBuilder;
     private PlaybackStateCompat playbackState;
     private boolean foregroundNotification = true;
+
+    private IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+    private final MakeSomeNoiseReceiver makeSomeNoiseReceiver = new MakeSomeNoiseReceiver();
+    private boolean isNoiseReceiverRegistered;
 
     private MusicLibraryService musicLibraryService;
     private final ServiceConnection serviceConnection = new ServiceConnection() {
@@ -289,11 +296,20 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 | MediaSessionCompat.FLAG_HANDLES_QUEUE_COMMANDS);
         playbackStateBuilder = new PlaybackStateCompat.Builder()
                 .setActions(PlaybackStateCompat.ACTION_PLAY
+                        | PlaybackStateCompat.ACTION_PAUSE
                         | PlaybackStateCompat.ACTION_PLAY_PAUSE
                         | PlaybackStateCompat.ACTION_STOP
+                        | PlaybackStateCompat.ACTION_SEEK_TO
                         | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
                         | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
-                        | PlaybackStateCompat.ACTION_SKIP_TO_QUEUE_ITEM)
+                        | PlaybackStateCompat.ACTION_SKIP_TO_QUEUE_ITEM
+                        | PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
+//                        TODO: Implement
+//                        | PlaybackStateCompat.ACTION_SET_RATING
+//                        | PlaybackStateCompat.ACTION_SET_SHUFFLE_MODE
+//                        | PlaybackStateCompat.ACTION_SET_REPEAT_MODE
+//                        | PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
+                )
                 .setState(PlaybackStateCompat.STATE_NONE, 0, PLAYBACK_SPEED_PAUSED);
         playbackState = playbackStateBuilder.build();
         mediaSession.setPlaybackState(playbackState);
@@ -306,6 +322,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         mediaSession.setSessionActivity(pi);
         mediaSession.setMetadata(Meta.UNKNOWN_ENTRY.toMediaMetadataCompat());
 
+        mediaSession.setQueueTitle("Queue");
         mediaSession.setQueue(new LinkedList<>());
     }
 
@@ -378,6 +395,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                         .setContentText(description)
                         .setLargeIcon(controller.getMetadata().getDescription().getIconBitmap())
                         .setSmallIcon(R.drawable.ic_play)
+                        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                         .setContentIntent(controller.getSessionActivity())
                         .addAction(action_previous)
                         .addAction(action_play_pause)
@@ -434,14 +452,18 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         @Override
         public void onAddQueueItem(MediaDescriptionCompat description) {
-            Log.d(LC, "onAddQueueItem");
+            onAddQueueItem(description, AudioPlayerService.QUEUE_LAST);
+        }
+
+        @Override
+        public void onAddQueueItem(MediaDescriptionCompat description, int index) {
+            Log.d(LC, "onAddQueueItem(" +
+                    (index == AudioPlayerService.QUEUE_LAST ? "last" : index) + ")");
             PlaybackEntry playbackEntry = createPlaybackEntry(
                     EntryID.from(description),
                     PlaybackEntry.USER_TYPE_QUEUE
             );
-            playbackController.queue(
-                    Collections.singletonList(playbackEntry),
-                    AudioPlayerService.QUEUE_LAST)
+            playbackController.queue(Collections.singletonList(playbackEntry), index)
                     .thenRun(() -> setToast(playbackEntry.meta, "Adding %s \"%s\" to queue!"))
                     .handle(AudioPlayerService.this::handleControllerResult);
         }
@@ -879,6 +901,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     setPlaybackState(newPlaybackState, 0L, PLAYBACK_SPEED_PAUSED);
                     stopForeground(true);
                     stopSelf();
+                    toggleNoiseReceiver(false);
                     break;
                 case PlaybackStateCompat.STATE_PAUSED:
                     setPlaybackState(
@@ -886,6 +909,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                             playbackController.getPlayerSeekPosition(),
                             PLAYBACK_SPEED_PAUSED
                     );
+                    toggleNoiseReceiver(false);
                     break;
                 case PlaybackStateCompat.STATE_PLAYING:
                     Log.d(LC, "startService");
@@ -897,6 +921,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                             playbackController.getPlayerSeekPosition(),
                             PLAYBACK_SPEED_PLAYING
                     );
+                    toggleNoiseReceiver(true);
                     break;
                 case PlaybackStateCompat.STATE_BUFFERING:
                     setPlaybackState(
@@ -957,6 +982,29 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onPlayerSeekPositionChanged(long pos) {
             setPlaybackState(playbackState.getState(), pos, playbackState.getPlaybackSpeed());
+        }
+    }
+
+    private void toggleNoiseReceiver(boolean register) {
+        if (register) {
+            if (!isNoiseReceiverRegistered) {
+                registerReceiver(makeSomeNoiseReceiver, intentFilter);
+                isNoiseReceiverRegistered = true;
+            }
+        } else {
+            if(isNoiseReceiverRegistered) {
+                unregisterReceiver(makeSomeNoiseReceiver);
+                isNoiseReceiverRegistered = false;
+            }
+        }
+    }
+
+    private class MakeSomeNoiseReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
+                playbackController.pause();
+            }
         }
     }
 }
