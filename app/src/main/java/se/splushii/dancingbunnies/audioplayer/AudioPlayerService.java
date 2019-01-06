@@ -219,6 +219,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(LC, "onStartCommand");
+        mediaSession.setActive(true);
         if (intent != null && intent.hasExtra(STARTCMD_INTENT_CAST_ACTION)) {
             handleCastIntent(intent);
         } else {
@@ -314,19 +315,25 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = focusChange -> {
             switch (focusChange) {
                 case AudioManager.AUDIOFOCUS_LOSS:
-                    playbackController.pause();
+                    playbackController.pause()
+                            .handle(this::handleControllerResult);
                     break;
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
                     // Temporarily pause playback
-                    playbackController.pause();
-                    playOnAudioFocusGain = true;
+                    if (isPlayingState()) {
+                        playOnAudioFocusGain = true;
+                    }
+                    playbackController.pause()
+                            .handle(this::handleControllerResult);
                     break;
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
                     // Lower the volume, keep playing. Let Android handle this automatically.
                     break;
                 case AudioManager.AUDIOFOCUS_GAIN:
                     if (playOnAudioFocusGain) {
-                        playbackController.play();
+                        playbackController.play()
+                                .handle(this::handleControllerResult);
+                        playOnAudioFocusGain = false;
                     }
                     break;
                 default:
@@ -391,6 +398,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         return state == PlaybackStateCompat.STATE_ERROR
                 || state == PlaybackStateCompat.STATE_NONE
                 || state == PlaybackStateCompat.STATE_STOPPED;
+    }
+
+    private boolean isPlayingState() {
+        return playbackState.getState() == PlaybackStateCompat.STATE_PLAYING;
     }
 
     @SuppressLint("SwitchIntDef")
@@ -502,6 +513,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onPause() {
             Log.d(LC, "onPause");
+            playOnAudioFocusGain = false;
             playbackController.pause()
                     .handle(AudioPlayerService.this::handleControllerResult);
         }
@@ -583,6 +595,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onStop() {
             Log.d(LC, "onStop");
+            playOnAudioFocusGain = false;
             playbackController.stop()
                     .handle(AudioPlayerService.this::handleControllerResult);
         }
@@ -971,6 +984,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     stopSelf();
                     toggleNoiseReceiver(false);
                     audioManager.abandonAudioFocusRequest(audioFocusRequest);
+                    mediaSession.setActive(false);
                     break;
                 case PlaybackStateCompat.STATE_PAUSED:
                     setPlaybackState(
@@ -1072,7 +1086,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
-                playbackController.pause();
+                playbackController.pause()
+                        .handle(AudioPlayerService.this::handleControllerResult);
             }
         }
     }
