@@ -11,6 +11,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.session.PlaybackState;
 import android.os.Bundle;
@@ -96,6 +98,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private final MakeSomeNoiseReceiver makeSomeNoiseReceiver = new MakeSomeNoiseReceiver();
     private boolean isNoiseReceiverRegistered;
 
+    private AudioManager audioManager;
+    private AudioFocusRequest audioFocusRequest;
+    private boolean playOnAudioFocusGain;
+
     private MusicLibraryService musicLibraryService;
     private final ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -103,6 +109,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             Log.d(LC, "Connected MusicLibraryService");
             MusicLibraryService.MusicLibraryBinder binder = (MusicLibraryService.MusicLibraryBinder) service;
             musicLibraryService = binder.getService();
+            setupAudioFocus();
             setupMediaSession();
             setupPlaybackController();
             playbackController.initialize();
@@ -282,6 +289,59 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         super.onDestroy();
     }
 
+    private boolean requestAudioFocus() {
+        int res = audioManager.requestAudioFocus(audioFocusRequest);
+        switch (res) {
+            case AudioManager.AUDIOFOCUS_REQUEST_FAILED:
+                return false;
+            case AudioManager.AUDIOFOCUS_REQUEST_GRANTED:
+                return true;
+            case AudioManager.AUDIOFOCUS_REQUEST_DELAYED:
+                Log.w(LC, "Delayed audio focus not configured. This should never happen.");
+                return false;
+            default:
+                Log.e(LC, "Unknown audio focus request result: " + res);
+                return false;
+        }
+    }
+
+    private void setupAudioFocus() {
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build();
+        AudioManager.OnAudioFocusChangeListener audioFocusChangeListener = focusChange -> {
+            switch (focusChange) {
+                case AudioManager.AUDIOFOCUS_LOSS:
+                    playbackController.pause();
+                    break;
+                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                    // Temporarily pause playback
+                    playbackController.pause();
+                    playOnAudioFocusGain = true;
+                    break;
+                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                    // Lower the volume, keep playing. Let Android handle this automatically.
+                    break;
+                case AudioManager.AUDIOFOCUS_GAIN:
+                    if (playOnAudioFocusGain) {
+                        playbackController.play();
+                    }
+                    break;
+                default:
+                    Log.e(LC, "Unhandled audio focus change: " + focusChange);
+                    break;
+            }
+        };
+        audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(audioAttributes)
+                .setAcceptsDelayedFocusGain(false)
+                .setWillPauseWhenDucked(false)
+                .setOnAudioFocusChangeListener(audioFocusChangeListener)
+                .build();
+    }
+
     private void setupPlaybackController() {
         playbackController = new PlaybackController(
                 this, musicLibraryService, audioPlayerManagerCallback
@@ -418,7 +478,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private Void handleControllerResult(Void result, Throwable t) {
         if (t != null) {
             Log.e(LC, Log.getStackTraceString(t));
-            Toast.makeText(AudioPlayerService.this, t.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, t.getMessage(), Toast.LENGTH_SHORT).show();
         }
         return result;
     }
@@ -427,8 +487,16 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onPlay() {
             Log.d(LC, "onPlay");
-            playbackController.play()
-                    .handle(AudioPlayerService.this::handleControllerResult);
+            if (requestAudioFocus()) {
+                playbackController.play()
+                        .handle(AudioPlayerService.this::handleControllerResult);
+            } else {
+                Toast.makeText(
+                        AudioPlayerService.this,
+                        "Could not get audio focus. Audio focus is held by another app.",
+                        Toast.LENGTH_SHORT
+                ).show();
+            }
         }
 
         @Override
@@ -902,6 +970,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     stopForeground(true);
                     stopSelf();
                     toggleNoiseReceiver(false);
+                    audioManager.abandonAudioFocusRequest(audioFocusRequest);
                     break;
                 case PlaybackStateCompat.STATE_PAUSED:
                     setPlaybackState(
@@ -945,7 +1014,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     Log.w(LC, "Unhandled state: STATE_CONNECTING");
                     break;
                 default:
-                    Log.w(LC, "Unhandled state: " + newPlaybackState);
+                    Log.e(LC, "Unhandled state: " + newPlaybackState);
                     break;
             }
             setNotification();
