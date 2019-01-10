@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "b69d1124c5e23240af7283e41e2b72c0",
+    "identityHash": "107832d463d44ee85dae81ef435186df",
     "entities": [
       {
         "tableName": "songs",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `root` TEXT, `id` TEXT NOT NULL, `title` TEXT, `album` TEXT, `artist` TEXT, PRIMARY KEY(`api`, `id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `root` TEXT, `id` TEXT NOT NULL, `title` TEXT, `album` TEXT, `artist` TEXT, `albumartist` TEXT, `genre` TEXT, `duration` INTEGER NOT NULL, `contenttype` TEXT, `year` INTEGER NOT NULL, `tracknum` INTEGER NOT NULL, `discnum` INTEGER NOT NULL, `bitrate` INTEGER NOT NULL, PRIMARY KEY(`api`, `id`))",
         "fields": [
           {
             "fieldPath": "api",
@@ -43,6 +43,54 @@
             "columnName": "artist",
             "affinity": "TEXT",
             "notNull": false
+          },
+          {
+            "fieldPath": "albumartist",
+            "columnName": "albumartist",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "genre",
+            "columnName": "genre",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "duration",
+            "columnName": "duration",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "contenttype",
+            "columnName": "contenttype",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "year",
+            "columnName": "year",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tracknum",
+            "columnName": "tracknum",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "discnum",
+            "columnName": "discnum",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bitrate",
+            "columnName": "bitrate",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -68,7 +116,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"b69d1124c5e23240af7283e41e2b72c0\")"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"107832d463d44ee85dae81ef435186df\")"
     ]
   }
 }
