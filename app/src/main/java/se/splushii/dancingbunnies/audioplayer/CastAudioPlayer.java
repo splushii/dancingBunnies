@@ -38,7 +38,7 @@ public class CastAudioPlayer implements AudioPlayer {
     private int playerState;
     private int idleReason;
     private boolean playWhenReady = false;
-    private long lastPos = 0;
+    private long lastPos = 0L;
     private int[] lastItemIds = new int[0];
     private int lastCurrentItemId;
     private SparseArray<MediaQueueItem> lastQueueItemMap;
@@ -65,6 +65,7 @@ public class CastAudioPlayer implements AudioPlayer {
 
     @Override
     public AudioPlayerState getLastState() {
+        long lastPos = getSeekPosition();
         List<PlaybackEntry> entries = new LinkedList<>();
         List<PlaybackEntry> history = new LinkedList<>();
         boolean isHistory = lastCurrentItemId != -1;

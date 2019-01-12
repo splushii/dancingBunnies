@@ -32,9 +32,9 @@ class LocalAudioPlayer implements AudioPlayer {
         PLAYBACK_COMPLETED,
         PREPARED
     }
+    private MediaPlayerInstance player;
     private boolean playWhenReady = false;
     private final MusicLibraryService musicLibraryService;
-    private MediaPlayerInstance player;
     private final LinkedList<MediaPlayerInstance> queuePlayers;
     private final LinkedList<MediaPlayerInstance> playlistPlayers;
     private final LinkedList<MediaPlayerInstance> historyPlayers;
@@ -291,7 +291,7 @@ class LocalAudioPlayer implements AudioPlayer {
         private MediaPlayer mediaPlayer;
         private MediaPlayerState state;
         private boolean buffering = false;
-        private long initialSeek = -1;
+        private long lastSeek = -1;
 
         MediaPlayerInstance(PlaybackEntry playbackEntry) {
             reconstruct();
@@ -314,9 +314,9 @@ class LocalAudioPlayer implements AudioPlayer {
                 if (this.equals(player)) {
                     Log.d(LC, "onReady: " + title());
                     updatePlaybackState();
-                    if (initialSeek != -1) {
-                        seekTo(initialSeek);
-                        initialSeek = -1;
+                    if (lastSeek != -1) {
+                        seekTo(lastSeek);
+                        lastSeek = -1;
                     }
                     if (playWhenReady) {
                         play();
@@ -484,38 +484,44 @@ class LocalAudioPlayer implements AudioPlayer {
                 case PREPARING:
                 case STOPPED:
                 case NULL:
-                    initialSeek = pos;
-                    Log.d(LC, "Setting initial seek to: " + initialSeek);
+                    lastSeek = pos;
+                    Log.d(LC, "MediaPlayer(" + title() + ") "
+                            + "setting initial seek to: " + lastSeek);
                     return true;
                 case PREPARED:
                 case STARTED:
                 case PAUSED:
                 case PLAYBACK_COMPLETED:
-                    break;
+                    lastSeek = pos;
+                    Log.d(LC, "MediaPlayer(" + title() + ") seeking to " + pos);
+                    mediaPlayer.seekTo((int) pos);
+                    return true;
                 default:
                     Log.w(LC, "MediaPlayer(" + title() + ") seekTo in wrong state: " + state);
                     return false;
             }
-            Log.d(LC, "MediaPlayer(" + title() + ") seeking");
-            mediaPlayer.seekTo((int) pos);
-            return true;
         }
 
         long getCurrentPosition() {
+            long pos = 0L;
             switch (state) {
+                case STOPPED:
+                    break;
                 case PREPARED:
+                    pos = lastSeek;
+                    break;
                 case STARTED:
                 case PAUSED:
                 case PLAYBACK_COMPLETED:
-                case STOPPED:
+                    pos = mediaPlayer.getCurrentPosition();
                     break;
                 default:
                     Log.w(LC, "MediaPlayer(" + title() + ") "
                             + "getPlayerSeekPosition in wrong state: " + state);
                     return 0L;
             }
-            Log.d(LC, "MediaPlayer(" + title() + ") getPlayerSeekPosition");
-            return mediaPlayer.getCurrentPosition();
+            Log.d(LC, "MediaPlayer(" + title() + ") getPlayerSeekPosition: " + pos);
+            return pos;
         }
 
         boolean isStopped() {

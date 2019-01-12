@@ -92,7 +92,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private MediaSessionCompat mediaSession;
     private PlaybackStateCompat.Builder playbackStateBuilder;
     private PlaybackStateCompat playbackState;
-    private boolean foregroundNotification = true;
+    private boolean casting = false;
 
     private IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
     private final MakeSomeNoiseReceiver makeSomeNoiseReceiver = new MakeSomeNoiseReceiver();
@@ -219,7 +219,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(LC, "onStartCommand");
-        mediaSession.setActive(true);
         if (intent != null && intent.hasExtra(STARTCMD_INTENT_CAST_ACTION)) {
             handleCastIntent(intent);
         } else {
@@ -406,7 +405,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     @SuppressLint("SwitchIntDef")
     private void setNotification() {
-        if (!foregroundNotification || isStoppedState()) {
+        if (casting || isStoppedState()) {
             stopForeground(true);
             return;
         }
@@ -930,14 +929,15 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onPlayerChanged(AudioPlayer.Type audioPlayerType) {
             switch (audioPlayerType) {
-                case LOCAL:
-                    foregroundNotification = true;
-                    break;
                 case CAST:
+                    casting = true;
+                    break;
                 default:
-                    foregroundNotification = false;
+                case LOCAL:
+                    casting = false;
                     break;
             }
+            setMediaSessionActiveness();
             setNotification();
         }
 
@@ -984,7 +984,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     stopSelf();
                     toggleNoiseReceiver(false);
                     audioManager.abandonAudioFocusRequest(audioFocusRequest);
-                    mediaSession.setActive(false);
                     break;
                 case PlaybackStateCompat.STATE_PAUSED:
                     setPlaybackState(
@@ -1031,6 +1030,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     Log.e(LC, "Unhandled state: " + newPlaybackState);
                     break;
             }
+            setMediaSessionActiveness();
             setNotification();
         }
 
@@ -1068,6 +1068,13 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         }
     }
 
+    private void setMediaSessionActiveness() {
+        boolean active = !isStoppedState() && !casting;
+        if (active != mediaSession.isActive()) {
+            mediaSession.setActive(active);
+        }
+    }
+
     private void toggleNoiseReceiver(boolean register) {
         if (register) {
             if (!isNoiseReceiverRegistered) {
@@ -1086,8 +1093,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
-                playbackController.pause()
-                        .handle(AudioPlayerService.this::handleControllerResult);
+                if (!casting) {
+                    playbackController.pause()
+                            .handle(AudioPlayerService.this::handleControllerResult);
+                }
             }
         }
     }

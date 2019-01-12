@@ -42,8 +42,9 @@ public class PlaylistFragment extends AudioBrowserFragment {
 
     @Override
     protected void onSessionReady() {
-        super.onSessionReady();
-        refreshView(model.getUserState().getValue());
+        if (model != null) {
+            refreshView(model.getUserState().getValue());
+        }
     }
 
     @Override
