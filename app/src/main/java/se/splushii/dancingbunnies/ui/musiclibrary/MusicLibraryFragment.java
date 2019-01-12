@@ -1,6 +1,7 @@
 package se.splushii.dancingbunnies.ui.musiclibrary;
 
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.ActionMode;
 import android.view.ContextMenu;
@@ -360,6 +361,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 Meta.humanMap.get(filter) : filter;
         String text = String.format("%s: %s", filterType, filter);
         Chip newChip = new Chip(requireContext());
+        newChip.setEllipsize(TextUtils.TruncateAt.END);
         newChip.setChipBackgroundColorResource(R.color.colorAccent);
         newChip.setTextColor(ContextCompat.getColor(requireContext(), R.color.white));
         newChip.setText(text);
@@ -379,7 +381,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 entryTypeSelect.setVisibility(View.GONE);
                 filterNew.setVisibility(View.GONE);
                 String filterEditTypeText = filterType + ':';
-                if (chipHasSameFilter(newChip, filterEditType.getText().toString(),
+                if (chipHasSameFilter(text, filterEditType.getText().toString(),
                         filterEditInput.getText().toString())) {
                     filterEdit.setVisibility(filterEdit.getVisibility() == View.VISIBLE ?
                             View.GONE : View.VISIBLE
@@ -411,8 +413,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         }
     }
 
-    private boolean chipHasSameFilter(Chip chip, String filterType, String filter) {
-        return chip.getText().toString().equals(filterType + " " + filter);
+    private boolean chipHasSameFilter(String chipText, String filterType, String filter) {
+        return chipText.equals(filterType + " " + filter);
     }
 
     private void clearFilter(String filterType) {
