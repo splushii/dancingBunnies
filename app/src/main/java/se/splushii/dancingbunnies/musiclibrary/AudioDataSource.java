@@ -5,7 +5,7 @@ import android.media.MediaDataSource;
 import android.util.Log;
 
 import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -23,11 +23,11 @@ import se.splushii.dancingbunnies.util.Util;
 // TODO: Support reading while buffering.
 public class AudioDataSource extends MediaDataSource {
     private static final String LC = Util.getLogContext(AudioDataSource.class);
+    private static final long BYTES_BETWEEN_PROGRESS_UPDATE = 100_000L;
     private final Object lock = new Object();
     private final String url;
     private final EntryID entryID;
     private final File cacheFile;
-//    private volatile byte[] buffer;
     private volatile boolean isDownloading = false;
     private volatile boolean isFinished = false;
     private Thread downloadThread;
@@ -36,7 +36,6 @@ public class AudioDataSource extends MediaDataSource {
         this.url = url;
         this.entryID = entryID;
         this.cacheFile = AudioStorage.getCacheFile(context, entryID);
-//        buffer = new byte[0];
     }
 
     public void fetch(final Handler handler) {
@@ -74,28 +73,24 @@ public class AudioDataSource extends MediaDataSource {
                 downloadThread = new Thread(() -> {
                     handler.onDownloading();
                     try {
-                        ByteArrayOutputStream arrayOutputStream = new ByteArrayOutputStream();
+                        BufferedOutputStream outputStream = new BufferedOutputStream(getCacheFileOutputStream());
                         InputStream in = new BufferedInputStream(connection.getInputStream());
                         long contentLength = connection.getContentLengthLong();
                         int b = in.read();
                         long bytesRead = 0;
                         while (b != -1) {
-                            arrayOutputStream.write(b);
-                            if (bytesRead % 1000 == 0) {
+                            outputStream.write(b);
+                            if (bytesRead % BYTES_BETWEEN_PROGRESS_UPDATE == 0) {
                                 handler.onProgress(bytesRead, contentLength);
                             }
                             bytesRead++;
                             b = in.read();
                         }
+                        handler.onProgress(bytesRead, contentLength);
                         in.close();
                         connection.disconnect();
-                        arrayOutputStream.flush();
-                        FileOutputStream fileOutputStream = getCacheFileOutputStream();
-                        arrayOutputStream.writeTo(fileOutputStream);
-//                        buffer = arrayOutputStream.toByteArray();
-                        fileOutputStream.flush();
-                        fileOutputStream.close();
-                        arrayOutputStream.close();
+                        outputStream.flush();
+                        outputStream.close();
                         isFinished = true;
                         Log.d(LC, "entryID " + entryID + " " + cacheFile.length()
                                 + " bytes downloaded to " + cacheFile.getAbsolutePath());
@@ -168,17 +163,6 @@ public class AudioDataSource extends MediaDataSource {
     @Override
     public int readAt(long position, byte[] bytes, int offset, int size) {
         return readFromCacheFileAt(position, bytes, offset, size);
-
-        // TODO: Read from buffer if still buffering
-//        long len = buffer.length;
-//        if (position > len) {
-//            return -1;
-//        }
-//        if (position + size > len) {
-//            size = (int) (len - position);
-//        }
-//        System.arraycopy(buffer, (int) position, bytes, offset, size);
-//        return size;
     }
 
     private int readFromCacheFileAt(long position, byte[] bytes, int offset, int size) {
@@ -204,11 +188,6 @@ public class AudioDataSource extends MediaDataSource {
     @Override
     public long getSize() {
         return getCacheFileSize();
-        // TODO: Get from buffer if still buffering
-//        if (buffer != null) {
-//            return buffer.length;
-//        }
-//        return 0;
     }
 
     private long getCacheFileSize() {

@@ -7,8 +7,10 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -20,6 +22,7 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
+import se.splushii.dancingbunnies.storage.AudioStorage;
 
 public class NowPlayingEntriesAdapter
         extends RecyclerView.Adapter<NowPlayingEntriesAdapter.SongViewHolder> {
@@ -33,11 +36,51 @@ public class NowPlayingEntriesAdapter
     static final int VIEWTYPE_PLAYLIST_NEXT = 1;
     private SelectionTracker<Long> selectionTracker;
     private View selectedItemView;
+    private final HashMap<EntryID, HashMap<Integer, Consumer<AudioStorage.AudioDataFetchState>>> fetchStatusCallbacks;
 
     NowPlayingEntriesAdapter(NowPlayingFragment fragment) {
         this.fragment = fragment;
         queueData = new ArrayList<>();
         playlistNext = new ArrayList<>();
+        fetchStatusCallbacks = new HashMap<>();
+    }
+
+    void setModel(NowPlayingFragmentModel model) {
+        synchronized (fetchStatusCallbacks) {
+            fetchStatusCallbacks.clear();
+        }
+        model.getFetchState().observe(fragment.getViewLifecycleOwner(), audioDataFetchStates -> {
+            for (AudioStorage.AudioDataFetchState state: audioDataFetchStates) {
+                synchronized (fetchStatusCallbacks) {
+                    if (fetchStatusCallbacks.containsKey(state.entryID)) {
+                        fetchStatusCallbacks.get(state.entryID)
+                                .forEach((key, value) -> value.accept(state));
+                    }
+                }
+            }
+        });
+    }
+
+    private void addFetchStatusCallback(EntryID entryID,
+                                        int pos,
+                                        Consumer<AudioStorage.AudioDataFetchState> cb) {
+        synchronized (fetchStatusCallbacks) {
+            HashMap<Integer, Consumer<AudioStorage.AudioDataFetchState>> cbMap =
+                    fetchStatusCallbacks.getOrDefault(entryID, new HashMap<>());
+            cbMap.put(pos, cb);
+            fetchStatusCallbacks.put(entryID, cbMap);
+        }
+    }
+
+    private void removeFetchStatusCallback(EntryID entryID, int pos) {
+        synchronized (fetchStatusCallbacks) {
+            HashMap<Integer, Consumer<AudioStorage.AudioDataFetchState>> cbMap =
+                    fetchStatusCallbacks.get(entryID);
+            cbMap.remove(pos);
+            if (cbMap.isEmpty()) {
+                fetchStatusCallbacks.remove(entryID);
+            }
+        }
     }
 
     PlaybackEntry getItemData(int childPosition) {
@@ -133,6 +176,8 @@ public class NowPlayingEntriesAdapter
         private final View actionPlay;
         private final View actionDequeue;
         private final View overflowMenu;
+        private EntryID entryID;
+        private int position;
 
         private final ItemDetailsLookup.ItemDetails<Long> itemDetails = new ItemDetailsLookup.ItemDetails<Long>() {
             @Override
@@ -215,6 +260,8 @@ public class NowPlayingEntriesAdapter
                 entry = playlistNext.get(nextPos);
                 break;
         }
+        holder.entryID = entry.entryID;
+        holder.position = position;
         boolean selected = selectionTracker != null
                 && selectionTracker.isSelected(holder.getItemDetails().getSelectionKey());
         holder.item.setActivated(selected);
@@ -243,12 +290,35 @@ public class NowPlayingEntriesAdapter
         holder.artist.setText(artist);
         String src = entry.meta.getString(Meta.METADATA_KEY_API);
         String cacheStatus = fragment.isCached(entry.entryID) ? " C" : "";
-        String preloadStatus = entry.meta.getString(Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS);
-        String moreInfoText = src + cacheStatus;
-        if (preloadStatus != null) {
-            moreInfoText = "(" + preloadStatus + ") " + moreInfoText;
-        }
+        String preloadStatusValue = entry.meta.getString(Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS);
+        String preloadStatus = preloadStatusValue == null ? "" : "(" + preloadStatusValue + ") ";
+        String moreInfoText = preloadStatus + src + cacheStatus;
         holder.moreInfo.setText(moreInfoText);
+        addFetchStatusCallback(entry.entryID, position, state -> {
+            String txt;
+            switch (state.getState()) {
+                default:
+                case AudioStorage.AudioDataFetchState.IDLE:
+                    txt = preloadStatus + src + cacheStatus;
+                    break;
+                case AudioStorage.AudioDataFetchState.DOWNLOADING:
+                    txt = "(" + state.getProgress() + ") " + src + cacheStatus;
+                    break;
+                case AudioStorage.AudioDataFetchState.SUCCESS:
+                    txt = preloadStatus + src + " C";
+                    break;
+                case AudioStorage.AudioDataFetchState.FAILURE:
+                    txt = preloadStatus + src + " F";
+                    break;
+            }
+            holder.moreInfo.setText(txt);
+        });
+    }
+
+    @Override
+    public void onViewRecycled(@NonNull SongViewHolder holder) {
+        removeFetchStatusCallback(holder.entryID, holder.position);
+        super.onViewRecycled(holder);
     }
 
     @Override

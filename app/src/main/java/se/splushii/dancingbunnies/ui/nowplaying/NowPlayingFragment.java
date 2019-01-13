@@ -32,6 +32,7 @@ import java.util.concurrent.TimeUnit;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.selection.MutableSelection;
 import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.selection.StorageStrategy;
@@ -71,6 +72,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private NowPlayingSelectionPredicate nowPlayingSelectionPredicate;
     private ActionMode actionMode;
     private ItemTouchHelper itemTouchHelper;
+    private NowPlayingFragmentModel model;
 
     public NowPlayingFragment() {
         recViewAdapter = new NowPlayingEntriesAdapter(this);
@@ -201,6 +203,14 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         super.onStart();
         refreshView();
         Log.d(LC, "onStart");
+    }
+
+    @Override
+    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        Log.d(LC, "onActivityCreated");
+        super.onActivityCreated(savedInstanceState);
+        model = ViewModelProviders.of(getActivity()).get(NowPlayingFragmentModel.class);
+        recViewAdapter.setModel(model);
     }
 
     @Override
