@@ -55,7 +55,7 @@ public class MetaStorage {
 
     private SupportSQLiteQuery getSongSelectQuery(Bundle bundleQuery) {
         StringBuilder query = new StringBuilder();
-        query.append("SELECT * FROM " + RoomDB.SONG_TABLE);
+        query.append("SELECT * FROM " + RoomDB.TABLE_SONGS);
         if (bundleQuery == null || bundleQuery.isEmpty()) {
             return new SimpleSQLiteQuery(query.toString());
         }
@@ -111,7 +111,7 @@ public class MetaStorage {
         StringBuilder query = new StringBuilder();
         query.append("SELECT DISTINCT ")
                 .append(metaColumn).append(" as ").append(RoomMetaValue.VALUE)
-                .append(" FROM ").append(RoomDB.SONG_TABLE);
+                .append(" FROM ").append(RoomDB.TABLE_SONGS);
         List<Object> args = constructSQLWhereClause(query, bundleQuery);
         return new SimpleSQLiteQuery(query.toString(), args.toArray());
     }
@@ -123,7 +123,7 @@ public class MetaStorage {
             if (columnName == null) {
                 if (!Meta.METADATA_KEY_TYPE.equals(key)) {
                     Log.e(LC, "getSongSelectQuery:"
-                            + " there is no column in \"" + RoomDB.SONG_TABLE + "\""
+                            + " there is no column in \"" + RoomDB.TABLE_SONGS + "\""
                             + " for bundleQuery key \"" + key + "\"");
                 }
                 continue;

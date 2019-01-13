@@ -26,7 +26,9 @@ final class NowPlayingItemTouchHelperCallback extends ItemTouchHelper.Callback {
     private CharSequence originalActionModeTitle;
     private CharSequence originalHolderTitle;
     private CharSequence originalHolderArtist;
-    private CharSequence originalHolderMoreInfo;
+    private CharSequence originalHolderSource;
+    private CharSequence originalHolderPreloadStatus;
+    private CharSequence originalHolderCacheStatus;
     private NowPlayingEntriesAdapter.SongViewHolder songViewHolder;
 
     NowPlayingItemTouchHelperCallback(NowPlayingFragment fragment,
@@ -85,12 +87,20 @@ final class NowPlayingItemTouchHelperCallback extends ItemTouchHelper.Callback {
         if (originalHolderArtist == null) {
             originalHolderArtist = songViewHolder.artist.getText();
         }
-        if (originalHolderMoreInfo == null) {
-            originalHolderMoreInfo = songViewHolder.moreInfo.getText();
+        if (originalHolderSource == null) {
+            originalHolderSource = songViewHolder.source.getText();
+        }
+        if (originalHolderPreloadStatus == null) {
+            originalHolderPreloadStatus = songViewHolder.preloadStatus.getText();
+        }
+        if (originalHolderCacheStatus == null) {
+            originalHolderCacheStatus = songViewHolder.cacheStatus.getText();
         }
         songViewHolder.title.setText(s);
         songViewHolder.artist.setText("");
-        songViewHolder.moreInfo.setText("");
+        songViewHolder.source.setText("");
+        songViewHolder.preloadStatus.setText("");
+        songViewHolder.cacheStatus.setText("");
     }
 
     private void resetViewHolderText() {
@@ -102,9 +112,17 @@ final class NowPlayingItemTouchHelperCallback extends ItemTouchHelper.Callback {
             songViewHolder.artist.setText(originalHolderArtist);
             originalHolderArtist = null;
         }
-        if (originalHolderMoreInfo != null) {
-            songViewHolder.moreInfo.setText(originalHolderMoreInfo);
-            originalHolderMoreInfo = null;
+        if (originalHolderSource != null) {
+            songViewHolder.source.setText(originalHolderSource);
+            originalHolderSource = null;
+        }
+        if (originalHolderPreloadStatus != null) {
+            songViewHolder.preloadStatus.setText(originalHolderPreloadStatus);
+            originalHolderPreloadStatus = null;
+        }
+        if (originalHolderCacheStatus != null) {
+            songViewHolder.cacheStatus.setText(originalHolderCacheStatus);
+            originalHolderCacheStatus = null;
         }
     }
 

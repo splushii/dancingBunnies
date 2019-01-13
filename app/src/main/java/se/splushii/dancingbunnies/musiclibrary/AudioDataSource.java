@@ -94,6 +94,7 @@ public class AudioDataSource extends MediaDataSource {
                         isFinished = true;
                         Log.d(LC, "entryID " + entryID + " " + cacheFile.length()
                                 + " bytes downloaded to " + cacheFile.getAbsolutePath());
+                        handler.onDownloadFinished();
                         handler.onSuccess();
                     } catch (InterruptedIOException e) {
                         Log.d(LC, "download interrupted");
@@ -217,6 +218,7 @@ public class AudioDataSource extends MediaDataSource {
         void onFailure(String message);
         void onSuccess();
         void onProgress(long i, long max);
+        void onDownloadFinished();
     }
 
     private class CacheFileException extends Exception {

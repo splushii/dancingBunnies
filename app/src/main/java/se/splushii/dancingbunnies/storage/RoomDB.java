@@ -7,11 +7,12 @@ import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
 @Database(
-        entities = {RoomMetaSong.class},
+        entities = {RoomMetaSong.class, RoomCacheEntry.class},
         version = 1
 )
 abstract class RoomDB extends RoomDatabase {
-    static final String SONG_TABLE = "songs";
+    static final String TABLE_SONGS = "songs";
+    static final String TABLE_CACHE = "cache";
     private static volatile RoomDB instance;
 
     static RoomDB getDB(Context context) {
@@ -23,4 +24,5 @@ abstract class RoomDB extends RoomDatabase {
     }
 
     abstract RoomMetaDao metaModel();
+    abstract RoomCacheDao cacheModel();
 }

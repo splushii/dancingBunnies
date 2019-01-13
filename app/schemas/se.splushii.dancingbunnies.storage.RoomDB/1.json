@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "107832d463d44ee85dae81ef435186df",
+    "identityHash": "e54f8c8aa9c89ffb3835578e11021eb4",
     "entities": [
       {
         "tableName": "songs",
@@ -112,11 +112,48 @@
           }
         ],
         "foreignKeys": []
+      },
+      {
+        "tableName": "cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, PRIMARY KEY(`api`, `id`))",
+        "fields": [
+          {
+            "fieldPath": "api",
+            "columnName": "api",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "api",
+            "id"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_cache_api_id",
+            "unique": true,
+            "columnNames": [
+              "api",
+              "id"
+            ],
+            "createSql": "CREATE UNIQUE INDEX `index_cache_api_id` ON `${TABLE_NAME}` (`api`, `id`)"
+          }
+        ],
+        "foreignKeys": []
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"107832d463d44ee85dae81ef435186df\")"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"e54f8c8aa9c89ffb3835578e11021eb4\")"
     ]
   }
 }

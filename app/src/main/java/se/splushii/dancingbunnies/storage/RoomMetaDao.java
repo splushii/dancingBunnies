@@ -19,7 +19,7 @@ interface RoomMetaDao {
     LiveData<List<RoomMetaSong>> getSongsViaQuery(SupportSQLiteQuery query);
     @RawQuery(observedEntities = RoomMetaSong.class)
     LiveData<List<RoomMetaValue>> getMetaViaQuery(SupportSQLiteQuery query);
-    @Query("DELETE FROM " + RoomDB.SONG_TABLE + " WHERE " + RoomMetaSong.COLUMN_API + " = :src")
+    @Query("DELETE FROM " + RoomDB.TABLE_SONGS + " WHERE " + RoomMetaSong.COLUMN_API + " = :src")
     void deleteWhereSourceIs(String src);
 
 }

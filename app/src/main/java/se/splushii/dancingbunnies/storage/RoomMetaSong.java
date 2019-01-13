@@ -12,7 +12,7 @@ import androidx.room.Index;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.util.Util;
 
-@Entity(tableName = RoomDB.SONG_TABLE,
+@Entity(tableName = RoomDB.TABLE_SONGS,
         indices = {
                 @Index(value = {RoomMetaSong.COLUMN_API, RoomMetaSong.COLUMN_ID}, unique = true)
         },

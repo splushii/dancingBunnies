@@ -32,10 +32,24 @@
                 android:textColor="@color/nowplaying_item_color"/>
         </LinearLayout>
         <TextView
-            android:id="@+id/nowplaying_item_more_info"
+            android:id="@+id/nowplaying_item_preload_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="16dp"
+            android:layout_marginEnd="4dp"
+            android:layout_gravity="center_vertical"
+            android:textColor="@color/nowplaying_item_color"/>
+        <TextView
+            android:id="@+id/nowplaying_item_source"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:layout_gravity="center_vertical"
+            android:textColor="@color/nowplaying_item_color"/>
+        <TextView
+            android:id="@+id/nowplaying_item_cache_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
             android:layout_gravity="center_vertical"
             android:textColor="@color/nowplaying_item_color"/>
     </LinearLayout>

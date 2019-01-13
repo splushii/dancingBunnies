@@ -168,7 +168,7 @@ public class MusicLibraryService extends Service {
         metaData = metaStorage.getAllSongMetaData();
         metaData.observeForever(metaObserver);
         playlistStorage = new PlaylistStorage(this);
-        audioStorage = AudioStorage.getInstance();
+        audioStorage = AudioStorage.getInstance(this);
         indexDirectoryPath = new File(getFilesDir(), LUCENE_INDEX_PATH);
         if (!indexDirectoryPath.isDirectory()) {
             if (!indexDirectoryPath.mkdirs()) {

@@ -14,9 +14,11 @@ import java.util.stream.Collectors;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Transformations;
 import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.util.Util;
 
 public class AudioStorage {
@@ -26,19 +28,21 @@ public class AudioStorage {
     private final HashMap<EntryID, List<AudioDataDownloadHandler>> handlerMap;
     private final MutableLiveData<List<AudioDataFetchState>> fetchState;
     private final HashMap<EntryID, AudioDataFetchState> fetchStateMap;
+    private final RoomCacheDao cacheModel;
 
-    public static synchronized AudioStorage getInstance() {
+    public static synchronized AudioStorage getInstance(Context context) {
         if (instance == null) {
-            instance = new AudioStorage();
+            instance = new AudioStorage(context);
         }
         return instance;
     }
 
-    private AudioStorage() {
+    private AudioStorage(Context context) {
         audioMap = new HashMap<>();
         handlerMap = new HashMap<>();
         fetchStateMap = new HashMap<>();
         fetchState = new MutableLiveData<>();
+        cacheModel = RoomDB.getDB(context).cacheModel();
     }
 
     public static File getCacheFile(Context context, EntryID entryID) {
@@ -79,6 +83,11 @@ public class AudioStorage {
                 @Override
                 public void onDownloading() {
                     onDownloadStartEvent(entryID);
+                }
+
+                @Override
+                public void onDownloadFinished() {
+                    cacheModel.insert(RoomCacheEntry.from(entryID));
                 }
 
                 @Override
@@ -152,6 +161,15 @@ public class AudioStorage {
 
     public LiveData<List<AudioDataFetchState>> getFetchState() {
         return fetchState;
+    }
+
+    public LiveData<List<EntryID>> getCachedEntries() {
+        return Transformations.map(cacheModel.getAll(), roomCacheEntryList ->
+                roomCacheEntryList.stream().map(roomCacheEntry -> new EntryID(
+                        roomCacheEntry.api,
+                        roomCacheEntry.id,
+                        Meta.METADATA_KEY_MEDIA_ID
+                )).collect(Collectors.toList()));
     }
 
     public class AudioDataFetchState {
