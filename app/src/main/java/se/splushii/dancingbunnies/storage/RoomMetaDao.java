@@ -21,5 +21,4 @@ interface RoomMetaDao {
     LiveData<List<RoomMetaValue>> getMetaViaQuery(SupportSQLiteQuery query);
     @Query("DELETE FROM " + RoomDB.TABLE_SONGS + " WHERE " + RoomMetaSong.COLUMN_API + " = :src")
     void deleteWhereSourceIs(String src);
-
 }

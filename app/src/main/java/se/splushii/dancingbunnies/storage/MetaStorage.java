@@ -103,7 +103,7 @@ public class MetaStorage {
         if (bundleQuery == null || bundleQuery.isEmpty()) {
             return new SimpleSQLiteQuery("SELECT "
                     + RoomMetaSong.COLUMN_ID + " as " + RoomMetaValue.VALUE
-                    + " FROM " + DB.TABLE_SONGS
+                    + " FROM " + RoomDB.TABLE_SONGS
             );
         }
         String type = bundleQuery.getString(Meta.METADATA_KEY_TYPE);

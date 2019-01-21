@@ -7,16 +7,21 @@ import java.util.Arrays;
 import java.util.HashSet;
 
 import androidx.annotation.NonNull;
+import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.Index;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.util.Util;
 
 @Entity(tableName = RoomDB.TABLE_SONGS,
-        indices = {
-                @Index(value = {RoomMetaSong.COLUMN_API, RoomMetaSong.COLUMN_ID}, unique = true)
-        },
-        primaryKeys = {RoomMetaSong.COLUMN_API, RoomMetaSong.COLUMN_ID}
+        indices = @Index(value = {
+                RoomMetaSong.COLUMN_API,
+                RoomMetaSong.COLUMN_ID
+        }, unique = true),
+        primaryKeys = {
+                RoomMetaSong.COLUMN_API,
+                RoomMetaSong.COLUMN_ID
+        }
 )
 public class RoomMetaSong {
     private static final String LC = Util.getLogContext(RoomMetaSong.class);
@@ -75,36 +80,50 @@ public class RoomMetaSong {
     };
     public static final HashSet DBKeysSet = new HashSet<>(Arrays.asList(db_keys));
 
-    public static final String COLUMN_API = "api";
-    public static final String COLUMN_ID = "id";
-    public static final String COLUMN_ROOT = "root";
-    public static final String COLUMN_TITLE = "title";
-    public static final String COLUMN_ALBUM = "album";
-    public static final String COLUMN_ARTIST = "artist";
-    public static final String COLUMN_ALBUM_ARTIST = "albumartist";
-    public static final String COLUMN_GENRE = "genre";
-    public static final String COLUMN_DURATION = "duration";
-    public static final String COLUMN_CONTENT_TYPE = "contenttype";
-    public static final String COLUMN_YEAR = "year";
-    public static final String COLUMN_TRACK_NUMBER = "tracknum";
-    public static final String COLUMN_TRACK_DISCNUMBER = "discnum";
-    public static final String COLUMN_BITRATE = "bitrate";
+    static final String COLUMN_API = "api";
+    static final String COLUMN_ID = "id";
+    private static final String COLUMN_ROOT = "root";
+    private static final String COLUMN_TITLE = "title";
+    private static final String COLUMN_ALBUM = "album";
+    private static final String COLUMN_ARTIST = "artist";
+    private static final String COLUMN_ALBUM_ARTIST = "albumartist";
+    private static final String COLUMN_GENRE = "genre";
+    private static final String COLUMN_DURATION = "duration";
+    private static final String COLUMN_CONTENT_TYPE = "contenttype";
+    private static final String COLUMN_YEAR = "year";
+    private static final String COLUMN_TRACK_NUMBER = "tracknum";
+    private static final String COLUMN_TRACK_DISCNUMBER = "discnum";
+    private static final String COLUMN_BITRATE = "bitrate";
 
     @NonNull
+    @ColumnInfo(name = COLUMN_API)
     String api;
+    @ColumnInfo(name = COLUMN_ROOT)
     String root;
     @NonNull
+    @ColumnInfo(name = COLUMN_ID)
     String id;
+    @ColumnInfo(name = COLUMN_TITLE)
     String title;
+    @ColumnInfo(name = COLUMN_ALBUM)
     String album;
+    @ColumnInfo(name = COLUMN_ARTIST)
     String artist;
+    @ColumnInfo(name = COLUMN_ALBUM_ARTIST)
     String albumartist;
+    @ColumnInfo(name = COLUMN_GENRE)
     String genre;
+    @ColumnInfo(name = COLUMN_DURATION)
     long duration;
+    @ColumnInfo(name = COLUMN_CONTENT_TYPE)
     String contenttype;
+    @ColumnInfo(name = COLUMN_YEAR)
     long year;
+    @ColumnInfo(name = COLUMN_TRACK_NUMBER)
     long tracknum;
+    @ColumnInfo(name = COLUMN_TRACK_DISCNUMBER)
     long discnum;
+    @ColumnInfo(name = COLUMN_BITRATE)
     long bitrate;
 
 

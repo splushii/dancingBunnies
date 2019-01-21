@@ -15,6 +15,7 @@ import org.apache.lucene.search.TopDocs;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -33,6 +34,7 @@ import se.splushii.dancingbunnies.search.Searcher;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
+import se.splushii.dancingbunnies.storage.RoomPlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryService extends Service {
@@ -48,31 +50,23 @@ public class MusicLibraryService extends Service {
     private MetaStorage metaStorage;
     private AudioStorage audioStorage;
     private PlaylistStorage playlistStorage;
-    private LiveData<List<Meta>> metaData;
-    private HashMap<EntryID, Meta> metaMap;
+    private LiveData<List<Meta>> metaLiveData;
+    private LiveData<List<PlaylistItem>> playlistLiveData;
+    private LiveData<List<RoomPlaylistEntry>> playlistEntriesLiveData;
+    private List<PlaylistItem> playlists = new ArrayList<>();
+    private HashMap<EntryID, Meta> metaMap = new HashMap<>();
+    private HashMap<PlaylistID, List<EntryID>> playlistMap = new HashMap<>();
 
     private final IBinder binder = new MusicLibraryBinder();
 
     public List<PlaybackEntry> playlistGetNext(PlaylistID playlistID, long index, int maxEntries) {
         List<PlaybackEntry> playbackEntries = new LinkedList<>();
-        Playlist playlist = playlistStorage.getPlaylist(playlistID);
-        if (playlist == null) {
+        List<EntryID> entryIDs = playlistMap.get(playlistID);
+        if (entryIDs == null || entryIDs.isEmpty()) {
             return playbackEntries;
         }
-        List<EntryID> entryIDS = new LinkedList<>();
-        switch (playlist.id.type) {
-            case PlaylistID.TYPE_STUPID:
-                entryIDS.addAll(((StupidPlaylist) playlist).getEntries());
-                break;
-            case PlaylistID.TYPE_SMART:
-                Log.e(LC, "playlistGetNext not implemented for smart playlists");
-                break;
-        }
-        if (entryIDS.isEmpty()) {
-            return playbackEntries;
-        }
-        for (int count = 0; count < maxEntries && index < entryIDS.size(); count++, index++) {
-            EntryID entryID = entryIDS.get((int)index);
+        for (int count = 0; count < maxEntries && index < entryIDs.size(); count++, index++) {
+            EntryID entryID = entryIDs.get((int)index);
             Meta meta = getSongMetaData(entryID);
             playbackEntries.add(new PlaybackEntry(meta, PlaybackEntry.USER_TYPE_PLAYLIST));
         }
@@ -89,42 +83,24 @@ public class MusicLibraryService extends Service {
         if (offset == 0) {
             return playlistPosition;
         }
-        Playlist playlist = playlistStorage.getPlaylist(playlistID);
-        if (playlist == null) {
-            return 0;
-        }
-        switch (playlist.id.type) {
-            case PlaylistID.TYPE_STUPID:
-                int playlistSize = ((StupidPlaylist) playlist).getEntries().size();
-                playlistPosition += offset;
-                return playlistPosition > playlistSize ? playlistSize : playlistPosition;
-            case PlaylistID.TYPE_SMART:
-                Log.e(LC, "playlistGetNext not implemented for smart playlists");
-                break;
-        }
-        return 0;
+        List<EntryID> playlistEntries = playlistMap.getOrDefault(playlistID, Collections.emptyList());
+        int playlistSize = playlistEntries.size();
+        playlistPosition += offset;
+        return playlistPosition > playlistSize ? playlistSize : playlistPosition;
     }
 
     public List<PlaylistItem> getPlaylists() {
-        return playlistStorage.getPlaylists();
+        return playlists;
     }
 
     public List<LibraryEntry> getPlaylistEntries(PlaylistID playlistID) {
-        Playlist playlist = playlistStorage.getPlaylist(playlistID);
-        switch (playlist.id.type) {
-            case PlaylistID.TYPE_STUPID:
-                List<LibraryEntry> entries = new LinkedList<>();
-                for (EntryID entryID: ((StupidPlaylist) playlist).getEntries()) {
-                    Meta meta = getSongMetaData(entryID);
-                    String title = meta.getString(Meta.METADATA_KEY_TITLE);
-                    entries.add(new LibraryEntry(entryID, title));
-                }
-                return entries;
-            case PlaylistID.TYPE_SMART:
-                Log.e(LC, "getPlaylistEntries not implemented for smart playlists");
-                break;
+        List<LibraryEntry> entries = new LinkedList<>();
+        for (EntryID entryID: playlistMap.getOrDefault(playlistID, Collections.emptyList())) {
+            Meta meta = getSongMetaData(entryID);
+            String title = meta.getString(Meta.METADATA_KEY_TITLE);
+            entries.add(new LibraryEntry(entryID, title));
         }
-        return new LinkedList<>();
+        return entries;
     }
 
     public void playlistAddEntries(PlaylistID playlistID, List<EntryID> entryIDs) {
@@ -144,17 +120,39 @@ public class MusicLibraryService extends Service {
     private final Observer<List<Meta>> metaObserver = metas -> {
         long start = System.currentTimeMillis();
         Log.d(LC, "metaObserver: " + metas.size() + " entries. Building meta index...");
-        metaMap = new HashMap<>();
+        HashMap<EntryID, Meta> newMetaMap = new HashMap<>();
         for (Meta meta: metas) {
             meta.setString(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_MEDIA_ID);
-            metaMap.put(EntryID.from(meta), meta);
+            newMetaMap.put(EntryID.from(meta), meta);
         }
+        metaMap = newMetaMap;
         Log.d(LC, "metaObserver: Finished building meta index. "
                 + (System.currentTimeMillis() - start) + "ms.");
         start = System.currentTimeMillis();
         Log.d(LC, "metaObserver: Building search index...");
         reIndex(metas);
         Log.d(LC, "metaObserver: Finished building search index. "
+                + (System.currentTimeMillis() - start) + "ms.");
+    };
+
+    private final Observer<List<PlaylistItem>> playlistsObserver = entries -> {
+        Log.d(LC, "playlistsObserver: " + entries.size() + " entries.");
+        playlists = entries;
+    };
+
+    private final Observer<List<RoomPlaylistEntry>> playlistEntriesObserver = entries -> {
+        long start = System.currentTimeMillis();
+        Log.d(LC, "playlistEntriesObserver: " + entries.size() + " entries."
+                + " Building playlist map...");
+        HashMap<PlaylistID, List<EntryID>> newPlaylistMap = new HashMap<>();
+        for (RoomPlaylistEntry entry: entries) {
+            PlaylistID id = new PlaylistID(entry.playlist_api, entry.playlist_id, PlaylistID.TYPE_STUPID);
+            List<EntryID> entryIDs = newPlaylistMap.getOrDefault(id, new ArrayList<>());
+            entryIDs.add(new EntryID(entry.api, entry.id, Meta.METADATA_KEY_MEDIA_ID));
+            newPlaylistMap.put(id, entryIDs);
+        }
+        playlistMap = newPlaylistMap;
+        Log.d(LC, "playlistEntriesObserver: Finished building playlist map. "
                 + (System.currentTimeMillis() - start) + "ms.");
     };
 
@@ -165,9 +163,13 @@ public class MusicLibraryService extends Service {
         apis = new HashMap<>();
         loadSettings();
         metaStorage = new MetaStorage(this);
-        metaData = metaStorage.getAllSongMetaData();
-        metaData.observeForever(metaObserver);
+        metaLiveData = metaStorage.getAllSongMetaData();
+        metaLiveData.observeForever(metaObserver);
         playlistStorage = new PlaylistStorage(this);
+        playlistLiveData = playlistStorage.getPlaylists();
+        playlistLiveData.observeForever(playlistsObserver);
+        playlistEntriesLiveData = playlistStorage.getPlaylistEntries();
+        playlistEntriesLiveData.observeForever(playlistEntriesObserver);
         audioStorage = AudioStorage.getInstance(this);
         indexDirectoryPath = new File(getFilesDir(), LUCENE_INDEX_PATH);
         if (!indexDirectoryPath.isDirectory()) {
@@ -181,8 +183,9 @@ public class MusicLibraryService extends Service {
     @Override
     public void onDestroy() {
         Log.d(LC, "onDestroy");
-        playlistStorage.close();
-        metaData.removeObserver(metaObserver);
+        playlistEntriesLiveData.removeObserver(playlistEntriesObserver);
+        playlistLiveData.removeObserver(playlistsObserver);
+        metaLiveData.removeObserver(metaObserver);
         super.onDestroy();
     }
 

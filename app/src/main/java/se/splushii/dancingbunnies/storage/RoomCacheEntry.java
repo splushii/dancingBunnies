@@ -13,8 +13,8 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
         primaryKeys = {RoomCacheEntry.COLUMN_API, RoomCacheEntry.COLUMN_ID}
 )
 public class RoomCacheEntry {
-    public static final String COLUMN_API = "api";
-    public static final String COLUMN_ID = "id";
+    static final String COLUMN_API = "api";
+    static final String COLUMN_ID = "id";
 
     @NonNull
     @ColumnInfo(name = COLUMN_API)

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "e54f8c8aa9c89ffb3835578e11021eb4",
+    "identityHash": "a3dd295ef258710f4c109c3bbcc3212a",
     "entities": [
       {
         "tableName": "songs",
@@ -149,11 +149,125 @@
           }
         ],
         "foreignKeys": []
+      },
+      {
+        "tableName": "playlists",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY(`api`, `id`))",
+        "fields": [
+          {
+            "fieldPath": "api",
+            "columnName": "api",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "api",
+            "id"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_playlists_api_id",
+            "unique": true,
+            "columnNames": [
+              "api",
+              "id"
+            ],
+            "createSql": "CREATE UNIQUE INDEX `index_playlists_api_id` ON `${TABLE_NAME}` (`api`, `id`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "playlist_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`playlist_api` TEXT NOT NULL, `playlist_id` TEXT NOT NULL, `api` TEXT NOT NULL, `id` TEXT NOT NULL, `pos` INTEGER NOT NULL, PRIMARY KEY(`playlist_api`, `playlist_id`, `pos`), FOREIGN KEY(`playlist_api`, `playlist_id`) REFERENCES `playlists`(`api`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "playlist_api",
+            "columnName": "playlist_api",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playlist_id",
+            "columnName": "playlist_id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "api",
+            "columnName": "api",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pos",
+            "columnName": "pos",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "playlist_api",
+            "playlist_id",
+            "pos"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_playlist_entries_playlist_api_playlist_id_pos",
+            "unique": true,
+            "columnNames": [
+              "playlist_api",
+              "playlist_id",
+              "pos"
+            ],
+            "createSql": "CREATE UNIQUE INDEX `index_playlist_entries_playlist_api_playlist_id_pos` ON `${TABLE_NAME}` (`playlist_api`, `playlist_id`, `pos`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "playlists",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "playlist_api",
+              "playlist_id"
+            ],
+            "referencedColumns": [
+              "api",
+              "id"
+            ]
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"e54f8c8aa9c89ffb3835578e11021eb4\")"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"a3dd295ef258710f4c109c3bbcc3212a\")"
     ]
   }
 }
