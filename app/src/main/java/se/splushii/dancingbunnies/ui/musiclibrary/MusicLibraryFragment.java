@@ -369,9 +369,12 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             newChip.setOnClickListener(v -> {
                 filterEdit.setVisibility(View.GONE);
                 filterNew.setVisibility(View.GONE);
-                entryTypeSelect.setVisibility(entryTypeSelect.getVisibility() == View.VISIBLE ?
-                        View.GONE : View.VISIBLE
-                );
+                if (entryTypeSelect.getVisibility() == View.VISIBLE) {
+                    entryTypeSelect.setVisibility(View.GONE);
+                } else {
+                    entryTypeSelect.setVisibility(View.VISIBLE);
+                    entryTypeSelectSpinner.performClick();
+                }
             });
             filterChips.addView(newChip, 0);
             setEntryTypeSelectSpinnerSelection(filter);
