@@ -73,16 +73,22 @@ public class MetaStorage {
         Log.d(LC, "getEntries query: " + query.getSql());
         if (resultIsMeta) {
             LiveData<List<RoomMetaValue>> entries = metaModel.getMetaViaQuery(query);
-            libraryEntries = Transformations.map(entries, _entries ->
-                    _entries.stream().map(ent -> new LibraryEntry(
-                            new EntryID(
-                                    MusicLibraryService.API_ID_DANCINGBUNNIES,
-                                    ent.value,
-                                    metaType
-                            ),
-                            ent.value
-                    )).collect(Collectors.toList())
-            );
+            libraryEntries = Transformations.map(entries, _entries -> {
+                List<LibraryEntry> list = new ArrayList<>();
+                for (RoomMetaValue v: _entries) {
+                    if (v.value != null) {
+                        list.add(new LibraryEntry(
+                                new EntryID(
+                                        MusicLibraryService.API_ID_DANCINGBUNNIES,
+                                        v.value,
+                                        metaType
+                                ),
+                                v.value
+                        ));
+                    }
+                }
+                return list;
+            });
         } else {
             LiveData<List<RoomMetaSong>> songs = metaModel.getSongsViaQuery(query);
             libraryEntries = Transformations.map(songs, _songs ->

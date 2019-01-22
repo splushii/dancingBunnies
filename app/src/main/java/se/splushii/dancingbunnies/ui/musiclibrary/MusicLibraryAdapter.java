@@ -19,7 +19,9 @@ import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
+import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 
 public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapter.SongViewHolder> {
@@ -39,8 +41,15 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
 
     void setModel(MusicLibraryFragmentModel model) {
         model.getDataSet().observe(fragment.getViewLifecycleOwner(), dataset -> {
-            setDataset(dataset);
             MusicLibraryUserState state = model.getUserState().getValue();
+            if(!state.query.isSearchQuery()
+                    && !Meta.METADATA_KEY_MEDIA_ID.equals(
+                    state.query.toBundle().getString(Meta.METADATA_KEY_TYPE))) {
+                dataset.add(0, AudioPlayerService.generateMediaItem(
+                        new LibraryEntry(EntryID.from(Meta.UNKNOWN_ENTRY), "All entries...")
+                ));
+            }
+            setDataset(dataset);
             layoutManager.scrollToPositionWithOffset(state.pos, state.pad);
         });
     }
@@ -113,7 +122,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         return new SongViewHolder(v);
     }
 
-    void setDataset(List<MediaBrowserCompat.MediaItem> items) {
+    private void setDataset(List<MediaBrowserCompat.MediaItem> items) {
         this.dataset = items;
         notifyDataSetChanged();
     }

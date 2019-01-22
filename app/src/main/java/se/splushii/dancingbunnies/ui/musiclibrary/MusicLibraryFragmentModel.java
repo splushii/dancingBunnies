@@ -79,10 +79,10 @@ public class MusicLibraryFragmentModel extends ViewModel {
 
     void browse(EntryID entryID) {
         MusicLibraryQuery query = new MusicLibraryQuery(getUserState().getValue().query);
-        String displayType = entryID.type.equals(Meta.METADATA_KEY_ARTIST) ?
+        String displayType = Meta.METADATA_KEY_ARTIST.equals(entryID.type) ?
                 Meta.METADATA_KEY_ALBUM : Meta.METADATA_KEY_MEDIA_ID;
         query.addToQuery(Meta.METADATA_KEY_TYPE, displayType);
-        if (entryID.id != null) {
+        if (entryID.id != null && !entryID.isUnknown()) {
             query.addToQuery(entryID.type, entryID.id);
         }
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));

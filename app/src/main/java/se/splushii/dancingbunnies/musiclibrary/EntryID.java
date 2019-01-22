@@ -32,6 +32,16 @@ public class EntryID implements Parcelable {
         type = in.readString();
     }
 
+    public static boolean isUnknown(EntryID entryID) {
+        return Meta.METADATA_VALUE_UNKNOWN_ID.equals(entryID.id)
+                && Meta.METADATA_VALUE_UNKNOWN_SRC.equals(entryID.src)
+                && Meta.METADATA_VALUE_UNKNOWN_TYPE.equals(entryID.type);
+    }
+
+    public boolean isUnknown() {
+        return isUnknown(this);
+    }
+
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(src);

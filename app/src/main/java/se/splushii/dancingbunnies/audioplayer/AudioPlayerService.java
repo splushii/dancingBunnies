@@ -197,7 +197,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         result.sendResult(mediaItems);
     }
 
-    private MediaBrowserCompat.MediaItem generateMediaItem(LibraryEntry entry) {
+    public static MediaBrowserCompat.MediaItem generateMediaItem(LibraryEntry entry) {
         EntryID entryID = entry.entryID;
         Bundle extras = entryID.toBundle();
         MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
