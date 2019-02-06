@@ -1,10 +1,11 @@
 package se.splushii.dancingbunnies.ui.musiclibrary;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.ActionMode;
-import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -46,6 +47,7 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.storage.RoomMetaSong;
 import se.splushii.dancingbunnies.ui.EntryIDDetailsLookup;
+import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryFragment extends AudioBrowserFragment {
@@ -144,37 +146,17 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     }
 
     @Override
-    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-        super.onCreateContextMenu(menu, v, menuInfo);
-        MenuInflater menuInflater = getActivity().getMenuInflater();
-        menuInflater.inflate(R.menu.musiclibrary_item_contextmenu, menu);
-    }
-
-    @Override
-    public boolean onContextItemSelected(MenuItem item) {
-        int menuItemId = item.getItemId();
-        if (menuItemId != R.id.musiclibrary_item_contextmenu_play
-                && menuItemId != R.id.musiclibrary_item_contextmenu_queue) {
-            return false;
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == MetaDialogFragment.REQUEST_CODE) {
+            if (resultCode == Activity.RESULT_OK && data.getExtras() != null) {
+                Bundle b = data.getExtras();
+                for (String key : b.keySet()) {
+                    String value = b.getString(key);
+                    showOnly(key, value);
+                }
+            }
         }
-        int position = recyclerViewAdapter.getContextMenuHolder().getAdapterPosition();
-        EntryID entryID = EntryID.from(recyclerViewAdapter.getItemData(position));
-        Log.d(LC, "info pos: " + position);
-        switch (menuItemId) {
-            case R.id.musiclibrary_item_contextmenu_play:
-                play(entryID);
-                Log.d(LC, "song context play");
-            case R.id.musiclibrary_item_contextmenu_queue:
-                queue(entryID);
-                Log.d(LC, "song context queue");
-        }
-        return true;
-    }
-
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-        registerForContextMenu(recyclerView);
     }
 
     @Override
@@ -334,6 +316,12 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private void filter(String filterType, String filter) {
         model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
         model.filter(filterType, filter);
+    }
+
+    void showOnly(String filterType, String filter) {
+        model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
+        model.showOnly(filterType, filter);
+        model.displayType(Meta.METADATA_KEY_MEDIA_ID);
     }
 
     void browse(EntryID entryID) {

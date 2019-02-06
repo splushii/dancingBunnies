@@ -94,6 +94,12 @@ public class MusicLibraryFragmentModel extends ViewModel {
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 
+    void showOnly(String filterType, String filter) {
+        MusicLibraryQuery query = new MusicLibraryQuery();
+        query.addToQuery(filterType, filter);
+        getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
+    }
+
     void clearFilter(String filterType) {
         MusicLibraryQuery query = new MusicLibraryQuery(getUserState().getValue().query);
         query.removeFromQuery(filterType);

@@ -14,6 +14,9 @@ import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.selection.ItemDetailsLookup;
 import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -23,12 +26,12 @@ import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 
 public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapter.SongViewHolder> {
     private final MusicLibraryFragment fragment;
     private final LinearLayoutManager layoutManager;
     private List<MediaBrowserCompat.MediaItem> dataset;
-    private RecyclerView.ViewHolder contextMenuHolder;
     private View selectedItemView;
     private SelectionTracker<EntryID> selectionTracker;
 
@@ -73,6 +76,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         private final ImageButton overflowMenu;
         private final View moreActions;
         private EntryID entryId;
+        public Meta meta;
 
         private final ItemDetailsLookup.ItemDetails<EntryID> itemDetails = new ItemDetailsLookup.ItemDetails<EntryID>() {
             @Override
@@ -142,11 +146,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         return RecyclerView.NO_POSITION;
     }
 
-
-    RecyclerView.ViewHolder getContextMenuHolder() {
-        return contextMenuHolder;
-    }
-
     @Override
     public void onBindViewHolder(@NonNull final SongViewHolder holder, int position) {
         final MediaBrowserCompat.MediaItem item = dataset.get(position);
@@ -156,8 +155,10 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         final boolean browsable = item.isBrowsable();
         holder.moreActions.setVisibility(View.GONE);
         holder.libraryEntryTitle.setText(title);
-        if (entryID.type.equals(Meta.METADATA_KEY_MEDIA_ID)) {
+        holder.meta = null;
+        if (Meta.METADATA_KEY_MEDIA_ID.equals(entryID.type)) {
             fragment.getSongMeta(entryID).thenAccept(meta -> {
+                holder.meta = meta;
                 String artist = meta.getString(Meta.METADATA_KEY_ARTIST);
                 String album = meta.getString(Meta.METADATA_KEY_ALBUM);
                 holder.libraryEntryArtist.setText(artist);
@@ -204,9 +205,18 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             holder.moreActions.setVisibility(View.GONE);
         });
         holder.overflowMenu.setOnClickListener(v -> {
-            v.setOnCreateContextMenuListener((menu, v1, menuInfo) -> menu.setHeaderTitle(title));
-            contextMenuHolder = holder;
-            v.showContextMenu();
+            FragmentTransaction ft = fragment.getFragmentManager().beginTransaction();
+            Fragment prev = fragment.getFragmentManager().findFragmentByTag(MetaDialogFragment.TAG);
+            if (prev != null) {
+                ft.remove(prev);
+            }
+            ft.addToBackStack(null);
+            DialogFragment dialogFragment = new MetaDialogFragment();
+            dialogFragment.setTargetFragment(fragment, MetaDialogFragment.REQUEST_CODE);
+            if (holder.meta != null) {
+                dialogFragment.setArguments(holder.meta.getBundle());
+            }
+            dialogFragment.show(ft, MetaDialogFragment.TAG);
         });
     }
 

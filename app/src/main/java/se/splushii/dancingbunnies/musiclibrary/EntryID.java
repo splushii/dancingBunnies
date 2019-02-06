@@ -15,7 +15,6 @@ import org.apache.lucene.document.Document;
 import se.splushii.dancingbunnies.search.Indexer;
 
 public class EntryID implements Parcelable {
-    static final EntryID UnknownEntryID = EntryID.from(Meta.UNKNOWN_ENTRY);
     public final String src;
     public final String id;
     public final String type;
