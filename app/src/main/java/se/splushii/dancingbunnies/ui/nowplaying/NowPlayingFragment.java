@@ -175,7 +175,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
-                    positionText.setText(getDurationString(progress));
+                    positionText.setText(Util.getDurationString(progress));
                 }
             }
 
@@ -401,28 +401,17 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         }
         if (pos > seekBar.getMax()) {
             seekBar.setProgress(seekBar.getMax());
-            positionText.setText(getDurationString(seekBar.getMax()));
+            positionText.setText(Util.getDurationString(seekBar.getMax()));
             stopProgressUpdate();
         }
         seekBar.setProgress((int) pos);
-        positionText.setText(getDurationString(pos));
-    }
-
-    private String getDurationString(long milliseconds) {
-        int seconds = (int) (milliseconds / 1000);
-        int hours = seconds / 3600;
-        int minutes = (seconds % 3600) / 60;
-        seconds %= 60;
-        if (hours > 0) {
-            return String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds);
-        }
-        return String.format(Locale.getDefault(), "%d:%02d", minutes, seconds);
+        positionText.setText(Util.getDurationString(pos));
     }
 
     private void updateDuration(Meta metadata) {
         int duration = (int) metadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
         seekBar.setMax(duration);
-        durationText.setText(getDurationString(duration));
+        durationText.setText(Util.getDurationString(duration));
     }
 
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();

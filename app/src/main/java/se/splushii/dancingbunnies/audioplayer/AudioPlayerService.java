@@ -117,6 +117,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            playbackController.onDestroy();
+            playbackController = null;
             musicLibraryService = null;
             Log.d(LC, "Disconnected from MusicLibraryService");
         }
@@ -283,6 +285,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public void onDestroy() {
         Log.d(LC, "onDestroy");
         playbackController.onDestroy();
+        playbackController = null;
         unbindService(serviceConnection);
         musicLibraryService = null;
         mediaSession.release();

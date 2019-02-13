@@ -178,6 +178,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         LinearLayoutManager recViewLayoutManager =
                 new LinearLayoutManager(this.getContext());
         recyclerView.setLayoutManager(recViewLayoutManager);
+        recyclerView.getRecycledViewPool().setMaxRecycledViews(0, 50);
         recyclerViewAdapter = new MusicLibraryAdapter(this, recViewLayoutManager);
         recyclerView.setAdapter(recyclerViewAdapter);
 

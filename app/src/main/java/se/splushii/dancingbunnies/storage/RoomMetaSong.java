@@ -126,7 +126,6 @@ public class RoomMetaSong {
     @ColumnInfo(name = COLUMN_BITRATE)
     long bitrate;
 
-
     public Meta getMeta() {
         Bundle b = new Bundle();
         b.putString(Meta.METADATA_KEY_API, api);

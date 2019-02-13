@@ -1,5 +1,7 @@
 package se.splushii.dancingbunnies.ui.musiclibrary;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.support.v4.media.MediaBrowserCompat;
 import android.util.Pair;
 import android.view.LayoutInflater;
@@ -32,7 +34,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     private final MusicLibraryFragment fragment;
     private final LinearLayoutManager layoutManager;
     private List<MediaBrowserCompat.MediaItem> dataset;
-    private View selectedItemView;
+    private SongViewHolder selectedHolder;
     private SelectionTracker<EntryID> selectionTracker;
 
     MusicLibraryAdapter(MusicLibraryFragment fragment,
@@ -63,6 +65,15 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
 
     void setSelectionTracker(SelectionTracker<EntryID> selectionTracker) {
         this.selectionTracker = selectionTracker;
+        selectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
+            @Override
+            public void onSelectionChanged() {
+                if (selectionTracker.hasSelection() && selectedHolder != null) {
+                    selectedHolder.animateMoreActions(false);
+                    selectedHolder = null;
+                }
+            }
+        });
     }
 
     public static class SongViewHolder extends RecyclerView.ViewHolder {
@@ -115,6 +126,35 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         EntryID getEntryId() {
             return entryId;
         }
+
+        void animateMoreActions(boolean show) {
+            if (show) {
+                moreActions.animate()
+                        .translationX(0)
+                        .setDuration(300)
+                        .alpha(1)
+                        .setListener(new AnimatorListenerAdapter() {
+                            @Override
+                            public void onAnimationStart(Animator animation) {
+                                moreActions.setVisibility(View.VISIBLE);
+                            }
+                        })
+                        .start();
+            } else {
+                moreActions.animate()
+                        .translationX(moreActions.getWidth())
+                        .alpha(0)
+                        .setDuration(300)
+                        .setListener(new AnimatorListenerAdapter() {
+                            @Override
+                            public void onAnimationEnd(Animator animation) {
+                                moreActions.setVisibility(View.INVISIBLE);
+                            }
+                        })
+                        .start();
+            }
+        }
+
     }
 
     @NonNull
@@ -153,7 +193,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         EntryID entryID = EntryID.from(item);
         holder.setEntryId(entryID);
         final boolean browsable = item.isBrowsable();
-        holder.moreActions.setVisibility(View.GONE);
+        holder.moreActions.setVisibility(View.INVISIBLE);
+        holder.moreActions.setTranslationX(holder.moreActions.getWidth());
+        holder.moreActions.setAlpha(0);
         holder.libraryEntryTitle.setText(title);
         holder.meta = null;
         if (Meta.METADATA_KEY_MEDIA_ID.equals(entryID.type)) {
@@ -182,29 +224,30 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             if (browsable) {
                 fragment.browse(entryID);
             } else {
-                if (selectedItemView != null && selectedItemView != holder.moreActions) {
-                    selectedItemView.setVisibility(View.GONE);
+                if (selectedHolder != null && selectedHolder != holder) {
+                    selectedHolder.animateMoreActions(false);
+                    selectedHolder = null;
                 }
-                holder.moreActions.setVisibility(selectionTracker.hasSelection() ? View.GONE :
-                        holder.moreActions.getVisibility() == View.VISIBLE ?
-                                View.GONE : View.VISIBLE
-                );
-                selectedItemView = holder.moreActions;
+                boolean show = !selectionTracker.hasSelection()
+                        && holder.moreActions.getVisibility() != View.VISIBLE;
+                holder.animateMoreActions(show);
+                selectedHolder = holder;
             }
         });
         holder.playAction.setOnClickListener(v -> {
             fragment.play(entryID);
-            holder.moreActions.setVisibility(View.GONE);
+            holder.animateMoreActions(false);
         });
         holder.queueAction.setOnClickListener(v -> {
             fragment.queue(entryID);
-            holder.moreActions.setVisibility(View.GONE);
+            holder.animateMoreActions(false);
         });
         holder.addToPlaylistAction.setOnClickListener(v -> {
             fragment.addToPlaylist(Collections.singletonList(entryID));
-            holder.moreActions.setVisibility(View.GONE);
+            holder.animateMoreActions(false);
         });
         holder.overflowMenu.setOnClickListener(v -> {
+            holder.animateMoreActions(false);
             FragmentTransaction ft = fragment.getFragmentManager().beginTransaction();
             Fragment prev = fragment.getFragmentManager().findFragmentByTag(MetaDialogFragment.TAG);
             if (prev != null) {

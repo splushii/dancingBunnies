@@ -13,6 +13,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import androidx.annotation.NonNull;
@@ -30,6 +32,21 @@ public class MetaDialogFragment extends DialogFragment {
     public static final String TAG = "dancingbunnies.splushii.se.meta_dialog_tag";
 
     private Meta meta = Meta.UNKNOWN_ENTRY;
+    private List<String> metaOrder = Arrays.asList(
+            Meta.METADATA_KEY_TITLE,
+            Meta.METADATA_KEY_ALBUM,
+            Meta.METADATA_KEY_ARTIST,
+            Meta.METADATA_KEY_YEAR,
+            Meta.METADATA_KEY_GENRE,
+            Meta.METADATA_KEY_DURATION,
+            Meta.METADATA_KEY_TRACK_NUMBER,
+            Meta.METADATA_KEY_DISC_NUMBER,
+            Meta.METADATA_KEY_CONTENT_TYPE,
+            Meta.METADATA_KEY_BITRATE,
+            Meta.METADATA_KEY_API,
+            Meta.METADATA_KEY_MEDIA_ROOT,
+            Meta.METADATA_KEY_MEDIA_ID
+    );
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -65,8 +82,23 @@ public class MetaDialogFragment extends DialogFragment {
                     Log.e(LC, "Unhandled key type: " + key);
             }
         }
+        Collections.sort(data, (left, right) -> {
+            for (String key : metaOrder) {
+                if (key.equals(left.first)) {
+                    return -1;
+                }
+                if (key.equals(right.first)) {
+                    return 1;
+                }
+            }
+            return 1;
+        });
         MetaDialogListAdapter adapter = new MetaDialogListAdapter(requireContext(), data);
         listView.setAdapter(adapter);
+        listView.setOnItemClickListener((parent, view, position, id) -> {
+            Pair<String, String> metaItem = adapter.getItem(position);
+            sendResult(metaItem.first, metaItem.second);
+        });
         return v;
     }
 
@@ -86,18 +118,25 @@ public class MetaDialogFragment extends DialogFragment {
         @NonNull
         @Override
         public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
-            Pair<String, String> metaItem = getItem(position);
             if (convertView == null) {
                 convertView = LayoutInflater.from(getContext())
                         .inflate(R.layout.meta_dialog_list_item, parent, false);
             }
+            Pair<String, String> metaItem = getItem(position);
             String key = metaItem.first;
             String value = metaItem.second;
             TextView keyTextView = convertView.findViewById(R.id.meta_dialog_list_key);
             TextView valueTextView = convertView.findViewById(R.id.meta_dialog_list_value);
             keyTextView.setText(Meta.getHumanReadable(key));
-            valueTextView.setText(value);
-            convertView.setOnClickListener(v -> sendResult(key, value));
+            String displayValue = value;
+            switch (key) {
+                case Meta.METADATA_KEY_DURATION:
+                    displayValue = Util.getDurationString(Long.parseLong(value));
+                    break;
+                default:
+                    break;
+            }
+            valueTextView.setText(displayValue);
             return convertView;
         }
     }
