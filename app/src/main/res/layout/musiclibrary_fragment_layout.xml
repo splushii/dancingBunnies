@@ -4,16 +4,48 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
     <LinearLayout
-        android:id="@+id/musiclibrary_filter"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical">
         <LinearLayout
+            android:id="@+id/musiclibrary_filter"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:elevation="4dp"
             android:background="@color/grey100"
             android:orientation="vertical">
+            <LinearLayout
+                android:id="@+id/musiclibrary_search"
+                android:visibility="gone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:textSize="16sp"
+                    android:text="@string/search"
+                    android:textColor="@color/white"
+                    android:textStyle="bold"
+                    android:background="@color/colorAccent"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"/>
+                <TextView
+                    android:id="@+id/musiclibrary_search_query"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/bluegrey900"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="2dp"/>
+            </LinearLayout>
             <com.google.android.material.chip.ChipGroup
                 android:id="@+id/musiclibrary_filter_chips"
                 android:layout_width="match_parent"

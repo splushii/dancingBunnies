@@ -131,7 +131,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             if (show) {
                 moreActions.animate()
                         .translationX(0)
-                        .setDuration(300)
+                        .setDuration(200)
                         .alpha(1)
                         .setListener(new AnimatorListenerAdapter() {
                             @Override
@@ -144,7 +144,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 moreActions.animate()
                         .translationX(moreActions.getWidth())
                         .alpha(0)
-                        .setDuration(300)
+                        .setDuration(200)
                         .setListener(new AnimatorListenerAdapter() {
                             @Override
                             public void onAnimationEnd(Animator animation) {
@@ -226,12 +226,11 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             } else {
                 if (selectedHolder != null && selectedHolder != holder) {
                     selectedHolder.animateMoreActions(false);
-                    selectedHolder = null;
                 }
+                selectedHolder = holder;
                 boolean show = !selectionTracker.hasSelection()
                         && holder.moreActions.getVisibility() != View.VISIBLE;
                 holder.animateMoreActions(show);
-                selectedHolder = holder;
             }
         });
         holder.playAction.setOnClickListener(v -> {
@@ -247,7 +246,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             holder.animateMoreActions(false);
         });
         holder.overflowMenu.setOnClickListener(v -> {
-            holder.animateMoreActions(false);
+//            holder.animateMoreActions(false);
             FragmentTransaction ft = fragment.getFragmentManager().beginTransaction();
             Fragment prev = fragment.getFragmentManager().findFragmentByTag(MetaDialogFragment.TAG);
             if (prev != null) {

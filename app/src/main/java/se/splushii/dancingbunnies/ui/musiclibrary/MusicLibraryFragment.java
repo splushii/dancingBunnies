@@ -61,6 +61,9 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private FastScroller fastScroller;
     private FastScrollerBubble fastScrollerBubble;
 
+    private View searchInfo;
+    private TextView searchText;
+
     private ChipGroup filterChips;
 
     private View entryTypeSelect;
@@ -105,11 +108,15 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
 
     private void refreshView(final MusicLibraryUserState newUserState) {
         Log.d(LC, "refreshView");
+        searchInfo.setVisibility(View.GONE);
         entryTypeSelect.setVisibility(View.GONE);
         filterEdit.setVisibility(View.GONE);
         filterNew.setVisibility(View.GONE);
         clearFilterView();
-        if (!newUserState.query.isSearchQuery()) {
+        if (newUserState.query.isSearchQuery()) {
+            searchText.setText(newUserState.query.getSearchQuery());
+            searchInfo.setVisibility(View.VISIBLE);
+        } else {
             Chip chip = new Chip(requireContext());
             chip.setChipIconResource(R.drawable.ic_add_black_24dp);
             chip.setTextStartPadding(0.0f);
@@ -223,6 +230,9 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         fastScroller.setRecyclerView(recyclerView);
         fastScrollerBubble = rootView.findViewById(R.id.musiclibrary_fastscroller_bubble);
         fastScroller.setBubble(fastScrollerBubble);
+
+        searchInfo = rootView.findViewById(R.id.musiclibrary_search);
+        searchText = rootView.findViewById(R.id.musiclibrary_search_query);
 
         entryTypeSelect = rootView.findViewById(R.id.musiclibrary_entry_type);
         entryTypeSelectSpinner = rootView.findViewById(R.id.musiclibrary_entry_type_spinner);

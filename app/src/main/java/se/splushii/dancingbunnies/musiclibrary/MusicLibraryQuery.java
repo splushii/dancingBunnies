@@ -73,6 +73,10 @@ public class MusicLibraryQuery {
         return !isSubscription();
     }
 
+    public String getSearchQuery() {
+        return searchQuery;
+    }
+
     private String subscriptionID() {
         return subQuery.toString();
     }
