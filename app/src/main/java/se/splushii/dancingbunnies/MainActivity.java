@@ -111,6 +111,7 @@ public final class MainActivity extends AppCompatActivity {
             @Override
             public boolean onQueryTextSubmit(String query) {
                 searchView.clearFocus();
+                searchMenuItem.collapseActionView();
                 return false;
             }
 

@@ -114,9 +114,11 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         filterNew.setVisibility(View.GONE);
         clearFilterView();
         if (newUserState.query.isSearchQuery()) {
+            fastScroller.enableBubble(false);
             searchText.setText(newUserState.query.getSearchQuery());
             searchInfo.setVisibility(View.VISIBLE);
         } else {
+            fastScroller.enableBubble(true);
             Chip chip = new Chip(requireContext());
             chip.setChipIconResource(R.drawable.ic_add_black_24dp);
             chip.setTextStartPadding(0.0f);

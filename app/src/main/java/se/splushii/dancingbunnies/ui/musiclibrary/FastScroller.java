@@ -33,6 +33,7 @@ public class FastScroller extends LinearLayout {
     private static final String ALPHA = "alpha";
     private boolean touching = false;
     private float handleOffset = 0f;
+    private boolean bubbleEnabled = true;
 
     public FastScroller(Context context) {
         super(context);
@@ -69,6 +70,13 @@ public class FastScroller extends LinearLayout {
     public void onDestroy() {
         recyclerView.removeOnScrollListener(scrollListener);
         scrollListener = null;
+    }
+
+    public void enableBubble(boolean enabled) {
+        bubbleEnabled = enabled;
+        if (!enabled) {
+            animateHide(bubbleHider, VIEW_HIDE_DELAY);
+        }
     }
 
     private enum AnimationType {
@@ -218,7 +226,7 @@ public class FastScroller extends LinearLayout {
             touching = true;
             setPosition(event.getY());
             animateShow(handle, handleHider, AnimationType.FADE);
-            if (bubble != null) {
+            if (bubble != null && bubbleEnabled) {
                 animateShow(bubble, bubbleHider, AnimationType.SCALE);
             }
             setRecyclerViewPosition();
