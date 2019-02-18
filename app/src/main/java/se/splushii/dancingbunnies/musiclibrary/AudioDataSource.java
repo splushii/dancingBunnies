@@ -16,6 +16,8 @@ import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.util.Util;
@@ -28,6 +30,7 @@ public class AudioDataSource extends MediaDataSource {
     private final String url;
     private final EntryID entryID;
     private final File cacheFile;
+    private final File cachePartFile;
     private volatile boolean isDownloading = false;
     private volatile boolean isFinished = false;
     private Thread downloadThread;
@@ -36,6 +39,7 @@ public class AudioDataSource extends MediaDataSource {
         this.url = url;
         this.entryID = entryID;
         this.cacheFile = AudioStorage.getCacheFile(context, entryID);
+        this.cachePartFile = new File(cacheFile + ".part");
     }
 
     public void fetch(final Handler handler) {
@@ -73,7 +77,9 @@ public class AudioDataSource extends MediaDataSource {
                 downloadThread = new Thread(() -> {
                     handler.onDownloading();
                     try {
-                        BufferedOutputStream outputStream = new BufferedOutputStream(getCacheFileOutputStream());
+                        BufferedOutputStream outputStream = new BufferedOutputStream(
+                                getCachePartFileOutputStream()
+                        );
                         InputStream in = new BufferedInputStream(connection.getInputStream());
                         long contentLength = connection.getContentLengthLong();
                         int b = in.read();
@@ -91,6 +97,11 @@ public class AudioDataSource extends MediaDataSource {
                         connection.disconnect();
                         outputStream.flush();
                         outputStream.close();
+                        Files.move(
+                                cachePartFile.toPath(),
+                                cacheFile.toPath(),
+                                StandardCopyOption.REPLACE_EXISTING
+                        );
                         isFinished = true;
                         Log.d(LC, "entryID " + entryID + " " + cacheFile.length()
                                 + " bytes downloaded to " + cacheFile.getAbsolutePath());
@@ -130,8 +141,8 @@ public class AudioDataSource extends MediaDataSource {
         }).start();
     }
 
-    private FileOutputStream getCacheFileOutputStream() throws CacheFileException {
-        File parentDir = cacheFile.getParentFile();
+    private FileOutputStream getCachePartFileOutputStream() throws CacheFileException {
+        File parentDir = cachePartFile.getParentFile();
         if (!parentDir.isDirectory()) {
             if (!parentDir.mkdirs()) {
                 throw new CacheFileException("Could not create cache file parent directory: "
@@ -139,25 +150,26 @@ public class AudioDataSource extends MediaDataSource {
             }
         }
         try {
-            if (cacheFile.exists()) {
-                if (!cacheFile.isFile() && !cacheFile.delete()) {
-                    throw new CacheFileException("Cache file path already exists. Not a file. "
-                            + "Can not delete: " + cacheFile.getAbsolutePath());
+            if (cachePartFile.exists()) {
+                if (!cachePartFile.isFile() && !cachePartFile.delete()) {
+                    throw new CacheFileException("Cache part file path already exists. Not a file. "
+                            + "Can not delete: " + cachePartFile.getAbsolutePath());
                 }
             } else {
-                if (!cacheFile.createNewFile()) {
-                    throw new CacheFileException("Could not create cache file: "
-                            + cacheFile.getAbsolutePath());
+                if (!cachePartFile.createNewFile()) {
+                    throw new CacheFileException("Could not create cache part file: "
+                            + cachePartFile.getAbsolutePath());
                 }
             }
         } catch (IOException e) {
-            throw new CacheFileException("Could not create cache file: " + cacheFile
+            throw new CacheFileException("Could not create cache part file: " + cachePartFile
                     + ": " + e.getMessage());
         }
         try {
-            return new FileOutputStream(cacheFile);
+            return new FileOutputStream(cachePartFile);
         } catch (FileNotFoundException e) {
-            throw new CacheFileException("Could not create fileOutputStream: " + e.getMessage());
+            throw new CacheFileException("Could not create fileOutputStream from cache part file: "
+                    + e.getMessage());
         }
     }
 
