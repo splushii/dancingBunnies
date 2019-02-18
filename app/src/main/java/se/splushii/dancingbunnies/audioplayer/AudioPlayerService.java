@@ -33,6 +33,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -480,10 +482,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private PlaybackEntry createPlaybackEntry(EntryID entryID, String playbackType) {
-        if (!Meta.METADATA_KEY_MEDIA_ID.equals(entryID.type)) {
-            // TODO: implement
-            Log.e(LC, "Non-track entry. Unhandled! Beware!");
-        }
         Meta meta = musicLibraryService.getSongMetaData(entryID);
         return new PlaybackEntry(meta, playbackType);
     }
@@ -658,7 +656,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     break;
                 case COMMAND_GET_PLAYLIST_ENTRIES:
                     PlaylistID playlistID = PlaylistID.from(extras);
-                    List<LibraryEntry> playlistEntries = musicLibraryService.getPlaylistEntries(playlistID);
+                    List<LibraryEntry> playlistEntries =
+                            musicLibraryService.getPlaylistEntries(playlistID);
                     cb.send(0, putPlaylistEntries(new ArrayList<>(playlistEntries)));
                     break;
                 case COMMAND_ADD_TO_PLAYLIST:
@@ -728,21 +727,58 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private void queue(ResultReceiver cb, Bundle b) {
         ArrayList<EntryID> entryIDs = b.getParcelableArrayList("entryids");
         int toPosition = b.getInt("toPosition");
-        if (entryIDs == null) {
+        if (entryIDs == null || entryIDs.isEmpty()) {
             cb.send(-1, null);
             return;
         }
-        List<PlaybackEntry> playbackEntries = new LinkedList<>();
+        List<CompletableFuture<List<EntryID>>> futureEntryLists = new ArrayList<>();
+        Log.d(LC, "queue() adding " + entryIDs.size() + " entryIDs");
         for (EntryID entryID: entryIDs) {
-            playbackEntries.add(createPlaybackEntry(entryID, PlaybackEntry.USER_TYPE_QUEUE));
+            CompletableFuture<List<EntryID>> songEntries;
+            if (!Meta.METADATA_KEY_MEDIA_ID.equals(entryID.type)) {
+                Log.d(LC, "queue() adding all entries for: " + entryID.toString());
+                songEntries = musicLibraryService.getSongEntries(entryID);
+            } else {
+                Log.d(LC, "queue() adding: " + entryID.toString());
+                songEntries = CompletableFuture.supplyAsync(() ->
+                        Collections.singletonList(entryID)
+                );
+            }
+            futureEntryLists.add(songEntries);
         }
-        playbackController.queue(playbackEntries, toPosition).handle((r, t) -> {
-            cb.send(t == null ? 0 : 1, null);
-            return handleControllerResult(r, t);
-        });
+        CompletableFuture.allOf(futureEntryLists.toArray(new CompletableFuture[0]))
+                .thenComposeAsync(aVoid -> {
+                    List<EntryID> entryIDList = futureEntryLists.stream()
+                            .map(futureEntryList -> {
+                                try {
+                                    return futureEntryList.get();
+                                } catch (ExecutionException e) {
+                                    e.printStackTrace();
+                                } catch (InterruptedException e) {
+                                    e.printStackTrace();
+                                }
+                                return Collections.<EntryID>emptyList();
+                            })
+                            .flatMap(List::stream)
+                            .collect(Collectors.toList());
+                    List<PlaybackEntry> playbackEntries = new LinkedList<>();
+                    for (EntryID entryID: entryIDList) {
+                        playbackEntries.add(
+                                createPlaybackEntry(entryID, PlaybackEntry.USER_TYPE_QUEUE)
+                        );
+                    }
+                    Log.d(LC, "queue() total song entries: " + playbackEntries.size());
+                    return playbackController.queue(playbackEntries, toPosition);
+                }, Util.getMainThreadExecutor())
+                .handle((r, t) -> {
+                    handleControllerResult(r, t);
+                    cb.send(t == null ? 0 : 1, null);
+                    return r;
+                });
     }
 
-    public static CompletableFuture<Boolean> dequeue(MediaControllerCompat mediaController, List<Long> positionList) {
+    public static CompletableFuture<Boolean> dequeue(MediaControllerCompat mediaController,
+                                                     List<Long> positionList) {
         Bundle params = new Bundle();
         params.putLongArray("positionList", positionList.stream().mapToLong(l -> l).toArray());
         CompletableFuture<Boolean> future = new CompletableFuture<>();

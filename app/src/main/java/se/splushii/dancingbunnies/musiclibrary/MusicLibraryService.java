@@ -19,6 +19,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
@@ -259,6 +260,10 @@ public class MusicLibraryService extends Service {
 
     public LiveData<List<LibraryEntry>> getSubscriptionEntries(MusicLibraryQuery q) {
         return metaStorage.getEntries(q.subQuery());
+    }
+
+    public CompletableFuture<List<EntryID>> getSongEntries(EntryID entryID) {
+        return metaStorage.getEntries(entryID);
     }
 
     public List<LibraryEntry> getSearchEntries(String query) {

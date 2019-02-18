@@ -6,6 +6,7 @@ import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import androidx.lifecycle.LiveData;
@@ -105,6 +106,24 @@ public class MetaStorage {
         return libraryEntries;
     }
 
+    public CompletableFuture<List<EntryID>> getEntries(EntryID entryID) {
+        String metaType = Meta.METADATA_KEY_MEDIA_ID;
+        Bundle bundleQuery = new Bundle();
+        bundleQuery.putString(entryID.type, entryID.id);
+        SupportSQLiteQuery query = getSongSelectQuery(bundleQuery);
+        return CompletableFuture.supplyAsync(() ->
+            metaModel.getSongsViaQuerySync(query)
+                    .stream()
+                    .map(roomMetaSong ->
+                            new EntryID(
+                                    roomMetaSong.api,
+                                    roomMetaSong.id,
+                                    metaType
+                            ))
+                    .collect(Collectors.toList())
+        );
+    }
+
     private SupportSQLiteQuery getEntriesSelectQuery(Bundle bundleQuery) {
         if (bundleQuery == null || bundleQuery.isEmpty()) {
             return new SimpleSQLiteQuery("SELECT "
@@ -127,7 +146,7 @@ public class MetaStorage {
         for (String key: bundleQuery.keySet()) {
             String columnName = RoomMetaSong.columnName(key);
             if (columnName == null) {
-                if (!Meta.METADATA_KEY_TYPE.equals(key)) {
+                if (!Meta.METADATA_KEY_TYPE.equals(key)) { // Only print when not METADATA_KEY_TYPE
                     Log.e(LC, "getSongSelectQuery:"
                             + " there is no column in \"" + RoomDB.TABLE_SONGS + "\""
                             + " for bundleQuery key \"" + key + "\"");

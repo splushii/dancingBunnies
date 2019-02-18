@@ -1,5 +1,7 @@
 package se.splushii.dancingbunnies.util;
 
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import java.io.UnsupportedEncodingException;
@@ -9,6 +11,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 public class Util {
     private static final String LC = getLogContext(Util.class);
@@ -82,4 +85,17 @@ public class Util {
         }
         return String.format(Locale.getDefault(), "%d:%02d", minutes, seconds);
     }
+
+    public static Executor getMainThreadExecutor() {
+        return mainThreadExecutor;
+    }
+
+    private static Executor mainThreadExecutor = new Executor() {
+        private final Handler handler = new Handler(Looper.getMainLooper());
+
+        @Override
+        public void execute(Runnable r) {
+            handler.post(r);
+        }
+    };
 }
