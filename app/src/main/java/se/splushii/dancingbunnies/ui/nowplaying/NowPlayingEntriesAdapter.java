@@ -279,21 +279,7 @@ public class NowPlayingEntriesAdapter
         }
 
         void setFetchState(AudioStorage.AudioDataFetchState state) {
-            String txt;
-            switch (state.getState()) {
-                default:
-                case AudioStorage.AudioDataFetchState.IDLE:
-                case AudioStorage.AudioDataFetchState.SUCCESS:
-                    txt = "";
-                    break;
-                case AudioStorage.AudioDataFetchState.DOWNLOADING:
-                    txt = state.getProgress();
-                    break;
-                case AudioStorage.AudioDataFetchState.FAILURE:
-                    txt = "dl failed";
-                    break;
-            }
-            fetchStatusText = txt;
+            fetchStatusText = state.getStatusMsg();
             setCacheStatusText();
         }
 

@@ -740,9 +740,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 songEntries = musicLibraryService.getSongEntries(entryID);
             } else {
                 Log.d(LC, "queue() adding: " + entryID.toString());
-                songEntries = CompletableFuture.supplyAsync(() ->
-                        Collections.singletonList(entryID)
-                );
+                songEntries = CompletableFuture.completedFuture(Collections.singletonList(entryID));
             }
             futureEntryLists.add(songEntries);
         }

@@ -46,6 +46,7 @@ import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.util.Util;
 
 public class NowPlayingFragment extends AudioBrowserFragment {
@@ -64,7 +65,8 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private TextView durationText;
     private TextView mediaInfoText;
     private TextView bufferingText;
-    private Meta currentMeta;
+    private TextView sizeText;
+    private Meta currentMeta = Meta.UNKNOWN_ENTRY;
 
     private final NowPlayingEntriesAdapter recViewAdapter;
     private RecyclerView recView;
@@ -72,7 +74,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private NowPlayingSelectionPredicate nowPlayingSelectionPredicate;
     private ActionMode actionMode;
     private ItemTouchHelper itemTouchHelper;
-    private NowPlayingFragmentModel model;
 
     public NowPlayingFragment() {
         recViewAdapter = new NowPlayingEntriesAdapter(this);
@@ -195,6 +196,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         durationText = rootView.findViewById(R.id.nowplaying_duration);
         mediaInfoText = rootView.findViewById(R.id.nowplaying_media_info);
         bufferingText = rootView.findViewById(R.id.nowplaying_buffering);
+        sizeText = rootView.findViewById(R.id.nowplaying_size);
         return rootView;
     }
 
@@ -209,7 +211,22 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         Log.d(LC, "onActivityCreated");
         super.onActivityCreated(savedInstanceState);
-        model = ViewModelProviders.of(getActivity()).get(NowPlayingFragmentModel.class);
+        NowPlayingFragmentModel model = ViewModelProviders.of(requireActivity()).get(NowPlayingFragmentModel.class);
+        model.getFetchState(requireContext()).observe(getViewLifecycleOwner(), audioDataFetchStates -> {
+            boolean showSize = false;
+            for (AudioStorage.AudioDataFetchState state: audioDataFetchStates) {
+                if (EntryID.from(currentMeta).equals(state.entryID)) {
+                    sizeText.setText(state.getStatusMsg());
+                    showSize = true;
+                    break;
+                }
+            }
+            if (!showSize && currentMeta.getBundle().containsKey(Meta.METADATA_KEY_FILE_SIZE)) {
+                sizeText.setText(currentMeta.getString(Meta.METADATA_KEY_FILE_SIZE));
+                showSize = true;
+            }
+            sizeText.setVisibility(showSize ? View.VISIBLE : View.INVISIBLE);
+        });
         recViewAdapter.setModel(model);
     }
 
@@ -330,13 +347,17 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     @Override
     protected void onMetadataChanged(Meta metadata) {
         currentMeta = metadata;
-        updateDescription(metadata);
-        updateDuration(metadata);
+        updateMeta(metadata);
         updateProgress();
     }
 
+    private void updateMeta(Meta meta) {
+        updateDescription(meta);
+        updateMediaInfo(meta);
+        updateDuration(meta);
+    }
+
     private void updateDescription(Meta metadata) {
-        updateMediaInfo(metadata);
         String title = metadata.getString(Meta.METADATA_KEY_TITLE);
         String album = metadata.getString(Meta.METADATA_KEY_ALBUM);
         String artist = metadata.getString(Meta.METADATA_KEY_ARTIST);
@@ -360,6 +381,13 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     private void updateMediaInfo(Meta metadata) {
+        String size = metadata.getString(Meta.METADATA_KEY_FILE_SIZE);
+        if (size != null) {
+            sizeText.setText(size);
+            sizeText.setVisibility(View.VISIBLE);
+        } else {
+            sizeText.setVisibility(View.INVISIBLE);
+        }
         String contentType = metadata.getString(Meta.METADATA_KEY_CONTENT_TYPE);
         String suffix = metadata.getString(Meta.METADATA_KEY_FILE_SUFFIX);
         long bitrate = metadata.getLong(Meta.METADATA_KEY_BITRATE);
@@ -383,8 +411,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         MediaMetadataCompat mediaMetadataCompat = mediaController.getMetadata();
         if (mediaMetadataCompat != null) {
             Meta meta = new Meta(mediaMetadataCompat);
-            updateDescription(meta);
-            updateDuration(meta);
+            updateMeta(meta);
         }
         updateProgress();
         if (playbackState.getState() == PlaybackStateCompat.STATE_PLAYING) {

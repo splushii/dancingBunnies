@@ -173,10 +173,10 @@ public class AudioStorage {
     }
 
     public class AudioDataFetchState {
-        public static final String IDLE = "idle";
-        public static final String DOWNLOADING = "downloading";
-        public static final String SUCCESS = "success";
-        public static final String FAILURE = "failure";
+        static final String IDLE = "idle";
+        static final String DOWNLOADING = "downloading";
+        static final String SUCCESS = "success";
+        static final String FAILURE = "failure";
         public final EntryID entryID;
         private String state;
         private long bytesFetched;
@@ -193,16 +193,34 @@ public class AudioStorage {
             this.state = state;
         }
 
-        public void setProgress(long bytesFetched, long bytesTotal) {
+        void setProgress(long bytesFetched, long bytesTotal) {
             this.bytesFetched = bytesFetched;
             this.bytesTotal = bytesTotal;
         }
 
-        public String getProgress() {
+        String getProgress() {
             String fetched = String.format(Locale.getDefault(), "%.1f", bytesFetched / 1000_000d);
             String total = bytesTotal > 0 ?
                     String.format(Locale.getDefault(), "%.1f", bytesTotal / 1000_000d) : "?";
             return fetched + "/" + total + "MB";
+        }
+
+        public String getStatusMsg() {
+            String msg;
+            switch (getState()) {
+                default:
+                case AudioStorage.AudioDataFetchState.IDLE:
+                case AudioStorage.AudioDataFetchState.SUCCESS:
+                    msg = "";
+                    break;
+                case AudioStorage.AudioDataFetchState.DOWNLOADING:
+                    msg = getProgress();
+                    break;
+                case AudioStorage.AudioDataFetchState.FAILURE:
+                    msg = "dl failed";
+                    break;
+            }
+            return msg;
         }
 
         @NonNull
@@ -239,8 +257,10 @@ public class AudioStorage {
     }
 
     private void updateFetchState() {
-        fetchState.postValue(fetchStateMap.entrySet().stream()
-                .map(Map.Entry::getValue).collect(Collectors.toList())
-        );
+        synchronized (fetchStateMap) {
+            fetchState.postValue(fetchStateMap.entrySet().stream()
+                    .map(Map.Entry::getValue).collect(Collectors.toList())
+            );
+        }
     }
 }
