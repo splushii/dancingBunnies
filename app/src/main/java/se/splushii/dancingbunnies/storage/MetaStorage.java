@@ -155,7 +155,12 @@ public class MetaStorage {
             }
             switch (Meta.getType(key)) {
                 case LONG:
-                    args.add(bundleQuery.getLong(key));
+                    String value = bundleQuery.getString(key);
+                    if (value == null) {
+                        Log.e(LC, "LONG value in bundle is null for key: " + key);
+                        break;
+                    }
+                    args.add(Long.parseLong(value));
                     break;
                 case STRING:
                     args.add(bundleQuery.getString(key));
