@@ -643,6 +643,9 @@ class PlaybackController {
     }
 
     private void onCastDisconnect() {
+        if (!(audioPlayer instanceof CastAudioPlayer)) {
+            return;
+        }
         AudioPlayer.AudioPlayerState lastState = audioPlayer.getLastState();
         printState("onCastDisconnect", lastState);
         audioPlayer = new LocalAudioPlayer(
@@ -693,6 +696,7 @@ class PlaybackController {
         @Override
         public void onSessionEnded(Session session, int i) {
             Log.d(LC, "CastSession ended");
+            onCastDisconnect();
         }
 
         @Override
