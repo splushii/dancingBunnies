@@ -753,6 +753,10 @@ public class CastAudioPlayer implements AudioPlayer {
                 case MediaStatus.PLAYER_STATE_IDLE:
                     switch (idleReason) {
                         case MediaStatus.IDLE_REASON_FINISHED:
+                            if (getNumPreloaded() <= 0) {
+                                callback.onMetaChanged(EntryID.from(Meta.UNKNOWN_ENTRY));
+                                callback.onStateChanged(PlaybackStateCompat.STATE_STOPPED);
+                            }
                             callback.onSongEnded();
                             break;
                         case MediaStatus.IDLE_REASON_CANCELED:
