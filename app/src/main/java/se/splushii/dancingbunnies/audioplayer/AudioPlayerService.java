@@ -53,9 +53,10 @@ import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
+import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
+import se.splushii.dancingbunnies.ui.nowplaying.PlaybackEntryMeta;
 import se.splushii.dancingbunnies.util.Util;
 
-// TODO: Handle audio output switching. AudioManager.ACTION_AUDIO_BECOMING_NOISY.
 // TODO: Handle incoming call. PhoneStateListener.LISTEN_CALL_STATE.
 public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static final String LC = Util.getLogContext(AudioPlayerService.class);
@@ -89,9 +90,11 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public static final String CAST_ACTION_NEXT = "NEXT";
     public static final String CAST_ACTION_PREVIOUS = "PREVIOUS";
 
+    private PlaybackControllerStorage playbackControllerStorage;
     private PlaybackController playbackController;
     private final PlaybackController.Callback audioPlayerManagerCallback = new PlaybackCallback();
     private MediaSessionCompat mediaSession;
+    private int metaChangedListenerID;
     private PlaybackStateCompat.Builder playbackStateBuilder;
     private PlaybackStateCompat playbackState;
     private boolean casting = false;
@@ -119,6 +122,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            musicLibraryService.removeMetaChangedListener(metaChangedListenerID);
             playbackController.onDestroy();
             playbackController = null;
             musicLibraryService = null;
@@ -266,6 +270,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public void onCreate() {
         super.onCreate();
         Log.d(LC, "onCreate");
+        playbackControllerStorage = new PlaybackControllerStorage(this);
 
         bindService(
                 new Intent(this, MusicLibraryService.class),
@@ -355,7 +360,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void setupPlaybackController() {
         playbackController = new PlaybackController(
-                this, musicLibraryService, audioPlayerManagerCallback
+                this,
+                playbackControllerStorage,
+                musicLibraryService,
+                audioPlayerManagerCallback
         );
     }
 
@@ -395,6 +403,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         mediaSession.setQueueTitle("Queue");
         mediaSession.setQueue(new LinkedList<>());
+        metaChangedListenerID = musicLibraryService.addMetaChangedListener(() ->
+                playbackController.updateQueue()
+        );
     }
 
     private boolean isStoppedState() {
@@ -526,7 +537,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     PlaybackEntry.USER_TYPE_QUEUE
             );
             playbackController.playNow(playbackEntry)
-                    .thenRun(() -> setToast(playbackEntry.meta, "Playing %s \"%s\" now!"))
+                    .thenRun(() -> setToast(
+                            musicLibraryService.getSongMetaData(playbackEntry.entryID),
+                            "Playing %s \"%s\" now!")
+                    )
                     .handle(AudioPlayerService.this::handleControllerResult);
         }
 
@@ -544,7 +558,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     PlaybackEntry.USER_TYPE_QUEUE
             );
             playbackController.queue(Collections.singletonList(playbackEntry), index)
-                    .thenRun(() -> setToast(playbackEntry.meta, "Adding %s \"%s\" to queue!"))
+                    .thenRun(() -> setToast(
+                            musicLibraryService.getSongMetaData(playbackEntry.entryID),
+                            "Adding %s \"%s\" to queue!"))
                     .handle(AudioPlayerService.this::handleControllerResult);
         }
 
@@ -671,7 +687,14 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     List<PlaybackEntry> playbackEntries = playbackController.getPlaylistEntries(
                             maxNum
                     );
-                    cb.send(0, putPlaybackEntries(new ArrayList<>(playbackEntries)));
+                    ArrayList<PlaybackEntryMeta> entries = new ArrayList<>();
+                    for (PlaybackEntry playbackEntry: playbackEntries) {
+                        Meta meta = musicLibraryService.getSongMetaData(playbackEntry.entryID);
+                        entries.add(new PlaybackEntryMeta(playbackEntry, meta));
+                    }
+                    Bundle b = new Bundle();
+                    putPlaybackEntryMetaList(b, entries);
+                    cb.send(0, b);
                     break;
                 case COMMAND_GET_PLAYLIST_PREVIOUS:
                     Log.e(LC, "COMMAND_GET_PLAYLIST_PREVIOUS not implemented");
@@ -919,17 +942,18 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             "BUNDLE_KEY_LIBRARY_ENTRIES";
     private static final String BUNDLE_KEY_PLAYLIST_ITEM =
             "BUNDLE_KEY_PLAYLIST_ITEM";
-    private static final String BUNDLE_KEY_PLAYBACK_ENTRIES =
-            "BUNDLE_KEY_PLAYBACK_ENTRIES";
+    private static final String BUNDLE_KEY_PLAYBACKENTRYMETA_LIST =
+            "BUNDLE_KEY_PLAYBACKENTRYMETA_LIST";
 
-    private static Bundle putPlaybackEntries(ArrayList<PlaybackEntry> playbackEntries) {
-        Bundle b = new Bundle();
-        b.putParcelableArrayList(BUNDLE_KEY_PLAYBACK_ENTRIES, playbackEntries);
-        return b;
+    private static void putPlaybackEntryMetaList(
+            Bundle b,
+            ArrayList<PlaybackEntryMeta> playbackEntries
+    ) {
+        b.putParcelableArrayList(BUNDLE_KEY_PLAYBACKENTRYMETA_LIST, playbackEntries);
     }
 
-    public static List<PlaybackEntry> getPlaybackEntries(Bundle resultData) {
-        return resultData.getParcelableArrayList(BUNDLE_KEY_PLAYBACK_ENTRIES);
+    public static ArrayList<PlaybackEntryMeta> getPlaybackEntryMetaList(Bundle b) {
+        return b.getParcelableArrayList(BUNDLE_KEY_PLAYBACKENTRYMETA_LIST);
     }
 
     private static Bundle putPlaylist(PlaylistItem playlistItem) {

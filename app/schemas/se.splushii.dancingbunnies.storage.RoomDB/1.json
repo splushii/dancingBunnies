@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "a3dd295ef258710f4c109c3bbcc3212a",
+    "identityHash": "72f08b30ca1f3a5db2f63875df5ba522",
     "entities": [
       {
         "tableName": "songs",
@@ -263,11 +263,60 @@
             ]
           }
         ]
+      },
+      {
+        "tableName": "playback_controller_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`queue_id` INTEGER NOT NULL, `pos` INTEGER NOT NULL, `api` TEXT NOT NULL, `id` TEXT NOT NULL, PRIMARY KEY(`queue_id`, `pos`))",
+        "fields": [
+          {
+            "fieldPath": "queueID",
+            "columnName": "queue_id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pos",
+            "columnName": "pos",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "api",
+            "columnName": "api",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "queue_id",
+            "pos"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_playback_controller_entries_queue_id_pos",
+            "unique": true,
+            "columnNames": [
+              "queue_id",
+              "pos"
+            ],
+            "createSql": "CREATE UNIQUE INDEX `index_playback_controller_entries_queue_id_pos` ON `${TABLE_NAME}` (`queue_id`, `pos`)"
+          }
+        ],
+        "foreignKeys": []
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"a3dd295ef258710f4c109c3bbcc3212a\")"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"72f08b30ca1f3a5db2f63875df5ba522\")"
     ]
   }
 }

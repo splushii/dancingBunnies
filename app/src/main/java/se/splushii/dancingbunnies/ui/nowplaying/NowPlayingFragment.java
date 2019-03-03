@@ -263,17 +263,18 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         }));
         // TODO: Implement playbackhistory in AudioPlayerService/PlaybackController, then in UI.
         //getPlaybackHistory().thenAccept(opt -> opt.ifPresent(recViewAdapter::setPlaybackHistory));
-        List<PlaybackEntry> queue = getQueue();
+        List<PlaybackEntryMeta> queue = getQueue();
         Log.d(LC, "refreshView: queue(" + queue.size() + ")");
         recViewAdapter.setQueue(queue);
     }
 
-    private List<PlaybackEntry> getQueue() {
-        List<PlaybackEntry> playbackEntries = new LinkedList<>();
+    private List<PlaybackEntryMeta> getQueue() {
+        List<PlaybackEntryMeta> playbackEntries = new LinkedList<>();
         for (MediaSessionCompat.QueueItem queueItem: mediaController.getQueue()) {
             Meta meta = new Meta(queueItem.getDescription());
             PlaybackEntry playbackEntry = new PlaybackEntry(meta, PlaybackEntry.USER_TYPE_QUEUE);
-            playbackEntries.add(playbackEntry);
+            PlaybackEntryMeta playbackEntryMeta = new PlaybackEntryMeta(playbackEntry, meta);
+            playbackEntries.add(playbackEntryMeta);
         }
         return playbackEntries;
     }
@@ -481,7 +482,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             return false;
         }
         int position = recViewAdapter.getContextMenuHolder().getAdapterPosition();
-        EntryID entryID = recViewAdapter.getItemData(position).entryID;
+        EntryID entryID = recViewAdapter.getItemData(position).playbackEntry.entryID;
         Log.d(LC, "info pos: " + position);
         switch (menuItemId) {
             case R.id.nowplaying_queueitem_contextmenu_play:
@@ -554,7 +555,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 case R.id.nowplaying_actionmode_action_queue:
                     List<EntryID> entryIDs = new LinkedList<>();
                     for (Long key: selection) {
-                        entryIDs.add(recViewAdapter.getPlaybackEntry(key).entryID);
+                        entryIDs.add(recViewAdapter.getPlaybackEntry(key).playbackEntry.entryID);
                     }
                     queue(entryIDs, AudioPlayerService.QUEUE_LAST);
                     mode.finish();

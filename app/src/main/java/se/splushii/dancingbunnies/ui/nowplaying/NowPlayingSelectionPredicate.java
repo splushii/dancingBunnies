@@ -4,7 +4,6 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.selection.SelectionTracker;
-import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 class NowPlayingSelectionPredicate extends SelectionTracker.SelectionPredicate<Long> {
@@ -21,11 +20,11 @@ class NowPlayingSelectionPredicate extends SelectionTracker.SelectionPredicate<L
 
     @Override
     public boolean canSetStateForKey(@NonNull Long key, boolean nextState) {
-        PlaybackEntry playbackEntry = adapter.getPlaybackEntry(key);
+        PlaybackEntryMeta playbackEntry = adapter.getPlaybackEntry(key);
         if (playbackEntry == null) {
             return false;
         }
-        String playbackType = playbackEntry.playbackType;
+        String playbackType = playbackEntry.playbackEntry.playbackType;
         Log.d(LC, "currentType: " + currentSelectionType);
         if (currentSelectionType == null) {
             currentSelectionType = playbackType;

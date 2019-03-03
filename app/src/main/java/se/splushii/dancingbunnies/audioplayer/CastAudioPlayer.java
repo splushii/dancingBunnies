@@ -235,7 +235,7 @@ public class CastAudioPlayer implements AudioPlayer {
                 break;
             }
             PlaybackEntry playbackEntry = new PlaybackEntry(new Meta(castMeta));
-            playbackEntry.setPreloadStatus(PlaybackEntry.PRELOADSTATUS_PRELOADED);
+            playbackEntry.setPreloaded(true);
             if (playbackEntry.playbackType.equals(type)) {
                 entries.add(playbackEntry);
             }
@@ -552,7 +552,7 @@ public class CastAudioPlayer implements AudioPlayer {
     }
 
     private MediaInfo buildMediaInfo(PlaybackEntry playbackEntry) {
-        Meta meta = playbackEntry.meta;
+        Meta meta = musicLibraryService.getSongMetaData(playbackEntry.entryID);
         String URL = musicLibraryService.getAudioURL(playbackEntry.entryID);
         if (URL == null) {
             Log.e(LC, "Could not get URL for " + meta.getString(Meta.METADATA_KEY_TITLE));

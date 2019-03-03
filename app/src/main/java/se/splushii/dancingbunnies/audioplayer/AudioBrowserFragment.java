@@ -28,6 +28,7 @@ import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
+import se.splushii.dancingbunnies.ui.nowplaying.PlaybackEntryMeta;
 import se.splushii.dancingbunnies.util.Util;
 
 public abstract class AudioBrowserFragment extends Fragment {
@@ -241,8 +242,8 @@ public abstract class AudioBrowserFragment extends Fragment {
         return future;
     }
 
-    protected CompletableFuture<Optional<List<PlaybackEntry>>> getPlaylistNext(int maxEntries) {
-        CompletableFuture<Optional<List<PlaybackEntry>>> future = new CompletableFuture<>();
+    protected CompletableFuture<Optional<List<PlaybackEntryMeta>>> getPlaylistNext(int maxEntries) {
+        CompletableFuture<Optional<List<PlaybackEntryMeta>>> future = new CompletableFuture<>();
         Bundle params = new Bundle();
         params.putInt("MAX_ENTRIES", maxEntries);
         mediaController.sendCommand(
@@ -254,8 +255,8 @@ public abstract class AudioBrowserFragment extends Fragment {
                             future.complete(Optional.empty());
                             return;
                         }
-                        List<PlaybackEntry> playbackEntries =
-                                AudioPlayerService.getPlaybackEntries(resultData);
+                        List<PlaybackEntryMeta> playbackEntries =
+                                AudioPlayerService.getPlaybackEntryMetaList(resultData);
                         future.complete(Optional.of(playbackEntries));
                     }
                 }

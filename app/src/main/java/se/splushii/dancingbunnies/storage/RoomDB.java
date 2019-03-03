@@ -11,7 +11,8 @@ import androidx.room.RoomDatabase;
                 RoomMetaSong.class,
                 RoomCacheEntry.class,
                 RoomPlaylist.class,
-                RoomPlaylistEntry.class
+                RoomPlaylistEntry.class,
+                RoomPlaybackControllerEntry.class
         },
         version = 1
 )
@@ -21,6 +22,7 @@ abstract class RoomDB extends RoomDatabase {
     static final String TABLE_CACHE = "cache";
     static final String TABLE_PLAYLISTS = "playlists";
     static final String TABLE_PLAYLIST_ENTRIES = "playlist_entries";
+    static final String TABLE_PLAYBACK_CONTROLLER_ENTRIES = "playback_controller_entries";
     private static volatile RoomDB instance;
 
     static RoomDB getDB(Context context) {
@@ -34,4 +36,5 @@ abstract class RoomDB extends RoomDatabase {
     abstract RoomCacheDao cacheModel();
     abstract RoomPlaylistDao playlistModel();
     abstract RoomPlaylistEntryDao playlistEntryModel();
+    abstract RoomPlaybackControllerEntryDao playbackControllerEntryModel();
 }

@@ -30,8 +30,8 @@ public class NowPlayingEntriesAdapter
         extends RecyclerView.Adapter<NowPlayingEntriesAdapter.SongViewHolder> {
     private static final String LC = Util.getLogContext(NowPlayingEntriesAdapter.class);
     private final NowPlayingFragment fragment;
-    private List<PlaybackEntry> queueData;
-    private List<PlaybackEntry> playlistNext;
+    private List<PlaybackEntryMeta> queueData;
+    private List<PlaybackEntryMeta> playlistNext;
     private RecyclerView.ViewHolder contextMenuHolder;
 
     private static final int VIEWTYPE_UNKNOWN = -1;
@@ -130,11 +130,11 @@ public class NowPlayingEntriesAdapter
         }
     }
 
-    PlaybackEntry getItemData(int childPosition) {
+    PlaybackEntryMeta getItemData(int childPosition) {
         return queueData.get(childPosition);
     }
 
-    public void setQueue(List<PlaybackEntry> queue) {
+    public void setQueue(List<PlaybackEntryMeta> queue) {
         queueData = queue;
         notifyDataSetChanged();
     }
@@ -143,7 +143,7 @@ public class NowPlayingEntriesAdapter
         notifyDataSetChanged();
     }
 
-    void setPlaylistNext(List<PlaybackEntry> playbackEntries) {
+    void setPlaylistNext(List<PlaybackEntryMeta> playbackEntries) {
         playlistNext = playbackEntries;
         notifyDataSetChanged();
     }
@@ -152,7 +152,7 @@ public class NowPlayingEntriesAdapter
         this.selectionTracker = selectionTracker;
     }
 
-    PlaybackEntry getPlaybackEntry(Long key) {
+    PlaybackEntryMeta getPlaybackEntry(Long key) {
         int index = key.intValue();
         if (index < queueData.size()) {
             return queueData.get(index);
@@ -161,14 +161,14 @@ public class NowPlayingEntriesAdapter
         return index < playlistNext.size() ? playlistNext.get(index) : null;
     }
 
-    private PlaybackEntry removePlaybackEntry(Long key) {
+    private PlaybackEntryMeta removePlaybackEntry(Long key) {
         if (key < queueData.size()) {
             return queueData.remove(key.intValue());
         }
         return playlistNext.remove(key.intValue() - queueData.size());
     }
 
-    private void insertPlaybackEntry(PlaybackEntry entry, int position) {
+    private void insertPlaybackEntry(PlaybackEntryMeta entry, int position) {
         if (position <= queueData.size()) {
             queueData.add(position, entry);
         } else {
@@ -176,9 +176,9 @@ public class NowPlayingEntriesAdapter
         }
     }
 
-    TreeMap<Integer, PlaybackEntry> removeItems(List<Long> positions) {
+    TreeMap<Integer, PlaybackEntryMeta> removeItems(List<Long> positions) {
         positions.sort(Comparator.reverseOrder());
-        TreeMap<Integer, PlaybackEntry> entries = new TreeMap<>();
+        TreeMap<Integer, PlaybackEntryMeta> entries = new TreeMap<>();
         for (Long pos: positions) {
             entries.put(pos.intValue(), getPlaybackEntry(pos));
             if (pos < queueData.size()) {
@@ -197,9 +197,9 @@ public class NowPlayingEntriesAdapter
         return entries;
     }
 
-    void insertItems(TreeMap<Integer, PlaybackEntry> selectedPlaybackEntries) {
+    void insertItems(TreeMap<Integer, PlaybackEntryMeta> selectedPlaybackEntries) {
         selectedPlaybackEntries.forEach((k, v) -> {
-            if (v.playbackType.equals(PlaybackEntry.USER_TYPE_QUEUE)) {
+            if (v.playbackEntry.playbackType.equals(PlaybackEntry.USER_TYPE_QUEUE)) {
                 queueData.add(k, v);
             } else {
                 playlistNext.add(k, v);
@@ -209,7 +209,7 @@ public class NowPlayingEntriesAdapter
     }
 
     void moveItem(int from, int to) {
-        PlaybackEntry entry = removePlaybackEntry((long) from);
+        PlaybackEntryMeta entry = removePlaybackEntry((long) from);
         insertPlaybackEntry(entry, to);
         notifyItemMoved(from, to);
     }
@@ -327,14 +327,14 @@ public class NowPlayingEntriesAdapter
 
     @Override
     public void onBindViewHolder(@NonNull final SongViewHolder holder, int position) {
-        PlaybackEntry entry;
+        PlaybackEntryMeta entry;
         int queueSize = queueData.size();
         switch (getItemViewType(position)) {
             default:
             case VIEWTYPE_QUEUE_ITEM:
                 entry = queueData.get(position);
                 holder.actionDequeue.setOnClickListener(view -> {
-                    fragment.dequeue(EntryID.from(entry.meta), position);
+                    fragment.dequeue(entry.playbackEntry.entryID, position);
                     holder.moreActions.setVisibility(View.GONE);
                 });
                 break;
@@ -343,7 +343,7 @@ public class NowPlayingEntriesAdapter
                 entry = playlistNext.get(nextPos);
                 break;
         }
-        holder.entryID = entry.entryID;
+        holder.entryID = entry.playbackEntry.entryID;
         holder.position = position;
         boolean selected = selectionTracker != null
                 && selectionTracker.isSelected(holder.getItemDetails().getSelectionKey());

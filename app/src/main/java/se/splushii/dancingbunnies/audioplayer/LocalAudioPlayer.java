@@ -198,7 +198,7 @@ class LocalAudioPlayer implements AudioPlayer {
             if (entries.size() >= maxNum) {
                 return entries;
             }
-            p.playbackEntry.setPreloadStatus(PlaybackEntry.PRELOADSTATUS_PRELOADED);
+            p.playbackEntry.setPreloaded(true);
             entries.add(p.playbackEntry);
         }
         return entries;
@@ -288,6 +288,7 @@ class LocalAudioPlayer implements AudioPlayer {
 
     private class MediaPlayerInstance {
         private final PlaybackEntry playbackEntry;
+        private final String title;
         private MediaPlayer mediaPlayer;
         private MediaPlayerState state;
         private boolean buffering = false;
@@ -296,6 +297,8 @@ class LocalAudioPlayer implements AudioPlayer {
         MediaPlayerInstance(PlaybackEntry playbackEntry) {
             reconstruct();
             this.playbackEntry = playbackEntry;
+            this.title = musicLibraryService.getSongMetaData(playbackEntry.entryID)
+                    .getString(Meta.METADATA_KEY_TITLE);
         }
 
         private void reconstruct() {
@@ -596,7 +599,7 @@ class LocalAudioPlayer implements AudioPlayer {
         };
 
         private String title() {
-            return playbackEntry.meta.getString(Meta.METADATA_KEY_TITLE);
+            return title;
         }
 
         void getReady() {

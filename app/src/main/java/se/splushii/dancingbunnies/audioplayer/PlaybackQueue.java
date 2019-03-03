@@ -6,46 +6,88 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Observer;
+import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.util.Util;
 
 class PlaybackQueue {
     private static final String LC = Util.getLogContext(PlaybackQueue.class);
     private final LinkedList<PlaybackEntry> queue;
-
-    Collection<? extends PlaybackEntry> poll(int num) {
-        Log.d(LC, "poll(" + num + ")");
-        List<PlaybackEntry> playbackEntries = new LinkedList<>();
-        for (int i = 0; i < num; i++) {
-            PlaybackEntry playbackEntry = queue.pollFirst();
-            if (playbackEntry == null) {
-                return playbackEntries;
+    private final PlaybackControllerStorage storage;
+    private final int queueID;
+    private final Runnable onQueueChanged;
+    private final LiveData<List<PlaybackEntry>> playbackEntriesLiveData;
+    private final Observer<List<PlaybackEntry>> observer = new Observer<List<PlaybackEntry>>() {
+        @Override
+        public void onChanged(List<PlaybackEntry> playbackEntries) {
+            queue.clear();
+            queue.addAll(playbackEntries);
+            Log.d(LC, "PlaybackQueue: " +
+                    (queueID == PlaybackControllerStorage.QUEUE_ID_QUEUE ? "queue" :
+                            queueID == PlaybackControllerStorage.QUEUE_ID_PLAYLIST ? "playlist" :
+                                    "history")
+                    + "(" + queue.size() + "):");
+            for (PlaybackEntry e: queue) {
+                Log.d(LC, e.toString());
             }
-            playbackEntries.add(playbackEntry);
+            onQueueChanged.run();
         }
-        return playbackEntries;
+    };
+
+    PlaybackQueue(int queueID,
+                  PlaybackControllerStorage storage,
+                  LiveData<List<PlaybackEntry>> playbackEntriesLiveData,
+                  Runnable onQueueChanged) {
+        this.playbackEntriesLiveData = playbackEntriesLiveData;
+        this.storage = storage;
+        this.queueID = queueID;
+        this.onQueueChanged = onQueueChanged;
+        queue = new LinkedList<>();
+        playbackEntriesLiveData.observeForever(observer);
+    }
+
+    CompletableFuture<Void> add(int toPosition, List<PlaybackEntry> entries) {
+        Log.d(LC, "add(" + toPosition + ", " + entries + ")");
+        return storage.insert(
+                queueID,
+                toPosition,
+                entries.stream()
+                        .map(pe -> pe.entryID)
+                        .collect(Collectors.toList())
+        );
+    }
+
+    CompletableFuture<List<PlaybackEntry>> poll(int num) {
+        Log.d(LC, "poll(" + num + ")");
+        List<Integer> positionsToRemove = IntStream.range(0, num)
+                .boxed().collect(Collectors.toList());
+        return remove(positionsToRemove);
+    }
+
+    public CompletableFuture<List<PlaybackEntry>> remove(List<Integer> queuePositions) {
+        Log.d(LC, "remove(" + queuePositions.toString() + ")");
+        List<PlaybackEntry> entries = new ArrayList<>();
+        List<Integer> positionsToRemove = new ArrayList<>();
+        for (int pos: queuePositions) {
+            if (pos >= 0 && pos < queue.size()) {
+                PlaybackEntry entry = queue.get(pos);
+                if (entry != null) {
+                    entries.add(entry);
+                    positionsToRemove.add(pos);
+                }
+            }
+        }
+        return storage.remove(queueID, positionsToRemove)
+                .thenApply(v -> entries);
     }
 
     public Collection<? extends PlaybackEntry> getEntries() {
         return new ArrayList<>(queue);
-    }
-
-    void addFirst(List<PlaybackEntry> entries) {
-        queue.addAll(0, entries);
-    }
-
-    void add(int toPosition, List<PlaybackEntry> entries) {
-        int index = toPosition == AudioPlayerService.QUEUE_LAST ? queue.size() : toPosition;
-        int offset = 0;
-        for (PlaybackEntry entry: entries) {
-            entry.setPreloadStatus(null);
-            queue.add( index + offset, entry);
-        }
-    }
-
-    PlaybackQueue() {
-        queue = new LinkedList<>();
     }
 
     public int size() {
@@ -60,15 +102,11 @@ class PlaybackQueue {
         return queue.stream().limit(max).collect(Collectors.toList());
     }
 
-    PlaybackEntry remove(int queuePosition) {
-        return queuePosition < queue.size() ? queue.remove(queuePosition) : null;
-    }
-
     PlaybackEntry get(int queuePosition) {
         return queuePosition < queue.size() ? queue.get(queuePosition) : null;
     }
 
-    PlaybackEntry next() {
-        return queue.pollFirst();
+    void onDestroy() {
+        playbackEntriesLiveData.removeObserver(observer);
     }
 }

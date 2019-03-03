@@ -59,6 +59,7 @@ public class MusicLibraryService extends Service {
     private HashMap<PlaylistID, List<EntryID>> playlistMap = new HashMap<>();
 
     private final IBinder binder = new MusicLibraryBinder();
+    private List<Runnable> metaChangedListeners;
 
     public List<PlaybackEntry> playlistGetNext(PlaylistID playlistID, long index, int maxEntries) {
         List<PlaybackEntry> playbackEntries = new LinkedList<>();
@@ -112,6 +113,16 @@ public class MusicLibraryService extends Service {
         playlistStorage.removeFromPlaylist(playlistID, position);
     }
 
+    public int addMetaChangedListener(Runnable runnable) {
+        int position = metaChangedListeners.size();
+        metaChangedListeners.add(runnable);
+        return position;
+    }
+
+    public void removeMetaChangedListener(int id) {
+        metaChangedListeners.remove(id);
+    }
+
     public class MusicLibraryBinder extends Binder {
         public MusicLibraryService getService() {
             return MusicLibraryService.this;
@@ -134,6 +145,9 @@ public class MusicLibraryService extends Service {
         reIndex(metas);
         Log.d(LC, "metaObserver: Finished building search index. "
                 + (System.currentTimeMillis() - start) + "ms.");
+        for (Runnable r: metaChangedListeners) {
+            r.run();
+        }
     };
 
     private final Observer<List<PlaylistItem>> playlistsObserver = entries -> {
@@ -162,6 +176,7 @@ public class MusicLibraryService extends Service {
         super.onCreate();
         Log.d(LC, "onCreate");
         apis = new HashMap<>();
+        metaChangedListeners = new ArrayList<>();
         loadSettings();
         metaStorage = new MetaStorage(this);
         metaLiveData = metaStorage.getAllSongMetaData();

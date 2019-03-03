@@ -2,7 +2,6 @@ package se.splushii.dancingbunnies.audioplayer;
 
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.support.v4.media.MediaMetadataCompat;
 
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
@@ -10,31 +9,38 @@ import se.splushii.dancingbunnies.musiclibrary.Meta;
 public class PlaybackEntry implements Parcelable {
     public static final String USER_TYPE_PLAYLIST = "playlist";
     public static final String USER_TYPE_QUEUE = "queue";
+    public static final String USER_TYPE_HISTORY = "history";
     public static final String USER_TYPE_EXTERNAL = "external";
-    static final String PRELOADSTATUS_PRELOADED = "preloaded";
-    static final String PRELOADSTATUS_CACHED = "cached";
 
-    public final Meta meta;
     public final EntryID entryID;
     public final String playbackType;
+    private final String title;
+    private boolean preloaded = false;
 
     public PlaybackEntry(Meta meta) {
-        this.meta = meta;
         this.entryID = EntryID.from(meta);
         String playbackType = meta.getString(Meta.METADATA_KEY_PLAYBACK_TYPE);
         this.playbackType = playbackType != null ? playbackType : PlaybackEntry.USER_TYPE_EXTERNAL;
+        this.title = meta.getString(Meta.METADATA_KEY_TITLE);
     }
 
     public PlaybackEntry(Meta meta, String playbackType) {
-        this.meta = meta;
         this.entryID = EntryID.from(meta);
         this.playbackType = playbackType;
+        this.title = meta.getString(Meta.METADATA_KEY_TITLE);
+    }
+
+    public PlaybackEntry(EntryID entryID, String playbackType, String title) {
+        this.entryID = entryID;
+        this.playbackType = playbackType;
+        this.title = title;
     }
 
     private PlaybackEntry(Parcel in) {
-        meta = in.readParcelable(MediaMetadataCompat.class.getClassLoader());
         entryID = in.readParcelable(EntryID.class.getClassLoader());
         playbackType = in.readString();
+        title = in.readString();
+        preloaded = in.readByte() != 0;
     }
 
     public static final Creator<PlaybackEntry> CREATOR = new Creator<PlaybackEntry>() {
@@ -51,7 +57,7 @@ public class PlaybackEntry implements Parcelable {
 
     @Override
     public String toString() {
-        return entryID.toString() + ":  " + meta.getString(Meta.METADATA_KEY_TITLE);
+        return entryID.toString() + ":  " + title;
     }
 
     @Override
@@ -81,12 +87,13 @@ public class PlaybackEntry implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeParcelable(meta, flags);
         dest.writeParcelable(entryID, flags);
         dest.writeString(playbackType);
+        dest.writeString(title);
+        dest.writeByte((byte) (preloaded ? 1 : 0));
     }
 
-    void setPreloadStatus(String preloadStatus) {
-        meta.setString(Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS, preloadStatus);
+    void setPreloaded(boolean preloaded) {
+        this.preloaded = preloaded;
     }
 }
