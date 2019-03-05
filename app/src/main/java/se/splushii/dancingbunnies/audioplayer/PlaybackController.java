@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 
 import androidx.lifecycle.LiveData;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
@@ -104,7 +105,9 @@ class PlaybackController {
 
         audioPlayer = new LocalAudioPlayer(
                 audioPlayerCallback,
-                musicLibraryService
+                musicLibraryService,
+                storage,
+                true
         );
 
         CastContext castContext = CastContext.getSharedInstance(context);
@@ -118,31 +121,9 @@ class PlaybackController {
     }
 
     void onDestroy() {
-        AudioPlayer.AudioPlayerState state = audioPlayer.getLastState();
-        storage.insert(
-                PlaybackControllerStorage.QUEUE_ID_QUEUE,
-                0,
-                state.entries.stream()
-                        .filter(p -> PlaybackEntry.USER_TYPE_QUEUE.equals(p.playbackType))
-                        .map(p -> p.entryID)
-                        .collect(Collectors.toList())
-        );
-        storage.insert(
-                PlaybackControllerStorage.QUEUE_ID_PLAYLIST,
-                0,
-                state.entries.stream()
-                        .filter(p -> PlaybackEntry.USER_TYPE_PLAYLIST.equals(p.playbackType))
-                        .map(p -> p.entryID)
-                        .collect(Collectors.toList())
-        );
-        storage.insert(
-                PlaybackControllerStorage.QUEUE_ID_HISTORY,
-                0,
-                state.history.stream()
-                        .map(p -> p.entryID)
-                        .collect(Collectors.toList())
-        );
+        Log.d(LC, "onDestroy");
         sessionManager.removeSessionManagerListener(sessionManagerListener);
+        audioPlayer.stop();
         queue.onDestroy();
         playlistItems.onDestroy();
         history.onDestroy();
@@ -607,9 +588,11 @@ class PlaybackController {
         entries.addAll(audioPlayer.getQueueEntries(Integer.MAX_VALUE));
         entries.addAll(queue.getEntries());
         for (PlaybackEntry playbackEntry: entries) {
-            MediaDescriptionCompat description = musicLibraryService
-                    .getSongMetaData(playbackEntry.entryID)
-                    .toMediaDescriptionCompat();
+            Meta meta = musicLibraryService.getSongMetaData(playbackEntry.entryID);
+            if (playbackEntry.isPreloaded()) {
+                    meta.setBoolean(Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS, true);
+            }
+            MediaDescriptionCompat description = meta.toMediaDescriptionCompat();
             MediaSessionCompat.QueueItem queueItem = new MediaSessionCompat.QueueItem(
                     description,
                     playbackEntry.entryID.hashCode()
@@ -636,6 +619,13 @@ class PlaybackController {
 
     void updateQueue() {
         callback.onQueueChanged(getQueue());
+    }
+
+    void updateCurrent() {
+        PlaybackEntry currentEntry = audioPlayer.getCurrentEntry();
+        EntryID entryID = currentEntry == null ?
+                EntryID.from(Meta.UNKNOWN_ENTRY) : currentEntry.entryID;
+        callback.onMetaChanged(entryID);
     }
 
     interface Callback {
@@ -696,7 +686,7 @@ class PlaybackController {
                         });
     }
 
-    private void transferAudioPlayerState(AudioPlayer.AudioPlayerState state) {
+    private CompletableFuture<Void> transferAudioPlayerState(AudioPlayer.AudioPlayerState state) {
         storage.insert(
                 PlaybackControllerStorage.QUEUE_ID_HISTORY,
                 0,
@@ -704,7 +694,13 @@ class PlaybackController {
                         .map(p -> p.entryID)
                         .collect(Collectors.toList())
         );
-        audioPlayer.preload(state.entries)
+        CompletableFuture<Void> ret = CompletableFuture.completedFuture(null);
+        if (state.currentEntry != null) {
+            ret = ret.thenCompose(v ->
+                    audioPlayer.preload(Collections.singletonList(state.currentEntry))
+            );
+        }
+        return ret.thenCompose(v -> audioPlayer.preload(state.entries))
                 .thenCompose(v -> seekTo(state.lastPos))
                 .thenCompose(v -> checkPreload());
     }
@@ -712,7 +708,9 @@ class PlaybackController {
     private void onCastConnect(CastSession session) {
         AudioPlayer.AudioPlayerState lastState = audioPlayer.getLastState();
         printState("onCastConnect", lastState);
-        audioPlayer.stop();
+        AudioPlayer oldPlayer = audioPlayer;
+        oldPlayer.stop()
+                .thenCompose(v -> oldPlayer.destroy());
         audioPlayer = new CastAudioPlayer(
                 audioPlayerCallback,
                 musicLibraryService,
@@ -730,7 +728,9 @@ class PlaybackController {
         printState("onCastDisconnect", lastState);
         audioPlayer = new LocalAudioPlayer(
                 audioPlayerCallback,
-                musicLibraryService
+                musicLibraryService,
+                storage,
+                false
         );
         transferAudioPlayerState(lastState);
         callback.onPlayerChanged(AudioPlayer.Type.LOCAL);
@@ -738,6 +738,7 @@ class PlaybackController {
 
     private void printState(String caption, AudioPlayer.AudioPlayerState lastState) {
         Log.d(LC, caption);
+        Log.d(LC, "current: " + lastState.currentEntry);
         Log.d(LC, "history:");
         for (PlaybackEntry entry: lastState.history) {
             Log.d(LC, entry.toString());

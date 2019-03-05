@@ -15,11 +15,13 @@ import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
+import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.util.Util;
 
 class LocalAudioPlayer implements AudioPlayer {
     private static final String LC = Util.getLogContext(LocalAudioPlayer.class);
     private final Callback callback;
+    private final PlaybackControllerStorage storage;
 
     private enum MediaPlayerState {
         NULL,
@@ -40,12 +42,68 @@ class LocalAudioPlayer implements AudioPlayer {
     private final LinkedList<MediaPlayerInstance> historyPlayers;
 
     LocalAudioPlayer(Callback audioPlayerCallback,
-                     MusicLibraryService musicLibraryService) {
+                     MusicLibraryService musicLibraryService,
+                     PlaybackControllerStorage storage,
+                     boolean initFromStorage) {
         this.callback = audioPlayerCallback;
         this.musicLibraryService = musicLibraryService;
+        this.storage = storage;
         queuePlayers = new LinkedList<>();
         playlistPlayers = new LinkedList<>();
         historyPlayers = new LinkedList<>();
+        if (initFromStorage) {
+            EntryID entryID = storage.getLocalAudioPlayerCurrentEntry();
+            long lastPos = storage.getLocalAudioPlayerCurrentLastPos();
+            String title = musicLibraryService.getSongMetaData(entryID)
+                    .getString(Meta.METADATA_KEY_TITLE);
+            if (entryID != null) {
+                player = new MediaPlayerInstance(new PlaybackEntry(
+                        entryID,
+                        PlaybackEntry.USER_TYPE_QUEUE,
+                        title
+                ));
+                player.seekTo(lastPos);
+            }
+            storage.getLocalAudioPlayerQueueEntries()
+                    .thenApply(entries -> {
+                        addEntries(entries);
+                        return null;
+                    })
+                    .thenCompose(aVoid -> storage.getLocalAudioPlayerPlaylistEntries())
+                    .thenApply(entries -> {
+                        addEntries(entries);
+                        return null;
+                    })
+                    .thenCompose(aVoid -> storage.getLocalAudioPlayerHistoryEntries())
+                    .thenApply(entries -> {
+                        historyPlayers.addAll(entries.stream().map(entry -> {
+                            MediaPlayerInstance instance = new MediaPlayerInstance(entry);
+                            instance.release();
+                            return instance;
+                        }).collect(Collectors.toList()));
+                        return null;
+                    })
+                    .join();
+        } else {
+            clearState().join();
+        }
+    }
+
+    @Override
+    public CompletableFuture<Void> destroy() {
+        return stop()
+                .thenCompose(v -> clearState());
+    }
+
+    private CompletableFuture<Void> clearState() {
+        storage.removeLocalAudioPlayerCurrent();
+        return storage.removeAll(PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_QUEUE)
+                .thenCompose(aVoid -> storage.removeAll(
+                        PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_PLAYLIST
+                ))
+                .thenCompose(aVoid -> storage.removeAll(
+                        PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_HISTORY
+                ));
     }
 
     @Override
@@ -55,11 +113,22 @@ class LocalAudioPlayer implements AudioPlayer {
 
     @Override
     public CompletableFuture<Void> preload(List<PlaybackEntry> entries) {
+        addEntries(entries);
+        CompletableFuture<Void> ret = CompletableFuture.completedFuture(null);
+        if (player == null) {
+            ret = ret.thenCompose(v -> next());
+        }
+        return ret.thenCompose(v -> {
+            callback.onPreloadChanged();
+            preparePlayers();
+            return persistState();
+        });
+    }
+
+    private void addEntries(List<PlaybackEntry> entries) {
         for (PlaybackEntry entry: entries) {
             MediaPlayerInstance playerInstance = new MediaPlayerInstance(entry);
-            if (player == null) {
-                setCurrentPlayer(playerInstance);
-            } else if (entry.playbackType.equals(PlaybackEntry.USER_TYPE_QUEUE)) {
+            if (entry.playbackType.equals(PlaybackEntry.USER_TYPE_QUEUE)) {
                 queuePlayers.add(playerInstance);
             } else if (entry.playbackType.equals(PlaybackEntry.USER_TYPE_PLAYLIST)){
                 playlistPlayers.add(playerInstance);
@@ -68,9 +137,6 @@ class LocalAudioPlayer implements AudioPlayer {
                         + entry.toString());
             }
         }
-        callback.onPreloadChanged();
-        preparePlayers();
-        return Util.futureResult(null);
     }
 
     public int getNumPreloaded() {
@@ -154,10 +220,8 @@ class LocalAudioPlayer implements AudioPlayer {
         updatePlaybackState();
         callback.onPreloadChanged();
         preparePlayers();
-        if (playWhenReady) {
-            return play();
-        }
-        return Util.futureResult(null);
+        CompletableFuture<Void> persist = persistState();
+        return playWhenReady ? persist.thenCompose(aVoid -> play()) : persist;
     }
 
     @Override
@@ -166,12 +230,45 @@ class LocalAudioPlayer implements AudioPlayer {
         List<PlaybackEntry> history = historyPlayers.stream()
                 .map(p -> p.playbackEntry).collect(Collectors.toCollection(LinkedList::new));
         List<PlaybackEntry> entries = new LinkedList<>();
-        if (player != null) {
-            entries.add(player.playbackEntry);
-        }
+        PlaybackEntry currentEntry = player == null ? null : player.playbackEntry;
         entries.addAll(queuePlayers.stream().map(p -> p.playbackEntry).collect(Collectors.toList()));
         entries.addAll(playlistPlayers.stream().map(p -> p.playbackEntry).collect(Collectors.toList()));
-        return new AudioPlayerState(history, entries, lastPos);
+        return new AudioPlayerState(currentEntry, history, entries, lastPos);
+    }
+
+    private CompletableFuture<Void> persistState() {
+        return clearState()
+                .thenCompose(aVoid -> storage.insert(
+                        PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_QUEUE,
+                        0,
+                        queuePlayers.stream()
+                                .map(p -> p.playbackEntry.entryID)
+                                .collect(Collectors.toList())
+                ))
+                .thenCompose(aVoid -> storage.insert(
+                        PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_PLAYLIST,
+                        0,
+                        playlistPlayers.stream()
+                                .map(p -> p.playbackEntry.entryID)
+                                .collect(Collectors.toList())
+                ))
+                .thenCompose(aVoid -> storage.insert(
+                        PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_HISTORY,
+                        0,
+                        historyPlayers.stream()
+                                .map(p -> p.playbackEntry.entryID)
+                                .collect(Collectors.toList())
+                ))
+                .thenRun(() -> {
+                    if (player == null) {
+                        storage.removeLocalAudioPlayerCurrent();
+                    } else {
+                        storage.setLocalAudioPlayerCurrent(
+                                player.playbackEntry.entryID,
+                                player.getCurrentPosition()
+                        );
+                    }
+                });
     }
 
     @Override
@@ -215,6 +312,11 @@ class LocalAudioPlayer implements AudioPlayer {
     }
 
     @Override
+    public PlaybackEntry getCurrentEntry() {
+        return player == null ? null : player.playbackEntry;
+    }
+
+    @Override
     public PlaybackEntry getQueueEntry(int queuePosition) {
         return queuePlayers.isEmpty() || queuePosition >= queuePlayers.size() ? null :
                 queuePlayers.get(queuePosition).playbackEntry;
@@ -249,7 +351,7 @@ class LocalAudioPlayer implements AudioPlayer {
             MediaPlayerInstance m = queuePlayers.pollLast();
             m.release();
         }
-        return Util.futureResult(null);
+        return persistState();
     }
 
     @Override
@@ -266,7 +368,7 @@ class LocalAudioPlayer implements AudioPlayer {
         if (player == null) {
             return next();
         }
-        return Util.futureResult(null);
+        return persistState();
     }
 
     @Override
@@ -276,7 +378,7 @@ class LocalAudioPlayer implements AudioPlayer {
             int queuePosition = positions.get(positions.size() - 1 - i);
             queuePlayers.remove(queuePosition).release();
         }
-        return Util.futureResult(null);
+        return persistState();
     }
 
     @Override

@@ -66,25 +66,28 @@ public class CastAudioPlayer implements AudioPlayer {
     @Override
     public AudioPlayerState getLastState() {
         long lastPos = getSeekPosition();
+        PlaybackEntry currentEntry = null;
         List<PlaybackEntry> entries = new LinkedList<>();
         List<PlaybackEntry> history = new LinkedList<>();
         boolean isHistory = lastCurrentItemId != -1;
         for (int itemId: lastItemIds) {
-            if (itemId == lastCurrentItemId) {
-                isHistory = false;
-            }
             MediaQueueItem queueItem = lastQueueItemMap.get(itemId);
             if (queueItem == null) {
                 continue;
             }
             PlaybackEntry entry = new PlaybackEntry(new Meta(queueItem.getMedia().getMetadata()));
+            if (itemId == lastCurrentItemId) {
+                currentEntry = entry;
+                isHistory = false;
+                continue;
+            }
             if (isHistory) {
                 history.add(entry);
             } else {
                 entries.add(entry);
             }
         }
-        return new AudioPlayerState(history, entries, lastPos);
+        return new AudioPlayerState(currentEntry, history, entries, lastPos);
     }
 
     @Override
@@ -254,6 +257,12 @@ public class CastAudioPlayer implements AudioPlayer {
     }
 
     @Override
+    public PlaybackEntry getCurrentEntry() {
+        int itemIndex = getCurrentIndex();
+        return getEntry(itemIndex);
+    }
+
+    @Override
     public PlaybackEntry getQueueEntry(int queuePosition) {
         int itemIndex = getCurrentIndex() + 1 + queuePosition;
         return getEntry(itemIndex);
@@ -312,7 +321,13 @@ public class CastAudioPlayer implements AudioPlayer {
     }
 
     @Override
+    public CompletableFuture<Void> destroy() {
+        return Util.futureResult("Not implemented");
+    }
+
+    @Override
     public CompletableFuture<Void> queue(List<PlaybackEntry> entries, int offset) {
+        Log.d(LC, "queue()");
         if (!remoteMediaClient.hasMediaSession()) {
             return setQueue(entries, 0);
         }
@@ -412,6 +427,7 @@ public class CastAudioPlayer implements AudioPlayer {
 
     @Override
     public CompletableFuture<Void> preload(List<PlaybackEntry> entries) {
+        Log.d(LC, "preload()");
         if (entries == null || entries.isEmpty()) {
             return Util.futureResult(null);
         }

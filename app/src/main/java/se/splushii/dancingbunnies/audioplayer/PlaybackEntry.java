@@ -96,4 +96,8 @@ public class PlaybackEntry implements Parcelable {
     void setPreloaded(boolean preloaded) {
         this.preloaded = preloaded;
     }
+
+    boolean isPreloaded() {
+        return preloaded;
+    }
 }

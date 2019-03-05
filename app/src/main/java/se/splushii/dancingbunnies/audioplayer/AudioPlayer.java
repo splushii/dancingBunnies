@@ -17,6 +17,7 @@ interface AudioPlayer {
     int getNumPreloaded();
     int getNumQueueEntries();
     int getNumPlaylistEntries();
+    PlaybackEntry getCurrentEntry();
     PlaybackEntry getQueueEntry(int queuePosition);
     PlaybackEntry getPlaylistEntry(int playlistPosition);
     List<PlaybackEntry> getQueueEntries(int maxNum);
@@ -34,6 +35,8 @@ interface AudioPlayer {
                                       int queueOffset,
                                       int numPlaylistEntriesToDepreload,
                                       int playlistOffset);
+    CompletableFuture<Void> destroy();
+
     interface Callback {
         void onStateChanged(int playBackState);
         void onMetaChanged(EntryID entryID);
@@ -42,13 +45,16 @@ interface AudioPlayer {
     }
 
     class AudioPlayerState {
+        final PlaybackEntry currentEntry;
         final List<PlaybackEntry> history;
         final List<PlaybackEntry> entries;
         final long lastPos;
 
-        AudioPlayerState(List<PlaybackEntry> history,
+        AudioPlayerState(PlaybackEntry currentEntry,
+                         List<PlaybackEntry> history,
                          List<PlaybackEntry> entries,
                          long lastPos) {
+            this.currentEntry = currentEntry;
             this.history = history;
             this.entries = entries;
             this.lastPos = lastPos;

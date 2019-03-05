@@ -359,8 +359,10 @@ public class NowPlayingEntriesAdapter
         holder.artist.setText(artist);
         String src = entry.meta.getString(Meta.METADATA_KEY_API);
         holder.source.setText(src);
-        String preloadStatusValue = entry.meta.getString(Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS);
-        String preloadStatus = preloadStatusValue == null ? "" : "(" + preloadStatusValue + ") ";
+        String preloadStatus = entry.meta.getBoolean(
+                Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS,
+                false
+        ) ? "(preloaded) " : "";
         holder.preloadStatus.setText(preloadStatus);
         holder.fetchStatusText = "";
         holder.isCached = false;

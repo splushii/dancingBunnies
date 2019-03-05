@@ -268,17 +268,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         recViewAdapter.setQueue(queue);
     }
 
-    private List<PlaybackEntryMeta> getQueue() {
-        List<PlaybackEntryMeta> playbackEntries = new LinkedList<>();
-        for (MediaSessionCompat.QueueItem queueItem: mediaController.getQueue()) {
-            Meta meta = new Meta(queueItem.getDescription());
-            PlaybackEntry playbackEntry = new PlaybackEntry(meta, PlaybackEntry.USER_TYPE_QUEUE);
-            PlaybackEntryMeta playbackEntryMeta = new PlaybackEntryMeta(playbackEntry, meta);
-            playbackEntries.add(playbackEntryMeta);
-        }
-        return playbackEntries;
-    }
-
     @Override
     protected void onPlaybackStateChanged(PlaybackStateCompat state) {
         updatePlaybackState(state);
@@ -296,7 +285,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             case PlaybackStateCompat.STATE_FAST_FORWARDING:
             case PlaybackStateCompat.STATE_REWINDING:
                 Log.d(LC, "state: playing");
-                playPauseBtn.setEnabled(true);
                 seekBar.setEnabled(true);
                 playPauseBtn.setImageDrawable(pauseDrawable);
                 bufferingText.setVisibility(View.INVISIBLE);
@@ -307,7 +295,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             case PlaybackStateCompat.STATE_SKIPPING_TO_PREVIOUS:
             case PlaybackStateCompat.STATE_SKIPPING_TO_QUEUE_ITEM:
             case PlaybackStateCompat.STATE_PAUSED:
-                playPauseBtn.setEnabled(true);
                 seekBar.setEnabled(true);
                 playPauseBtn.setImageDrawable(playDrawable);
                 bufferingText.setVisibility(View.INVISIBLE);
@@ -317,7 +304,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 break;
             case PlaybackStateCompat.STATE_CONNECTING:
             case PlaybackStateCompat.STATE_BUFFERING:
-                playPauseBtn.setEnabled(true);
                 seekBar.setEnabled(true);
                 playPauseBtn.setImageDrawable(playDrawable);
                 bufferingText.setVisibility(View.VISIBLE);
@@ -332,10 +318,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             case PlaybackStateCompat.STATE_NONE:
             case PlaybackStateCompat.STATE_STOPPED:
             case PlaybackStateCompat.STATE_ERROR:
-                playPauseBtn.setEnabled(
-                        currentMeta != null
-                                && !Meta.UNKNOWN_ENTRY.equals(currentMeta)
-                );
                 seekBar.setEnabled(false);
                 playPauseBtn.setImageDrawable(playDrawable);
                 bufferingText.setVisibility(View.INVISIBLE);

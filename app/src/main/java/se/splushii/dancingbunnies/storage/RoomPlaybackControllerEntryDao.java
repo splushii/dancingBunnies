@@ -19,12 +19,13 @@ abstract class RoomPlaybackControllerEntryDao {
     @Insert(onConflict = REPLACE)
     abstract void _insert(List<RoomPlaybackControllerEntry> entries);
     @Query("SELECT * FROM " + RoomDB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
-            + " ORDER BY " + RoomPlaybackControllerEntry.COLUMN_POS + " ASC")
-    abstract LiveData<List<RoomPlaybackControllerEntry>> getAllEntries();
-    @Query("SELECT * FROM " + RoomDB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
             + " WHERE " + RoomPlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID"
             + " ORDER BY " + RoomPlaybackControllerEntry.COLUMN_POS + " ASC")
     abstract LiveData<List<RoomPlaybackControllerEntry>> getEntries(int queueID);
+    @Query("SELECT * FROM " + RoomDB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
+            + " WHERE " + RoomPlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID"
+            + " ORDER BY " + RoomPlaybackControllerEntry.COLUMN_POS + " ASC")
+    abstract List<RoomPlaybackControllerEntry> getEntriesSync(int queueID);
     @Query("DELETE FROM " + RoomDB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
             + " WHERE " + RoomPlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID"
             + " AND " + RoomPlaybackControllerEntry.COLUMN_POS + " = :position;")
@@ -44,6 +45,9 @@ abstract class RoomPlaybackControllerEntryDao {
             _update_pos_after_delete(queueID, pos);
         }
     }
+    @Query("DELETE FROM " + RoomDB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
+            + " WHERE " + RoomPlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID;")
+    abstract void removeAll(int queueID);
     @Query("UPDATE " + RoomDB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
             + " SET " + RoomPlaybackControllerEntry.COLUMN_POS + " = "
             + RoomPlaybackControllerEntry.COLUMN_POS + " + :increment"

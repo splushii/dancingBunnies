@@ -19,6 +19,7 @@ import se.splushii.dancingbunnies.storage.RoomMetaSong;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.BITMAP;
+import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.BOOLEAN;
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.LONG;
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.RATING;
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.STRING;
@@ -26,8 +27,17 @@ import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.STRING;
 // TODO: Use Meta throughout app. To convert, do for example "new Meta(metaCompat).toCastMeta()".
 public class Meta implements Parcelable {
     private static final String LC = Util.getLogContext(Meta.class);
+
+    public boolean getBoolean(String key, boolean defaultValue) {
+        return bundle.getBoolean(key, defaultValue);
+    }
+
+    public void setBoolean(String key, boolean b) {
+        bundle.putBoolean(key, b);
+    }
+
     public enum Type {
-        STRING, BITMAP, RATING, LONG
+        STRING, BITMAP, RATING, LONG, BOOLEAN
     }
 
     private final Bundle bundle;
@@ -378,7 +388,7 @@ public class Meta implements Parcelable {
         typeMap.put(METADATA_KEY_AVERAGE_RATING, STRING);
         typeMap.put(METADATA_KEY_QUEUE_POS, LONG);
         typeMap.put(METADATA_KEY_PLAYBACK_TYPE, STRING);
-        typeMap.put(METADATA_KEY_PLAYBACK_PRELOADSTATUS, STRING);
+        typeMap.put(METADATA_KEY_PLAYBACK_PRELOADSTATUS, BOOLEAN);
         // Android keys
         typeMap.put(METADATA_KEY_ADVERTISEMENT, LONG);
         typeMap.put(METADATA_KEY_ALBUM, STRING);

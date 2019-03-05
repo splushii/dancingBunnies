@@ -403,9 +403,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         mediaSession.setQueueTitle("Queue");
         mediaSession.setQueue(new LinkedList<>());
-        metaChangedListenerID = musicLibraryService.addMetaChangedListener(() ->
-                playbackController.updateQueue()
-        );
+        metaChangedListenerID = musicLibraryService.addMetaChangedListener(() -> {
+            playbackController.updateCurrent();
+            playbackController.updateQueue();
+        });
     }
 
     private boolean isStoppedState() {
@@ -558,9 +559,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     PlaybackEntry.USER_TYPE_QUEUE
             );
             playbackController.queue(Collections.singletonList(playbackEntry), index)
-                    .thenRun(() -> setToast(
+                    .thenRunAsync(() -> setToast(
                             musicLibraryService.getSongMetaData(playbackEntry.entryID),
-                            "Adding %s \"%s\" to queue!"))
+                            "Adding %s \"%s\" to queue!"),
+                            Util.getMainThreadExecutor())
                     .handle(AudioPlayerService.this::handleControllerResult);
         }
 

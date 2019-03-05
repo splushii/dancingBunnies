@@ -16,6 +16,9 @@
     <string name="pref_key_subsonic_usr">pref_subsonic_usr</string>
     <string name="pref_key_subsonic_pwd">pref_subsonic_pwd</string>
     <string name="pref_key_subsonic_refresh">pref_subsonic_refresh</string>
+    <string name="pref_key_localaudioplayer_current_src">pref_localaudioplayer_current_src</string>
+    <string name="pref_key_localaudioplayer_current_id">pref_localaudioplayer_current_id</string>
+    <string name="pref_key_localaudioplayer_current_lastpos">pref_localaudioplayer_current_lastpost</string>
     <string name="fastscroller_handle">Fastscroller handle</string>
     <string name="fastscroller_bubble">Fastscroller bubble</string>
     <string name="pause">pause</string>
