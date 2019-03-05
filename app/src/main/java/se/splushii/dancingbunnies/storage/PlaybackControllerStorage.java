@@ -16,6 +16,8 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
 import se.splushii.dancingbunnies.util.Util;
 
 public class PlaybackControllerStorage {
@@ -32,11 +34,30 @@ public class PlaybackControllerStorage {
     private final String src_key;
     private final String id_key;
     private final String lastPos_key;
-
+    private final String playlist_src_key;
+    private final String playlist_id_key;
+    private final String playlist_type_key;
+    private final String playlist_name_key;
+    private final String playlist_position_key;
 
     public PlaybackControllerStorage(Context context) {
         entryModel = RoomDB.getDB(context).playbackControllerEntryModel();
         preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        playlist_src_key = context.getResources().getString(
+                R.string.pref_key_playbackcontroller_playlist_src
+        );
+        playlist_id_key = context.getResources().getString(
+                R.string.pref_key_playbackcontroller_playlist_id
+        );
+        playlist_type_key = context.getResources().getString(
+                R.string.pref_key_playbackcontroller_playlist_type
+        );
+        playlist_name_key = context.getResources().getString(
+                R.string.pref_key_playbackcontroller_playlist_name
+        );
+        playlist_position_key = context.getResources().getString(
+                R.string.pref_key_playbackcontroller_position_name
+        );
         src_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_src);
         id_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_id);
         lastPos_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_lastpos);
@@ -113,11 +134,11 @@ public class PlaybackControllerStorage {
     }
 
     public EntryID getLocalAudioPlayerCurrentEntry() {
-        if (!preferences.contains(src_key) || !preferences.contains(id_key)) {
+        String src = preferences.getString(src_key, null);
+        String id = preferences.getString(id_key, null);
+        if (src == null || id == null) {
             return null;
         }
-        String src = preferences.getString(src_key, Meta.METADATA_VALUE_UNKNOWN_SRC);
-        String id = preferences.getString(id_key, Meta.METADATA_VALUE_UNKNOWN_ID);
         return new EntryID(src, id, Meta.METADATA_KEY_MEDIA_ID);
     }
 
@@ -160,5 +181,35 @@ public class PlaybackControllerStorage {
                 return PlaybackEntry.USER_TYPE_HISTORY;
         }
         return null;
+    }
+
+    public PlaylistItem getCurrentPlaylist() {
+        String src = preferences.getString(playlist_src_key, null);
+        String id = preferences.getString(playlist_id_key, null);
+        String type = preferences.getString(playlist_type_key, null);
+        String name = preferences.getString(playlist_name_key, null);
+        if (src == null || id == null || type == null) {
+            return PlaylistItem.defaultPlaylist;
+        }
+        return new PlaylistItem(new PlaylistID(src, id, type), name);
+    }
+
+    public void setCurrentPlaylist(PlaylistItem playlist) {
+        preferences.edit()
+                .putString(playlist_src_key, playlist.playlistID.src)
+                .putString(playlist_id_key, playlist.playlistID.id)
+                .putString(playlist_type_key, playlist.playlistID.type)
+                .putString(playlist_name_key, playlist.name)
+                .apply();
+    }
+
+    public long getPlaylistPosition() {
+        return preferences.getLong(playlist_position_key, 0);
+    }
+
+    public void setPlaylistPosition(long position) {
+        preferences.edit()
+                .putLong(playlist_position_key, position)
+                .apply();
     }
 }

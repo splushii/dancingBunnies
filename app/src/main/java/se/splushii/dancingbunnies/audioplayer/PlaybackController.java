@@ -29,8 +29,8 @@ import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.util.Util;
 
-// PlaybackController should have audio players, an internal queue, an internal playlist and a
-// reference to the current playlist.
+// PlaybackController should have audio players, an internal queue, an internal playlist,
+// a history of played items and a reference to the current playlist.
 //
 // It is responsible for giving entries to preload to the audio players.
 // The data to preload is supplied by the following sources in order until depleted:
@@ -64,8 +64,8 @@ class PlaybackController {
     private final PlaybackQueue playlistItems;
 
     // Current playlist reference
-    private final PlaylistItem currentPlaylist = PlaylistItem.defaultPlaylist;
-    private long playlistPosition = 0;
+    private PlaylistItem currentPlaylist;
+    private long playlistPosition;
 
     // History of played items
     private final PlaybackQueue history;
@@ -80,6 +80,9 @@ class PlaybackController {
         this.storage = playbackControllerStorage;
         this.musicLibraryService = musicLibraryService;
         this.callback = callback;
+
+        currentPlaylist = storage.getCurrentPlaylist();
+        playlistPosition = storage.getPlaylistPosition();
 
         LiveData<List<PlaybackEntry>> queueEntriesLiveData = storage.getQueueEntries();
         queue = new PlaybackQueue(
@@ -195,6 +198,7 @@ class PlaybackController {
                     playlistPosition,
                     playbackEntries.size()
             );
+            storage.setPlaylistPosition(playlistPosition);
             Log.d(LC, "Playlist position +" + playbackEntries.size()
                     + " from " + oldPosition + " to " + playlistPosition);
             callback.onPlaylistPositionChanged();
