@@ -7,9 +7,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.PersistableBundle;
-import android.preference.EditTextPreference;
-import android.preference.Preference;
-import android.preference.PreferenceFragment;
 import android.support.v4.media.MediaBrowserCompat;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -17,6 +14,9 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.core.content.ContextCompat;
+import androidx.preference.EditTextPreference;
+import androidx.preference.Preference;
+import androidx.preference.PreferenceFragmentCompat;
 import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.jobs.BackendRefreshJob;
 import se.splushii.dancingbunnies.jobs.Jobs;
@@ -26,7 +26,7 @@ import se.splushii.dancingbunnies.util.Util;
 /**
  * A placeholder fragment containing a simple view.
  */
-public class SettingsActivityFragment extends PreferenceFragment
+public class SettingsActivityFragment extends PreferenceFragmentCompat
         implements SharedPreferences.OnSharedPreferenceChangeListener{
     private static final String LC = Util.getLogContext(SettingsActivityFragment.class);
     private MediaBrowserCompat mediaBrowser;
@@ -84,7 +84,6 @@ public class SettingsActivityFragment extends PreferenceFragment
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        addPreferencesFromResource(R.xml.preferences);
         SharedPreferences settings = getPreferenceManager().getSharedPreferences();
         EditTextPreference SSurl = (EditTextPreference) findPreference(getResources()
                 .getString(R.string.pref_key_subsonic_url));
@@ -126,6 +125,11 @@ public class SettingsActivityFragment extends PreferenceFragment
             jobScheduler.schedule(jobInfo);
             return false;
         });
+    }
+
+    @Override
+    public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+        setPreferencesFromResource(R.xml.preferences, rootKey);
     }
 
     @Override

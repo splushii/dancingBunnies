@@ -720,7 +720,7 @@ public class SubsonicAPIClient extends APIClient {
     @Override
     public void loadSettings(Context context) {
         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
-        boolean useSubsonic = settings.getBoolean("pref_subsonic", false);
+        boolean useSubsonic = settings.getBoolean(context.getResources().getString(R.string.pref_key_subsonic), false);
         if (useSubsonic) {
             String url = settings.getString(context.getResources()
                     .getString(R.string.pref_key_subsonic_url), "");

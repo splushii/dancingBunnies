@@ -24,6 +24,7 @@ import java.util.concurrent.CompletableFuture;
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
+import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.backend.APIClientRequestHandler;
@@ -313,7 +314,7 @@ public class MusicLibraryService extends Service {
 
     private void loadSettings() {
         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
-        if (!settings.getBoolean("pref_subsonic", false)) {
+        if (!settings.getBoolean(getResources().getString(R.string.pref_key_subsonic), false)) {
             apis.remove(API_ID_SUBSONIC);
         } else if (!apis.containsKey(API_ID_SUBSONIC)) {
             apis.put(API_ID_SUBSONIC, new SubsonicAPIClient(this));

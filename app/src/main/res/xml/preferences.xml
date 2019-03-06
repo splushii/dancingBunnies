@@ -1,28 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+<androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
     <PreferenceCategory
         android:title="Backends"
-        android:key="pref_backends" >
+        android:key="@string/pref_key_backends" >
         <CheckBoxPreference
-            android:key="pref_subsonic"
+            android:key="@string/pref_key_subsonic"
             android:title="@string/pref_subsonic"
             android:defaultValue="false" />
         <EditTextPreference
-            android:dependency="pref_subsonic"
-            android:key="pref_subsonic_url"
+            android:dependency="@string/pref_key_subsonic"
+            android:key="@string/pref_key_subsonic_url"
             android:title="@string/pref_subsonic_url" />
         <EditTextPreference
-            android:dependency="pref_subsonic"
-            android:key="pref_subsonic_usr"
+            android:dependency="@string/pref_key_subsonic"
+            android:key="@string/pref_key_subsonic_usr"
             android:title="@string/pref_subsonic_usr" />
         <EditTextPreference
-            android:dependency="pref_subsonic"
+            android:dependency="@string/pref_key_subsonic"
             android:password="true"
-            android:key="pref_subsonic_pwd"
+            android:key="@string/pref_key_subsonic_pwd"
             android:title="@string/pref_subsonic_pwd" />
         <Preference
-            android:dependency="pref_subsonic"
-            android:key="pref_subsonic_refresh"
+            android:dependency="@string/pref_key_subsonic"
+            android:key="@string/pref_key_subsonic_refresh"
             android:title="@string/pref_subsonic_refresh" />
     </PreferenceCategory>
-</PreferenceScreen>
+</androidx.preference.PreferenceScreen>

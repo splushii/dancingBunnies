@@ -57,7 +57,7 @@ public final class MainActivity extends AppCompatActivity {
         mViewPager = findViewById(R.id.main_container);
         mViewPager.setAdapter(mSectionsPagerAdapter);
 
-        setSupportActionBar(findViewById(R.id.toolbar));
+        setSupportActionBar(findViewById(R.id.main_toolbar));
 
         TabLayout tabLayout = findViewById(R.id.main_tabs);
         tabLayout.setupWithViewPager(mViewPager);

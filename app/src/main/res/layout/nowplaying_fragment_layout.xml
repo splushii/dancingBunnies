@@ -26,18 +26,20 @@
                 android:layout_height="wrap_content"
                 android:textSize="16sp"
                 android:gravity="center_horizontal"
+                android:textColor="@color/grey500"
                 android:paddingTop="8dp"/>
             <TextView
                 android:id="@+id/nowplaying_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:textColor="@color/bluegrey900"
                 android:textSize="24sp"
-                android:gravity="center_horizontal"
-                android:textColor="@color/bluegrey900"/>
+                android:gravity="center_horizontal"/>
             <TextView
                 android:id="@+id/nowplaying_album"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:textColor="@color/grey500"
                 android:gravity="center_horizontal"
                 android:paddingTop="2dp"/>
         </LinearLayout>
@@ -55,6 +57,7 @@
                 android:id="@+id/nowplaying_size"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:textColor="@color/grey500"
                 android:layout_marginStart="16dp"/>
             <TextView
                 android:id="@+id/nowplaying_buffering"
@@ -62,11 +65,13 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
+                android:textColor="@color/grey500"
                 android:text="@string/nowplaying_buffering"/>
             <TextView
                 android:id="@+id/nowplaying_media_info"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:textColor="@color/grey500"
                 android:layout_marginEnd="16dp"/>
         </LinearLayout>
         <LinearLayout
@@ -80,6 +85,7 @@
                 android:layout_width="32dp"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
+                android:textColor="@color/grey500"
                 android:layout_marginEnd="16dp"/>
             <ImageButton
                 android:id="@+id/nowplaying_previous"
@@ -109,6 +115,7 @@
                 android:layout_width="32dp"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
+                android:textColor="@color/grey500"
                 android:layout_marginStart="16dp"/>
         </LinearLayout>
     </LinearLayout>

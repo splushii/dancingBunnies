@@ -14,6 +14,7 @@
         android:layout_gravity="center_vertical"
         android:ellipsize="end"
         android:maxLines="1"
+        android:textColor="@color/colorSecondaryText"
         android:fontFamily="sans-serif"
         android:textSize="14sp" />
     <TextView
