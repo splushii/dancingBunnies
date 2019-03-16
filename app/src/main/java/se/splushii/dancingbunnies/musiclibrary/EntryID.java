@@ -67,7 +67,7 @@ public class EntryID implements Parcelable {
 
     @Override
     public String toString() {
-        return "{src: " + src + ", id: " + id + ", type: " + type + "}";
+        return "{src: " + src + ", id: " + id + ", type: " + Meta.getHumanReadable(type) + "}";
     }
 
     @Override

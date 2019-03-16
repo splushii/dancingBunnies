@@ -243,6 +243,25 @@ public class MusicLibraryService extends Service {
         return audioDataSource == null ? null : audioDataSource.getURL();
     }
 
+    public void downloadAudioData(EntryID entryID) {
+        getAudioData(entryID, new AudioDataDownloadHandler() {
+            @Override
+            public void onDownloading() {
+                Log.d(LC, "Downloading: " + entryID);
+            }
+
+            @Override
+            public void onSuccess(AudioDataSource audioDataSource) {
+                Log.d(LC, "Downloaded: " + entryID + " size: " + audioDataSource.getSize());
+            }
+
+            @Override
+            public void onFailure(String status) {
+                Log.e(LC, "Failed to download: " + entryID);
+            }
+        });
+    }
+
     public void getAudioData(EntryID entryID, AudioDataDownloadHandler handler) {
         AudioDataSource audioDataSource = audioStorage.get(entryID);
         if (audioDataSource == null) {
@@ -365,10 +384,10 @@ public class MusicLibraryService extends Service {
             return;
         }
         apis.get(api).getLibrary(new APIClientRequestHandler() {
-                    @Override
-                    public void onProgress(String s) {
-                        handler.onProgress(s);
-                    }
+            @Override
+            public void onProgress(String s) {
+                handler.onProgress(s);
+            }
         }).thenAccept(opt -> {
             if (opt.isPresent()) {
                 final List<Meta> data = opt.get();

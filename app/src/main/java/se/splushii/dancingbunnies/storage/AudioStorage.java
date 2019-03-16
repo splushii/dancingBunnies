@@ -70,11 +70,11 @@ public class AudioStorage {
     }
 
     public void fetch(EntryID entryID, AudioDataDownloadHandler handler) {
-        if (!audioMap.containsKey(entryID)) {
+        AudioDataSource audioDataSource = audioMap.get(entryID);
+        if (audioDataSource == null) {
             handler.onFailure("EntryID to fetch not found in AudioStorage");
             return;
         }
-        AudioDataSource audioDataSource = audioMap.get(entryID);
         synchronized (handlerMap) {
             List<AudioDataDownloadHandler> handlers = handlerMap.computeIfAbsent(entryID, k -> new LinkedList<>());
             handlers.add(handler);

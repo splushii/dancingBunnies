@@ -129,7 +129,7 @@ public abstract class AudioBrowserFragment extends Fragment {
                 toPosition
         ).thenApply(success -> {
             if (!success) {
-                Log.e(LC, "dequeue entries failed");
+                Log.e(LC, "moveQueueItems failed");
             }
             return success;
         });
@@ -141,7 +141,7 @@ public abstract class AudioBrowserFragment extends Fragment {
                 entryIDs
         ).thenAccept(success -> {
             if (!success) {
-                Log.e(LC, "dequeue entries failed");
+                Log.e(LC, "addToPlaylist failed");
             }
         });
     }

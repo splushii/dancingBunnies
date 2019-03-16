@@ -123,8 +123,10 @@ public class NowPlayingEntriesAdapter
         synchronized (fetchStatusCallbacks) {
             HashMap<Integer, Consumer<AudioStorage.AudioDataFetchState>> cbMap =
                     fetchStatusCallbacks.get(entryID);
-            cbMap.remove(pos);
-            if (cbMap.isEmpty()) {
+            if (cbMap != null) {
+                cbMap.remove(pos);
+            }
+            if (cbMap == null || cbMap.isEmpty()) {
                 fetchStatusCallbacks.remove(entryID);
             }
         }
@@ -284,7 +286,7 @@ public class NowPlayingEntriesAdapter
         }
 
         private void setCacheStatusText() {
-            cacheStatus.setText(fetchStatusText + (isCached ? " C" : ""));
+            cacheStatus.setText(isCached ? "C" : fetchStatusText);
         }
 
         void setIsCached(Boolean isCached) {

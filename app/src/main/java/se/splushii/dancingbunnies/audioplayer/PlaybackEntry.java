@@ -14,7 +14,7 @@ public class PlaybackEntry implements Parcelable {
 
     public final EntryID entryID;
     public final String playbackType;
-    private final String title;
+    final String title;
     private boolean preloaded = false;
 
     public PlaybackEntry(Meta meta) {
@@ -57,7 +57,7 @@ public class PlaybackEntry implements Parcelable {
 
     @Override
     public String toString() {
-        return entryID.toString() + ":  " + title;
+        return title + ": " + entryID.toString();
     }
 
     @Override

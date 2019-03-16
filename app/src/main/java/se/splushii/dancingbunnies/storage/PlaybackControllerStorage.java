@@ -3,7 +3,9 @@ package se.splushii.dancingbunnies.storage;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
+import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -21,7 +23,7 @@ import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
 import se.splushii.dancingbunnies.util.Util;
 
 public class PlaybackControllerStorage {
-    private static final String LC = Util.getLogContext(PlaylistStorage.class);
+    private static final String LC = Util.getLogContext(PlaybackControllerStorage.class);
     public static final int QUEUE_ID_QUEUE = 0;
     public static final int QUEUE_ID_PLAYLIST = 1;
     public static final int QUEUE_ID_HISTORY = 2;
@@ -63,6 +65,25 @@ public class PlaybackControllerStorage {
         lastPos_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_lastpos);
     }
 
+    public static String getQueueName(int queueID) {
+        switch (queueID) {
+            case PlaybackControllerStorage.QUEUE_ID_QUEUE:
+                return "queue";
+            case PlaybackControllerStorage.QUEUE_ID_PLAYLIST:
+                return "playlist";
+            case PlaybackControllerStorage.QUEUE_ID_HISTORY:
+                return "history";
+            case PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_QUEUE:
+                return "localaudioplayer_queue";
+            case PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_PLAYLIST:
+                return "localaudioplayer_playlist";
+            case PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_HISTORY:
+                return "localaudioplayer_history";
+            default:
+                return "unknown";
+        }
+    }
+
     public LiveData<List<PlaybackEntry>> getQueueEntries() {
         return getEntries(PlaybackControllerStorage.QUEUE_ID_QUEUE);
     }
@@ -99,7 +120,22 @@ public class PlaybackControllerStorage {
 
     public CompletableFuture<Void> insert(int queueID, int toPosition, List<EntryID> entries) {
         return CompletableFuture.supplyAsync(() -> {
-            entryModel.insert(queueID, toPosition, entries);
+            List<RoomPlaybackControllerEntry> roomEntries = new ArrayList<>();
+            int entryPosition = toPosition;
+            StringBuilder sb = new StringBuilder();
+            for (EntryID entryID: entries) {
+                sb.append("insert entryID: ").append(entryID)
+                        .append(" pos: ").append(entryPosition)
+                        .append("\n");
+                roomEntries.add(RoomPlaybackControllerEntry.from(queueID, entryID, entryPosition++));
+            }
+            int numNewEntries = entries.size();
+            Log.d(LC, "insert to " + getQueueName(queueID) + ":\n"
+                    + "updatepos from: " + toPosition
+                    + " inc: " + numNewEntries
+                    + "\n" + sb.toString());
+            entryModel._update_pos_before_insert(queueID, toPosition, numNewEntries);
+            entryModel._insert(roomEntries);
             return null;
         });
     }

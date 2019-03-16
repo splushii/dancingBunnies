@@ -217,7 +217,7 @@ public class AudioDataSource extends MediaDataSource {
         }
     }
 
-    public boolean isFinished() {
+    boolean isFinished() {
         return isFinished;
     }
 

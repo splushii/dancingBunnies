@@ -27,14 +27,14 @@ class PlaybackQueue {
         public void onChanged(List<PlaybackEntry> playbackEntries) {
             queue.clear();
             queue.addAll(playbackEntries);
-            Log.d(LC, "PlaybackQueue: " +
-                    (queueID == PlaybackControllerStorage.QUEUE_ID_QUEUE ? "queue" :
-                            queueID == PlaybackControllerStorage.QUEUE_ID_PLAYLIST ? "playlist" :
-                                    "history")
-                    + "(" + queue.size() + "):");
+            StringBuilder sb = new StringBuilder(
+                    PlaybackControllerStorage.getQueueName(queueID)
+                            +" changed (size " + queue.size() + ")\n"
+            );
             for (PlaybackEntry e: queue) {
-                Log.d(LC, e.toString());
+                sb.append(e.toString()).append("\n");
             }
+            Log.d(LC, sb.toString());
             onQueueChanged.run();
         }
     };
@@ -52,7 +52,8 @@ class PlaybackQueue {
     }
 
     CompletableFuture<Void> add(int toPosition, List<PlaybackEntry> entries) {
-        Log.d(LC, "add(" + toPosition + ", " + entries + ")");
+        Log.d(LC, "add(" + toPosition + ", " + entries + ") to \""
+                + PlaybackControllerStorage.getQueueName(queueID) + "\"");
         return storage.insert(
                 queueID,
                 toPosition,
@@ -70,7 +71,8 @@ class PlaybackQueue {
     }
 
     public CompletableFuture<List<PlaybackEntry>> remove(List<Integer> queuePositions) {
-        Log.d(LC, "remove(" + queuePositions.toString() + ")");
+        Log.d(LC, "remove(" + queuePositions.toString() + ") from \""
+                + PlaybackControllerStorage.getQueueName(queueID) + "\"");
         List<PlaybackEntry> entries = new ArrayList<>();
         List<Integer> positionsToRemove = new ArrayList<>();
         for (int pos: queuePositions) {

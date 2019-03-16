@@ -307,11 +307,12 @@ class PlaybackController {
                     );
                 } else {
                     // Get the queue entry from controller
+                    int controllerQueueOffset = queueOffset - numPlayerQueueEntries;
                     Log.d(LC, "skip long queue offset");
-                    nextEntry = getQueueEntry(queueOffset);
+                    nextEntry = getQueueEntry(controllerQueueOffset);
                     result = result.thenCompose(v ->
                             consumeQueueEntries(
-                                    Collections.singletonList(queueOffset - numPlayerQueueEntries)
+                                    Collections.singletonList(controllerQueueOffset)
                             )
                     ).thenApply(entries -> null);
                 }
@@ -586,16 +587,12 @@ class PlaybackController {
     private List<MediaSessionCompat.QueueItem> getQueue() {
         List<MediaSessionCompat.QueueItem> queueItems = new LinkedList<>();
         List<PlaybackEntry> entries = new LinkedList<>();
-        for (PlaybackEntry entry: audioPlayer.getPlaylistEntries(Integer.MAX_VALUE)) {
-            entry.setPreloaded(true);
-        }
         entries.addAll(audioPlayer.getQueueEntries(Integer.MAX_VALUE));
         entries.addAll(queue.getEntries());
+        entries.addAll(audioPlayer.getPlaylistEntries(Integer.MAX_VALUE));
         for (PlaybackEntry playbackEntry: entries) {
             Meta meta = musicLibraryService.getSongMetaData(playbackEntry.entryID);
-            if (playbackEntry.isPreloaded()) {
-                    meta.setBoolean(Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS, true);
-            }
+            meta.setBoolean(Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS, playbackEntry.isPreloaded());
             MediaDescriptionCompat description = meta.toMediaDescriptionCompat();
             MediaSessionCompat.QueueItem queueItem = new MediaSessionCompat.QueueItem(
                     description,

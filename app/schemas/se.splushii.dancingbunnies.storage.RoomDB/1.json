@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "72f08b30ca1f3a5db2f63875df5ba522",
+    "identityHash": "ed60d08630c3f05959da993678f96358",
     "entities": [
       {
         "tableName": "songs",
@@ -266,8 +266,14 @@
       },
       {
         "tableName": "playback_controller_entries",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`queue_id` INTEGER NOT NULL, `pos` INTEGER NOT NULL, `api` TEXT NOT NULL, `id` TEXT NOT NULL, PRIMARY KEY(`queue_id`, `pos`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowid` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `queue_id` INTEGER NOT NULL, `pos` INTEGER NOT NULL, `api` TEXT NOT NULL, `id` TEXT NOT NULL)",
         "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
           {
             "fieldPath": "queueID",
             "columnName": "queue_id",
@@ -295,28 +301,17 @@
         ],
         "primaryKey": {
           "columnNames": [
-            "queue_id",
-            "pos"
+            "rowid"
           ],
-          "autoGenerate": false
+          "autoGenerate": true
         },
-        "indices": [
-          {
-            "name": "index_playback_controller_entries_queue_id_pos",
-            "unique": true,
-            "columnNames": [
-              "queue_id",
-              "pos"
-            ],
-            "createSql": "CREATE UNIQUE INDEX `index_playback_controller_entries_queue_id_pos` ON `${TABLE_NAME}` (`queue_id`, `pos`)"
-          }
-        ],
+        "indices": [],
         "foreignKeys": []
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"72f08b30ca1f3a5db2f63875df5ba522\")"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"ed60d08630c3f05959da993678f96358\")"
     ]
   }
 }
