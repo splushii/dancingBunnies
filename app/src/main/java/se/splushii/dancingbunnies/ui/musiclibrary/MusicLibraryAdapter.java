@@ -1,13 +1,10 @@
 package se.splushii.dancingbunnies.ui.musiclibrary;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
 import android.support.v4.media.MediaBrowserCompat;
 import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageButton;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -16,9 +13,6 @@ import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.fragment.app.DialogFragment;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.selection.ItemDetailsLookup;
 import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -28,9 +22,12 @@ import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.ui.ItemActionsView;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
+import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapter.SongViewHolder> {
+    private static final String LC = Util.getLogContext(MusicLibraryAdapter.class);
     private final MusicLibraryFragment fragment;
     private final LinearLayoutManager layoutManager;
     private List<MediaBrowserCompat.MediaItem> dataset;
@@ -69,7 +66,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             @Override
             public void onSelectionChanged() {
                 if (selectionTracker.hasSelection() && selectedHolder != null) {
-                    selectedHolder.animateMoreActions(false);
+                    selectedHolder.actionsView.animateShow(false);
                     selectedHolder = null;
                 }
             }
@@ -81,11 +78,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         private final TextView libraryEntryTitle;
         private final TextView libraryEntryArtist;
         private final TextView libraryEntryAlbum;
-        private final View playAction;
-        private final View queueAction;
-        private final View addToPlaylistAction;
-        private final ImageButton overflowMenu;
-        private final View moreActions;
+        private final ItemActionsView actionsView;
         private EntryID entryId;
         public Meta meta;
 
@@ -108,11 +101,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             libraryEntryTitle = view.findViewById(R.id.library_entry_title);
             libraryEntryAlbum = view.findViewById(R.id.library_entry_album);
             libraryEntryArtist = view.findViewById(R.id.library_entry_artist);
-            playAction = view.findViewById(R.id.library_entry_action_play);
-            queueAction = view.findViewById(R.id.library_entry_action_queue);
-            addToPlaylistAction = view.findViewById(R.id.library_entry_action_add_to_playlist);
-            overflowMenu = view.findViewById(R.id.library_entry_overflow_menu);
-            moreActions = view.findViewById(R.id.library_entry_more_actions);
+            actionsView = view.findViewById(R.id.library_entry_actions);
         }
 
         public ItemDetailsLookup.ItemDetails<EntryID> getItemDetails() {
@@ -126,35 +115,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         EntryID getEntryId() {
             return entryId;
         }
-
-        void animateMoreActions(boolean show) {
-            if (show) {
-                moreActions.animate()
-                        .translationX(0)
-                        .setDuration(200)
-                        .alpha(1)
-                        .setListener(new AnimatorListenerAdapter() {
-                            @Override
-                            public void onAnimationStart(Animator animation) {
-                                moreActions.setVisibility(View.VISIBLE);
-                            }
-                        })
-                        .start();
-            } else {
-                moreActions.animate()
-                        .translationX(moreActions.getWidth())
-                        .alpha(0)
-                        .setDuration(200)
-                        .setListener(new AnimatorListenerAdapter() {
-                            @Override
-                            public void onAnimationEnd(Animator animation) {
-                                moreActions.setVisibility(View.INVISIBLE);
-                            }
-                        })
-                        .start();
-            }
-        }
-
     }
 
     @NonNull
@@ -193,9 +153,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         EntryID entryID = EntryID.from(item);
         holder.setEntryId(entryID);
         final boolean browsable = item.isBrowsable();
-        holder.moreActions.setVisibility(View.INVISIBLE);
-        holder.moreActions.setTranslationX(holder.moreActions.getWidth());
-        holder.moreActions.setAlpha(0);
+        holder.actionsView.initialize();
         holder.libraryEntryTitle.setText(title);
         holder.meta = null;
         if (Meta.METADATA_KEY_MEDIA_ID.equals(entryID.type)) {
@@ -225,41 +183,22 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 fragment.browse(entryID);
             } else {
                 if (selectedHolder != null && selectedHolder != holder) {
-                    selectedHolder.animateMoreActions(false);
+                    selectedHolder.actionsView.animateShow(false);
                 }
                 selectedHolder = holder;
-                boolean show = !selectionTracker.hasSelection()
-                        && holder.moreActions.getVisibility() != View.VISIBLE;
-                holder.animateMoreActions(show);
+                boolean showActionsView = !selectionTracker.hasSelection()
+                        && holder.actionsView.getVisibility() != View.VISIBLE;
+                holder.actionsView.animateShow(showActionsView);
             }
         });
-        holder.playAction.setOnClickListener(v -> {
-            fragment.play(entryID);
-            holder.animateMoreActions(false);
-        });
-        holder.queueAction.setOnClickListener(v -> {
-            fragment.queue(entryID);
-            holder.animateMoreActions(false);
-        });
-        holder.addToPlaylistAction.setOnClickListener(v -> {
-            fragment.addToPlaylist(Collections.singletonList(entryID));
-            holder.animateMoreActions(false);
-        });
-        holder.overflowMenu.setOnClickListener(v -> {
-//            holder.animateMoreActions(false);
-            FragmentTransaction ft = fragment.getFragmentManager().beginTransaction();
-            Fragment prev = fragment.getFragmentManager().findFragmentByTag(MetaDialogFragment.TAG);
-            if (prev != null) {
-                ft.remove(prev);
-            }
-            ft.addToBackStack(null);
-            DialogFragment dialogFragment = new MetaDialogFragment();
-            dialogFragment.setTargetFragment(fragment, MetaDialogFragment.REQUEST_CODE);
-            if (holder.meta != null) {
-                dialogFragment.setArguments(holder.meta.getBundle());
-            }
-            dialogFragment.show(ft, MetaDialogFragment.TAG);
-        });
+        holder.actionsView.setOnPlayListener(() -> fragment.play(entryID));
+        holder.actionsView.setOnQueueListener(() -> fragment.queue(entryID));
+        holder.actionsView.setOnAddToPlaylistListener(() ->
+                fragment.addToPlaylist(Collections.singletonList(entryID))
+        );
+        holder.actionsView.setOnInfoListener(() ->
+                MetaDialogFragment.showMeta(fragment, holder.meta)
+        );
     }
 
     Pair<Integer, Integer> getCurrentPosition() {

@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/library_entry"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -19,7 +18,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:gravity="center_vertical"
-            android:textColor="@color/selected_item_color"
+            android:textColor="@color/primary_text_color"
             android:fontFamily="sans-serif"
             android:textSize="14sp" />
         <TextView
@@ -31,7 +30,7 @@
             android:layout_weight="1"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textColor="@color/selected_item_secondary_color"
+            android:textColor="@color/secondary_text_color"
             android:gravity="center_vertical" />
         <TextView
             android:id="@+id/library_entry_artist"
@@ -43,57 +42,11 @@
             android:layout_weight="1"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textColor="@color/selected_item_secondary_color"
+            android:textColor="@color/secondary_text_color"
             android:gravity="end|center_vertical" />
     </LinearLayout>
-    <LinearLayout
-        android:id="@+id/library_entry_more_actions"
+    <se.splushii.dancingbunnies.ui.ItemActionsView
+        android:id="@+id/library_entry_actions"
         android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:orientation="horizontal"
-        android:visibility="invisible"
-        android:background="@color/grey"
-        android:layout_marginStart="16dp"
-        android:layout_gravity="end|center_vertical">
-        <ImageButton
-            android:id="@+id/library_entry_action_play"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:background="@android:color/transparent"
-            android:src="@drawable/ic_play_arrow_black_24dp"
-            android:textColor="@color/colorPrimaryText"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:contentDescription="@string/song_context_play" />
-        <ImageButton
-            android:id="@+id/library_entry_action_queue"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:background="@android:color/transparent"
-            android:src="@drawable/ic_queue_black_24dp"
-            android:textColor="@color/colorPrimaryText"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:contentDescription="@string/song_context_queue" />
-        <ImageButton
-            android:id="@+id/library_entry_action_add_to_playlist"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:background="@android:color/transparent"
-            android:src="@drawable/ic_playlist_add_black_24dp"
-            android:textColor="@color/bluegrey900"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:contentDescription="@string/song_context_add_to_playlist" />
-        <ImageButton
-            android:id="@+id/library_entry_overflow_menu"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:background="@android:color/transparent"
-            android:src="@drawable/ic_info_black_24dp"
-            android:textColor="@color/colorPrimaryText"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:contentDescription="@string/music_library_item_more_actions" />
-    </LinearLayout>
+        android:layout_height="match_parent" />
 </FrameLayout>

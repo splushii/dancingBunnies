@@ -21,6 +21,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.util.Pair;
 import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.util.Util;
@@ -47,6 +49,21 @@ public class MetaDialogFragment extends DialogFragment {
             Meta.METADATA_KEY_MEDIA_ROOT,
             Meta.METADATA_KEY_MEDIA_ID
     );
+
+    public static void showMeta(Fragment fragment, Meta meta) {
+        FragmentTransaction ft = fragment.getFragmentManager().beginTransaction();
+        Fragment prev = fragment.getFragmentManager().findFragmentByTag(MetaDialogFragment.TAG);
+        if (prev != null) {
+            ft.remove(prev);
+        }
+        ft.addToBackStack(null);
+        DialogFragment dialogFragment = new MetaDialogFragment();
+        dialogFragment.setTargetFragment(fragment, MetaDialogFragment.REQUEST_CODE);
+        if (meta != null) {
+            dialogFragment.setArguments(meta.getBundle());
+        }
+        dialogFragment.show(ft, MetaDialogFragment.TAG);
+    }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
