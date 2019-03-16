@@ -18,5 +18,5 @@
         android:fontFamily="monospace"
         android:textStyle="bold"
         android:textSize="24sp"
-        android:textColor="#FFF" />
+        android:textColor="@color/white" />
 </FrameLayout>

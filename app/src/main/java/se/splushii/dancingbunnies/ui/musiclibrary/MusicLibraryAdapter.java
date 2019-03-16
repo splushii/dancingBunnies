@@ -108,11 +108,11 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             libraryEntryTitle = view.findViewById(R.id.library_entry_title);
             libraryEntryAlbum = view.findViewById(R.id.library_entry_album);
             libraryEntryArtist = view.findViewById(R.id.library_entry_artist);
-            playAction = view.findViewById(R.id.action_play);
-            queueAction = view.findViewById(R.id.action_queue);
-            addToPlaylistAction = view.findViewById(R.id.action_add_to_playlist);
-            overflowMenu = view.findViewById(R.id.overflow_menu);
-            moreActions = view.findViewById(R.id.more_actions);
+            playAction = view.findViewById(R.id.library_entry_action_play);
+            queueAction = view.findViewById(R.id.library_entry_action_queue);
+            addToPlaylistAction = view.findViewById(R.id.library_entry_action_add_to_playlist);
+            overflowMenu = view.findViewById(R.id.library_entry_overflow_menu);
+            moreActions = view.findViewById(R.id.library_entry_more_actions);
         }
 
         public ItemDetailsLookup.ItemDetails<EntryID> getItemDetails() {
