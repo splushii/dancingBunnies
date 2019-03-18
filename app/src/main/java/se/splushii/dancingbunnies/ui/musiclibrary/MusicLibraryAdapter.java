@@ -31,7 +31,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     private final MusicLibraryFragment fragment;
     private final LinearLayoutManager layoutManager;
     private List<MediaBrowserCompat.MediaItem> dataset;
-    private SongViewHolder selectedHolder;
+    private ItemActionsView selectedActionView;
     private SelectionTracker<EntryID> selectionTracker;
 
     MusicLibraryAdapter(MusicLibraryFragment fragment,
@@ -65,9 +65,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         selectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
             @Override
             public void onSelectionChanged() {
-                if (selectionTracker.hasSelection() && selectedHolder != null) {
-                    selectedHolder.actionsView.animateShow(false);
-                    selectedHolder = null;
+                if (selectionTracker.hasSelection() && selectedActionView != null) {
+                    selectedActionView.animateShow(false);
+                    selectedActionView = null;
                 }
             }
         });
@@ -182,10 +182,10 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             if (browsable) {
                 fragment.browse(entryID);
             } else {
-                if (selectedHolder != null && selectedHolder != holder) {
-                    selectedHolder.actionsView.animateShow(false);
+                if (selectedActionView != null && selectedActionView != holder.actionsView) {
+                    selectedActionView.animateShow(false);
                 }
-                selectedHolder = holder;
+                selectedActionView = holder.actionsView;
                 boolean showActionsView = !selectionTracker.hasSelection()
                         && holder.actionsView.getVisibility() != View.VISIBLE;
                 holder.actionsView.animateShow(showActionsView);

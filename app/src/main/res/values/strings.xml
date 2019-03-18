@@ -33,9 +33,11 @@
     <string name="previous">previous</string>
     <string name="stop">stop</string>
     <string name="play">play</string>
-    <string name="song_context_play">Play</string>
-    <string name="song_context_queue">Queue</string>
-    <string name="song_context_add_to_playlist">Add to playlist</string>
+    <string name="item_action_remove">Remove</string>
+    <string name="item_action_play">Play</string>
+    <string name="item_action_queue">Queue</string>
+    <string name="item_action_add_to_playlist">Add to playlist</string>
+    <string name="item_action_info">Info</string>
     <string name="song_info" />
     <string name="search_hint">…</string>
     <string name="app_label">Dancing Bunnies</string>
@@ -51,7 +53,6 @@
     <string name="nowplaying_next_contentdesc">Skip to next</string>
     <string name="musiclibrary_entry_type_select">Show entries of type:</string>
     <string name="nowplaying_context_play">Play</string>
-    <string name="nowplaying_context_dequeue">Dequeue</string>
     <string name="queue_item_more_actions">Queue item more actions</string>
     <string name="playlist_item_more_actions">Playlist item more actions</string>
     <string name="music_library_item_more_actions">Music library item more actions</string>

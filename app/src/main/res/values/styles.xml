@@ -42,6 +42,7 @@
         <item name="actionModeStyle">@style/ActionModeTheme</item>
         <item name="tabStyle">@style/TabTheme</item>
         <item name="searchViewStyle">@style/SearchViewTheme</item>
+        <item name="colorControlHighlight">@color/colorAccentLight</item>
     </style>
 
     <style name="AppTheme" parent="AppTheme.Base">

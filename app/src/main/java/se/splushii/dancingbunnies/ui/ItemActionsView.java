@@ -16,6 +16,7 @@ public class ItemActionsView extends LinearLayout {
     private static final String LC = Util.getLogContext(ItemActionsView.class);
     private View playAction;
     private View queueAction;
+    private View removeAction;
     private View addToPlaylistAction;
     private View infoAction;
 
@@ -46,69 +47,75 @@ public class ItemActionsView extends LinearLayout {
         a.recycle();
         playAction = findViewById(R.id.item_action_play);
         queueAction = findViewById(R.id.item_action_queue);
+        removeAction = findViewById(R.id.item_action_remove);
         addToPlaylistAction = findViewById(R.id.item_action_add_to_playlist);
         infoAction = findViewById(R.id.item_action_info);
     }
 
     public void initialize() {
         setVisibility(View.INVISIBLE);
-        setTranslationX(getWidth());
+        setTranslationX(getTrans(false));
         setAlpha(0);
     }
 
+    private float getTrans(boolean show) {
+        return show ? ((View)getParent()).getWidth() - getWidth() :
+                ((View)getParent()).getWidth() - ((float) getWidth() * 3 / 4);
+    }
+
     public void animateShow(boolean show) {
-        int translation = ((View)getParent()).getWidth() - getWidth();
-        if (show) {
-            animate()
-                    .translationX(translation)
-                    .setDuration(200)
-                    .alpha(1)
-                    .setListener(new AnimatorListenerAdapter() {
-                        @Override
-                        public void onAnimationStart(Animator animation) {
-                            setVisibility(View.VISIBLE);
+        animate()
+                .translationX(getTrans(show))
+                .setDuration(200)
+                .alpha(show ? 1 : 0)
+                .setListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationStart(Animator animation) {
+                        if (show) {
+                            setVisibility(VISIBLE);
                         }
-                    })
-                    .start();
-        } else {
-            animate()
-                    .translationX(getWidth())
-                    .alpha(0)
-                    .setDuration(200)
-                    .setListener(new AnimatorListenerAdapter() {
-                        @Override
-                        public void onAnimationEnd(Animator animation) {
+                    }
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        if (!show) {
                             setVisibility(View.INVISIBLE);
                         }
-                    })
-                    .start();
+                    }
+                })
+                .start();
+    }
+
+    private void setListener(View view, Runnable r, boolean thenHideActions) {
+        if (r == null) {
+            view.setVisibility(INVISIBLE);
+        } else {
+            view.setOnClickListener(v -> {
+                r.run();
+                if (thenHideActions) {
+                    animateShow(false);
+                }
+            });
+            view.setVisibility(VISIBLE);
         }
     }
 
     public void setOnPlayListener(Runnable r) {
-        playAction.setOnClickListener(v -> {
-            r.run();
-            animateShow(false);
-        });
+        setListener(playAction, r, true);
     }
 
     public void setOnQueueListener(Runnable r) {
-        queueAction.setOnClickListener(v -> {
-            r.run();
-            animateShow(false);
-        });
+        setListener(queueAction, r, true);
     }
 
     public void setOnAddToPlaylistListener(Runnable r) {
-        addToPlaylistAction.setOnClickListener(v -> {
-            r.run();
-            animateShow(false);
-        });
+        setListener(addToPlaylistAction, r, true);
+    }
+
+    public void setOnDequeueListener(Runnable r) {
+        setListener(removeAction, r, true);
     }
 
     public void setOnInfoListener(Runnable r) {
-        infoAction.setOnClickListener(v -> {
-            r.run();
-        });
+        setListener(infoAction, r, false);
     }
 }

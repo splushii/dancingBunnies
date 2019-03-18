@@ -1,49 +1,64 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
+    android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="horizontal"
     android:background="@color/grey"
     android:layout_marginStart="16dp"
     android:layout_gravity="end|center_vertical">
     <ImageButton
+        android:id="@+id/item_action_remove"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        android:background="?android:selectableItemBackground"
+        android:src="@drawable/ic_delete_black_24dp"
+        android:textColor="@color/colorPrimaryText"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:contentDescription="@string/item_action_remove" />
+    <ImageButton
         android:id="@+id/item_action_play"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:background="@android:color/transparent"
+        android:visibility="gone"
+        android:background="?android:selectableItemBackground"
         android:src="@drawable/ic_play_arrow_black_24dp"
         android:textColor="@color/colorPrimaryText"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:contentDescription="@string/song_context_play" />
+        android:contentDescription="@string/item_action_play" />
     <ImageButton
         android:id="@+id/item_action_queue"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:background="@android:color/transparent"
+        android:visibility="gone"
+        android:background="?android:selectableItemBackground"
         android:src="@drawable/ic_queue_black_24dp"
         android:textColor="@color/colorPrimaryText"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:contentDescription="@string/song_context_queue" />
+        android:contentDescription="@string/item_action_queue" />
     <ImageButton
         android:id="@+id/item_action_add_to_playlist"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:background="@android:color/transparent"
+        android:visibility="gone"
+        android:background="?android:selectableItemBackground"
         android:src="@drawable/ic_playlist_add_black_24dp"
         android:textColor="@color/colorPrimaryText"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:contentDescription="@string/song_context_add_to_playlist" />
+        android:contentDescription="@string/item_action_add_to_playlist" />
     <ImageButton
         android:id="@+id/item_action_info"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:background="@android:color/transparent"
+        android:visibility="gone"
+        android:background="?android:selectableItemBackground"
         android:src="@drawable/ic_info_black_24dp"
         android:textColor="@color/colorPrimaryText"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:contentDescription="@string/music_library_item_more_actions" />
+        android:contentDescription="@string/item_action_info" />
 </LinearLayout>

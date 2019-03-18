@@ -25,15 +25,14 @@ class PlaybackQueue {
     private final Observer<List<PlaybackEntry>> observer = new Observer<List<PlaybackEntry>>() {
         @Override
         public void onChanged(List<PlaybackEntry> playbackEntries) {
+            int previousSize = queue.size();
             queue.clear();
             queue.addAll(playbackEntries);
             StringBuilder sb = new StringBuilder(
                     PlaybackControllerStorage.getQueueName(queueID)
-                            +" changed (size " + queue.size() + ")\n"
+                            +" changed (size " + previousSize + " -> " + queue.size() + ")\n"
             );
-            for (PlaybackEntry e: queue) {
-                sb.append(e.toString()).append("\n");
-            }
+//            for (PlaybackEntry e: queue) { sb.append(e.toString()).append("\n"); }
             Log.d(LC, sb.toString());
             onQueueChanged.run();
         }

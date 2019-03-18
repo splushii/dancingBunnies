@@ -523,15 +523,15 @@ class PlaybackController {
                 + queuePositionsToRemoveFromController.size()
                 + ": " + queuePositionsToRemoveFromController);
         CompletableFuture<Void> result = Util.futureResult(null);
-        if (queuePositionsToRemoveFromPlayer.size() > 0) {
-            result = result.thenCompose(v ->
-                    audioPlayer.deQueue(queuePositionsToRemoveFromPlayer)
-            );
-        }
         if (!queuePositionsToRemoveFromController.isEmpty()) {
             result = result.thenCompose(aVoid ->
                     consumeQueueEntries(queuePositionsToRemoveFromController)
             ).thenApply(entries -> null);
+        }
+        if (queuePositionsToRemoveFromPlayer.size() > 0) {
+            result = result.thenCompose(v ->
+                    audioPlayer.deQueue(queuePositionsToRemoveFromPlayer)
+            );
         }
         return result
                 .thenCompose(v -> checkPreload())

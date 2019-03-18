@@ -9,7 +9,6 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 import android.view.ActionMode;
-import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -47,6 +46,7 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.storage.AudioStorage;
+import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.util.Util;
 
 public class NowPlayingFragment extends AudioBrowserFragment {
@@ -74,6 +74,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private NowPlayingSelectionPredicate nowPlayingSelectionPredicate;
     private ActionMode actionMode;
     private ItemTouchHelper itemTouchHelper;
+    private View nowPlayingInfo;
 
     public NowPlayingFragment() {
         recViewAdapter = new NowPlayingEntriesAdapter(this);
@@ -90,6 +91,8 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         LinearLayoutManager recViewLayoutManager = new LinearLayoutManager(this.getContext());
         recViewLayoutManager.setReverseLayout(true);
         recView.setLayoutManager(recViewLayoutManager);
+        recView.getRecycledViewPool().setMaxRecycledViews(NowPlayingEntriesAdapter.VIEWTYPE_QUEUE_ITEM, 20);
+        recView.getRecycledViewPool().setMaxRecycledViews(NowPlayingEntriesAdapter.VIEWTYPE_PLAYLIST_NEXT, 20);
         recView.setAdapter(recViewAdapter);
 
         NowPlayingItemTouchHelperCallback itemTouchCallback =
@@ -152,7 +155,8 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         if (savedInstanceState != null) {
             selectionTracker.onRestoreInstanceState(savedInstanceState);
         }
-
+        nowPlayingInfo = rootView.findViewById(R.id.nowplaying_info);
+        nowPlayingInfo.setOnClickListener(v -> MetaDialogFragment.showMeta(this, currentMeta));
         nowPlayingTitle = rootView.findViewById(R.id.nowplaying_title);
         nowPlayingArtist = rootView.findViewById(R.id.nowplaying_artist);
         nowPlayingAlbum = rootView.findViewById(R.id.nowplaying_album);
@@ -447,41 +451,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             Log.d(LC, "stop progress update");
             scheduledFuture.cancel(false);
         }
-    }
-
-    @Override
-    public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-        super.onCreateContextMenu(menu, v, menuInfo);
-        MenuInflater menuInflater = getActivity().getMenuInflater();
-        menuInflater.inflate(R.menu.nowplaying_queueitem_contextmenu, menu);
-    }
-
-    @Override
-    public boolean onContextItemSelected(MenuItem item) {
-        int menuItemId = item.getItemId();
-        if (menuItemId != R.id.nowplaying_queueitem_contextmenu_play
-                && menuItemId != R.id.nowplaying_queueitem_contextmenu_dequeue) {
-            return false;
-        }
-        int position = recViewAdapter.getContextMenuHolder().getAdapterPosition();
-        EntryID entryID = recViewAdapter.getItemData(position).playbackEntry.entryID;
-        Log.d(LC, "info pos: " + position);
-        switch (menuItemId) {
-            case R.id.nowplaying_queueitem_contextmenu_play:
-                skipItems(position);
-                play();
-                Log.d(LC, "nowplaying context play");
-            case R.id.nowplaying_queueitem_contextmenu_dequeue:
-                dequeue(entryID, position);
-                Log.d(LC, "nowplaying context dequeue");
-        }
-        return true;
-    }
-
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-        registerForContextMenu(recView);
     }
 
     @Override

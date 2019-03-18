@@ -5,93 +5,9 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/nowplaying_queue_item_drawable">
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <LinearLayout
-            android:orientation="vertical"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="4dp"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
-            android:layout_weight="1">
-            <TextView
-                android:id="@+id/nowplaying_item_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:textColor="@color/primary_text_color"
-                android:fontFamily="sans-serif"
-                android:textSize="16sp"/>
-            <TextView
-                android:id="@+id/nowplaying_item_artist"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@color/secondary_text_color"/>
-        </LinearLayout>
-        <TextView
-            android:id="@+id/nowplaying_item_preload_status"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="4dp"
-            android:layout_gravity="center_vertical"
-            android:textColor="@color/secondary_text_color"/>
-        <TextView
-            android:id="@+id/nowplaying_item_source"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="4dp"
-            android:layout_gravity="center_vertical"
-            android:textColor="@color/secondary_text_color"/>
-        <TextView
-            android:id="@+id/nowplaying_item_cache_status"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:layout_gravity="center_vertical"
-            android:textColor="@color/secondary_text_color"/>
-    </LinearLayout>
-    <LinearLayout
-        android:id="@+id/nowplaying_item_more_actions"
+    <include layout="@layout/nowplaying_item_content" />
+    <se.splushii.dancingbunnies.ui.ItemActionsView
+        android:id="@+id/nowplaying_item_actions"
         android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:orientation="horizontal"
-        android:visibility="gone"
-        android:background="#EEEEEE"
-        android:layout_marginStart="16dp"
-        android:layout_gravity="end|center_vertical">
-        <ImageButton
-            android:id="@+id/nowplaying_item_action_dequeue"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:background="@android:color/transparent"
-            android:src="@drawable/ic_delete_black_24dp"
-            android:textColor="@color/bluegrey900"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:contentDescription="@string/nowplaying_context_dequeue" />
-        <ImageButton
-            android:id="@+id/nowplaying_item_action_play"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:background="@android:color/transparent"
-            android:src="@drawable/ic_play_arrow_black_24dp"
-            android:textColor="@color/bluegrey900"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:contentDescription="@string/nowplaying_context_play" />
-        <ImageButton
-            android:id="@+id/nowplaying_item_overflow_menu"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:background="@android:color/transparent"
-            android:src="@drawable/ic_more_vert_black_24dp"
-            android:textColor="@color/bluegrey900"
-            android:layout_gravity="center_vertical"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:contentDescription="@string/queue_item_more_actions" />
-    </LinearLayout>
+        android:layout_height="match_parent" />
 </FrameLayout>

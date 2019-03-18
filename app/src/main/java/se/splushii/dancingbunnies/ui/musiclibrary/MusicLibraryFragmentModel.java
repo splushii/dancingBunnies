@@ -41,11 +41,18 @@ public class MusicLibraryFragmentModel extends ViewModel {
     }
 
     void updateUserState(Pair<Integer, Integer> currentPosition) {
-        MusicLibraryQuery query = getUserState().getValue().query;
         getMutableUserState().setValue(new MusicLibraryUserState(
-                query,
+                getMusicLibraryQuery(),
                 currentPosition
         ));
+    }
+
+    private MusicLibraryQuery getMusicLibraryQuery() {
+        MusicLibraryUserState state = getUserState().getValue();
+        if (state == null) {
+            return new MusicLibraryQuery();
+        }
+        return state.query;
     }
 
     private LinkedList<MusicLibraryUserState> getBackStack() {
@@ -57,10 +64,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
     }
 
     void addBackStackHistory(Pair<Integer, Integer> currentPosition) {
-        getBackStack().push(new MusicLibraryUserState(
-                getUserState().getValue().query,
-                currentPosition
-        ));
+        getBackStack().push(new MusicLibraryUserState(getMusicLibraryQuery(),currentPosition));
     }
 
     boolean popBackStack() {
@@ -72,13 +76,13 @@ public class MusicLibraryFragmentModel extends ViewModel {
     }
 
     void filter(String filterType, String filter) {
-        MusicLibraryQuery query = new MusicLibraryQuery(getUserState().getValue().query);
+        MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
         query.addToQuery(filterType, filter);
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 
     void browse(EntryID entryID) {
-        MusicLibraryQuery query = new MusicLibraryQuery(getUserState().getValue().query);
+        MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
         String displayType = Meta.METADATA_KEY_ARTIST.equals(entryID.type) ?
                 Meta.METADATA_KEY_ALBUM : Meta.METADATA_KEY_MEDIA_ID;
         query.addToQuery(Meta.METADATA_KEY_TYPE, displayType);
@@ -89,7 +93,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
     }
 
     void displayType(String displayType) {
-        MusicLibraryQuery query = new MusicLibraryQuery(getUserState().getValue().query);
+        MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
         query.addToQuery(Meta.METADATA_KEY_TYPE, displayType);
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
@@ -101,17 +105,23 @@ public class MusicLibraryFragmentModel extends ViewModel {
     }
 
     void clearFilter(String filterType) {
-        MusicLibraryQuery query = new MusicLibraryQuery(getUserState().getValue().query);
+        MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
         query.removeFromQuery(filterType);
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 
-    void setCurrentSubscriptionID(String currentSubscriptionID) {
+    private void setCurrentSubscriptionID(String currentSubscriptionID) {
         this.currentSubscriptionID = currentSubscriptionID;
     }
 
-    String getCurrentSubscriptionID() {
+    private String getCurrentSubscriptionID() {
         return currentSubscriptionID;
+    }
+
+    public void query(String filterType, String filter) {
+        addBackStackHistory(new Pair<>(0, 0));
+        showOnly(filterType, filter);
+        displayType(Meta.METADATA_KEY_MEDIA_ID);
     }
 
     public void search(String query) {
@@ -133,13 +143,13 @@ public class MusicLibraryFragmentModel extends ViewModel {
         return getMutableDataSet();
     }
 
-    public void query(MediaBrowserCompat mediaBrowser) {
+    void query(MediaBrowserCompat mediaBrowser) {
         // Unsubscribe
         String currentSubscriptionID = getCurrentSubscriptionID();
         if (currentSubscriptionID != null && mediaBrowser.isConnected()) {
             mediaBrowser.unsubscribe(currentSubscriptionID);
         }
-        currentSubscriptionID = getUserState().getValue().query.query(
+        currentSubscriptionID = getMusicLibraryQuery().query(
                 mediaBrowser,
                 new MusicLibraryQuery.MusicLibraryQueryCallback() {
                     @Override

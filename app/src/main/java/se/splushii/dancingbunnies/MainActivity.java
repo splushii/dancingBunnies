@@ -36,7 +36,9 @@ public final class MainActivity extends AppCompatActivity {
     public static final int PAGER_MUSICLIBRARY = 0;
     public static final int PAGER_NOWPLAYING = 1;
     public static final int PAGER_PLAYLIST = 2;
-    public static final String PAGER_SELECTION = "dancingbunnies.mainactivity.pagerselection";
+    public static final String INTENT_EXTRA_PAGER_SELECTION = "dancingbunnies.mainactivity.pagerselection";
+    public static final String INTENT_EXTRA_FILTER_TYPE = "dancingbunnies.mainactivity.filter_type";
+    public static final String INTENT_EXTRA_FILTER_VALUE = "dancingbunnies.mainactivity.filter_value";
     public static final String SELECTION_ID_NOWPLAYING = "nowplaying_selection_id";
     public static final String SELECTION_ID_MUSICLIBRARY = "musiclibrary_selection_id";
 
@@ -75,15 +77,24 @@ public final class MainActivity extends AppCompatActivity {
     }
 
     private void handleIntent(Intent intent) {
-        int page_id = getIntent().getIntExtra(PAGER_SELECTION, -1);
-        if (page_id != -1) {
-            mViewPager.setCurrentItem(page_id);
-        }
         if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
             mViewPager.setCurrentItem(PAGER_MUSICLIBRARY);
             String query = intent.getStringExtra(SearchManager.QUERY);
             musicLibraryModel.search(query);
             intent.setAction(Intent.ACTION_MAIN);
+            return;
+        }
+        String filterType = intent.getStringExtra(INTENT_EXTRA_FILTER_TYPE);
+        String filter = intent.getStringExtra(INTENT_EXTRA_FILTER_VALUE);
+        if (filterType != null && filter != null) {
+            Log.e(LC, "mainactivity query: " + filterType + ": " + filter);
+            mViewPager.setCurrentItem(PAGER_MUSICLIBRARY);
+            musicLibraryModel.query(filterType, filter);
+            return;
+        }
+        int page_id = intent.getIntExtra(INTENT_EXTRA_PAGER_SELECTION, -1);
+        if (page_id != -1) {
+            mViewPager.setCurrentItem(page_id);
         }
     }
 

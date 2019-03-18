@@ -1,6 +1,5 @@
 package se.splushii.dancingbunnies.ui;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -23,6 +22,7 @@ import androidx.core.util.Pair;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
+import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.util.Util;
@@ -114,17 +114,13 @@ public class MetaDialogFragment extends DialogFragment {
         listView.setAdapter(adapter);
         listView.setOnItemClickListener((parent, view, position, id) -> {
             Pair<String, String> metaItem = adapter.getItem(position);
-            sendResult(metaItem.first, metaItem.second);
+            Intent intent = new Intent(requireContext(), MainActivity.class);
+            intent.putExtra(MainActivity.INTENT_EXTRA_FILTER_TYPE, metaItem.first);
+            intent.putExtra(MainActivity.INTENT_EXTRA_FILTER_VALUE, metaItem.second);
+            requireActivity().startActivity(intent);
+            dismiss();
         });
         return v;
-    }
-
-    private void sendResult(String key, String value) {
-        Bundle bundle = new Bundle();
-        bundle.putString(key, value);
-        Intent intent = new Intent().putExtras(bundle);
-        getTargetFragment().onActivityResult(getTargetRequestCode(), Activity.RESULT_OK, intent);
-        dismiss();
     }
 
     private class MetaDialogListAdapter extends ArrayAdapter<Pair<String, String>> {

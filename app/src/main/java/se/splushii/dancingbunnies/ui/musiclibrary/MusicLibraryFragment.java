@@ -1,7 +1,5 @@
 package se.splushii.dancingbunnies.ui.musiclibrary;
 
-import android.app.Activity;
-import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -47,7 +45,6 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.storage.RoomMetaSong;
 import se.splushii.dancingbunnies.ui.EntryIDDetailsLookup;
-import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryFragment extends AudioBrowserFragment {
@@ -152,20 +149,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         fastScroller = null;
         fastScrollerBubble = null;
         super.onDestroyView();
-    }
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == MetaDialogFragment.REQUEST_CODE) {
-            if (resultCode == Activity.RESULT_OK && data.getExtras() != null) {
-                Bundle b = data.getExtras();
-                for (String key : b.keySet()) {
-                    String value = b.getString(key);
-                    showOnly(key, value);
-                }
-            }
-        }
     }
 
     @Override

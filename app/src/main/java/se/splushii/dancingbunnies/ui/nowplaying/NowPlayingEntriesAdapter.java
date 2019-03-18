@@ -24,6 +24,8 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
 import se.splushii.dancingbunnies.storage.AudioStorage;
+import se.splushii.dancingbunnies.ui.ItemActionsView;
+import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.util.Util;
 
 public class NowPlayingEntriesAdapter
@@ -32,13 +34,12 @@ public class NowPlayingEntriesAdapter
     private final NowPlayingFragment fragment;
     private List<PlaybackEntryMeta> queueData;
     private List<PlaybackEntryMeta> playlistNext;
-    private RecyclerView.ViewHolder contextMenuHolder;
 
     private static final int VIEWTYPE_UNKNOWN = -1;
     static final int VIEWTYPE_QUEUE_ITEM = 0;
     static final int VIEWTYPE_PLAYLIST_NEXT = 1;
     private SelectionTracker<Long> selectionTracker;
-    private View selectedItemView;
+    private ItemActionsView selectedActionView;
     private final HashMap<EntryID, HashMap<Integer, Consumer<AudioStorage.AudioDataFetchState>>> fetchStatusCallbacks;
     private final HashMap<EntryID, HashMap<Integer, Consumer<Boolean>>> isCachedCallbacks;
     private HashSet<EntryID> cachedEntries;
@@ -152,6 +153,15 @@ public class NowPlayingEntriesAdapter
 
     void setSelectionTracker(SelectionTracker<Long> selectionTracker) {
         this.selectionTracker = selectionTracker;
+        selectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
+            @Override
+            public void onSelectionChanged() {
+                if (selectionTracker.hasSelection() && selectedActionView != null) {
+                    selectedActionView.animateShow(false);
+                    selectedActionView = null;
+                }
+            }
+        });
     }
 
     PlaybackEntryMeta getPlaybackEntry(Long key) {
@@ -223,10 +233,7 @@ public class NowPlayingEntriesAdapter
         final TextView source;
         final TextView preloadStatus;
         final TextView cacheStatus;
-        private final View moreActions;
-        private final View actionPlay;
-        private final View actionDequeue;
-        private final View overflowMenu;
+        private final ItemActionsView actionsView;
         private EntryID entryID;
         private int position;
         private String fetchStatusText;
@@ -245,7 +252,7 @@ public class NowPlayingEntriesAdapter
             }
         };
 
-        SongViewHolder(View v, boolean isQueueItem) {
+        SongViewHolder(View v) {
             super(v);
             item = v.findViewById(R.id.nowplaying_item);
             title = v.findViewById(R.id.nowplaying_item_title);
@@ -253,26 +260,17 @@ public class NowPlayingEntriesAdapter
             source = v.findViewById(R.id.nowplaying_item_source);
             preloadStatus = v.findViewById(R.id.nowplaying_item_preload_status);
             cacheStatus = v.findViewById(R.id.nowplaying_item_cache_status);
-            moreActions = v.findViewById(R.id.nowplaying_item_more_actions);
-            actionPlay = v.findViewById(R.id.nowplaying_item_action_play);
-            overflowMenu = v.findViewById(R.id.nowplaying_item_overflow_menu);
-            actionDequeue = isQueueItem ?
-                    v.findViewById(R.id.nowplaying_item_action_dequeue) : null;
+            actionsView = v.findViewById(R.id.nowplaying_item_actions);
             fetchStatusText = "";
             isCached = false;
             item.setOnClickListener(view -> {
-                if (selectedItemView != null && selectedItemView != moreActions) {
-                    selectedItemView.setVisibility(View.GONE);
+                if (selectedActionView != null && selectedActionView != actionsView) {
+                    selectedActionView.animateShow(false);
                 }
-                moreActions.setVisibility(selectionTracker.hasSelection() ? View.GONE :
-                        moreActions.getVisibility() == View.VISIBLE ?
-                                View.GONE : View.VISIBLE
-                );
-                selectedItemView = moreActions;
-            });
-            overflowMenu.setOnClickListener(view -> {
-                contextMenuHolder = this;
-                view.showContextMenu();
+                selectedActionView = actionsView;
+                boolean showActionsView = !selectionTracker.hasSelection()
+                        && actionsView.getVisibility() != View.VISIBLE;
+                actionsView.animateShow(showActionsView);
             });
         }
 
@@ -303,10 +301,10 @@ public class NowPlayingEntriesAdapter
     @Override
     public int getItemViewType(int position) {
         int queueSize = queueData.size();
-        int nextSize = playlistNext.size();
         if (position < queueSize) {
             return VIEWTYPE_QUEUE_ITEM;
         }
+        int nextSize = playlistNext.size();
         if (position < queueSize + nextSize) {
             return VIEWTYPE_PLAYLIST_NEXT;
         }
@@ -316,33 +314,29 @@ public class NowPlayingEntriesAdapter
     @NonNull
     @Override
     public SongViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        boolean isQueueType = viewType == VIEWTYPE_QUEUE_ITEM;
-        int layout = isQueueType ?
+        int layout = viewType == VIEWTYPE_QUEUE_ITEM ?
                 R.layout.nowplaying_queue_item : R.layout.nowplaying_playlist_item;
         View v = LayoutInflater.from(parent.getContext()).inflate(layout, parent, false);
-        return new SongViewHolder(v, isQueueType);
-    }
-
-    RecyclerView.ViewHolder getContextMenuHolder() {
-        return contextMenuHolder;
+        return new SongViewHolder(v);
     }
 
     @Override
     public void onBindViewHolder(@NonNull final SongViewHolder holder, int position) {
+        holder.actionsView.initialize();
         PlaybackEntryMeta entry;
         int queueSize = queueData.size();
         switch (getItemViewType(position)) {
             default:
             case VIEWTYPE_QUEUE_ITEM:
                 entry = queueData.get(position);
-                holder.actionDequeue.setOnClickListener(view -> {
-                    fragment.dequeue(entry.playbackEntry.entryID, position);
-                    holder.moreActions.setVisibility(View.GONE);
-                });
+                holder.actionsView.setOnDequeueListener(() ->
+                        fragment.dequeue(entry.playbackEntry.entryID, position)
+                );
                 break;
             case VIEWTYPE_PLAYLIST_NEXT:
                 int nextPos = position - queueSize;
                 entry = playlistNext.get(nextPos);
+                holder.actionsView.setOnDequeueListener(null);
                 break;
         }
         holder.entryID = entry.playbackEntry.entryID;
@@ -351,10 +345,12 @@ public class NowPlayingEntriesAdapter
                 && selectionTracker.isSelected(holder.getItemDetails().getSelectionKey());
         holder.item.setActivated(selected);
         String title = entry.meta.getString(Meta.METADATA_KEY_TITLE);
-        holder.actionPlay.setOnClickListener(view -> {
+        holder.actionsView.setOnPlayListener(() -> {
             fragment.skipItems(position + 1);
             fragment.play();
-            holder.moreActions.setVisibility(View.GONE);
+        });
+        holder.actionsView.setOnInfoListener(() -> {
+            MetaDialogFragment.showMeta(fragment, entry.meta);
         });
         holder.title.setText(title);
         String artist = entry.meta.getString(Meta.METADATA_KEY_ARTIST);

@@ -395,7 +395,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         mediaSession.setCallback(new MediaSessionCallback());
 
         Intent intent = new Intent(this, MainActivity.class);
-        intent.putExtra(MainActivity.PAGER_SELECTION, MainActivity.PAGER_NOWPLAYING);
+        intent.putExtra(MainActivity.INTENT_EXTRA_PAGER_SELECTION, MainActivity.PAGER_NOWPLAYING);
         PendingIntent pi = PendingIntent.getActivity(this, 99 /*request code*/,
                 intent, PendingIntent.FLAG_UPDATE_CURRENT);
         mediaSession.setSessionActivity(pi);
