@@ -5,24 +5,32 @@ import android.os.Bundle;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 import androidx.sqlite.db.SimpleSQLiteQuery;
-import androidx.sqlite.db.SupportSQLiteQuery;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
+import se.splushii.dancingbunnies.storage.db.MetaBoolean;
+import se.splushii.dancingbunnies.storage.db.MetaDao;
+import se.splushii.dancingbunnies.storage.db.MetaDouble;
+import se.splushii.dancingbunnies.storage.db.MetaLong;
+import se.splushii.dancingbunnies.storage.db.MetaString;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MetaStorage {
     private static final String LC = Util.getLogContext(MetaStorage.class);
 
-    private final RoomMetaDao metaModel;
+    private final MetaDao metaModel;
 
     public MetaStorage(Context context) {
         metaModel = RoomDB.getDB(context).metaModel();
@@ -31,126 +39,82 @@ public class MetaStorage {
     public void insertSongs(List<Meta> metaList) {
         long start = System.currentTimeMillis();
         Log.d(LC, "insertSongs start");
-        RoomMetaSong[] songs = new RoomMetaSong[metaList.size()];
-        for (int i = 0; i < songs.length; i++) {
-            songs[i] = metaList.get(i).toRoomSong();
-        }
-        metaModel.insert(songs);
+        metaModel.insert(metaList);
         Log.d(LC, "insertSongs finish. " + (System.currentTimeMillis() - start) + "ms");
     }
 
-    private List<Meta> fromSongs(List<RoomMetaSong> songs) {
-        List<Meta> metaList = new ArrayList<>();
-        for (RoomMetaSong song: songs) {
-            metaList.add(song.getMeta());
-        }
-        return metaList;
-    }
-
-    private LiveData<List<Meta>> getMetadataEntries(Bundle bundleQuery) {
-        SupportSQLiteQuery query = getSongSelectQuery(bundleQuery);
-        Log.d(LC, "getMetaDataEntry query: " + query.getSql());
-        LiveData<List<RoomMetaSong>> songs = metaModel.getSongsViaQuery(query);
-        return Transformations.map(songs, this::fromSongs);
-    }
-
-    private SupportSQLiteQuery getSongSelectQuery(Bundle bundleQuery) {
-        StringBuilder query = new StringBuilder();
-        query.append("SELECT * FROM " + RoomDB.TABLE_SONGS);
-        if (bundleQuery == null || bundleQuery.isEmpty()) {
-            return new SimpleSQLiteQuery(query.toString());
-        }
-        List<Object> args = constructSQLWhereClause(query, bundleQuery);
-        return new SimpleSQLiteQuery(query.toString(), args.toArray());
-    }
-
+    // TODO: Support sort-by argument in bundleQuery
+    // TODO: rework bundleQuery and getEntries to support nested queries
     public LiveData<List<LibraryEntry>> getEntries(Bundle bundleQuery) {
-        LiveData<List<LibraryEntry>> libraryEntries;
-        String type = bundleQuery.getString(Meta.METADATA_KEY_TYPE);
-        String metaType = type == null ? Meta.METADATA_KEY_MEDIA_ID : type;
-        boolean resultIsMeta = !Meta.METADATA_KEY_MEDIA_ID.equals(metaType);
-        SupportSQLiteQuery query = resultIsMeta ?
-                getEntriesSelectQuery(bundleQuery) : getSongSelectQuery(bundleQuery);
-        Log.d(LC, "getEntries query: " + query.getSql());
-        if (resultIsMeta) {
-            LiveData<List<RoomMetaValue>> entries = metaModel.getMetaViaQuery(query);
-            libraryEntries = Transformations.map(entries, _entries -> {
-                List<LibraryEntry> list = new ArrayList<>();
-                for (RoomMetaValue v: _entries) {
-                    if (v.value != null) {
-                        list.add(new LibraryEntry(
-                                new EntryID(
-                                        MusicLibraryService.API_ID_DANCINGBUNNIES,
-                                        v.value,
-                                        metaType
-                                ),
-                                v.value
-                        ));
-                    }
-                }
-                return list;
-            });
-        } else {
-            LiveData<List<RoomMetaSong>> songs = metaModel.getSongsViaQuery(query);
-            libraryEntries = Transformations.map(songs, _songs ->
-                    _songs.stream().map(s -> new LibraryEntry(
-                            new EntryID(
-                                    s.api,
-                                    s.id,
-                                    metaType
-                            ),
-                            s.title
-                    )).collect(Collectors.toList())
-            );
+        String showTypeKey = bundleQuery.getString(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_MEDIA_ID);
+        String showTypeTable = MetaDao.getTable(showTypeKey);
+        String showTypeTableAlias = MetaDao.getTableAlias(showTypeKey);
+        if (showTypeTable == null || showTypeTableAlias == null) {
+            MutableLiveData<List<LibraryEntry>> entries = new MutableLiveData<>();
+            entries.setValue(Collections.emptyList());
+            return entries;
         }
-        return libraryEntries;
-    }
-
-    public CompletableFuture<List<EntryID>> getEntries(EntryID entryID) {
-        String metaType = Meta.METADATA_KEY_MEDIA_ID;
-        Bundle bundleQuery = new Bundle();
-        bundleQuery.putString(entryID.type, entryID.id);
-        SupportSQLiteQuery query = getSongSelectQuery(bundleQuery);
-        return CompletableFuture.supplyAsync(() ->
-            metaModel.getSongsViaQuerySync(query)
-                    .stream()
-                    .map(roomMetaSong ->
-                            new EntryID(
-                                    roomMetaSong.api,
-                                    roomMetaSong.id,
-                                    metaType
-                            ))
-                    .collect(Collectors.toList())
-        );
-    }
-
-    private SupportSQLiteQuery getEntriesSelectQuery(Bundle bundleQuery) {
-        if (bundleQuery == null || bundleQuery.isEmpty()) {
-            return new SimpleSQLiteQuery("SELECT "
-                    + RoomMetaSong.COLUMN_ID + " as " + RoomMetaValue.VALUE
-                    + " FROM " + RoomDB.TABLE_SONGS
-            );
-        }
-        String type = bundleQuery.getString(Meta.METADATA_KEY_TYPE);
-        String metaColumn = type == null ? RoomMetaSong.COLUMN_ID : RoomMetaSong.columnName(type);
-        StringBuilder query = new StringBuilder();
-        query.append("SELECT DISTINCT ")
-                .append(metaColumn).append(" as ").append(RoomMetaValue.VALUE)
-                .append(" FROM ").append(RoomDB.TABLE_SONGS);
-        List<Object> args = constructSQLWhereClause(query, bundleQuery);
-        return new SimpleSQLiteQuery(query.toString(), args.toArray());
-    }
-
-    private List<Object> constructSQLWhereClause(StringBuilder query, Bundle bundleQuery) {
-        List<Object> args = new ArrayList<>();
+        boolean showMeta = !Meta.METADATA_KEY_MEDIA_ID.equals(showTypeKey);
+        // Other types (keys) which needs to be joined for the query
+        HashSet<String> uniqueQueryKeys = new HashSet<>();
         for (String key: bundleQuery.keySet()) {
-            String columnName = RoomMetaSong.columnName(key);
-            if (columnName == null) {
-                if (!Meta.METADATA_KEY_TYPE.equals(key)) { // Only print when not METADATA_KEY_TYPE
-                    Log.e(LC, "getSongSelectQuery:"
-                            + " there is no column in \"" + RoomDB.TABLE_SONGS + "\""
-                            + " for bundleQuery key \"" + key + "\"");
-                }
+            if (Meta.METADATA_KEY_TYPE.equals(key)) {
+                continue;
+            }
+            uniqueQueryKeys.add(key);
+        }
+        if (!showMeta) { // Add title to order by
+            uniqueQueryKeys.add(Meta.METADATA_KEY_TITLE);
+        }
+        List<Object> queryArgs = new ArrayList<>();
+        StringBuilder query = new StringBuilder("select");
+        if (showMeta) {
+            query.append(" distinct");
+        }
+        if (showMeta) {
+            query.append(String.format(" %s.%s", showTypeTableAlias, RoomDB.COLUMN_VALUE));
+        } else {
+            query.append(String.format(" %s.%s", showTypeTableAlias, RoomDB.COLUMN_API));
+            query.append(String.format(", %s.%s", showTypeTableAlias, RoomDB.COLUMN_ID));
+        }
+        query.append(" from ").append(showTypeTable).append(" as ").append(showTypeTableAlias);
+        for (String key: uniqueQueryKeys) {
+            if (showTypeKey.equals(key)) {
+                // Already added above in select
+                continue;
+            }
+            String typeTable = MetaDao.getTable(key);
+            String typeTableAlias = MetaDao.getTableAlias(key);
+            if (typeTable == null || typeTableAlias == null) {
+                Log.e(LC, "There is no type table"
+                        + " for bundleQuery key \"" + key + "\""
+                        + " with type " + Meta.getType(key));
+                continue;
+            }
+            query.append(" left join " + typeTable + " as " + typeTableAlias
+                    + " on ( " + typeTableAlias + "." + RoomDB.COLUMN_KEY + " = ?"
+                    + " and " + typeTableAlias + "." + RoomDB.COLUMN_API
+                    + " = " + showTypeTableAlias + "." + RoomDB.COLUMN_API
+                    + " and " + typeTableAlias + "." + RoomDB.COLUMN_ID
+                    + " = " + showTypeTableAlias + "." + RoomDB.COLUMN_ID + " )");
+            queryArgs.add(key);
+        }
+        // Add showType filter
+        if (showMeta) {
+            query.append(" where " + showTypeTableAlias + "." + RoomDB.COLUMN_KEY + " = ?");
+            queryArgs.add(showTypeKey);
+        }
+        // Add user query
+        boolean whereClauseEmpty = true;
+        for (String key: bundleQuery.keySet()) {
+            if (Meta.METADATA_KEY_TYPE.equals(key)) {
+                continue;
+            }
+            String typeTableAlias = MetaDao.getTableAlias(key);
+            if (typeTableAlias == null) {
+                Log.e(LC, "There is no type table"
+                        + " for bundleQuery key \"" + key + "\""
+                        + " with type " + Meta.getType(key));
                 continue;
             }
             switch (Meta.getType(key)) {
@@ -160,34 +124,118 @@ public class MetaStorage {
                         Log.e(LC, "LONG value in bundle is null for key: " + key);
                         break;
                     }
-                    args.add(Long.parseLong(value));
+                    queryArgs.add(Long.parseLong(value));
                     break;
                 case STRING:
-                    args.add(bundleQuery.getString(key));
+                    queryArgs.add(bundleQuery.getString(key));
                     break;
                 case BITMAP:
-                case RATING:
                     Log.e(LC, "Unsupported bundleQuery type: " + Meta.getType(key).name());
                     continue;
             }
-            if (args.size() < 1) {
-                Log.wtf(LC, "getSongSelectQuery: internal error");
-                continue;
-            } else if (args.size() == 1) {
-                query.append(" WHERE ");
+            if (whereClauseEmpty) {
+                if (showMeta) {
+                    query.append(" AND ( ");
+                } else {
+                    query.append(" WHERE (");
+                }
+                whereClauseEmpty = false;
             } else {
                 query.append(" AND ");
             }
-            query.append(columnName).append("=?");
+            query.append(typeTableAlias).append(".").append(RoomDB.COLUMN_VALUE).append(" = ?");
         }
-        return args;
+        if (!whereClauseEmpty) {
+            query.append(" )");
+        }
+        // Sort
+        if (showMeta) {
+            query.append(" order by " + showTypeTableAlias + "." + RoomDB.COLUMN_VALUE);
+        } else {
+            query.append(" order by " + MetaDao.getTableAlias(Meta.METADATA_KEY_TITLE)
+                    + "." + RoomDB.COLUMN_VALUE);
+        }
+        SimpleSQLiteQuery sqlQuery = new SimpleSQLiteQuery(query.toString(), queryArgs.toArray());
+        Log.d(LC, "query: " + sqlQuery.getSql());
+        return Transformations.map(metaModel.getEntries(sqlQuery), values ->
+                values.stream().map(value -> {
+                            EntryID entryID = showTypeKey.equals(Meta.METADATA_KEY_MEDIA_ID) ?
+                                    new EntryID(
+                                            value.api,
+                                            value.id,
+                                            showTypeKey
+                                    )
+                                    :
+                                    new EntryID(
+                                            MusicLibraryService.API_ID_DANCINGBUNNIES,
+                                            value.value,
+                                            showTypeKey
+                                    );
+                            return new LibraryEntry(entryID, value.value);
+                        }
+                ).collect(Collectors.toList())
+        );
     }
 
-    public LiveData<List<Meta>> getAllSongMetaData() {
-        return getMetadataEntries(null);
+    public CompletableFuture<List<EntryID>> getEntries(EntryID entryID) {
+        CompletableFuture<List<EntryID>> ret = new CompletableFuture<>();
+        Bundle bundleQuery = new Bundle();
+        bundleQuery.putString(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_MEDIA_ID);
+        bundleQuery.putString(entryID.type, entryID.id);
+        LiveData<List<LibraryEntry>> liveData = getEntries(bundleQuery);
+        liveData.observeForever(new Observer<List<LibraryEntry>>() {
+            @Override
+            public void onChanged(List<LibraryEntry> libraryEntries) {
+                ret.complete(libraryEntries.stream()
+                        .map(libraryEntry -> libraryEntry.entryID)
+                        .collect(Collectors.toList()));
+                liveData.removeObserver(this);
+            }
+        });
+        return ret;
     }
 
     public void clearAll(String src) {
         metaModel.deleteWhereSourceIs(src);
+    }
+
+    public CompletableFuture<Meta> getMeta(EntryID entryID) {
+        CompletableFuture<List<MetaString>> stringFuture = CompletableFuture.supplyAsync(() ->
+                metaModel.getStringMeta(entryID.src, entryID.id)
+        );
+        CompletableFuture<List<MetaLong>> longFuture = CompletableFuture.supplyAsync(() ->
+                metaModel.getLongMeta(entryID.src, entryID.id)
+        );
+        CompletableFuture<List<MetaBoolean>> boolFuture = CompletableFuture.supplyAsync(() ->
+                metaModel.getBoolMeta(entryID.src, entryID.id)
+        );
+        CompletableFuture<List<MetaDouble>> doubleFuture = CompletableFuture.supplyAsync(() ->
+                metaModel.getDoubleMeta(entryID.src, entryID.id)
+        );
+        CompletableFuture[] futures = new CompletableFuture[] {
+                stringFuture,
+                longFuture,
+                boolFuture,
+                doubleFuture
+        };
+        CompletableFuture<Meta> ret = new CompletableFuture<>();
+        CompletableFuture.allOf(futures).thenRunAsync(() -> {
+            Meta meta = new Meta(entryID);
+            // TODO: Add support in Meta for multiple values for same key
+            stringFuture.getNow(Collections.emptyList()).forEach(v ->
+                    meta.setString(v.key, v.value)
+            );
+            longFuture.getNow(Collections.emptyList()).forEach(v ->
+                    meta.setLong(v.key, v.value)
+            );
+            boolFuture.getNow(Collections.emptyList()).forEach(v ->
+                    meta.setBoolean(v.key, v.value)
+            );
+            doubleFuture.getNow(Collections.emptyList()).forEach(v ->
+                    meta.setDouble(v.key, v.value)
+            );
+            ret.complete(meta);
+        });
+        return ret;
     }
 }

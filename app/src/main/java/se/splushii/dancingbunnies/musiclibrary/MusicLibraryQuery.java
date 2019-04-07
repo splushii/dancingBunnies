@@ -31,15 +31,6 @@ public class MusicLibraryQuery {
         this.searchQuery = query.searchQuery;
     }
 
-    public MusicLibraryQuery(Bundle query) {
-        this.type = MusicLibraryQueryType.SUBSCRIPTION;
-        this.subQuery = query;
-    }
-
-    Bundle subQuery() {
-        return subQuery;
-    }
-
     public void addToQuery(String key, String value) {
         if (type != MusicLibraryQueryType.SUBSCRIPTION) {
             Log.e(LC, "addToQuery on type: " + type.name());
@@ -109,7 +100,7 @@ public class MusicLibraryQuery {
 
             @Override
             public void onError(@NonNull String parentId) {
-                Log.d(LC, "MediaBrowser.subscribe(" + parentId + ") onError");
+                Log.e(LC, "MediaBrowser.subscribe(" + parentId + ") onError");
             }
         };
         mediaBrowser.subscribe(subscriptionID(), options, subCb);

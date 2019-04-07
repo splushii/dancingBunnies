@@ -5,7 +5,6 @@ import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.content.Context;
-import android.support.v4.media.MediaBrowserCompat;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -171,6 +170,7 @@ public class FastScroller extends LinearLayout {
      * Handling events from RecyclerView
      */
     private class ScrollListener extends RecyclerView.OnScrollListener {
+        int lastPos = 0;
         @Override
         public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
             if (FastScrollerNotNeeded()) {
@@ -181,16 +181,12 @@ public class FastScroller extends LinearLayout {
                 return;
             }
             if (bubble != null) {
-                MusicLibraryAdapter libAdapter = (MusicLibraryAdapter) recyclerView.getAdapter();
-                LinearLayoutManager linearLayoutManager =
-                        (LinearLayoutManager) recyclerView.getLayoutManager();
-                int visibleIndex = linearLayoutManager.findFirstCompletelyVisibleItemPosition();
-                visibleIndex = visibleIndex >= 0 ? visibleIndex : 0;
-                MediaBrowserCompat.MediaItem item = libAdapter.getItemData(visibleIndex);
-                String title = String.valueOf(item.getDescription().getTitle());
-                String firstChar = title.length() >= 1 ? title.substring(0, 1).toUpperCase() : "";
-                String secondChar = title.length() >= 2 ? title.substring(1, 2).toLowerCase() : "";
-                bubble.setText(firstChar + secondChar);
+                int pos = ((LinearLayoutManager) recyclerView.getLayoutManager()).findFirstCompletelyVisibleItemPosition();
+                if (pos != lastPos) {
+                    pos = pos >= 0 ? pos : 0;
+                    lastPos = pos;
+                    bubble.update(pos);
+                }
             }
 
             animateShow(handle, handleHider, AnimationType.FADE);

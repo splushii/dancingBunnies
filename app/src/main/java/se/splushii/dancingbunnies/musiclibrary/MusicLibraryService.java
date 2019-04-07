@@ -4,6 +4,7 @@ import android.app.Service;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Binder;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.util.Log;
@@ -15,11 +16,13 @@ import org.apache.lucene.search.TopDocs;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
@@ -52,11 +55,9 @@ public class MusicLibraryService extends Service {
     private MetaStorage metaStorage;
     private AudioStorage audioStorage;
     private PlaylistStorage playlistStorage;
-    private LiveData<List<Meta>> metaLiveData;
     private LiveData<List<PlaylistItem>> playlistLiveData;
     private LiveData<List<RoomPlaylistEntry>> playlistEntriesLiveData;
     private List<PlaylistItem> playlists = new ArrayList<>();
-    private HashMap<EntryID, Meta> metaMap = new HashMap<>();
     private HashMap<PlaylistID, List<EntryID>> playlistMap = new HashMap<>();
 
     private final IBinder binder = new MusicLibraryBinder();
@@ -70,8 +71,7 @@ public class MusicLibraryService extends Service {
         }
         for (int count = 0; count < maxEntries && index < entryIDs.size(); count++, index++) {
             EntryID entryID = entryIDs.get((int)index);
-            Meta meta = getSongMetaData(entryID);
-            playbackEntries.add(new PlaybackEntry(meta, PlaybackEntry.USER_TYPE_PLAYLIST));
+            playbackEntries.add(new PlaybackEntry(entryID, PlaybackEntry.USER_TYPE_PLAYLIST));
         }
         return playbackEntries;
     }
@@ -96,14 +96,11 @@ public class MusicLibraryService extends Service {
         return playlists;
     }
 
+    // TODO: Make this work similar to musiclibrary entries
     public List<LibraryEntry> getPlaylistEntries(PlaylistID playlistID) {
-        List<LibraryEntry> entries = new LinkedList<>();
-        for (EntryID entryID: playlistMap.getOrDefault(playlistID, Collections.emptyList())) {
-            Meta meta = getSongMetaData(entryID);
-            String title = meta.getString(Meta.METADATA_KEY_TITLE);
-            entries.add(new LibraryEntry(entryID, title));
-        }
-        return entries;
+        return playlistMap.getOrDefault(playlistID, Collections.emptyList()).stream()
+                .map(e -> new LibraryEntry(e, "<fixme>"))
+                .collect(Collectors.toList());
     }
 
     public void playlistAddEntries(PlaylistID playlistID, List<EntryID> entryIDs) {
@@ -129,27 +126,6 @@ public class MusicLibraryService extends Service {
             return MusicLibraryService.this;
         }
     }
-
-    private final Observer<List<Meta>> metaObserver = metas -> {
-        long start = System.currentTimeMillis();
-        Log.d(LC, "metaObserver: " + metas.size() + " entries. Building meta index...");
-        HashMap<EntryID, Meta> newMetaMap = new HashMap<>();
-        for (Meta meta: metas) {
-            meta.setString(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_MEDIA_ID);
-            newMetaMap.put(EntryID.from(meta), meta);
-        }
-        metaMap = newMetaMap;
-        Log.d(LC, "metaObserver: Finished building meta index. "
-                + (System.currentTimeMillis() - start) + "ms.");
-        start = System.currentTimeMillis();
-        Log.d(LC, "metaObserver: Building search index...");
-        reIndex(metas);
-        Log.d(LC, "metaObserver: Finished building search index. "
-                + (System.currentTimeMillis() - start) + "ms.");
-        for (Runnable r: metaChangedListeners) {
-            r.run();
-        }
-    };
 
     private final Observer<List<PlaylistItem>> playlistsObserver = entries -> {
         Log.d(LC, "playlistsObserver: " + entries.size() + " entries.");
@@ -180,21 +156,27 @@ public class MusicLibraryService extends Service {
         metaChangedListeners = new ArrayList<>();
         loadSettings();
         metaStorage = new MetaStorage(this);
-        metaLiveData = metaStorage.getAllSongMetaData();
-        metaLiveData.observeForever(metaObserver);
         playlistStorage = new PlaylistStorage(this);
         playlistLiveData = playlistStorage.getPlaylists();
         playlistLiveData.observeForever(playlistsObserver);
         playlistEntriesLiveData = playlistStorage.getPlaylistEntries();
         playlistEntriesLiveData.observeForever(playlistEntriesObserver);
         audioStorage = AudioStorage.getInstance(this);
+        prepareIndex();
+        notifyLibraryChanged();
+    }
+
+    private void prepareIndex() {
+        if (indexDirectoryPath != null) {
+            return;
+        }
         indexDirectoryPath = new File(getFilesDir(), LUCENE_INDEX_PATH);
         if (!indexDirectoryPath.isDirectory()) {
             if (!indexDirectoryPath.mkdirs()) {
                 Log.w(LC, "Could not create lucene index dir " + indexDirectoryPath.toPath());
             }
         }
-        notifyLibraryChanged();
+        Log.e(LC, "index path: " + indexDirectoryPath);
     }
 
     @Override
@@ -202,7 +184,6 @@ public class MusicLibraryService extends Service {
         Log.d(LC, "onDestroy");
         playlistEntriesLiveData.removeObserver(playlistEntriesObserver);
         playlistLiveData.removeObserver(playlistsObserver);
-        metaLiveData.removeObserver(metaObserver);
         super.onDestroy();
     }
 
@@ -214,6 +195,7 @@ public class MusicLibraryService extends Service {
 
     private void reIndex(List<Meta> metas) {
         Log.d(LC, "Indexing library...");
+        prepareIndex();
         Indexer indexer = new Indexer(indexDirectoryPath);
         long startTime = System.currentTimeMillis();
         int numDocs = 0;
@@ -227,8 +209,11 @@ public class MusicLibraryService extends Service {
     }
 
     private void notifyLibraryChanged() {
-        // TODO: Notify about ALL changed parents/children?
-        Log.e(LC, "notifyLibraryChange not implemented");
+        Log.d(LC, "notifyLibraryChange");
+        for (Runnable r: metaChangedListeners) {
+            r.run();
+        }
+
     }
 
     private AudioDataSource getAudioDataSource(EntryID entryID) {
@@ -281,20 +266,26 @@ public class MusicLibraryService extends Service {
         audioStorage.fetch(entryID, handler);
     }
 
-    public boolean isCached(EntryID entryID) {
-        File cacheFile = AudioStorage.getCacheFile(this, entryID);
-        return cacheFile.isFile();
+    public CompletableFuture<Meta> getSongMeta(EntryID entryID) {
+        return metaStorage.getMeta(entryID);
     }
 
-    public Meta getSongMetaData(EntryID entryID) {
-        if (metaMap.containsKey(entryID)) {
-            return metaMap.get(entryID);
+    public CompletableFuture<List<Meta>> getSongMetas(List<EntryID> entryIDs) {
+        CompletableFuture<List<Meta>> ret = new CompletableFuture<>();
+        Meta[] metas = new Meta[entryIDs.size()];
+        List<CompletableFuture> futureList = new ArrayList<>();
+        for (int i = 0; i < metas.length; i++) {
+            int index = i;
+            EntryID entryID = entryIDs.get(index);
+            futureList.add(getSongMeta(entryID).thenAccept(meta -> metas[index] = meta));
         }
-        return Meta.UNKNOWN_ENTRY;
+        CompletableFuture.allOf(futureList.toArray(new CompletableFuture[0]))
+                .thenRun(() -> ret.complete(Arrays.asList(metas)));
+        return ret;
     }
 
-    public LiveData<List<LibraryEntry>> getSubscriptionEntries(MusicLibraryQuery q) {
-        return metaStorage.getEntries(q.subQuery());
+    public LiveData<List<LibraryEntry>> getSubscriptionEntries(Bundle bundleQuery) {
+        return metaStorage.getEntries(bundleQuery);
     }
 
     public CompletableFuture<List<EntryID>> getSongEntries(EntryID entryID) {
@@ -398,6 +389,9 @@ public class MusicLibraryService extends Service {
                 saveLibraryToStorage(data);
                 Log.d(LC, "Saved library to local meta storage.");
                 notifyLibraryChanged();
+                handler.onProgress("Indexing...");
+                reIndex(data);
+                handler.onProgress("Indexing done.");
                 handler.onSuccess("Successfully processed "
                         + data.size() + " library entries from " + api + ".");
             } else {

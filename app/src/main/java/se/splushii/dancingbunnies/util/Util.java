@@ -65,8 +65,8 @@ public class Util {
         }
     }
 
-    public static CompletableFuture<Void> futureResult(String error) {
-        CompletableFuture<Void> result = new CompletableFuture<>();
+    public static <T> CompletableFuture<T> futureResult(String error) {
+        CompletableFuture<T> result = new CompletableFuture<>();
         if (error != null) {
             result.completeExceptionally(new FutureException(error));
             return result;

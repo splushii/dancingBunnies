@@ -16,6 +16,7 @@ import com.google.android.gms.common.api.PendingResult;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -331,24 +332,24 @@ public class CastAudioPlayer implements AudioPlayer {
         if (!remoteMediaClient.hasMediaSession()) {
             return setQueue(entries, 0);
         }
+        return getQueueItemsToQueue(entries).thenCompose(queueItemsToQueue -> {
+            int queueInsertBeforeItemId = getInsertBeforeItemId(offset);
 
-        MediaQueueItem[] queueItemsToQueue = getQueueItemsToQueue(entries);
-        int queueInsertBeforeItemId = getInsertBeforeItemId(offset);
+            logCurrentQueue();
+            Log.d(LC, "queue()"
+                    + "\nNew entries to queue: " + queueItemsToQueue.length
+                    + " before "+ queueInsertBeforeItemId);
 
-        logCurrentQueue();
-        Log.d(LC, "queue()"
-                + "\nNew entries to queue: " + queueItemsToQueue.length
-                + " before "+ queueInsertBeforeItemId);
-
-        return handleMediaClientRequest(
-                "queue() queueInsertItems",
-                "Could not insert queue items.",
-                remoteMediaClient.queueInsertItems(
-                        queueItemsToQueue,
-                        queueInsertBeforeItemId,
-                        null
-                )
-        );
+            return handleMediaClientRequest(
+                    "queue() queueInsertItems",
+                    "Could not insert queue items.",
+                    remoteMediaClient.queueInsertItems(
+                            queueItemsToQueue,
+                            queueInsertBeforeItemId,
+                            null
+                    )
+            );
+        });
     }
 
     private int getInsertBeforeItemId(int offset) {
@@ -357,9 +358,11 @@ public class CastAudioPlayer implements AudioPlayer {
         return mediaQueue.itemIdAtIndex(queueInsertBeforeIndex);
     }
 
-    private MediaQueueItem[] getQueueItemsToQueue(List<PlaybackEntry> entriesToQueue) {
+    private CompletableFuture<MediaQueueItem[]> getQueueItemsToQueue(
+            List<PlaybackEntry> entriesToQueue
+    ) {
         if (entriesToQueue.isEmpty()) {
-            return new MediaQueueItem[0];
+            return CompletableFuture.completedFuture(new MediaQueueItem[0]);
         }
         return buildMediaQueueItems(entriesToQueue, playWhenReady);
     }
@@ -437,14 +440,15 @@ public class CastAudioPlayer implements AudioPlayer {
         if (!remoteMediaClient.hasMediaSession()) {
             return setQueue(entries, 0);
         }
-        MediaQueueItem[] items = buildMediaQueueItems(entries, playWhenReady);
-        logCurrentQueue();
-        Log.d(LC, "preload appending " + items.length + " items.");
-        return handleMediaClientRequest(
-                "preload queueInsertItems",
-                "Could not insert queue items",
-                remoteMediaClient.queueInsertItems(items, MediaQueueItem.INVALID_ITEM_ID, null)
-        );
+        return buildMediaQueueItems(entries, playWhenReady).thenCompose(items -> {
+            logCurrentQueue();
+            Log.d(LC, "preload appending " + items.length + " items.");
+            return handleMediaClientRequest(
+                    "preload queueInsertItems",
+                    "Could not insert queue items",
+                    remoteMediaClient.queueInsertItems(items, MediaQueueItem.INVALID_ITEM_ID, null)
+            );
+        });
     }
 
     private CompletableFuture<Void> setAutoPlay(boolean playWhenReady) {
@@ -520,43 +524,56 @@ public class CastAudioPlayer implements AudioPlayer {
         if (playbackEntries == null || playbackEntries.isEmpty()) {
             return Util.futureResult(null);
         }
-        int startIndex = 0;
-        int repeatMode = MediaStatus.REPEAT_MODE_REPEAT_OFF;
-        Log.d(LC, "setQueue, creating a new queue");
-        MediaQueueItem[] queueItems = buildMediaQueueItems(playbackEntries, playWhenReady);
         if (remoteMediaClient == null) {
             return Util.futureResult("setQueue(): remoteMediaClient is null");
         }
-        return handleMediaClientRequest(
-                "queueLoad",
-                "Could not load queue",
-                remoteMediaClient.queueLoad(queueItems, startIndex, repeatMode, seekPosition, null)
+        Log.d(LC, "setQueue, creating a new queue");
+        int startIndex = 0;
+        int repeatMode = MediaStatus.REPEAT_MODE_REPEAT_OFF;
+        return buildMediaQueueItems(playbackEntries, playWhenReady).thenCompose(queueItems ->
+                handleMediaClientRequest(
+                        "queueLoad",
+                        "Could not load queue",
+                        remoteMediaClient.queueLoad(queueItems, startIndex, repeatMode, seekPosition, null)
+                )
         );
     }
 
-    private MediaQueueItem[] buildMediaQueueItems(List<PlaybackEntry> playbackEntries,
+    private CompletableFuture<MediaQueueItem[]> buildMediaQueueItems(List<PlaybackEntry> playbackEntries,
                                                   boolean playWhenReady) {
-        List<MediaQueueItem> queueItems = new LinkedList<>();
-        for (PlaybackEntry playbackEntry: playbackEntries) {
-            MediaQueueItem queueItem = buildMediaQueueItem(playbackEntry, playWhenReady);
-            if (queueItem == null) {
-                Log.e(LC, "Could not add playbackEntry to queue: " + playbackEntry.toString());
-                continue;
+        return musicLibraryService.getSongMetas(
+                playbackEntries.stream()
+                        .map(p -> p.entryID)
+                        .collect(Collectors.toList())
+        ).thenApplyAsync(metas -> {
+            Iterator<PlaybackEntry> pIter = playbackEntries.iterator();
+            Iterator<Meta> mIter = metas.iterator();
+            List<MediaQueueItem> queueItems = new LinkedList<>();
+            while (pIter.hasNext() && mIter.hasNext()) {
+                PlaybackEntry playbackEntry = pIter.next();
+                Meta meta = mIter.next();
+                MediaQueueItem queueItem = buildMediaQueueItem(playbackEntry, meta, playWhenReady);
+                if (queueItem == null) {
+                    Log.e(LC, "Could not add playbackEntry to queue: " + playbackEntry.toString());
+                    continue;
+                }
+                queueItems.add(queueItem);
             }
-            queueItems.add(queueItem);
-        }
-        StringBuilder sb = new StringBuilder("newQueueItems:");
-        for (MediaQueueItem mediaQueueItem: queueItems) {
-            sb.append("\n").append(mediaQueueItem.getMedia().getMetadata().getString(
-                    Meta.METADATA_KEY_TITLE
-            ));
-        }
-        Log.d(LC, sb.toString());
-        return queueItems.toArray(new MediaQueueItem[0]);
+            StringBuilder sb = new StringBuilder("newQueueItems:");
+            for (MediaQueueItem mediaQueueItem: queueItems) {
+                sb.append("\n").append(mediaQueueItem.getMedia().getMetadata().getString(
+                        Meta.METADATA_KEY_TITLE
+                ));
+            }
+            Log.d(LC, sb.toString());
+            return queueItems.toArray(new MediaQueueItem[0]);
+        }, Util.getMainThreadExecutor());
     }
 
-    private MediaQueueItem buildMediaQueueItem(PlaybackEntry playbackEntry, boolean playWhenReady) {
-        MediaInfo mediaInfo = buildMediaInfo(playbackEntry);
+    private MediaQueueItem buildMediaQueueItem(PlaybackEntry playbackEntry,
+                                               Meta meta,
+                                               boolean playWhenReady) {
+        MediaInfo mediaInfo = buildMediaInfo(playbackEntry, meta);
         if (mediaInfo == null) {
             return null;
         }
@@ -567,11 +584,10 @@ public class CastAudioPlayer implements AudioPlayer {
                 .build();
     }
 
-    private MediaInfo buildMediaInfo(PlaybackEntry playbackEntry) {
-        Meta meta = musicLibraryService.getSongMetaData(playbackEntry.entryID);
+    private MediaInfo buildMediaInfo(PlaybackEntry playbackEntry, Meta meta) {
         String URL = musicLibraryService.getAudioURL(playbackEntry.entryID);
         if (URL == null) {
-            Log.e(LC, "Could not get URL for " + meta.getString(Meta.METADATA_KEY_TITLE));
+            Log.e(LC, "Could not get URL for " + playbackEntry);
             return null;
         }
         MediaMetadata castMeta = meta.toCastMediaMetadata(playbackEntry.playbackType);

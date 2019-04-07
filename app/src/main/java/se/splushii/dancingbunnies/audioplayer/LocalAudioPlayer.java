@@ -40,13 +40,10 @@ class LocalAudioPlayer implements AudioPlayer {
         if (initFromStorage) {
             EntryID entryID = storage.getLocalAudioPlayerCurrentEntry();
             long lastPos = storage.getLocalAudioPlayerCurrentLastPos();
-            String title = musicLibraryService.getSongMetaData(entryID)
-                    .getString(Meta.METADATA_KEY_TITLE);
             if (entryID != null) {
                 player = new MediaPlayerInstance(new PlaybackEntry(
                         entryID,
-                        PlaybackEntry.USER_TYPE_QUEUE,
-                        title
+                        PlaybackEntry.USER_TYPE_QUEUE
                 ), mediaPlayerCallback, musicLibraryService);
                 player.seekTo(lastPos);
             }

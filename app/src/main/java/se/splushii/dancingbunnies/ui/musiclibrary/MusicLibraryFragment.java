@@ -43,7 +43,7 @@ import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.storage.RoomMetaSong;
+import se.splushii.dancingbunnies.storage.db.MetaDao;
 import se.splushii.dancingbunnies.ui.EntryIDDetailsLookup;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -171,7 +171,18 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 new LinearLayoutManager(this.getContext());
         recyclerView.setLayoutManager(recViewLayoutManager);
         recyclerView.getRecycledViewPool().setMaxRecycledViews(0, 50);
-        recyclerViewAdapter = new MusicLibraryAdapter(this, recViewLayoutManager);
+
+        fastScroller = rootView.findViewById(R.id.musiclibrary_fastscroller);
+        fastScroller.setRecyclerView(recyclerView);
+        fastScrollerBubble = rootView.findViewById(R.id.musiclibrary_fastscroller_bubble);
+        fastScroller.setBubble(fastScrollerBubble);
+
+        recyclerViewAdapter = new MusicLibraryAdapter(
+                this,
+                recViewLayoutManager,
+                recyclerView,
+                fastScrollerBubble
+        );
         recyclerView.setAdapter(recyclerViewAdapter);
 
         selectionTracker = new SelectionTracker.Builder<>(
@@ -211,11 +222,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             selectionTracker.onRestoreInstanceState(savedInstanceState);
         }
 
-        fastScroller = rootView.findViewById(R.id.musiclibrary_fastscroller);
-        fastScroller.setRecyclerView(recyclerView);
-        fastScrollerBubble = rootView.findViewById(R.id.musiclibrary_fastscroller_bubble);
-        fastScroller.setBubble(fastScrollerBubble);
-
         searchInfo = rootView.findViewById(R.id.musiclibrary_search);
         searchText = rootView.findViewById(R.id.musiclibrary_search_query);
 
@@ -229,7 +235,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         int index = 0;
         for (Map.Entry<String, String> entry: metaValuesMap) {
             String key = entry.getKey();
-            if (!RoomMetaSong.DBKeysSet.contains(key)) {
+            if (!MetaDao.DBKeysSet.contains(key)) {
                 continue;
             }
             filterTypes.add(entry.getValue());

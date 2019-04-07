@@ -5,7 +5,6 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
-import android.support.v4.media.RatingCompat;
 import android.util.Log;
 
 import com.google.android.gms.cast.MediaMetadata;
@@ -15,39 +14,40 @@ import java.util.Set;
 
 import androidx.annotation.NonNull;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
-import se.splushii.dancingbunnies.storage.RoomMetaSong;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.BITMAP;
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.BOOLEAN;
+import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.DOUBLE;
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.LONG;
-import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.RATING;
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.STRING;
 
 // TODO: Use Meta throughout app. To convert, do for example "new Meta(metaCompat).toCastMeta()".
 public class Meta implements Parcelable {
     private static final String LC = Util.getLogContext(Meta.class);
 
-    public boolean getBoolean(String key, boolean defaultValue) {
-        return bundle.getBoolean(key, defaultValue);
-    }
-
-    public void setBoolean(String key, boolean b) {
-        bundle.putBoolean(key, b);
-    }
-
     public enum Type {
-        STRING, BITMAP, RATING, LONG, BOOLEAN
+        STRING, BITMAP, LONG, DOUBLE, BOOLEAN
     }
-
     private final Bundle bundle;
 
     public Meta() {
         bundle = new Bundle();
     }
 
+    public Meta(String api, String id) {
+        bundle = new Bundle();
+        setString(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_MEDIA_ID);
+        setString(Meta.METADATA_KEY_API, api);
+        setString(Meta.METADATA_KEY_MEDIA_ID, id);
+    }
+
     public Meta(Bundle b) {
         bundle = b;
+    }
+
+    public Meta(EntryID entryID) {
+        bundle = entryID.toBundle();
     }
 
     public Meta(MediaDescriptionCompat description) {
@@ -95,13 +95,6 @@ public class Meta implements Parcelable {
         return castMeta;
     }
 
-    public RoomMetaSong toRoomSong() {
-        RoomMetaSong song = new RoomMetaSong();
-        song.from(this);
-        return song;
-    }
-
-
     public MediaDescriptionCompat toMediaDescriptionCompat() {
         EntryID entryID = EntryID.from(this);
         Bundle extras = new Bundle();
@@ -135,13 +128,24 @@ public class Meta implements Parcelable {
         return bundle.getLong(key);
     }
 
-    public Meta setRating(String key, RatingCompat rating) {
-        bundle.putParcelable(key, rating);
-        return this;
+    public boolean getBoolean(String key) {
+        return bundle.getBoolean(key);
     }
 
-    public RatingCompat getRating(String key) {
-        return bundle.getParcelable(key);
+    public boolean getBoolean(String key, boolean defaultValue) {
+        return bundle.getBoolean(key, defaultValue);
+    }
+
+    public void setBoolean(String key, boolean b) {
+        bundle.putBoolean(key, b);
+    }
+
+    public double getDouble(String key) {
+        return bundle.getDouble(key);
+    }
+
+    public void setDouble(String key, double d) {
+        bundle.putDouble(key, d);
     }
 
     public byte[] getBitmap(String key) {
@@ -185,6 +189,7 @@ public class Meta implements Parcelable {
         return title + " - " + artist + " [" + album + "]";
     }
 
+    // TODO: FIXME: Does not support double, boolean
     private static void addFromBundle(MediaMetadataCompat.Builder b, Bundle bundle) {
         for (String key: bundle.keySet()) {
             switch (typeMap.get(key)) {
@@ -194,7 +199,6 @@ public class Meta implements Parcelable {
                 case LONG:
                     b.putLong(key, bundle.getLong(key));
                     break;
-                case RATING:
                 case BITMAP:
                 default:
                     Log.e(LC, "addFromBundle: " + typeMap.get(key).name() + " not handled");
@@ -216,8 +220,11 @@ public class Meta implements Parcelable {
                 case LONG:
                     sb.append(" (long):\t").append(getLong(key));
                     break;
-                case RATING:
-                    sb.append(" (rating):\t").append(getRating(key).toString());
+                case DOUBLE:
+                    sb.append(" (double):\t").append(getDouble(key));
+                    break;
+                case BOOLEAN:
+                    sb.append(" (bool):\t").append(getBoolean(key));
                     break;
                 case BITMAP:
                     sb.append(" (bitmap):\t").append(getBitmap(key).length).append(" bytes");
@@ -346,8 +353,6 @@ public class Meta implements Parcelable {
             "dancingbunnies.metadata.DATE_ADDED";
     public static final String METADATA_KEY_DATE_STARRED =
             "dancingbunnies.metadata.DATE_STARRED";
-    public static final String METADATA_KEY_HEART_RATING =
-            "dancingbunnies.metadata.HEART_RATING";
     public static final String METADATA_KEY_ALBUM_ID =
             "dancingbunnies.metadata.ALBUM_ID";
     public static final String METADATA_KEY_ARTIST_ID =
@@ -381,11 +386,10 @@ public class Meta implements Parcelable {
         typeMap.put(METADATA_KEY_BITRATE, LONG);
         typeMap.put(METADATA_KEY_DATE_ADDED, STRING);
         typeMap.put(METADATA_KEY_DATE_STARRED, STRING);
-        typeMap.put(METADATA_KEY_HEART_RATING, STRING);
         typeMap.put(METADATA_KEY_ALBUM_ID, STRING);
         typeMap.put(METADATA_KEY_ARTIST_ID, STRING);
         typeMap.put(METADATA_KEY_BOOKMARK_POSITION, LONG);
-        typeMap.put(METADATA_KEY_AVERAGE_RATING, STRING);
+        typeMap.put(METADATA_KEY_AVERAGE_RATING, DOUBLE);
         typeMap.put(METADATA_KEY_QUEUE_POS, LONG);
         typeMap.put(METADATA_KEY_PLAYBACK_TYPE, STRING);
         typeMap.put(METADATA_KEY_PLAYBACK_PRELOADSTATUS, BOOLEAN);
@@ -415,21 +419,15 @@ public class Meta implements Parcelable {
         typeMap.put(METADATA_KEY_MEDIA_ID, STRING);
         typeMap.put(METADATA_KEY_MEDIA_URI, STRING);
         typeMap.put(METADATA_KEY_NUM_TRACKS, LONG);
-        typeMap.put(METADATA_KEY_RATING, RATING);
+        typeMap.put(METADATA_KEY_RATING, LONG);
         typeMap.put(METADATA_KEY_TITLE, STRING);
         typeMap.put(METADATA_KEY_TRACK_NUMBER, LONG);
-        typeMap.put(METADATA_KEY_USER_RATING, RATING);
+        typeMap.put(METADATA_KEY_USER_RATING, LONG);
         typeMap.put(METADATA_KEY_WRITER, STRING);
         typeMap.put(METADATA_KEY_YEAR, LONG);
     }
 
     public static Type getType(String key) {
-        if (!typeMap.containsKey(key)) {
-            Log.d(LC, METADATA_KEY_DOWNLOAD_STATUS);
-            Log.d(LC, key);
-            Log.d(LC, "compare: " + METADATA_KEY_DOWNLOAD_STATUS.equals(key));
-            Log.d(LC, "key: " + key);
-        }
         return typeMap.get(key);
     }
 
@@ -448,7 +446,6 @@ public class Meta implements Parcelable {
         humanMap.put(METADATA_KEY_BITRATE, "bitrate");
         humanMap.put(METADATA_KEY_DATE_ADDED, "date added");
         humanMap.put(METADATA_KEY_DATE_STARRED, "date starred");
-        humanMap.put(METADATA_KEY_HEART_RATING, "heart rating");
         humanMap.put(METADATA_KEY_ALBUM_ID, "album id");
         humanMap.put(METADATA_KEY_ARTIST_ID, "artist id");
         humanMap.put(METADATA_KEY_BOOKMARK_POSITION, "bookmark position");

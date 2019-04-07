@@ -30,15 +30,33 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     private static final String LC = Util.getLogContext(MusicLibraryAdapter.class);
     private final MusicLibraryFragment fragment;
     private final LinearLayoutManager layoutManager;
+    private final FastScrollerBubble fastScrollerBubble;
+    private SongViewHolder currentFastScrollerHolder;
     private List<MediaBrowserCompat.MediaItem> dataset;
     private ItemActionsView selectedActionView;
     private SelectionTracker<EntryID> selectionTracker;
 
     MusicLibraryAdapter(MusicLibraryFragment fragment,
-                        LinearLayoutManager recViewLayoutManager) {
+                        LinearLayoutManager recViewLayoutManager,
+                        RecyclerView recyclerView,
+                        FastScrollerBubble fastScrollerBubble
+    ) {
         this.dataset = new ArrayList<>();
         this.fragment = fragment;
         this.layoutManager = recViewLayoutManager;
+        this.fastScrollerBubble = fastScrollerBubble;
+        fastScrollerBubble.setUpdateCallback(pos -> {
+            currentFastScrollerHolder =
+                    (SongViewHolder) recyclerView.findViewHolderForLayoutPosition(pos);
+            fastScrollerBubble.setText(getFastScrollerText(currentFastScrollerHolder));
+        });
+    }
+
+    private String getFastScrollerText(SongViewHolder holder) {
+        String title = holder == null ? "" : holder.getTitle();
+        String firstChar = title.length() >= 1 ? title.substring(0, 1).toUpperCase() : "";
+        String secondChar = title.length() >= 2 ? title.substring(1, 2).toLowerCase() : "";
+        return firstChar + secondChar;
     }
 
     void setModel(MusicLibraryFragmentModel model) {
@@ -54,10 +72,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             setDataset(dataset);
             layoutManager.scrollToPositionWithOffset(state.pos, state.pad);
         });
-    }
-
-    MediaBrowserCompat.MediaItem getItemData(int childPosition) {
-        return dataset.get(childPosition);
     }
 
     void setSelectionTracker(SelectionTracker<EntryID> selectionTracker) {
@@ -115,6 +129,10 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         EntryID getEntryId() {
             return entryId;
         }
+
+        public String getTitle() {
+            return libraryEntryTitle.getText() + "";
+        }
     }
 
     @NonNull
@@ -149,26 +167,33 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     @Override
     public void onBindViewHolder(@NonNull final SongViewHolder holder, int position) {
         final MediaBrowserCompat.MediaItem item = dataset.get(position);
-        final String title = item.getDescription().getTitle() + "";
         EntryID entryID = EntryID.from(item);
         holder.setEntryId(entryID);
         final boolean browsable = item.isBrowsable();
         holder.actionsView.initialize();
-        holder.libraryEntryTitle.setText(title);
         holder.meta = null;
         if (Meta.METADATA_KEY_MEDIA_ID.equals(entryID.type)) {
             fragment.getSongMeta(entryID).thenAccept(meta -> {
+                if (!entryID.equals(holder.entryId)) {
+                    return;
+                }
                 holder.meta = meta;
+                String title = meta.getString(Meta.METADATA_KEY_TITLE);
                 String artist = meta.getString(Meta.METADATA_KEY_ARTIST);
                 String album = meta.getString(Meta.METADATA_KEY_ALBUM);
+                holder.libraryEntryTitle.setText(title);
                 holder.libraryEntryArtist.setText(artist);
                 holder.libraryEntryAlbum.setText(album);
                 holder.libraryEntryArtist.setVisibility(View.VISIBLE);
                 holder.libraryEntryAlbum.setVisibility(View.VISIBLE);
+                updateFastScrollerText(holder);
             });
         } else {
+            final String name = item.getDescription().getTitle() + "";
+            holder.libraryEntryTitle.setText(name);
             holder.libraryEntryArtist.setVisibility(View.GONE);
             holder.libraryEntryAlbum.setVisibility(View.GONE);
+            updateFastScrollerText(holder);
         }
         if (position % 2 == 0) {
             holder.libraryEntry.setBackgroundResource(R.drawable.musiclibrary_item_drawable);
@@ -199,6 +224,12 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         holder.actionsView.setOnInfoListener(() ->
                 MetaDialogFragment.showMeta(fragment, holder.meta)
         );
+    }
+
+    private void updateFastScrollerText(SongViewHolder holder) {
+        if (holder == currentFastScrollerHolder) {
+            fastScrollerBubble.setText(getFastScrollerText(holder));
+        }
     }
 
     Pair<Integer, Integer> getCurrentPosition() {

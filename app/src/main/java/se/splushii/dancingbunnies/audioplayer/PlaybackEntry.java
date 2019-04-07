@@ -14,32 +14,27 @@ public class PlaybackEntry implements Parcelable {
 
     public final EntryID entryID;
     public final String playbackType;
-    final String title;
     private boolean preloaded = false;
 
     public PlaybackEntry(Meta meta) {
         this.entryID = EntryID.from(meta);
         String playbackType = meta.getString(Meta.METADATA_KEY_PLAYBACK_TYPE);
         this.playbackType = playbackType != null ? playbackType : PlaybackEntry.USER_TYPE_EXTERNAL;
-        this.title = meta.getString(Meta.METADATA_KEY_TITLE);
     }
 
     public PlaybackEntry(Meta meta, String playbackType) {
         this.entryID = EntryID.from(meta);
         this.playbackType = playbackType;
-        this.title = meta.getString(Meta.METADATA_KEY_TITLE);
     }
 
-    public PlaybackEntry(EntryID entryID, String playbackType, String title) {
+    public PlaybackEntry(EntryID entryID, String playbackType) {
         this.entryID = entryID;
         this.playbackType = playbackType;
-        this.title = title;
     }
 
     private PlaybackEntry(Parcel in) {
         entryID = in.readParcelable(EntryID.class.getClassLoader());
         playbackType = in.readString();
-        title = in.readString();
         preloaded = in.readByte() != 0;
     }
 
@@ -57,7 +52,7 @@ public class PlaybackEntry implements Parcelable {
 
     @Override
     public String toString() {
-        return title + ": " + entryID.toString();
+        return entryID.toString();
     }
 
     @Override
@@ -89,7 +84,6 @@ public class PlaybackEntry implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeParcelable(entryID, flags);
         dest.writeString(playbackType);
-        dest.writeString(title);
         dest.writeByte((byte) (preloaded ? 1 : 0));
     }
 

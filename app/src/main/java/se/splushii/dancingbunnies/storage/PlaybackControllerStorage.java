@@ -112,8 +112,7 @@ public class PlaybackControllerStorage {
         return roomPlaybackControllerEntries.stream().map(entry ->
                 new PlaybackEntry(
                         new EntryID(entry.api, entry.id, Meta.METADATA_KEY_MEDIA_ID),
-                        playbackType,
-                        "type: " + playbackType + " pos: " + entry.pos
+                        playbackType
                 )
         ).collect(Collectors.toList());
     }

@@ -3,7 +3,6 @@ package se.splushii.dancingbunnies.backend;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
-import android.support.v4.media.RatingCompat;
 import android.util.Log;
 
 import com.loopj.android.http.AsyncHttpClient;
@@ -432,10 +431,10 @@ public class SubsonicAPIClient extends APIClient {
                     }
                     break;
                 case JSON_USER_RATING:
-                    meta.setRating(Meta.METADATA_KEY_USER_RATING, RatingCompat.newStarRating(RatingCompat.RATING_5_STARS, jChild.getInt(JSON_USER_RATING)));
+                    meta.setLong(Meta.METADATA_KEY_USER_RATING, jChild.getInt(JSON_USER_RATING));
                     break;
                 case JSON_AVERAGE_RATING:
-                    meta.setRating(Meta.METADATA_KEY_AVERAGE_RATING, RatingCompat.newStarRating(RatingCompat.RATING_5_STARS, (float) jChild.getDouble(JSON_AVERAGE_RATING)));
+                    meta.setDouble(Meta.METADATA_KEY_AVERAGE_RATING, jChild.getDouble(JSON_AVERAGE_RATING));
                     break;
                 case JSON_PLAY_COUNT:
                     // Do not care about subsonic play count
@@ -449,7 +448,6 @@ public class SubsonicAPIClient extends APIClient {
                     break;
                 case JSON_STARRED:
                     meta.setString(Meta.METADATA_KEY_DATE_STARRED, jChild.getString(JSON_STARRED));
-                    meta.setRating(Meta.METADATA_KEY_HEART_RATING, RatingCompat.newHeartRating(true));
                     break;
                 case JSON_ALBUM_ID:
                     meta.setString(Meta.METADATA_KEY_ALBUM_ID, jChild.getString(JSON_ALBUM_ID));

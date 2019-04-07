@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "ed60d08630c3f05959da993678f96358",
+    "identityHash": "0d2f03d8de4f2c6df24857583131fbb8",
     "entities": [
       {
-        "tableName": "songs",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `root` TEXT, `id` TEXT NOT NULL, `title` TEXT, `album` TEXT, `artist` TEXT, `albumartist` TEXT, `genre` TEXT, `duration` INTEGER NOT NULL, `contenttype` TEXT, `year` INTEGER NOT NULL, `tracknum` INTEGER NOT NULL, `discnum` INTEGER NOT NULL, `bitrate` INTEGER NOT NULL, PRIMARY KEY(`api`, `id`))",
+        "tableName": "entry_id",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, PRIMARY KEY(`api`, `id`))",
         "fields": [
           {
             "fieldPath": "api",
@@ -15,81 +15,9 @@
             "notNull": true
           },
           {
-            "fieldPath": "root",
-            "columnName": "root",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
             "fieldPath": "id",
             "columnName": "id",
             "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "title",
-            "columnName": "title",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "album",
-            "columnName": "album",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "artist",
-            "columnName": "artist",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "albumartist",
-            "columnName": "albumartist",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "genre",
-            "columnName": "genre",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "duration",
-            "columnName": "duration",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "contenttype",
-            "columnName": "contenttype",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "year",
-            "columnName": "year",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "tracknum",
-            "columnName": "tracknum",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "discnum",
-            "columnName": "discnum",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "bitrate",
-            "columnName": "bitrate",
-            "affinity": "INTEGER",
             "notNull": true
           }
         ],
@@ -102,16 +30,284 @@
         },
         "indices": [
           {
-            "name": "index_songs_api_id",
+            "name": "index_entry_id_api_id",
             "unique": true,
             "columnNames": [
               "api",
               "id"
             ],
-            "createSql": "CREATE UNIQUE INDEX `index_songs_api_id` ON `${TABLE_NAME}` (`api`, `id`)"
+            "createSql": "CREATE UNIQUE INDEX `index_entry_id_api_id` ON `${TABLE_NAME}` (`api`, `id`)"
           }
         ],
         "foreignKeys": []
+      },
+      {
+        "tableName": "meta_string",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`api`, `id`, `key`, `value`), FOREIGN KEY(`api`, `id`) REFERENCES `entry_id`(`api`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "api",
+            "columnName": "api",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "api",
+            "id",
+            "key",
+            "value"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_meta_string_api_id_key_value",
+            "unique": true,
+            "columnNames": [
+              "api",
+              "id",
+              "key",
+              "value"
+            ],
+            "createSql": "CREATE UNIQUE INDEX `index_meta_string_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "entry_id",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "api",
+              "id"
+            ],
+            "referencedColumns": [
+              "api",
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "meta_long",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY(`api`, `id`, `key`, `value`), FOREIGN KEY(`api`, `id`) REFERENCES `entry_id`(`api`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "api",
+            "columnName": "api",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "api",
+            "id",
+            "key",
+            "value"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_meta_long_api_id_key_value",
+            "unique": true,
+            "columnNames": [
+              "api",
+              "id",
+              "key",
+              "value"
+            ],
+            "createSql": "CREATE UNIQUE INDEX `index_meta_long_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "entry_id",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "api",
+              "id"
+            ],
+            "referencedColumns": [
+              "api",
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "meta_double",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` REAL NOT NULL, PRIMARY KEY(`api`, `id`, `key`, `value`), FOREIGN KEY(`api`, `id`) REFERENCES `entry_id`(`api`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "api",
+            "columnName": "api",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "api",
+            "id",
+            "key",
+            "value"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_meta_double_api_id_key_value",
+            "unique": true,
+            "columnNames": [
+              "api",
+              "id",
+              "key",
+              "value"
+            ],
+            "createSql": "CREATE UNIQUE INDEX `index_meta_double_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "entry_id",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "api",
+              "id"
+            ],
+            "referencedColumns": [
+              "api",
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "meta_boolean",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY(`api`, `id`, `key`, `value`), FOREIGN KEY(`api`, `id`) REFERENCES `entry_id`(`api`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "api",
+            "columnName": "api",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "api",
+            "id",
+            "key",
+            "value"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_meta_boolean_api_id_key_value",
+            "unique": true,
+            "columnNames": [
+              "api",
+              "id",
+              "key",
+              "value"
+            ],
+            "createSql": "CREATE UNIQUE INDEX `index_meta_boolean_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "entry_id",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "api",
+              "id"
+            ],
+            "referencedColumns": [
+              "api",
+              "id"
+            ]
+          }
+        ]
       },
       {
         "tableName": "cache",
@@ -311,7 +507,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"ed60d08630c3f05959da993678f96358\")"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"0d2f03d8de4f2c6df24857583131fbb8\")"
     ]
   }
 }

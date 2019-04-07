@@ -328,7 +328,7 @@ class MediaPlayerInstance {
     };
 
     String title() {
-        return playbackEntry.title;
+        return playbackEntry.toString();
     }
 
     void getReady() {

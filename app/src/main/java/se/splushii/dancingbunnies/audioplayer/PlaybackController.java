@@ -1,8 +1,6 @@
 package se.splushii.dancingbunnies.audioplayer;
 
 import android.content.Context;
-import android.support.v4.media.MediaDescriptionCompat;
-import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
@@ -584,23 +582,12 @@ class PlaybackController {
                 .thenCompose(r -> play());
     }
 
-    private List<MediaSessionCompat.QueueItem> getQueue() {
-        List<MediaSessionCompat.QueueItem> queueItems = new LinkedList<>();
+    private List<PlaybackEntry> getQueue() {
         List<PlaybackEntry> entries = new LinkedList<>();
         entries.addAll(audioPlayer.getQueueEntries(Integer.MAX_VALUE));
         entries.addAll(queue.getEntries());
         entries.addAll(audioPlayer.getPlaylistEntries(Integer.MAX_VALUE));
-        for (PlaybackEntry playbackEntry: entries) {
-            Meta meta = musicLibraryService.getSongMetaData(playbackEntry.entryID);
-            meta.setBoolean(Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS, playbackEntry.isPreloaded());
-            MediaDescriptionCompat description = meta.toMediaDescriptionCompat();
-            MediaSessionCompat.QueueItem queueItem = new MediaSessionCompat.QueueItem(
-                    description,
-                    playbackEntry.entryID.hashCode()
-            );
-            queueItems.add(queueItem);
-        }
-        return queueItems;
+        return entries;
     }
 
     List<PlaybackEntry> getPlaylistEntries(int maxNum) {
@@ -633,7 +620,7 @@ class PlaybackController {
         void onPlayerChanged(AudioPlayer.Type type);
         void onStateChanged(int playBackState);
         void onMetaChanged(EntryID entryID);
-        void onQueueChanged(List<MediaSessionCompat.QueueItem> queue);
+        void onQueueChanged(List<PlaybackEntry> queue);
         void onPlaylistPositionChanged();
         void onPlayerSeekPositionChanged(long pos);
     }

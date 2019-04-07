@@ -226,7 +226,11 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 }
             }
             if (!showSize && currentMeta.getBundle().containsKey(Meta.METADATA_KEY_FILE_SIZE)) {
-                sizeText.setText(currentMeta.getString(Meta.METADATA_KEY_FILE_SIZE));
+                sizeText.setText(String.format(
+                        Locale.getDefault(),
+                        "%d MB",
+                        currentMeta.getLong(Meta.METADATA_KEY_FILE_SIZE) / 1_000_000L
+                ));
                 showSize = true;
             }
             sizeText.setVisibility(showSize ? View.VISIBLE : View.INVISIBLE);
@@ -368,9 +372,13 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     private void updateMediaInfo(Meta metadata) {
-        String size = metadata.getString(Meta.METADATA_KEY_FILE_SIZE);
-        if (size != null) {
-            sizeText.setText(size);
+        long size = metadata.getLong(Meta.METADATA_KEY_FILE_SIZE);
+        if (size != 0) {
+            sizeText.setText(String.format(
+                    Locale.getDefault(),
+                    "%d MB",
+                    size / 1_000_000L
+            ));
             sizeText.setVisibility(View.VISIBLE);
         } else {
             sizeText.setVisibility(View.INVISIBLE);

@@ -78,24 +78,28 @@ public class MetaDialogFragment extends DialogFragment {
         View v = inflater.inflate(R.layout.meta_dialog_fragment_layout, container, false);
         ListView listView = v.findViewById(R.id.meta_dialog_list);
         ArrayList<Pair<String, String>> data = new ArrayList<>();
-        Bundle b = meta.getBundle();
-        for (String key: b.keySet()) {
+        for (String key: meta.keySet()) {
             if (Meta.METADATA_KEY_TYPE.equals(key)) {
                 continue;
             }
             switch (Meta.getType(key)) {
                 case STRING:
-                    String value = b.getString(key);
+                    String value = meta.getString(key);
                     if (value != null) {
-                        data.add(new Pair<>(key, b.getString(key)));
+                        data.add(new Pair<>(key, meta.getString(key)));
                     }
                     break;
                 case LONG:
-                    data.add(new Pair<>(key, String.valueOf(b.getLong(key))));
+                    data.add(new Pair<>(key, String.valueOf(meta.getLong(key))));
+                    break;
+                case DOUBLE:
+                    data.add(new Pair<>(key, String.valueOf(meta.getDouble(key))));
+                    break;
+                case BOOLEAN:
+                    data.add(new Pair<>(key, String.valueOf(meta.getBoolean(key))));
                     break;
                 default:
                 case BITMAP:
-                case RATING:
                     Log.e(LC, "Unhandled key type: " + key);
             }
         }

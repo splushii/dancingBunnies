@@ -5,10 +5,20 @@ import android.content.Context;
 import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
+import se.splushii.dancingbunnies.storage.db.Entry;
+import se.splushii.dancingbunnies.storage.db.MetaBoolean;
+import se.splushii.dancingbunnies.storage.db.MetaDao;
+import se.splushii.dancingbunnies.storage.db.MetaDouble;
+import se.splushii.dancingbunnies.storage.db.MetaLong;
+import se.splushii.dancingbunnies.storage.db.MetaString;
 
 @Database(
         entities = {
-                RoomMetaSong.class,
+                Entry.class,
+                MetaString.class,
+                MetaLong.class,
+                MetaDouble.class,
+                MetaBoolean.class,
                 RoomCacheEntry.class,
                 RoomPlaylist.class,
                 RoomPlaylistEntry.class,
@@ -16,9 +26,17 @@ import androidx.room.RoomDatabase;
         },
         version = 1
 )
-abstract class RoomDB extends RoomDatabase {
+public abstract class RoomDB extends RoomDatabase {
     private static final String DB_NAME = "dB";
-    static final String TABLE_SONGS = "songs";
+    public static final String TABLE_ENTRY_ID = "entry_id";
+    public static final String TABLE_META_STRING = "meta_string";
+    public static final String TABLE_META_LONG = "meta_long";
+    public static final String TABLE_META_DOUBLE = "meta_double";
+    public static final String TABLE_META_BOOLEAN = "meta_boolean";
+    public static final String COLUMN_API = "api";
+    public static final String COLUMN_ID = "id";
+    public static final String COLUMN_KEY = "key";
+    public static final String COLUMN_VALUE = "value";
     static final String TABLE_CACHE = "cache";
     static final String TABLE_PLAYLISTS = "playlists";
     static final String TABLE_PLAYLIST_ENTRIES = "playlist_entries";
@@ -32,7 +50,7 @@ abstract class RoomDB extends RoomDatabase {
         return instance;
     }
 
-    abstract RoomMetaDao metaModel();
+    abstract MetaDao metaModel();
     abstract RoomCacheDao cacheModel();
     abstract RoomPlaylistDao playlistModel();
     abstract RoomPlaylistEntryDao playlistEntryModel();
