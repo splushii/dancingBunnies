@@ -65,14 +65,18 @@ public class Util {
         }
     }
 
-    public static <T> CompletableFuture<T> futureResult(String error) {
+    public static <T> CompletableFuture<T> futureResult(String error, T value) {
         CompletableFuture<T> result = new CompletableFuture<>();
         if (error != null) {
             result.completeExceptionally(new FutureException(error));
             return result;
         }
-        result.complete(null);
+        result.complete(value);
         return result;
+    }
+
+    public static <T> CompletableFuture<T> futureResult(String error) {
+        return futureResult(error, null);
     }
 
     public static String getDurationString(long milliseconds) {

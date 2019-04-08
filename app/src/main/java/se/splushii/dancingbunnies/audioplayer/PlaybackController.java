@@ -265,12 +265,13 @@ class PlaybackController {
 
     private CompletableFuture<Void> checkPreload() {
         Log.d(LC, "checkPreload()");
-        int numToPreload = numPreloadNeeded();
-        if (numToPreload > 0) {
-            return pollNextPreloadItems(numToPreload)
-                    .thenCompose(entries -> audioPlayer.preload(entries));
-        }
-        return Util.futureResult(null);
+        return CompletableFuture.supplyAsync(this::numPreloadNeeded, Util.getMainThreadExecutor())
+                .thenCompose(numToPreload -> {
+                    if (numToPreload > 0) {
+                        return pollNextPreloadItems(numToPreload);
+                    }
+                    return Util.futureResult(null, Collections.emptyList());
+                }).thenCompose(entries -> audioPlayer.preload(entries));
     }
 
     CompletableFuture<Void> skip(int offset) {
@@ -468,11 +469,12 @@ class PlaybackController {
             } else {
                 return Util.futureResult(null);
             }
-        }).thenCompose(v -> newEntriesToPreload.isEmpty() ? CompletableFuture.completedFuture(null) :
+        }).thenComposeAsync(v -> newEntriesToPreload.isEmpty() ? CompletableFuture.completedFuture(null) :
                 audioPlayer.queue(
                         newEntriesToPreload,
                         newEntriesToPreloadOffset
-                )
+                ),
+                Util.getMainThreadExecutor()
         ).thenCompose(aVoid -> {
             if (newEntriesToController.size() > 0) {
                 return dePreloadQueueEntries(
