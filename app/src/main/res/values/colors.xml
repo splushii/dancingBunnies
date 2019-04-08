@@ -15,5 +15,4 @@
     <color name="grey">#EEEEEE</color>
     <color name="grey500">#9E9E9E</color>
     <color name="bluegrey900">#263238</color>
-    <color name="black">@android:color/black</color>
 </resources>

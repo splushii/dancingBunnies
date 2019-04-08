@@ -50,7 +50,6 @@ import se.splushii.dancingbunnies.util.Util;
 public class MusicLibraryFragment extends AudioBrowserFragment {
     private static final String LC = Util.getLogContext(MusicLibraryFragment.class);
 
-    private RecyclerView recyclerView;
     private MusicLibraryAdapter recyclerViewAdapter;
     private SelectionTracker<EntryID> selectionTracker;
     private ActionMode actionMode;
@@ -165,7 +164,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         final View rootView = inflater.inflate(R.layout.musiclibrary_fragment_layout, container,
                 false);
 
-        recyclerView = rootView.findViewById(R.id.musiclibrary_recyclerview);
+        RecyclerView recyclerView = rootView.findViewById(R.id.musiclibrary_recyclerview);
         recyclerView.setHasFixedSize(true);
         LinearLayoutManager recViewLayoutManager =
                 new LinearLayoutManager(this.getContext());

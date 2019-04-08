@@ -4,8 +4,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -30,14 +30,7 @@ public class Util {
             return "";
             // TODO
         }
-        try {
-            digest.update(in.getBytes("UTF-8"), 0, in.length());
-        } catch (UnsupportedEncodingException e) {
-            Log.e(LC, "UTF-8 not supported");
-            e.printStackTrace();
-            return "";
-            // TODO
-        }
+        digest.update(in.getBytes(StandardCharsets.UTF_8), 0, in.length());
         byte[] hash = digest.digest();
         return hex(hash);
     }

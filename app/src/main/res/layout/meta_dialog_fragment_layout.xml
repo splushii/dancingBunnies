@@ -14,7 +14,7 @@
         android:textColor="@color/grey"
         android:fontFamily="sans-serif"
         android:textSize="16sp"
-        android:text="Metadata"/>
+        android:text="@string/metadata"/>
     <ListView
         android:id="@+id/meta_dialog_list"
         android:layout_width="match_parent"

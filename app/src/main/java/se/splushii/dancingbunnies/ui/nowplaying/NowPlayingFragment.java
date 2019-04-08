@@ -74,7 +74,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private NowPlayingSelectionPredicate nowPlayingSelectionPredicate;
     private ActionMode actionMode;
     private ItemTouchHelper itemTouchHelper;
-    private View nowPlayingInfo;
 
     public NowPlayingFragment() {
         recViewAdapter = new NowPlayingEntriesAdapter(this);
@@ -155,7 +154,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         if (savedInstanceState != null) {
             selectionTracker.onRestoreInstanceState(savedInstanceState);
         }
-        nowPlayingInfo = rootView.findViewById(R.id.nowplaying_info);
+        View nowPlayingInfo = rootView.findViewById(R.id.nowplaying_info);
         nowPlayingInfo.setOnClickListener(v -> MetaDialogFragment.showMeta(this, currentMeta));
         nowPlayingTitle = rootView.findViewById(R.id.nowplaying_title);
         nowPlayingArtist = rootView.findViewById(R.id.nowplaying_artist);
