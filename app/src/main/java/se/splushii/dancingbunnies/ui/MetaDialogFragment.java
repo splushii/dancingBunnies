@@ -139,6 +139,7 @@ public class MetaDialogFragment extends DialogFragment {
                 convertView = LayoutInflater.from(getContext())
                         .inflate(R.layout.meta_dialog_list_item, parent, false);
             }
+            convertView.setMinimumWidth(parent.getWidth());
             Pair<String, String> metaItem = getItem(position);
             String key = metaItem.first;
             String value = metaItem.second;
