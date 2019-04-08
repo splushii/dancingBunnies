@@ -20,6 +20,7 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
+import se.splushii.dancingbunnies.storage.db.DB;
 import se.splushii.dancingbunnies.storage.db.MetaBoolean;
 import se.splushii.dancingbunnies.storage.db.MetaDao;
 import se.splushii.dancingbunnies.storage.db.MetaDouble;
@@ -33,7 +34,7 @@ public class MetaStorage {
     private final MetaDao metaModel;
 
     public MetaStorage(Context context) {
-        metaModel = RoomDB.getDB(context).metaModel();
+        metaModel = DB.getDB(context).metaModel();
     }
 
     public void insertSongs(List<Meta> metaList) {
@@ -46,6 +47,8 @@ public class MetaStorage {
     // TODO: Support sort-by argument in bundleQuery
     // TODO: rework bundleQuery and getEntries to support nested queries
     public LiveData<List<LibraryEntry>> getEntries(Bundle bundleQuery) {
+        // TODO: Remove getTableAlias. Generate aliases from uniqueQueryKeys. (meta_1, meta_2, etc.)
+        // TODO: For debug, print generated alias together with key (when printing query).
         String showTypeKey = bundleQuery.getString(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_MEDIA_ID);
         String showTypeTable = MetaDao.getTable(showTypeKey);
         String showTypeTableAlias = MetaDao.getTableAlias(showTypeKey);
@@ -72,10 +75,10 @@ public class MetaStorage {
             query.append(" distinct");
         }
         if (showMeta) {
-            query.append(String.format(" %s.%s", showTypeTableAlias, RoomDB.COLUMN_VALUE));
+            query.append(String.format(" %s.%s", showTypeTableAlias, DB.COLUMN_VALUE));
         } else {
-            query.append(String.format(" %s.%s", showTypeTableAlias, RoomDB.COLUMN_API));
-            query.append(String.format(", %s.%s", showTypeTableAlias, RoomDB.COLUMN_ID));
+            query.append(String.format(" %s.%s", showTypeTableAlias, DB.COLUMN_API));
+            query.append(String.format(", %s.%s", showTypeTableAlias, DB.COLUMN_ID));
         }
         query.append(" from ").append(showTypeTable).append(" as ").append(showTypeTableAlias);
         for (String key: uniqueQueryKeys) {
@@ -92,16 +95,16 @@ public class MetaStorage {
                 continue;
             }
             query.append(" left join " + typeTable + " as " + typeTableAlias
-                    + " on ( " + typeTableAlias + "." + RoomDB.COLUMN_KEY + " = ?"
-                    + " and " + typeTableAlias + "." + RoomDB.COLUMN_API
-                    + " = " + showTypeTableAlias + "." + RoomDB.COLUMN_API
-                    + " and " + typeTableAlias + "." + RoomDB.COLUMN_ID
-                    + " = " + showTypeTableAlias + "." + RoomDB.COLUMN_ID + " )");
+                    + " on ( " + typeTableAlias + "." + DB.COLUMN_KEY + " = ?"
+                    + " and " + typeTableAlias + "." + DB.COLUMN_API
+                    + " = " + showTypeTableAlias + "." + DB.COLUMN_API
+                    + " and " + typeTableAlias + "." + DB.COLUMN_ID
+                    + " = " + showTypeTableAlias + "." + DB.COLUMN_ID + " )");
             queryArgs.add(key);
         }
         // Add showType filter
         if (showMeta) {
-            query.append(" where " + showTypeTableAlias + "." + RoomDB.COLUMN_KEY + " = ?");
+            query.append(" where " + showTypeTableAlias + "." + DB.COLUMN_KEY + " = ?");
             queryArgs.add(showTypeKey);
         }
         // Add user query
@@ -143,17 +146,17 @@ public class MetaStorage {
             } else {
                 query.append(" AND ");
             }
-            query.append(typeTableAlias).append(".").append(RoomDB.COLUMN_VALUE).append(" = ?");
+            query.append(typeTableAlias).append(".").append(DB.COLUMN_VALUE).append(" = ?");
         }
         if (!whereClauseEmpty) {
             query.append(" )");
         }
         // Sort
         if (showMeta) {
-            query.append(" order by " + showTypeTableAlias + "." + RoomDB.COLUMN_VALUE);
+            query.append(" order by " + showTypeTableAlias + "." + DB.COLUMN_VALUE);
         } else {
             query.append(" order by " + MetaDao.getTableAlias(Meta.METADATA_KEY_TITLE)
-                    + "." + RoomDB.COLUMN_VALUE);
+                    + "." + DB.COLUMN_VALUE);
         }
         SimpleSQLiteQuery sqlQuery = new SimpleSQLiteQuery(query.toString(), queryArgs.toArray());
         Log.d(LC, "query: " + sqlQuery.getSql());

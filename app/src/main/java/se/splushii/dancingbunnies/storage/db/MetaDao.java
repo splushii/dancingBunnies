@@ -14,7 +14,6 @@ import androidx.room.RawQuery;
 import androidx.room.Transaction;
 import androidx.sqlite.db.SupportSQLiteQuery;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.storage.RoomDB;
 import se.splushii.dancingbunnies.util.Util;
 
 import static androidx.room.OnConflictStrategy.REPLACE;
@@ -80,17 +79,17 @@ public abstract class MetaDao {
 
     public static String getTable(String key) {
         if (Meta.METADATA_KEY_MEDIA_ID.equals(key)) {
-            return RoomDB.TABLE_ENTRY_ID;
+            return DB.TABLE_ENTRY_ID;
         }
         switch (Meta.getType(key)) {
             case STRING:
-                return RoomDB.TABLE_META_STRING;
+                return DB.TABLE_META_STRING;
             case LONG:
-                return RoomDB.TABLE_META_LONG;
+                return DB.TABLE_META_LONG;
             case BOOLEAN:
-                return RoomDB.TABLE_META_BOOLEAN;
+                return DB.TABLE_META_BOOLEAN;
             case DOUBLE:
-                return RoomDB.TABLE_META_DOUBLE;
+                return DB.TABLE_META_DOUBLE;
             default:
                 return null;
         }
@@ -121,7 +120,7 @@ public abstract class MetaDao {
     abstract void insert(MetaDouble... values);
     @Insert(onConflict = REPLACE)
     abstract void insert(MetaBoolean... values);
-    @Query("SELECT * FROM " + RoomDB.TABLE_ENTRY_ID)
+    @Query("SELECT * FROM " + DB.TABLE_ENTRY_ID)
     public abstract LiveData<List<Entry>> getEntries();
     @RawQuery(observedEntities = {
             Entry.class,
@@ -161,23 +160,23 @@ public abstract class MetaDao {
             }
         }
     }
-    @Query("DELETE FROM " + RoomDB.TABLE_ENTRY_ID + " WHERE " + RoomDB.COLUMN_API + " = :src")
+    @Query("DELETE FROM " + DB.TABLE_ENTRY_ID + " WHERE " + DB.COLUMN_API + " = :src")
     public abstract void deleteWhereSourceIs(String src);
 
-    @Query("SELECT * FROM " + RoomDB.TABLE_META_STRING
-            + " WHERE " + RoomDB.COLUMN_API + " = :src "
-            + " AND " + RoomDB.COLUMN_ID + " = :id")
+    @Query("SELECT * FROM " + DB.TABLE_META_STRING
+            + " WHERE " + DB.COLUMN_API + " = :src "
+            + " AND " + DB.COLUMN_ID + " = :id")
     public abstract List<MetaString> getStringMeta(String src, String id);
-    @Query("SELECT * FROM " + RoomDB.TABLE_META_LONG
-            + " WHERE " + RoomDB.COLUMN_API + " = :src "
-            + " AND " + RoomDB.COLUMN_ID + " = :id")
+    @Query("SELECT * FROM " + DB.TABLE_META_LONG
+            + " WHERE " + DB.COLUMN_API + " = :src "
+            + " AND " + DB.COLUMN_ID + " = :id")
     public abstract List<MetaLong> getLongMeta(String src, String id);
-    @Query("SELECT * FROM " + RoomDB.TABLE_META_BOOLEAN
-            + " WHERE " + RoomDB.COLUMN_API + " = :src "
-            + " AND " + RoomDB.COLUMN_ID + " = :id")
+    @Query("SELECT * FROM " + DB.TABLE_META_BOOLEAN
+            + " WHERE " + DB.COLUMN_API + " = :src "
+            + " AND " + DB.COLUMN_ID + " = :id")
     public abstract List<MetaBoolean> getBoolMeta(String src, String id);
-    @Query("SELECT * FROM " + RoomDB.TABLE_META_DOUBLE
-            + " WHERE " + RoomDB.COLUMN_API + " = :src "
-            + " AND " + RoomDB.COLUMN_ID + " = :id")
+    @Query("SELECT * FROM " + DB.TABLE_META_DOUBLE
+            + " WHERE " + DB.COLUMN_API + " = :src "
+            + " AND " + DB.COLUMN_ID + " = :id")
     public abstract List<MetaDouble> getDoubleMeta(String src, String id);
 }

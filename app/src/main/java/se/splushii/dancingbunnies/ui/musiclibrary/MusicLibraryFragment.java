@@ -228,6 +228,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         entryTypeSelectSpinner = rootView.findViewById(R.id.musiclibrary_entry_type_spinner);
         List<String> filterTypes = new ArrayList<>();
         List<String> metaKeys = new ArrayList<>();
+        // TODO: Get meta keys dynamically from MetaStorage.
         List<Map.Entry<String, String>> metaValuesMap = new ArrayList<>(Meta.humanMap.entrySet());
         metaValuesMap.sort(Comparator.comparing(Map.Entry::getValue));
         int initialSelectionPos = 0;

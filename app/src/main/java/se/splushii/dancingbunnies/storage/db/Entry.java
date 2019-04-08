@@ -4,24 +4,23 @@ import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.Index;
-import se.splushii.dancingbunnies.storage.RoomDB;
 
-@Entity(tableName = RoomDB.TABLE_ENTRY_ID,
+@Entity(tableName = DB.TABLE_ENTRY_ID,
         indices = @Index(value = {
-                RoomDB.COLUMN_API,
-                RoomDB.COLUMN_ID
+                DB.COLUMN_API,
+                DB.COLUMN_ID
         }, unique = true),
         primaryKeys = {
-                RoomDB.COLUMN_API,
-                RoomDB.COLUMN_ID
+                DB.COLUMN_API,
+                DB.COLUMN_ID
         }
 )
 public class Entry {
     @NonNull
-    @ColumnInfo(name = RoomDB.COLUMN_API)
+    @ColumnInfo(name = DB.COLUMN_API)
     public String api;
     @NonNull
-    @ColumnInfo(name = RoomDB.COLUMN_ID)
+    @ColumnInfo(name = DB.COLUMN_ID)
     public String id;
 
     public static Entry from(String api, String id) {

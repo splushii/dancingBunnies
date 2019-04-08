@@ -5,42 +5,41 @@ import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
-import se.splushii.dancingbunnies.storage.RoomDB;
 
 import static androidx.room.ForeignKey.CASCADE;
 
-@Entity(tableName = RoomDB.TABLE_META_STRING,
+@Entity(tableName = DB.TABLE_META_STRING,
         indices = @Index(value = {
-                RoomDB.COLUMN_API,
-                RoomDB.COLUMN_ID,
-                RoomDB.COLUMN_KEY,
-                RoomDB.COLUMN_VALUE
+                DB.COLUMN_API,
+                DB.COLUMN_ID,
+                DB.COLUMN_KEY,
+                DB.COLUMN_VALUE
         }, unique = true),
         primaryKeys = {
-                RoomDB.COLUMN_API,
-                RoomDB.COLUMN_ID,
-                RoomDB.COLUMN_KEY,
-                RoomDB.COLUMN_VALUE
+                DB.COLUMN_API,
+                DB.COLUMN_ID,
+                DB.COLUMN_KEY,
+                DB.COLUMN_VALUE
         },
         foreignKeys = @ForeignKey(
                 entity = Entry.class,
-                parentColumns = { RoomDB.COLUMN_API, RoomDB.COLUMN_ID },
-                childColumns = { RoomDB.COLUMN_API, RoomDB.COLUMN_ID },
+                parentColumns = { DB.COLUMN_API, DB.COLUMN_ID },
+                childColumns = { DB.COLUMN_API, DB.COLUMN_ID },
                 onDelete = CASCADE
         )
 )
 public class MetaString {
     @NonNull
-    @ColumnInfo(name = RoomDB.COLUMN_API)
+    @ColumnInfo(name = DB.COLUMN_API)
     public String api;
     @NonNull
-    @ColumnInfo(name = RoomDB.COLUMN_ID)
+    @ColumnInfo(name = DB.COLUMN_ID)
     public String id;
     @NonNull
-    @ColumnInfo(name = RoomDB.COLUMN_KEY)
+    @ColumnInfo(name = DB.COLUMN_KEY)
     public String key;
     @NonNull
-    @ColumnInfo(name = RoomDB.COLUMN_VALUE)
+    @ColumnInfo(name = DB.COLUMN_VALUE)
     public String value;
 
     public static MetaString from(String api, String id, String key, String value) {

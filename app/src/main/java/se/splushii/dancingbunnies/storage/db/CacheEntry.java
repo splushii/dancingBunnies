@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies.storage;
+package se.splushii.dancingbunnies.storage.db;
 
 import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
@@ -6,25 +6,27 @@ import androidx.room.Entity;
 import androidx.room.Index;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 
-@Entity(tableName = RoomDB.TABLE_CACHE,
+@Entity(tableName = DB.TABLE_CACHE,
         indices = {
-                @Index(value = {RoomCacheEntry.COLUMN_API, RoomCacheEntry.COLUMN_ID}, unique = true)
+                @Index(value = {CacheEntry.COLUMN_API, CacheEntry.COLUMN_ID}, unique = true)
         },
-        primaryKeys = {RoomCacheEntry.COLUMN_API, RoomCacheEntry.COLUMN_ID}
+        primaryKeys = {CacheEntry.COLUMN_API, CacheEntry.COLUMN_ID}
 )
-public class RoomCacheEntry {
+public class CacheEntry {
     static final String COLUMN_API = "api";
     static final String COLUMN_ID = "id";
 
     @NonNull
     @ColumnInfo(name = COLUMN_API)
+    public
     String api;
     @NonNull
     @ColumnInfo(name = COLUMN_ID)
+    public
     String id;
 
-    public static RoomCacheEntry from(EntryID entryID) {
-        RoomCacheEntry cacheEntry = new RoomCacheEntry();
+    public static CacheEntry from(EntryID entryID) {
+        CacheEntry cacheEntry = new CacheEntry();
         cacheEntry.api = entryID.src;
         cacheEntry.id = entryID.id;
         return cacheEntry;

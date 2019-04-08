@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies.storage;
+package se.splushii.dancingbunnies.storage.db;
 
 import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
@@ -6,20 +6,20 @@ import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 
-@Entity(tableName = RoomDB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
+@Entity(tableName = DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
 // The constraints below makes inserts impossible, because incrementing COLUMN_POS
 // needs to be done in a TEMP table, something not supported in Room as far as I know.
 // See: https://stackoverflow.com/questions/22494148/incrementing-value-in-table-with-unique-key-causes-constraint-error?noredirect=1&lq=1
 //        indices = @Index(value = {
-//                RoomPlaybackControllerEntry.COLUMN_QUEUE_ID,
-//                RoomPlaybackControllerEntry.COLUMN_POS
+//                PlaybackControllerEntry.COLUMN_QUEUE_ID,
+//                PlaybackControllerEntry.COLUMN_POS
 //        }, unique = true),
 //        primaryKeys = {
-//                RoomPlaybackControllerEntry.COLUMN_QUEUE_ID,
-//                RoomPlaybackControllerEntry.COLUMN_POS
+//                PlaybackControllerEntry.COLUMN_QUEUE_ID,
+//                PlaybackControllerEntry.COLUMN_POS
 //        }
 )
-public class RoomPlaybackControllerEntry {
+public class PlaybackControllerEntry {
     private static final String COLUMN_ROW_ID = "rowid";
     static final String COLUMN_QUEUE_ID = "queue_id";
     static final String COLUMN_POS = "pos";
@@ -42,12 +42,12 @@ public class RoomPlaybackControllerEntry {
     @ColumnInfo(name = COLUMN_ID)
     public String id;
 
-    public static RoomPlaybackControllerEntry from(int queueID, EntryID entryID) {
+    public static PlaybackControllerEntry from(int queueID, EntryID entryID) {
         return from(queueID, entryID, 1);
     }
 
-    public static RoomPlaybackControllerEntry from(int queueID, EntryID entryID, int pos) {
-        RoomPlaybackControllerEntry entry = new RoomPlaybackControllerEntry();
+    public static PlaybackControllerEntry from(int queueID, EntryID entryID, int pos) {
+        PlaybackControllerEntry entry = new PlaybackControllerEntry();
         entry.pos = pos;
         entry.queueID = queueID;
         entry.api = entryID.src;

@@ -39,7 +39,7 @@ import se.splushii.dancingbunnies.search.Searcher;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
-import se.splushii.dancingbunnies.storage.RoomPlaylistEntry;
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryService extends Service {
@@ -56,7 +56,7 @@ public class MusicLibraryService extends Service {
     private AudioStorage audioStorage;
     private PlaylistStorage playlistStorage;
     private LiveData<List<PlaylistItem>> playlistLiveData;
-    private LiveData<List<RoomPlaylistEntry>> playlistEntriesLiveData;
+    private LiveData<List<PlaylistEntry>> playlistEntriesLiveData;
     private List<PlaylistItem> playlists = new ArrayList<>();
     private HashMap<PlaylistID, List<EntryID>> playlistMap = new HashMap<>();
 
@@ -132,12 +132,12 @@ public class MusicLibraryService extends Service {
         playlists = entries;
     };
 
-    private final Observer<List<RoomPlaylistEntry>> playlistEntriesObserver = entries -> {
+    private final Observer<List<PlaylistEntry>> playlistEntriesObserver = entries -> {
         long start = System.currentTimeMillis();
         Log.d(LC, "playlistEntriesObserver: " + entries.size() + " entries."
                 + " Building playlist map...");
         HashMap<PlaylistID, List<EntryID>> newPlaylistMap = new HashMap<>();
-        for (RoomPlaylistEntry entry: entries) {
+        for (PlaylistEntry entry: entries) {
             PlaylistID id = new PlaylistID(entry.playlist_api, entry.playlist_id, PlaylistID.TYPE_STUPID);
             List<EntryID> entryIDs = newPlaylistMap.getOrDefault(id, new ArrayList<>());
             entryIDs.add(new EntryID(entry.api, entry.id, Meta.METADATA_KEY_MEDIA_ID));

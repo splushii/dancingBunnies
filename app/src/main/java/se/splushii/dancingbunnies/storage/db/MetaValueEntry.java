@@ -1,13 +1,12 @@
 package se.splushii.dancingbunnies.storage.db;
 
 import androidx.room.ColumnInfo;
-import se.splushii.dancingbunnies.storage.RoomDB;
 
 public class MetaValueEntry {
-    @ColumnInfo(name = RoomDB.COLUMN_API)
+    @ColumnInfo(name = DB.COLUMN_API)
     public String api;
-    @ColumnInfo(name = RoomDB.COLUMN_ID)
+    @ColumnInfo(name = DB.COLUMN_ID)
     public String id;
-    @ColumnInfo(name = RoomDB.COLUMN_VALUE)
+    @ColumnInfo(name = DB.COLUMN_VALUE)
     public String value;
 }

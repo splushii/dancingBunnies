@@ -19,6 +19,9 @@ import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.storage.db.CacheDao;
+import se.splushii.dancingbunnies.storage.db.CacheEntry;
+import se.splushii.dancingbunnies.storage.db.DB;
 import se.splushii.dancingbunnies.util.Util;
 
 public class AudioStorage {
@@ -28,7 +31,7 @@ public class AudioStorage {
     private final HashMap<EntryID, List<AudioDataDownloadHandler>> handlerMap;
     private final MutableLiveData<List<AudioDataFetchState>> fetchState;
     private final HashMap<EntryID, AudioDataFetchState> fetchStateMap;
-    private final RoomCacheDao cacheModel;
+    private final CacheDao cacheModel;
 
     public static synchronized AudioStorage getInstance(Context context) {
         if (instance == null) {
@@ -42,7 +45,7 @@ public class AudioStorage {
         handlerMap = new HashMap<>();
         fetchStateMap = new HashMap<>();
         fetchState = new MutableLiveData<>();
-        cacheModel = RoomDB.getDB(context).cacheModel();
+        cacheModel = DB.getDB(context).cacheModel();
     }
 
     public static File getCacheFile(Context context, EntryID entryID) {
@@ -87,7 +90,7 @@ public class AudioStorage {
 
                 @Override
                 public void onDownloadFinished() {
-                    cacheModel.insert(RoomCacheEntry.from(entryID));
+                    cacheModel.insert(CacheEntry.from(entryID));
                 }
 
                 @Override

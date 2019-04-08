@@ -20,6 +20,9 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
+import se.splushii.dancingbunnies.storage.db.DB;
+import se.splushii.dancingbunnies.storage.db.PlaybackControllerEntry;
+import se.splushii.dancingbunnies.storage.db.PlaybackControllerEntryDao;
 import se.splushii.dancingbunnies.util.Util;
 
 public class PlaybackControllerStorage {
@@ -31,7 +34,7 @@ public class PlaybackControllerStorage {
     public static final int QUEUE_ID_LOCALAUDIOPLAYER_PLAYLIST = 4;
     public static final int QUEUE_ID_LOCALAUDIOPLAYER_HISTORY = 5;
 
-    private final RoomPlaybackControllerEntryDao entryModel;
+    private final PlaybackControllerEntryDao entryModel;
     private final SharedPreferences preferences;
     private final String src_key;
     private final String id_key;
@@ -43,7 +46,7 @@ public class PlaybackControllerStorage {
     private final String playlist_position_key;
 
     public PlaybackControllerStorage(Context context) {
-        entryModel = RoomDB.getDB(context).playbackControllerEntryModel();
+        entryModel = DB.getDB(context).playbackControllerEntryModel();
         preferences = PreferenceManager.getDefaultSharedPreferences(context);
         playlist_src_key = context.getResources().getString(
                 R.string.pref_key_playbackcontroller_playlist_src
@@ -107,7 +110,7 @@ public class PlaybackControllerStorage {
     }
 
     private List<PlaybackEntry> RoomPlaybackControllerEntryList2PlaybackEntryList(
-            List<RoomPlaybackControllerEntry> roomPlaybackControllerEntries,
+            List<PlaybackControllerEntry> roomPlaybackControllerEntries,
             String playbackType) {
         return roomPlaybackControllerEntries.stream().map(entry ->
                 new PlaybackEntry(
@@ -119,14 +122,14 @@ public class PlaybackControllerStorage {
 
     public CompletableFuture<Void> insert(int queueID, int toPosition, List<EntryID> entries) {
         return CompletableFuture.supplyAsync(() -> {
-            List<RoomPlaybackControllerEntry> roomEntries = new ArrayList<>();
+            List<PlaybackControllerEntry> roomEntries = new ArrayList<>();
             int entryPosition = toPosition;
             StringBuilder sb = new StringBuilder();
             for (EntryID entryID: entries) {
                 sb.append("insert entryID: ").append(entryID)
                         .append(" pos: ").append(entryPosition)
                         .append("\n");
-                roomEntries.add(RoomPlaybackControllerEntry.from(queueID, entryID, entryPosition++));
+                roomEntries.add(PlaybackControllerEntry.from(queueID, entryID, entryPosition++));
             }
             int numNewEntries = entries.size();
             Log.d(LC, "insert to " + getQueueName(queueID) + ":\n"

@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies.storage;
+package se.splushii.dancingbunnies.storage.db;
 
 import java.util.List;
 
@@ -10,9 +10,10 @@ import androidx.room.Query;
 import static androidx.room.OnConflictStrategy.REPLACE;
 
 @Dao
-interface RoomCacheDao {
+public
+interface CacheDao {
     @Insert(onConflict = REPLACE)
-    void insert(RoomCacheEntry... cacheEntries);
-    @Query("SELECT * FROM " + RoomDB.TABLE_CACHE)
-    LiveData<List<RoomCacheEntry>> getAll();
+    void insert(CacheEntry... cacheEntries);
+    @Query("SELECT * FROM " + DB.TABLE_CACHE)
+    LiveData<List<CacheEntry>> getAll();
 }

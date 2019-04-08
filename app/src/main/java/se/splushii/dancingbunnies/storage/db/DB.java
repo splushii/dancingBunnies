@@ -1,16 +1,10 @@
-package se.splushii.dancingbunnies.storage;
+package se.splushii.dancingbunnies.storage.db;
 
 import android.content.Context;
 
 import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
-import se.splushii.dancingbunnies.storage.db.Entry;
-import se.splushii.dancingbunnies.storage.db.MetaBoolean;
-import se.splushii.dancingbunnies.storage.db.MetaDao;
-import se.splushii.dancingbunnies.storage.db.MetaDouble;
-import se.splushii.dancingbunnies.storage.db.MetaLong;
-import se.splushii.dancingbunnies.storage.db.MetaString;
 
 @Database(
         entities = {
@@ -19,14 +13,14 @@ import se.splushii.dancingbunnies.storage.db.MetaString;
                 MetaLong.class,
                 MetaDouble.class,
                 MetaBoolean.class,
-                RoomCacheEntry.class,
-                RoomPlaylist.class,
-                RoomPlaylistEntry.class,
-                RoomPlaybackControllerEntry.class
+                CacheEntry.class,
+                Playlist.class,
+                PlaylistEntry.class,
+                PlaybackControllerEntry.class
         },
         version = 1
 )
-public abstract class RoomDB extends RoomDatabase {
+public abstract class DB extends RoomDatabase {
     private static final String DB_NAME = "dB";
     public static final String TABLE_ENTRY_ID = "entry_id";
     public static final String TABLE_META_STRING = "meta_string";
@@ -41,18 +35,18 @@ public abstract class RoomDB extends RoomDatabase {
     static final String TABLE_PLAYLISTS = "playlists";
     static final String TABLE_PLAYLIST_ENTRIES = "playlist_entries";
     static final String TABLE_PLAYBACK_CONTROLLER_ENTRIES = "playback_controller_entries";
-    private static volatile RoomDB instance;
+    private static volatile DB instance;
 
-    static RoomDB getDB(Context context) {
+    public static DB getDB(Context context) {
         if (instance == null) {
-            instance = Room.databaseBuilder(context, RoomDB.class, DB_NAME).build();
+            instance = Room.databaseBuilder(context, DB.class, DB_NAME).build();
         }
         return instance;
     }
 
-    abstract MetaDao metaModel();
-    abstract RoomCacheDao cacheModel();
-    abstract RoomPlaylistDao playlistModel();
-    abstract RoomPlaylistEntryDao playlistEntryModel();
-    abstract RoomPlaybackControllerEntryDao playbackControllerEntryModel();
+    public abstract MetaDao metaModel();
+    public abstract CacheDao cacheModel();
+    public abstract PlaylistDao playlistModel();
+    public abstract PlaylistEntryDao playlistEntryModel();
+    public abstract PlaybackControllerEntryDao playbackControllerEntryModel();
 }
