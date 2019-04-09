@@ -6,6 +6,7 @@ import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -47,12 +48,12 @@ public class MetaStorage {
     // TODO: Support sort-by argument in bundleQuery
     // TODO: rework bundleQuery and getEntries to support nested queries
     public LiveData<List<LibraryEntry>> getEntries(Bundle bundleQuery) {
-        // TODO: Remove getTableAlias. Generate aliases from uniqueQueryKeys. (meta_1, meta_2, etc.)
-        // TODO: For debug, print generated alias together with key (when printing query).
+        HashMap<String, String> keyToTableAliasMap = new HashMap<>();
         String showTypeKey = bundleQuery.getString(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_MEDIA_ID);
         String showTypeTable = MetaDao.getTable(showTypeKey);
-        String showTypeTableAlias = MetaDao.getTableAlias(showTypeKey);
-        if (showTypeTable == null || showTypeTableAlias == null) {
+        String showTypeTableAlias = "meta_show";
+        keyToTableAliasMap.put(showTypeKey, showTypeTableAlias);
+        if (showTypeTable == null) {
             MutableLiveData<List<LibraryEntry>> entries = new MutableLiveData<>();
             entries.setValue(Collections.emptyList());
             return entries;
@@ -81,14 +82,16 @@ public class MetaStorage {
             query.append(String.format(", %s.%s", showTypeTableAlias, DB.COLUMN_ID));
         }
         query.append(" from ").append(showTypeTable).append(" as ").append(showTypeTableAlias);
+        int tableAliasIndex = 1;
         for (String key: uniqueQueryKeys) {
             if (showTypeKey.equals(key)) {
-                // Already added above in select
+                // Already handled
                 continue;
             }
             String typeTable = MetaDao.getTable(key);
-            String typeTableAlias = MetaDao.getTableAlias(key);
-            if (typeTable == null || typeTableAlias == null) {
+            String typeTableAlias = "meta_" + tableAliasIndex++;
+            keyToTableAliasMap.put(key, typeTableAlias);
+            if (typeTable == null) {
                 Log.e(LC, "There is no type table"
                         + " for bundleQuery key \"" + key + "\""
                         + " with type " + Meta.getType(key));
@@ -113,7 +116,7 @@ public class MetaStorage {
             if (Meta.METADATA_KEY_TYPE.equals(key)) {
                 continue;
             }
-            String typeTableAlias = MetaDao.getTableAlias(key);
+            String typeTableAlias = keyToTableAliasMap.get(key);
             if (typeTableAlias == null) {
                 Log.e(LC, "There is no type table"
                         + " for bundleQuery key \"" + key + "\""
@@ -155,11 +158,22 @@ public class MetaStorage {
         if (showMeta) {
             query.append(" order by " + showTypeTableAlias + "." + DB.COLUMN_VALUE);
         } else {
-            query.append(" order by " + MetaDao.getTableAlias(Meta.METADATA_KEY_TITLE)
+            query.append(" order by " + keyToTableAliasMap.get(Meta.METADATA_KEY_TITLE)
                     + "." + DB.COLUMN_VALUE);
         }
+        ;
         SimpleSQLiteQuery sqlQuery = new SimpleSQLiteQuery(query.toString(), queryArgs.toArray());
-        Log.d(LC, "query: " + sqlQuery.getSql());
+        Log.d(LC, "getEntries:"
+                + "\nquery: " + sqlQuery.getSql()
+                + "\nargs: "
+                + String.join(", ", queryArgs.stream()
+                .map(Object::toString)
+                .collect(Collectors.toList()))
+                + "\naliases: "
+                + String.join(", ", keyToTableAliasMap.entrySet().stream()
+                .map(e -> e.getKey() + ": " + e.getValue())
+                .collect(Collectors.toList()))
+        );
         return Transformations.map(metaModel.getEntries(sqlQuery), values ->
                 values.stream().map(value -> {
                             EntryID entryID = showTypeKey.equals(Meta.METADATA_KEY_MEDIA_ID) ?

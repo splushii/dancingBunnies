@@ -95,21 +95,6 @@ public abstract class MetaDao {
         }
     }
 
-    public static String getTableAlias(String key) {
-        switch (key) {
-            case Meta.METADATA_KEY_MEDIA_ID:
-                return "meta_id";
-            case Meta.METADATA_KEY_ARTIST:
-                return "meta_artist";
-            case Meta.METADATA_KEY_ALBUM:
-                return "meta_album";
-            case Meta.METADATA_KEY_TITLE:
-                return "meta_title";
-            default:
-                return null;
-        }
-    }
-
     @Insert(onConflict = REPLACE)
     abstract void insert(Entry... entries);
     @Insert(onConflict = REPLACE)
