@@ -24,6 +24,7 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
 import se.splushii.dancingbunnies.storage.AudioStorage;
+import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.ui.ItemActionsView;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.util.Util;
@@ -32,8 +33,8 @@ public class NowPlayingEntriesAdapter
         extends RecyclerView.Adapter<NowPlayingEntriesAdapter.SongViewHolder> {
     private static final String LC = Util.getLogContext(NowPlayingEntriesAdapter.class);
     private final NowPlayingFragment fragment;
-    private List<PlaybackEntryMeta> queueData;
-    private List<PlaybackEntryMeta> playlistNext;
+    private List<PlaybackEntry> queueData;
+    private List<PlaybackEntry> playlistNext;
 
     private static final int VIEWTYPE_UNKNOWN = -1;
     static final int VIEWTYPE_QUEUE_ITEM = 0;
@@ -133,11 +134,7 @@ public class NowPlayingEntriesAdapter
         }
     }
 
-    PlaybackEntryMeta getItemData(int childPosition) {
-        return queueData.get(childPosition);
-    }
-
-    public void setQueue(List<PlaybackEntryMeta> queue) {
+    public void setQueue(List<PlaybackEntry> queue) {
         queueData = queue;
         notifyDataSetChanged();
     }
@@ -146,7 +143,7 @@ public class NowPlayingEntriesAdapter
         notifyDataSetChanged();
     }
 
-    void setPlaylistNext(List<PlaybackEntryMeta> playbackEntries) {
+    void setPlaylistNext(List<PlaybackEntry> playbackEntries) {
         playlistNext = playbackEntries;
         notifyDataSetChanged();
     }
@@ -164,7 +161,7 @@ public class NowPlayingEntriesAdapter
         });
     }
 
-    PlaybackEntryMeta getPlaybackEntry(Long key) {
+    PlaybackEntry getPlaybackEntry(Long key) {
         int index = key.intValue();
         if (index < queueData.size()) {
             return queueData.get(index);
@@ -173,14 +170,14 @@ public class NowPlayingEntriesAdapter
         return index < playlistNext.size() ? playlistNext.get(index) : null;
     }
 
-    private PlaybackEntryMeta removePlaybackEntry(Long key) {
+    private PlaybackEntry removePlaybackEntry(Long key) {
         if (key < queueData.size()) {
             return queueData.remove(key.intValue());
         }
         return playlistNext.remove(key.intValue() - queueData.size());
     }
 
-    private void insertPlaybackEntry(PlaybackEntryMeta entry, int position) {
+    private void insertPlaybackEntry(PlaybackEntry entry, int position) {
         if (position <= queueData.size()) {
             queueData.add(position, entry);
         } else {
@@ -188,9 +185,9 @@ public class NowPlayingEntriesAdapter
         }
     }
 
-    TreeMap<Integer, PlaybackEntryMeta> removeItems(List<Long> positions) {
+    TreeMap<Integer, PlaybackEntry> removeItems(List<Long> positions) {
         positions.sort(Comparator.reverseOrder());
-        TreeMap<Integer, PlaybackEntryMeta> entries = new TreeMap<>();
+        TreeMap<Integer, PlaybackEntry> entries = new TreeMap<>();
         for (Long pos: positions) {
             entries.put(pos.intValue(), getPlaybackEntry(pos));
             if (pos < queueData.size()) {
@@ -209,9 +206,9 @@ public class NowPlayingEntriesAdapter
         return entries;
     }
 
-    void insertItems(TreeMap<Integer, PlaybackEntryMeta> selectedPlaybackEntries) {
+    void insertItems(TreeMap<Integer, PlaybackEntry> selectedPlaybackEntries) {
         selectedPlaybackEntries.forEach((k, v) -> {
-            if (v.playbackEntry.playbackType.equals(PlaybackEntry.USER_TYPE_QUEUE)) {
+            if (v.playbackType.equals(PlaybackEntry.USER_TYPE_QUEUE)) {
                 queueData.add(k, v);
             } else {
                 playlistNext.add(k, v);
@@ -221,7 +218,7 @@ public class NowPlayingEntriesAdapter
     }
 
     void moveItem(int from, int to) {
-        PlaybackEntryMeta entry = removePlaybackEntry((long) from);
+        PlaybackEntry entry = removePlaybackEntry((long) from);
         insertPlaybackEntry(entry, to);
         notifyItemMoved(from, to);
     }
@@ -323,14 +320,14 @@ public class NowPlayingEntriesAdapter
     @Override
     public void onBindViewHolder(@NonNull final SongViewHolder holder, int position) {
         holder.actionsView.initialize();
-        PlaybackEntryMeta entry;
+        PlaybackEntry entry;
         int queueSize = queueData.size();
         switch (getItemViewType(position)) {
             default:
             case VIEWTYPE_QUEUE_ITEM:
                 entry = queueData.get(position);
                 holder.actionsView.setOnDequeueListener(() ->
-                        fragment.dequeue(entry.playbackEntry.entryID, position)
+                        fragment.dequeue(entry.entryID, position)
                 );
                 break;
             case VIEWTYPE_PLAYLIST_NEXT:
@@ -339,28 +336,28 @@ public class NowPlayingEntriesAdapter
                 holder.actionsView.setOnDequeueListener(null);
                 break;
         }
-        holder.entryID = entry.playbackEntry.entryID;
+        holder.entryID = entry.entryID;
         holder.position = position;
         boolean selected = selectionTracker != null
                 && selectionTracker.isSelected(holder.getItemDetails().getSelectionKey());
         holder.item.setActivated(selected);
-        String title = entry.meta.getString(Meta.METADATA_KEY_TITLE);
         holder.actionsView.setOnPlayListener(() -> {
             fragment.skipItems(position + 1);
             fragment.play();
         });
-        holder.actionsView.setOnInfoListener(() -> {
-            MetaDialogFragment.showMeta(fragment, entry.meta);
-        });
-        holder.title.setText(title);
-        String artist = entry.meta.getString(Meta.METADATA_KEY_ARTIST);
-        holder.artist.setText(artist);
-        String src = entry.meta.getString(Meta.METADATA_KEY_API);
-        holder.source.setText(src);
-        String preloadStatus = entry.meta.getBoolean(
-                Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS,
-                false
-        ) ? "(preloaded) " : "";
+        MetaStorage.getInstance(fragment.requireContext()).getMeta(entry.entryID)
+                .thenAcceptAsync(meta -> {
+                    holder.actionsView.setOnInfoListener(() -> {
+                        MetaDialogFragment.showMeta(fragment, meta);
+                    });
+                    String title = meta.getAsString(Meta.FIELD_TITLE);
+                    holder.title.setText(title);
+                    String artist = meta.getAsString(Meta.FIELD_ARTIST);
+                    holder.artist.setText(artist);
+                    String src = meta.entryID.src;
+                    holder.source.setText(src);
+                }, Util.getMainThreadExecutor());
+        String preloadStatus = entry.isPreloaded() ? "(preloaded) " : "";
         holder.preloadStatus.setText(preloadStatus);
         holder.fetchStatusText = "";
         holder.isCached = false;

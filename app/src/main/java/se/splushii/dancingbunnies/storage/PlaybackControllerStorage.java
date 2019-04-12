@@ -114,7 +114,7 @@ public class PlaybackControllerStorage {
             String playbackType) {
         return roomPlaybackControllerEntries.stream().map(entry ->
                 new PlaybackEntry(
-                        new EntryID(entry.api, entry.id, Meta.METADATA_KEY_MEDIA_ID),
+                        new EntryID(entry.api, entry.id, Meta.FIELD_SPECIAL_MEDIA_ID),
                         playbackType
                 )
         ).collect(Collectors.toList());
@@ -177,7 +177,7 @@ public class PlaybackControllerStorage {
         if (src == null || id == null) {
             return null;
         }
-        return new EntryID(src, id, Meta.METADATA_KEY_MEDIA_ID);
+        return new EntryID(src, id, Meta.FIELD_SPECIAL_MEDIA_ID);
     }
 
     public long getLocalAudioPlayerCurrentLastPos() {

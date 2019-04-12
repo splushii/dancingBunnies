@@ -21,7 +21,6 @@ import java.util.stream.Collectors;
 
 import androidx.lifecycle.LiveData;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
@@ -613,8 +612,7 @@ class PlaybackController {
 
     void updateCurrent() {
         PlaybackEntry currentEntry = audioPlayer.getCurrentEntry();
-        EntryID entryID = currentEntry == null ?
-                EntryID.from(Meta.UNKNOWN_ENTRY) : currentEntry.entryID;
+        EntryID entryID = currentEntry == null ? EntryID.UNKOWN : currentEntry.entryID;
         callback.onMetaChanged(entryID);
     }
 
@@ -696,6 +694,11 @@ class PlaybackController {
     }
 
     private void onCastConnect(CastSession session) {
+        if (audioPlayer instanceof CastAudioPlayer) {
+            // TODO: What if sessions differ? Transfer state?
+            ((CastAudioPlayer)audioPlayer).setCastSession(session);
+            return;
+        }
         AudioPlayer.AudioPlayerState lastState = audioPlayer.getLastState();
         printState("onCastConnect", lastState);
         AudioPlayer oldPlayer = audioPlayer;
@@ -716,6 +719,9 @@ class PlaybackController {
         }
         AudioPlayer.AudioPlayerState lastState = audioPlayer.getLastState();
         printState("onCastDisconnect", lastState);
+        AudioPlayer oldPlayer = audioPlayer;
+        oldPlayer.stop()
+                .thenCompose(v -> oldPlayer.destroy());
         audioPlayer = new LocalAudioPlayer(
                 audioPlayerCallback,
                 musicLibraryService,

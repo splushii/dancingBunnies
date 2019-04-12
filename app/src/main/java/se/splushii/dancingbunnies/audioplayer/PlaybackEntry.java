@@ -1,30 +1,30 @@
 package se.splushii.dancingbunnies.audioplayer;
 
+import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.support.v4.media.MediaDescriptionCompat;
+
+import com.google.android.gms.cast.MediaMetadata;
 
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.Meta;
 
 public class PlaybackEntry implements Parcelable {
     public static final String USER_TYPE_PLAYLIST = "playlist";
     public static final String USER_TYPE_QUEUE = "queue";
     public static final String USER_TYPE_HISTORY = "history";
     public static final String USER_TYPE_EXTERNAL = "external";
+    private static final String BUNDLE_KEY_PLAYBACKTYPE = "dancingbunnies.bundle.key.playbackentry.playbackType";
+    private static final String BUNDLE_KEY_PRELOADED = "dancingbunnies.bundle.key.playbackentry.preloaded";
 
     public final EntryID entryID;
     public final String playbackType;
     private boolean preloaded = false;
 
-    public PlaybackEntry(Meta meta) {
-        this.entryID = EntryID.from(meta);
-        String playbackType = meta.getString(Meta.METADATA_KEY_PLAYBACK_TYPE);
+    public PlaybackEntry(MediaMetadata metadata) {
+        this.entryID = EntryID.from(metadata);
+        String playbackType = metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYBACK_TYPE);
         this.playbackType = playbackType != null ? playbackType : PlaybackEntry.USER_TYPE_EXTERNAL;
-    }
-
-    public PlaybackEntry(Meta meta, String playbackType) {
-        this.entryID = EntryID.from(meta);
-        this.playbackType = playbackType;
     }
 
     public PlaybackEntry(EntryID entryID, String playbackType) {
@@ -91,7 +91,29 @@ public class PlaybackEntry implements Parcelable {
         this.preloaded = preloaded;
     }
 
-    boolean isPreloaded() {
+    public boolean isPreloaded() {
         return preloaded;
+    }
+
+    MediaDescriptionCompat toMediaDescriptionCompat() {
+        Bundle b = toBundle();
+        return new MediaDescriptionCompat.Builder()
+                .setMediaId(entryID.id)
+                .setExtras(b)
+                .build();
+    }
+
+    private Bundle toBundle() {
+        Bundle b = entryID.toBundle();
+        b.putString(BUNDLE_KEY_PLAYBACKTYPE, playbackType);
+        b.putBoolean(BUNDLE_KEY_PRELOADED, preloaded);
+        return b;
+    }
+
+    public PlaybackEntry(MediaDescriptionCompat description) {
+        Bundle b = description.getExtras();
+        entryID = EntryID.from(b);
+        playbackType = b.getString(BUNDLE_KEY_PLAYBACKTYPE);
+        preloaded = b.getBoolean(BUNDLE_KEY_PRELOADED);
     }
 }

@@ -46,6 +46,7 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.storage.AudioStorage;
+import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -218,23 +219,28 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         model.getFetchState(requireContext()).observe(getViewLifecycleOwner(), audioDataFetchStates -> {
             boolean showSize = false;
             for (AudioStorage.AudioDataFetchState state: audioDataFetchStates) {
-                if (EntryID.from(currentMeta).equals(state.entryID)) {
+                if (currentMeta.entryID.equals(state.entryID)) {
                     sizeText.setText(state.getStatusMsg());
                     showSize = true;
                     break;
                 }
             }
-            if (!showSize && currentMeta.getBundle().containsKey(Meta.METADATA_KEY_FILE_SIZE)) {
-                sizeText.setText(String.format(
-                        Locale.getDefault(),
-                        "%d MB",
-                        currentMeta.getLong(Meta.METADATA_KEY_FILE_SIZE) / 1_000_000L
-                ));
-                showSize = true;
+            if (!showSize && currentMeta.has(Meta.FIELD_FILE_SIZE)) {
+                String formattedFileSize = getFormattedFileSize(currentMeta);
+                if (formattedFileSize != null) {
+                    sizeText.setText(formattedFileSize);
+                    showSize = true;
+                }
             }
             sizeText.setVisibility(showSize ? View.VISIBLE : View.INVISIBLE);
         });
         recViewAdapter.setModel(model);
+    }
+
+    private String getFormattedFileSize(Meta currentMeta) {
+        long size = currentMeta.getFirstLong(Meta.FIELD_FILE_SIZE, -1);
+        return size < 0 ?
+                null : String.format(Locale.getDefault(),"%d MB", size / 1_000_000L);
     }
 
     @Override
@@ -270,7 +276,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         }));
         // TODO: Implement playbackhistory in AudioPlayerService/PlaybackController, then in UI.
         //getPlaybackHistory().thenAccept(opt -> opt.ifPresent(recViewAdapter::setPlaybackHistory));
-        List<PlaybackEntryMeta> queue = getQueue();
+        List<PlaybackEntry> queue = getQueue();
         Log.d(LC, "refreshView: queue(" + queue.size() + ")");
         recViewAdapter.setQueue(queue);
     }
@@ -335,10 +341,13 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     @Override
-    protected void onMetadataChanged(Meta metadata) {
-        currentMeta = metadata;
-        updateMeta(metadata);
-        updateProgress();
+    protected void onMetadataChanged(EntryID entryID) {
+        MetaStorage.getInstance(requireContext()).getMeta(entryID)
+                .thenAcceptAsync(meta -> {
+                    currentMeta = meta;
+                    updateMeta(meta);
+                    updateProgress();
+                }, Util.getMainThreadExecutor());
     }
 
     private void updateMeta(Meta meta) {
@@ -348,21 +357,21 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     private void updateDescription(Meta metadata) {
-        String title = metadata.getString(Meta.METADATA_KEY_TITLE);
-        String album = metadata.getString(Meta.METADATA_KEY_ALBUM);
-        String artist = metadata.getString(Meta.METADATA_KEY_ARTIST);
-        if (title == null || title.equals(Meta.METADATA_VALUE_UNKNOWN_TITLE)) {
+        String title = metadata.getAsString(Meta.FIELD_TITLE);
+        String album = metadata.getAsString(Meta.FIELD_ALBUM);
+        String artist = metadata.getAsString(Meta.FIELD_ARTIST);
+        if (title == null || title.isEmpty()) {
             title = "Unknown title";
         }
-        if (album == null || album.equals(Meta.METADATA_VALUE_UNKNOWN_ALBUM)) {
+        if (album == null || album.isEmpty()) {
             album = "Unknown album";
         } else {
-            long year = metadata.getLong(Meta.METADATA_KEY_YEAR);
-            if (year != 0L) {
-                album = String.format(Locale.getDefault(), "%s - %d", album, year);
+            String year = metadata.getAsString(Meta.FIELD_YEAR);
+            if (!year.isEmpty()) {
+                album = String.format(Locale.getDefault(), "%s - %s", album, year);
             }
         }
-        if (artist == null || artist.equals(Meta.METADATA_VALUE_UNKNOWN_ARTIST)) {
+        if (artist == null || artist.isEmpty()) {
             artist = "Unknown artist";
         }
         nowPlayingTitle.setText(title);
@@ -371,28 +380,24 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     private void updateMediaInfo(Meta metadata) {
-        long size = metadata.getLong(Meta.METADATA_KEY_FILE_SIZE);
-        if (size != 0) {
-            sizeText.setText(String.format(
-                    Locale.getDefault(),
-                    "%d MB",
-                    size / 1_000_000L
-            ));
+        String formattedFileSize = getFormattedFileSize(metadata);
+        if (formattedFileSize != null) {
+            sizeText.setText(formattedFileSize);
             sizeText.setVisibility(View.VISIBLE);
         } else {
             sizeText.setVisibility(View.INVISIBLE);
         }
-        String contentType = metadata.getString(Meta.METADATA_KEY_CONTENT_TYPE);
-        String suffix = metadata.getString(Meta.METADATA_KEY_FILE_SUFFIX);
-        long bitrate = metadata.getLong(Meta.METADATA_KEY_BITRATE);
+        String contentType = metadata.getFirstString(Meta.FIELD_CONTENT_TYPE);
+        String suffix = metadata.getFirstString(Meta.FIELD_FILE_SUFFIX);
+        long bitrate = metadata.getFirstLong(Meta.FIELD_BITRATE, -1);
         ArrayList<String> info = new ArrayList<>();
-        if (contentType != null) {
+        if (!contentType.isEmpty()) {
             info.add(contentType);
         }
-        if (suffix != null) {
+        if (!suffix.isEmpty()) {
             info.add(suffix);
         }
-        if (bitrate != 0) {
+        if (bitrate >= 0) {
             info.add(String.format(Locale.getDefault(), "%dkbps", bitrate));
         }
         mediaInfoText.setText(String.join(" ", info));
@@ -404,8 +409,11 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         updatePlaybackState(state);
         MediaMetadataCompat mediaMetadataCompat = mediaController.getMetadata();
         if (mediaMetadataCompat != null) {
-            Meta meta = new Meta(mediaMetadataCompat);
-            updateMeta(meta);
+            MetaStorage.getInstance(requireContext()).getMeta(EntryID.from(mediaMetadataCompat))
+                    .thenAcceptAsync(meta -> {
+                        currentMeta = meta;
+                        updateMeta(meta);
+                    }, Util.getMainThreadExecutor());
         }
         updateProgress();
         if (playbackState.getState() == PlaybackStateCompat.STATE_PLAYING) {
@@ -430,7 +438,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     private void updateDuration(Meta metadata) {
-        int duration = (int) metadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
+        int duration = (int) metadata.getFirstLong(Meta.FIELD_DURATION, 0);
         seekBar.setMax(duration);
         durationText.setText(Util.getDurationString(duration));
     }
@@ -513,7 +521,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 case R.id.nowplaying_actionmode_action_queue:
                     List<EntryID> entryIDs = new LinkedList<>();
                     for (Long key: selection) {
-                        entryIDs.add(recViewAdapter.getPlaybackEntry(key).playbackEntry.entryID);
+                        entryIDs.add(recViewAdapter.getPlaybackEntry(key).entryID);
                     }
                     queue(entryIDs, AudioPlayerService.QUEUE_LAST);
                     mode.finish();

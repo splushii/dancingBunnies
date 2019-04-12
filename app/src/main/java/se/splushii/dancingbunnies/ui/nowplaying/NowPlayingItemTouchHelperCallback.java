@@ -12,13 +12,14 @@ import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
+import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 
 final class NowPlayingItemTouchHelperCallback extends ItemTouchHelper.Callback {
     private final NowPlayingEntriesAdapter adapter;
     private final NowPlayingFragment fragment;
     private final List<Long> selection;
     private ActionMode actionMode;
-    private TreeMap<Integer, PlaybackEntryMeta> selectedPlaybackEntries;
+    private TreeMap<Integer, PlaybackEntry> selectedPlaybackEntries;
     private int secondarySelectionId;
     private int lastDragPos = -1;
     private boolean abort = false;

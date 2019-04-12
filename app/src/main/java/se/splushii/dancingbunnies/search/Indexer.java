@@ -13,7 +13,6 @@ import org.apache.lucene.util.Version;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
 
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 
@@ -21,22 +20,9 @@ import se.splushii.dancingbunnies.musiclibrary.Meta;
 public class Indexer {
     static final Version LUCENE_VERSION = Version.LUCENE_48;
 
-    private static final String FIELD_API = "src";
-    private static final String FIELD_MEDIA_ID = "id";
     static final String FIELD_ARTIST = "artist";
     static final String FIELD_ALBUM = "album";
     static final String FIELD_TITLE = "title";
-
-    public static final HashMap<String, String> meta2fieldNameMap;
-
-    static {
-        meta2fieldNameMap = new HashMap<>();
-        meta2fieldNameMap.put(Meta.METADATA_KEY_API, FIELD_API);
-        meta2fieldNameMap.put(Meta.METADATA_KEY_MEDIA_ID, FIELD_MEDIA_ID);
-        meta2fieldNameMap.put(Meta.METADATA_KEY_ARTIST, FIELD_ARTIST);
-        meta2fieldNameMap.put(Meta.METADATA_KEY_ALBUM, FIELD_ALBUM);
-        meta2fieldNameMap.put(Meta.METADATA_KEY_TITLE, FIELD_TITLE);
-    }
 
     private IndexWriter indexWriter;
     public Indexer(File indexDirectoryPath) {
@@ -59,20 +45,25 @@ public class Indexer {
 
     public int indexSong(Meta meta) {
         Document doc = new Document();
+        doc.add(new TextField(Meta.FIELD_SPECIAL_MEDIA_SRC, meta.entryID.src, Field.Store.YES));
+        doc.add(new TextField(Meta.FIELD_SPECIAL_MEDIA_ID, meta.entryID.id, Field.Store.YES));
         for (String key: meta.keySet()) {
-            if (meta2fieldNameMap.containsKey(key)) {
-                String fieldName = meta2fieldNameMap.get(key);
-                // TODO: FIXME: Not everything is a string...
-                String fieldValue = meta.getString(key);
-                Field.Store store = key.equals(Meta.METADATA_KEY_MEDIA_ID)
-                        || key.equals(Meta.METADATA_KEY_API)
-                        || key.equals(Meta.METADATA_KEY_TITLE) ?
-                        Field.Store.YES : Field.Store.NO;
-                if (fieldValue == null) {
-                    continue;
-                }
-                Field field = new TextField(fieldName, fieldValue, store);
-                doc.add(field);
+            switch (Meta.getType(key)) {
+                case STRING:
+                    meta.getStrings(key).forEach(s ->
+                            doc.add(new TextField(key, s, Field.Store.NO))
+                    );
+                    break;
+                case DOUBLE:
+                    meta.getDoubles(key).stream()
+                            .map(String::valueOf)
+                            .forEach(s -> doc.add(new TextField(key, s, Field.Store.NO)));
+                    break;
+                case LONG:
+                    meta.getLongs(key).stream()
+                            .map(String::valueOf)
+                            .forEach(s -> doc.add(new TextField(key, s, Field.Store.NO)));
+                    break;
             }
         }
         try {

@@ -13,18 +13,16 @@ import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import androidx.fragment.app.Fragment;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
-import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
-import se.splushii.dancingbunnies.ui.nowplaying.PlaybackEntryMeta;
 import se.splushii.dancingbunnies.util.Util;
 
 public abstract class AudioBrowserFragment extends Fragment {
@@ -64,19 +62,10 @@ public abstract class AudioBrowserFragment extends Fragment {
         }
     }
 
-    protected List<PlaybackEntryMeta> getQueue() {
-        List<PlaybackEntryMeta> playbackEntries = new LinkedList<>();
-        for (MediaSessionCompat.QueueItem queueItem: mediaController.getQueue()) {
-            Meta meta = new Meta(queueItem.getDescription());
-            PlaybackEntry playbackEntry = new PlaybackEntry(meta, PlaybackEntry.USER_TYPE_QUEUE);
-            PlaybackEntryMeta playbackEntryMeta = new PlaybackEntryMeta(playbackEntry, meta);
-            playbackEntries.add(playbackEntryMeta);
-        }
-        return playbackEntries;
-    }
-
-    public CompletableFuture<Meta> getSongMeta(EntryID entryID) {
-        return AudioPlayerService.getSongMeta(mediaController, entryID);
+    protected List<PlaybackEntry> getQueue() {
+        return mediaController.getQueue().stream()
+                .map(queueItem -> new PlaybackEntry(queueItem.getDescription()))
+                .collect(Collectors.toList());
     }
 
     public void play() {
@@ -107,7 +96,7 @@ public abstract class AudioBrowserFragment extends Fragment {
     public void dequeue(EntryID entryID, long pos) {
         MediaDescriptionCompat mediaDescription = entryID.toMediaDescriptionCompat();
         assert mediaDescription.getExtras() != null;
-        mediaDescription.getExtras().putLong(Meta.METADATA_KEY_QUEUE_POS, pos);
+        mediaDescription.getExtras().putLong(AudioPlayerService.BUNDLE_KEY_DEQUEUE_QUEUE_POS, pos);
         mediaController.removeQueueItem(mediaDescription);
     }
 
@@ -221,8 +210,8 @@ public abstract class AudioBrowserFragment extends Fragment {
         return future;
     }
 
-    protected CompletableFuture<Optional<List<PlaybackEntryMeta>>> getPlaylistNext(int maxEntries) {
-        CompletableFuture<Optional<List<PlaybackEntryMeta>>> future = new CompletableFuture<>();
+    protected CompletableFuture<Optional<List<PlaybackEntry>>> getPlaylistNext(int maxEntries) {
+        CompletableFuture<Optional<List<PlaybackEntry>>> future = new CompletableFuture<>();
         Bundle params = new Bundle();
         params.putInt("MAX_ENTRIES", maxEntries);
         mediaController.sendCommand(
@@ -234,8 +223,8 @@ public abstract class AudioBrowserFragment extends Fragment {
                             future.complete(Optional.empty());
                             return;
                         }
-                        List<PlaybackEntryMeta> playbackEntries =
-                                AudioPlayerService.getPlaybackEntryMetaList(resultData);
+                        List<PlaybackEntry> playbackEntries =
+                                AudioPlayerService.getPlaybackEntryList(resultData);
                         future.complete(Optional.of(playbackEntries));
                     }
                 }
@@ -299,7 +288,7 @@ public abstract class AudioBrowserFragment extends Fragment {
 
                 @Override
                 public void onMetadataChanged(MediaMetadataCompat metadata) {
-                    AudioBrowserFragment.this.onMetadataChanged(new Meta(metadata));
+                    AudioBrowserFragment.this.onMetadataChanged(EntryID.from(metadata));
                 }
 
                 @Override
@@ -325,7 +314,7 @@ public abstract class AudioBrowserFragment extends Fragment {
 
     protected void onMediaBrowserConnected() {}
     protected void onPlaybackStateChanged(PlaybackStateCompat state) {}
-    protected void onMetadataChanged(Meta metadata) {}
+    protected void onMetadataChanged(EntryID entryID) {}
     protected void onSessionEvent(String event, Bundle extras) {}
     private void onSessionDestroyed() {}
     protected void onSessionReady() {}

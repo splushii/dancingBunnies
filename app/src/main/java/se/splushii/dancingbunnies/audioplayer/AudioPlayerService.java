@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -51,11 +50,11 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
-import se.splushii.dancingbunnies.ui.nowplaying.PlaybackEntryMeta;
 import se.splushii.dancingbunnies.util.Util;
 
 // TODO: Handle incoming call. PhoneStateListener.LISTEN_CALL_STATE.
@@ -71,7 +70,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public static final String SESSION_EVENT_PLAYLIST_POSITION_CHANGED = "PLAYLIST_POSITION_CHANGED";
     public static final String SESSION_EVENT_PLAYLIST_CHANGED = "PLAYLIST_CHANGED";
 
-    private static final String COMMAND_GET_META = "GET_META";
     public static final String COMMAND_GET_PLAYLISTS = "GET_PLAYLISTS";
     public static final String COMMAND_GET_CURRENT_PLAYLIST = "GET_CURRENT_PLAYLIST";
     public static final String COMMAND_GET_PLAYLIST_ENTRIES = "GET_PLAYLIST_ENTRIES";
@@ -82,6 +80,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static final String COMMAND_QUEUE_ENTRYIDS = "QUEUE_ENTRYIDS";
     private static final String COMMAND_DEQUEUE = "DEQUEUE";
     private static final String COMMAND_MOVE_QUEUE_ITEMS = "MOVE_QUEUE_ITEMS";
+
+    public static final String BUNDLE_KEY_DEQUEUE_QUEUE_POS =
+            "dancingbunnies.bundle.key.audioplayerservice.dequeue_queue_pos";
 
     public static final int QUEUE_LAST = -1;
 
@@ -153,7 +154,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public void onSubscribe(String id, Bundle options) {
         subscriptionIDs.add(id);
         subscriptionResults.put(id, new ArrayList<>());
-        LiveData<List<LibraryEntry>> entries = musicLibraryService.getSubscriptionEntries(options);
+        String showType = options.getString(MusicLibraryQuery.BUNDLE_KEY_SHOW);
+        Bundle query = options.getBundle(MusicLibraryQuery.BUNDLE_KEY_QUERY);
+        LiveData<List<LibraryEntry>> entries = musicLibraryService.getSubscriptionEntries(
+                showType,
+                query
+        );
         subscriptionLiveData.put(id, entries);
         Observer<List<LibraryEntry>> observer = libraryEntries -> {
             List<MediaBrowserCompat.MediaItem> mediaItems = new ArrayList<>();
@@ -204,30 +210,26 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     @Override
     public void onSearch(@NonNull String query, Bundle extras, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
-        List<MediaBrowserCompat.MediaItem> mediaItems = new ArrayList<>();
-        List<LibraryEntry> entries = musicLibraryService.getSearchEntries(query);
-        for (LibraryEntry entry: entries) {
-            MediaBrowserCompat.MediaItem item = generateMediaItem(entry);
-            mediaItems.add(item);
-        }
-        result.sendResult(mediaItems);
+        result.sendResult(musicLibraryService.getSearchEntries(query).stream()
+                .map(e -> generateMediaItem(e, e.id))
+                .collect(Collectors.toList())
+        );
     }
 
     public static MediaBrowserCompat.MediaItem generateMediaItem(LibraryEntry entry) {
-        EntryID entryID = entry.entryID;
+        return generateMediaItem(entry.entryID, entry.name());
+    }
+
+    public static MediaBrowserCompat.MediaItem generateMediaItem(EntryID entryID, String title) {
         Bundle extras = entryID.toBundle();
         MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
                 .setMediaId(entryID.key())
                 .setExtras(extras)
-                .setTitle(entry.name())
+                .setTitle(title)
                 .build();
         int flags = MediaBrowserCompat.MediaItem.FLAG_PLAYABLE;
-        switch(entryID.type) {
-            case Meta.METADATA_KEY_MEDIA_ID:
-                break;
-            default:
-                flags |= MediaBrowserCompat.MediaItem.FLAG_BROWSABLE;
-                break;
+        if (!Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
+            flags |= MediaBrowserCompat.MediaItem.FLAG_BROWSABLE;
         }
         return new MediaBrowserCompat.MediaItem(desc, flags);
     }
@@ -574,11 +576,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         }
 
         private void setToast(PlaybackEntry entry, String format) {
-            String entryType = Meta.METADATA_KEY_MEDIA_ID.equals(entry.entryID.type) ?
-                    Meta.METADATA_KEY_TITLE : entry.entryID.type;
+            String type = Meta.FIELD_SPECIAL_MEDIA_ID.equals(entry.entryID.type) ?
+                    Meta.FIELD_TITLE : entry.entryID.type;
             musicLibraryService.getSongMeta(entry.entryID).thenAcceptAsync(meta -> {
-                        String type = Meta.getHumanReadable(entryType);
-                        String title = meta.getString(Meta.METADATA_KEY_TITLE);
+                        String title = meta.getAsString(Meta.FIELD_TITLE);
                         String message = String.format(Locale.getDefault(), format, type, title);
                         Toast.makeText(
                                 AudioPlayerService.this,
@@ -593,7 +594,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         public void onRemoveQueueItem(MediaDescriptionCompat description) {
             Log.d(LC, "onRemoveQueueItem");
             assert description.getExtras() != null;
-            long pos = description.getExtras().getLong(Meta.METADATA_KEY_QUEUE_POS);
+            long pos = description.getExtras().getLong(BUNDLE_KEY_DEQUEUE_QUEUE_POS);
             playbackController.deQueue(new long[]{pos})
                     .handle(AudioPlayerService.this::handleControllerResult);
         }
@@ -697,20 +698,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     List<PlaybackEntry> playbackEntries = playbackController.getPlaylistEntries(
                             maxNum
                     );
-                    musicLibraryService.getSongMetas(playbackEntries.stream()
-                            .map(p -> p.entryID)
-                            .collect(Collectors.toList())
-                    ).thenAcceptAsync(metas -> {
-                        ArrayList<PlaybackEntryMeta> entries = new ArrayList<>();
-                        Iterator<PlaybackEntry> pIter = playbackEntries.iterator();
-                        Iterator<Meta> mIter = metas.iterator();
-                        while (pIter.hasNext() && mIter.hasNext()) {
-                            entries.add(new PlaybackEntryMeta(pIter.next(), mIter.next()));
-                        }
-                        Bundle b = new Bundle();
-                        putPlaybackEntryMetaList(b, entries);
-                        cb.send(0, b);
-                    }, Util.getMainThreadExecutor());
+                    Bundle b = new Bundle();
+                    putPlaybackEntryList(b, new ArrayList<>(playbackEntries));
+                    cb.send(0, b);
                     break;
                 case COMMAND_GET_PLAYLIST_PREVIOUS:
                     Log.e(LC, "COMMAND_GET_PLAYLIST_PREVIOUS not implemented");
@@ -721,9 +711,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                             AudioPlayerService.SESSION_EVENT_PLAYLIST_CHANGED,
                             null
                     );
-                    break;
-                case COMMAND_GET_META:
-                    getSongMeta(cb, extras);
                     break;
                 case COMMAND_QUEUE_ENTRYIDS:
                     queue(cb, extras);
@@ -774,7 +761,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         Log.d(LC, "queue() adding " + entryIDs.size() + " entryIDs");
         for (EntryID entryID: entryIDs) {
             CompletableFuture<List<EntryID>> songEntries;
-            if (Meta.METADATA_KEY_MEDIA_ID.equals(entryID.type)) {
+            if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
                 Log.d(LC, "queue() adding: " + entryID.toString());
                 songEntries = CompletableFuture.completedFuture(Collections.singletonList(entryID));
             } else {
@@ -925,54 +912,21 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         cb.send(0, null);
     }
 
-    public static CompletableFuture<Meta> getSongMeta(MediaControllerCompat mediaController,
-                                                      EntryID entryID) {
-        CompletableFuture<Meta> future = new CompletableFuture<>();
-        Bundle params = new Bundle();
-        params.putParcelable("entryID", entryID);
-        mediaController.sendCommand(
-                AudioPlayerService.COMMAND_GET_META,
-                params,
-                new ResultReceiver(null) {
-                    @Override
-                    protected void onReceiveResult(int resultCode, Bundle resultData) {
-                        if (resultCode != 0) {
-                            future.complete(Meta.UNKNOWN_ENTRY);
-                            return;
-                        }
-                        future.complete(new Meta(resultData));
-                    }
-                }
-        );
-        return future;
-    }
-
-    private void getSongMeta(ResultReceiver cb, Bundle b) {
-        EntryID entryID = b.getParcelable("entryID");
-        musicLibraryService.getSongMeta(entryID).thenAcceptAsync(
-                meta -> cb.send(0, meta.getBundle()),
-                Util.getMainThreadExecutor()
-        );
-    }
-
     private static final String BUNDLE_KEY_PLAYLIST_ITEMS =
             "BUNDLE_KEY_PLAYLIST_ITEMS";
     private static final String BUNDLE_KEY_LIBRARY_ENTRIES =
             "BUNDLE_KEY_LIBRARY_ENTRIES";
     private static final String BUNDLE_KEY_PLAYLIST_ITEM =
             "BUNDLE_KEY_PLAYLIST_ITEM";
-    private static final String BUNDLE_KEY_PLAYBACKENTRYMETA_LIST =
-            "BUNDLE_KEY_PLAYBACKENTRYMETA_LIST";
+    private static final String BUNDLE_KEY_PLAYBACKENTRY_LIST =
+            "BUNDLE_KEY_PLAYBACKENTRY_LIST";
 
-    private static void putPlaybackEntryMetaList(
-            Bundle b,
-            ArrayList<PlaybackEntryMeta> playbackEntries
-    ) {
-        b.putParcelableArrayList(BUNDLE_KEY_PLAYBACKENTRYMETA_LIST, playbackEntries);
+    private static void putPlaybackEntryList(Bundle b, ArrayList<PlaybackEntry> playbackEntries) {
+        b.putParcelableArrayList(BUNDLE_KEY_PLAYBACKENTRY_LIST, playbackEntries);
     }
 
-    public static ArrayList<PlaybackEntryMeta> getPlaybackEntryMetaList(Bundle b) {
-        return b.getParcelableArrayList(BUNDLE_KEY_PLAYBACKENTRYMETA_LIST);
+    public static ArrayList<PlaybackEntry> getPlaybackEntryList(Bundle b) {
+        return b.getParcelableArrayList(BUNDLE_KEY_PLAYBACKENTRY_LIST);
     }
 
     private static Bundle putPlaylist(PlaylistItem playlistItem) {
@@ -1133,25 +1087,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         @Override
         public void onQueueChanged(List<PlaybackEntry> queue) {
-            musicLibraryService.getSongMetas(
-                    queue.stream()
-                            .map(p -> p.entryID)
-                            .collect(Collectors.toList())
-            ).thenAcceptAsync(metas -> {
-                List<MediaSessionCompat.QueueItem> queueItems = new ArrayList<>();
-                for (int i = 0; i < metas.size(); i++) {
-                    Meta meta = metas.get(i);
-                    PlaybackEntry entry = queue.get(i);
-                    meta.setBoolean(Meta.METADATA_KEY_PLAYBACK_PRELOADSTATUS, entry.isPreloaded());
-                    MediaDescriptionCompat description = meta.toMediaDescriptionCompat();
-                    MediaSessionCompat.QueueItem queueItem = new MediaSessionCompat.QueueItem(
-                            description,
-                            entry.entryID.hashCode()
-                    );
-                    queueItems.add(queueItem);
-                }
-                mediaSession.setQueue(queueItems);
-            }, Util.getMainThreadExecutor());
+            mediaSession.setQueue(
+                    queue.stream().map(playbackEntry -> new MediaSessionCompat.QueueItem(
+                            playbackEntry.toMediaDescriptionCompat(),
+                            playbackEntry.entryID.hashCode()
+                    )).collect(Collectors.toList())
+            );
         }
 
         @Override

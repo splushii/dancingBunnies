@@ -22,6 +22,7 @@ import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.ui.ItemActionsView;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.util.Util;
@@ -63,10 +64,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         model.getDataSet().observe(fragment.getViewLifecycleOwner(), dataset -> {
             MusicLibraryUserState state = model.getUserState().getValue();
             if(!state.query.isSearchQuery()
-                    && !Meta.METADATA_KEY_MEDIA_ID.equals(
-                    state.query.toBundle().getString(Meta.METADATA_KEY_TYPE))) {
+                    && !state.query.getShowType().equals(Meta.FIELD_SPECIAL_MEDIA_ID)) {
                 dataset.add(0, AudioPlayerService.generateMediaItem(
-                        new LibraryEntry(EntryID.from(Meta.UNKNOWN_ENTRY), "All entries...")
+                        new LibraryEntry(EntryID.UNKOWN, "All entries...")
                 ));
             }
             setDataset(dataset);
@@ -172,22 +172,23 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         final boolean browsable = item.isBrowsable();
         holder.actionsView.initialize();
         holder.meta = null;
-        if (Meta.METADATA_KEY_MEDIA_ID.equals(entryID.type)) {
-            fragment.getSongMeta(entryID).thenAccept(meta -> {
-                if (!entryID.equals(holder.entryId)) {
-                    return;
-                }
-                holder.meta = meta;
-                String title = meta.getString(Meta.METADATA_KEY_TITLE);
-                String artist = meta.getString(Meta.METADATA_KEY_ARTIST);
-                String album = meta.getString(Meta.METADATA_KEY_ALBUM);
-                holder.libraryEntryTitle.setText(title);
-                holder.libraryEntryArtist.setText(artist);
-                holder.libraryEntryAlbum.setText(album);
-                holder.libraryEntryArtist.setVisibility(View.VISIBLE);
-                holder.libraryEntryAlbum.setVisibility(View.VISIBLE);
-                updateFastScrollerText(holder);
-            });
+        if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
+            MetaStorage.getInstance(fragment.requireContext()).getMeta(entryID)
+                    .thenAcceptAsync(meta -> {
+                        if (!entryID.equals(holder.entryId)) {
+                            return;
+                        }
+                        holder.meta = meta;
+                        String title = meta.getAsString(Meta.FIELD_TITLE);
+                        String artist = meta.getAsString(Meta.FIELD_ARTIST);
+                        String album = meta.getAsString(Meta.FIELD_ALBUM);
+                        holder.libraryEntryTitle.setText(title);
+                        holder.libraryEntryArtist.setText(artist);
+                        holder.libraryEntryAlbum.setText(album);
+                        holder.libraryEntryArtist.setVisibility(View.VISIBLE);
+                        holder.libraryEntryAlbum.setVisibility(View.VISIBLE);
+                        updateFastScrollerText(holder);
+                    }, Util.getMainThreadExecutor());
         } else {
             final String name = item.getDescription().getTitle() + "";
             holder.libraryEntryTitle.setText(name);

@@ -1,210 +1,229 @@
 package se.splushii.dancingbunnies.musiclibrary;
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
-import android.os.Parcel;
-import android.os.Parcelable;
-import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
-import android.util.Log;
 
 import com.google.android.gms.cast.MediaMetadata;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
-import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.util.Util;
 
-import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.BITMAP;
-import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.BOOLEAN;
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.DOUBLE;
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.LONG;
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.STRING;
 
-// TODO: Use Meta throughout app. To convert, do for example "new Meta(metaCompat).toCastMeta()".
-public class Meta implements Parcelable {
+public class Meta {
     private static final String LC = Util.getLogContext(Meta.class);
 
+    public static final Meta UNKNOWN_ENTRY = new Meta(EntryID.UNKOWN);
+    private static final HashMap<String, Type> typeMap = new HashMap<>();
+
+    public static Type getType(String key) {
+        return typeMap.getOrDefault(key, STRING);
+    }
+    public static final String FIELD_SPECIAL_MEDIA_ID = "dancingbunnies.meta.field.media.id";
+    public static final String FIELD_SPECIAL_MEDIA_SRC = "dancingbunnies.meta.field.media.src";
+    public static final String FIELD_DURATION = "duration"; static{typeMap.put(FIELD_DURATION, LONG);}
+    public static final String FIELD_CONTENT_TYPE = "content type";
+    public static final String FIELD_FILE_SUFFIX = "suffix";
+    public static final String FIELD_BITRATE = "bitrate"; static {typeMap.put(FIELD_BITRATE, LONG);}
+    public static final String FIELD_MEDIA_ROOT = "media root";
+    public static final String FIELD_TITLE = "title";
+    public static final String FIELD_ARTIST = "artist";
+    public static final String FIELD_ALBUM = "album";
+    public static final String FIELD_FILE_SIZE = "file size"; static {typeMap.put(FIELD_FILE_SIZE, LONG);}
+    public static final String FIELD_BOOKMARK_POSITION = "bookmark position"; static{typeMap.put(FIELD_BOOKMARK_POSITION, LONG);}
+    public static final String FIELD_AVERAGE_RATING = "avarage rating"; static{typeMap.put(FIELD_AVERAGE_RATING, DOUBLE);}
+    public static final String FIELD_DISCNUMBER = "discnumber"; static {typeMap.put(FIELD_DISCNUMBER, LONG);}
+    public static final String FIELD_TOTALTRACKS = "totaltracks"; static{typeMap.put(FIELD_TOTALTRACKS, LONG);}
+    public static final String FIELD_RATING = "rating"; static{typeMap.put(FIELD_RATING, LONG);}
+    public static final String FIELD_TRACKNUMBER = "tracknumber"; static{typeMap.put(FIELD_TRACKNUMBER, LONG);}
+    public static final String FIELD_USER_RATING = "user rating"; static{typeMap.put(FIELD_USER_RATING, LONG);}
+    public static final String FIELD_YEAR = "year"; static{typeMap.put(FIELD_YEAR, LONG);}
+    public static final String FIELD_GENRE = "genre";
+    public static final String FIELD_PARENT_ID = "parent id";
+    public static final String FIELD_TRANSCODED_TYPE = "transcoded type";
+    public static final String FIELD_TRANSCODED_SUFFIX = "transcoded suffix";
+    public static final String FIELD_MEDIA_URI = "media uri";
+    public static final String FIELD_ALBUM_ART_URI = "album art uri";
+    public static final String FIELD_DATE_ADDED = "date added";
+    public static final String FIELD_DATE_STARRED = "date starred";
+    public static final String FIELD_ARTIST_ID = "artist id";
+    public static final String FIELD_ALBUM_ID = "album id";
+    private static final String DELIM = "; ";
+    private static final String BUNDLE_KEY_STRINGS = "dancingbunnies.bundle.key.meta.strings";
+    private static final String BUNDLE_KEY_LONGS = "dancingbunnies.bundle.key.meta.longs";
+    private static final String BUNDLE_KEY_DOUBLES = "dancingbunnies.bundle.key.meta.doubles";
+
+    public static final List<String> FIELD_ORDER = Arrays.asList(
+            Meta.FIELD_TITLE,
+            Meta.FIELD_ALBUM,
+            Meta.FIELD_ARTIST,
+            Meta.FIELD_YEAR,
+            Meta.FIELD_GENRE,
+            Meta.FIELD_DURATION,
+            Meta.FIELD_TRACKNUMBER,
+            Meta.FIELD_DISCNUMBER,
+            Meta.FIELD_CONTENT_TYPE,
+            Meta.FIELD_BITRATE,
+            Meta.FIELD_SPECIAL_MEDIA_SRC,
+            Meta.FIELD_MEDIA_ROOT,
+            Meta.FIELD_SPECIAL_MEDIA_ID
+    );
+
     public enum Type {
-        STRING, BITMAP, LONG, DOUBLE, BOOLEAN
+        STRING, LONG, DOUBLE
     }
-    private final Bundle bundle;
-
-    public Meta() {
-        bundle = new Bundle();
-    }
-
-    public Meta(String api, String id) {
-        bundle = new Bundle();
-        setString(Meta.METADATA_KEY_TYPE, Meta.METADATA_KEY_MEDIA_ID);
-        setString(Meta.METADATA_KEY_API, api);
-        setString(Meta.METADATA_KEY_MEDIA_ID, id);
-    }
-
-    public Meta(Bundle b) {
-        bundle = b;
-    }
+    public final EntryID entryID;
+    private final HashMap<String, List<String>> stringMap;
+    private final HashMap<String, List<Long>> longMap;
+    private final HashMap<String, List<Double>> doubleMap;
 
     public Meta(EntryID entryID) {
-        bundle = entryID.toBundle();
+        this.entryID = entryID;
+        stringMap = new HashMap<>();
+        longMap = new HashMap<>();
+        doubleMap = new HashMap<>();
     }
 
-    public Meta(MediaDescriptionCompat description) {
-        bundle = description.getExtras();
+    @SuppressWarnings("unchecked")
+    public Meta(Bundle b) {
+        entryID = EntryID.from(b);
+        stringMap = (HashMap<String, List<String>>) b.getSerializable(BUNDLE_KEY_STRINGS);
+        longMap = (HashMap<String, List<Long>>) b.getSerializable(BUNDLE_KEY_LONGS);
+        doubleMap = (HashMap<String, List<Double>>) b.getSerializable(BUNDLE_KEY_DOUBLES);
     }
 
-    public Meta(MediaMetadataCompat metadata) {
-        bundle = metadata.getBundle();
+    public boolean has(String key) {
+        switch (getType(key)) {
+            case STRING:
+                return stringMap.containsKey(key);
+            case LONG:
+                return longMap.containsKey(key);
+            case DOUBLE:
+                return doubleMap.containsKey(key);
+        }
+        return false;
     }
 
-    public MediaMetadataCompat toMediaMetadataCompat() {
-        MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder();
-        addFromBundle(b, bundle);
-        return b.build();
+    public void addLong(String key, long value) {
+        List<Long> longs = longMap.getOrDefault(key, new ArrayList<>());
+        longs.add(value);
+        longMap.put(key, longs);
     }
 
-    public Meta(MediaMetadata castMeta) {
-        bundle = bundleFromCastMeta(castMeta);
+    public List<Long> getLongs(String key) {
+        return longMap.get(key);
     }
 
-    private Bundle bundleFromCastMeta(MediaMetadata castMeta) {
-        Bundle b = new Bundle();
-        b.putString(METADATA_KEY_TITLE, castMeta.getString(MediaMetadata.KEY_TITLE));
-        b.putString(METADATA_KEY_ALBUM, castMeta.getString(MediaMetadata.KEY_ALBUM_TITLE));
-        b.putString(METADATA_KEY_ARTIST, castMeta.getString(MediaMetadata.KEY_ARTIST));
-        b.putString(METADATA_KEY_API, castMeta.getString(METADATA_KEY_API));
-        b.putString(METADATA_KEY_MEDIA_ID, castMeta.getString(METADATA_KEY_MEDIA_ID));
-        b.putString(METADATA_KEY_TYPE, castMeta.getString(METADATA_KEY_TYPE));
-        b.putString(METADATA_KEY_PLAYBACK_TYPE, castMeta.getString(METADATA_KEY_PLAYBACK_TYPE));
-        // TODO: Put all metadata in there ^
+    public long getFirstLong(String key, long defaultValue) {
+        List<Long> longs = longMap.get(key);
+        if (longs != null && longs.size() > 0) {
+            return longs.get(0);
+        }
+        return defaultValue;
+    }
+
+    public void addString(String key, String value) {
+        List<String> strings = stringMap.getOrDefault(key, new ArrayList<>());
+        strings.add(value);
+        stringMap.put(key, strings);
+    }
+
+    public List<String> getStrings(String key) {
+        return stringMap.get(key);
+    }
+
+    public String getFirstString(String key) {
+        List<String> strings = stringMap.get(key);
+        if (strings != null && strings.size() > 0) {
+            return strings.get(0);
+        }
+        return "";
+    }
+
+    public void addDouble(String key, double value) {
+        List<Double> doubles = doubleMap.getOrDefault(key, new ArrayList<>());
+        doubles.add(value);
+        doubleMap.put(key, doubles);
+    }
+
+    public List<Double> getDoubles(String key) {
+        return doubleMap.get(key);
+    }
+
+    public String getAsString(String key) {
+        switch (getType(key)) {
+            case STRING:
+                List<String> strings = stringMap.get(key);
+                return strings == null ? "" : String.join(DELIM, strings);
+            case LONG:
+                List<Long> longs = longMap.get(key);
+                return longs == null ? "" : String.join(DELIM, longs.stream()
+                        .map(Object::toString)
+                        .collect(Collectors.toList()));
+            case DOUBLE:
+                List<Double> doubles = doubleMap.get(key);
+                return doubles == null ? "" : String.join(DELIM, doubles.stream()
+                        .map(Object::toString)
+                        .collect(Collectors.toList()));
+        }
+        return "";
+    }
+
+    public Bundle toBundle() {
+        Bundle b = entryID.toBundle();
+        b.putSerializable(BUNDLE_KEY_STRINGS, stringMap);
+        b.putSerializable(BUNDLE_KEY_LONGS, longMap);
+        b.putSerializable(BUNDLE_KEY_DOUBLES, doubleMap);
         return b;
     }
 
-    public MediaMetadata toCastMediaMetadata(String playbackType) {
+    @SuppressLint("WrongConstant")
+    public MediaMetadataCompat toMediaMetadataCompat() {
+        MediaMetadataCompat.Builder b = new MediaMetadataCompat.Builder();
+        b.putString(EntryID.BUNDLE_KEY_SRC, entryID.src);
+        b.putString(EntryID.BUNDLE_KEY_ID, entryID.id);
+        b.putString(EntryID.BUNDLE_KEY_TYPE, entryID.type);
+        b.putString(MediaMetadataCompat.METADATA_KEY_TITLE, getAsString(FIELD_TITLE));
+        b.putString(MediaMetadataCompat.METADATA_KEY_ALBUM, getAsString(FIELD_ALBUM));
+        b.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, getAsString(FIELD_ARTIST));
+        return b.build();
+    }
+
+    public MediaMetadata toCastMediaMetadata() {
         MediaMetadata castMeta = new MediaMetadata();
-        castMeta.putString(MediaMetadata.KEY_TITLE, getString(METADATA_KEY_TITLE));
-        castMeta.putString(MediaMetadata.KEY_ALBUM_TITLE, getString(METADATA_KEY_ALBUM));
-        castMeta.putString(MediaMetadata.KEY_ARTIST, getString(METADATA_KEY_ARTIST));
-        castMeta.putString(METADATA_KEY_API, getString(METADATA_KEY_API));
-        castMeta.putString(METADATA_KEY_MEDIA_ID, getString(METADATA_KEY_MEDIA_ID));
-        castMeta.putString(METADATA_KEY_TYPE, getString(METADATA_KEY_TYPE));
-        castMeta.putString(METADATA_KEY_TITLE, getString(METADATA_KEY_TITLE));
-        castMeta.putString(METADATA_KEY_PLAYBACK_TYPE, playbackType);
-        // TODO: Put all metadata in there ^
+        castMeta.putString(EntryID.BUNDLE_KEY_SRC, entryID.src);
+        castMeta.putString(EntryID.BUNDLE_KEY_ID, entryID.id);
+        castMeta.putString(EntryID.BUNDLE_KEY_TYPE, entryID.type);
+        castMeta.putString(MediaMetadata.KEY_TITLE, getAsString(FIELD_TITLE));
+        castMeta.putString(MediaMetadata.KEY_ALBUM_TITLE, getAsString(FIELD_ALBUM));
+        castMeta.putString(MediaMetadata.KEY_ARTIST, getAsString(FIELD_ARTIST));
         return castMeta;
     }
 
-    public MediaDescriptionCompat toMediaDescriptionCompat() {
-        EntryID entryID = EntryID.from(this);
-        Bundle extras = new Bundle();
-        extras.putAll(bundle);
-        return new MediaDescriptionCompat.Builder()
-                .setMediaId(entryID.key())
-                .setExtras(extras)
-                .setTitle(extras.getString(Meta.METADATA_KEY_TITLE))
-                .build();
-    }
-
-    public Bundle getBundle() {
-        return bundle;
-    }
-
-    public Meta setString(String key, String value) {
-        bundle.putString(key, value);
-        return this;
-    }
-
-    public String getString(String key) {
-        return bundle.getString(key);
-    }
-
-    public Meta setLong(String key, long value) {
-        bundle.putLong(key, value);
-        return this;
-    }
-
-    public long getLong(String key) {
-        return bundle.getLong(key);
-    }
-
-    public boolean getBoolean(String key) {
-        return bundle.getBoolean(key);
-    }
-
-    public boolean getBoolean(String key, boolean defaultValue) {
-        return bundle.getBoolean(key, defaultValue);
-    }
-
-    public void setBoolean(String key, boolean b) {
-        bundle.putBoolean(key, b);
-    }
-
-    public double getDouble(String key) {
-        return bundle.getDouble(key);
-    }
-
-    public void setDouble(String key, double d) {
-        bundle.putDouble(key, d);
-    }
-
-    public byte[] getBitmap(String key) {
-        return bundle.getByteArray(key);
-    }
-
     public Set<String> keySet() {
-        return bundle.keySet();
-    }
-
-    private Meta(Parcel in) {
-        bundle = in.readBundle(getClass().getClassLoader());
-    }
-
-    public static final Creator<Meta> CREATOR = new Creator<Meta>() {
-        @Override
-        public Meta createFromParcel(Parcel in) {
-            return new Meta(in);
-        }
-
-        @Override
-        public Meta[] newArray(int size) {
-            return new Meta[size];
-        }
-    };
-
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    @Override
-    public void writeToParcel(Parcel dest, int flags) {
-        dest.writeBundle(bundle);
+        HashSet<String> keySet = new HashSet<>();
+        keySet.addAll(stringMap.keySet());
+        keySet.addAll(longMap.keySet());
+        keySet.addAll(doubleMap.keySet());
+        return keySet;
     }
 
     public static String getLongDescription(MediaMetadataCompat metadata) {
-        String artist = metadata.getString(METADATA_KEY_ARTIST);
-        String album = metadata.getString(METADATA_KEY_ALBUM);
-        String title = metadata.getString(METADATA_KEY_TITLE);
+        String artist = metadata.getString(MediaMetadataCompat.METADATA_KEY_ARTIST);
+        String album = metadata.getString(MediaMetadataCompat.METADATA_KEY_ALBUM);
+        String title = metadata.getString(MediaMetadataCompat.METADATA_KEY_TITLE);
         return title + " - " + artist + " [" + album + "]";
-    }
-
-    // TODO: FIXME: Does not support double, boolean
-    private static void addFromBundle(MediaMetadataCompat.Builder b, Bundle bundle) {
-        for (String key: bundle.keySet()) {
-            switch (typeMap.get(key)) {
-                case STRING:
-                    b.putString(key, bundle.getString(key));
-                    break;
-                case LONG:
-                    b.putLong(key, bundle.getLong(key));
-                    break;
-                case BITMAP:
-                default:
-                    Log.e(LC, "addFromBundle: " + typeMap.get(key).name() + " not handled");
-                    break;
-            }
-        }
     }
 
     @NonNull
@@ -212,282 +231,19 @@ public class Meta implements Parcelable {
     public String toString() {
         StringBuilder sb = new StringBuilder("Meta:");
         for (String key: keySet()) {
-            sb.append("\n").append(getHumanReadable(key));
+            sb.append("\n").append(key);
             switch (getType(key)) {
                 case STRING:
-                    sb.append(" (string):\t").append(getString(key));
+                    sb.append(" (string):\t").append(getAsString(key));
                     break;
                 case LONG:
-                    sb.append(" (long):\t").append(getLong(key));
+                    sb.append(" (long):\t").append(getAsString(key));
                     break;
                 case DOUBLE:
-                    sb.append(" (double):\t").append(getDouble(key));
-                    break;
-                case BOOLEAN:
-                    sb.append(" (bool):\t").append(getBoolean(key));
-                    break;
-                case BITMAP:
-                    sb.append(" (bitmap):\t").append(getBitmap(key).length).append(" bytes");
+                    sb.append(" (double):\t").append(getAsString(key));
                     break;
             }
         }
         return sb.toString();
-    }
-
-    private static final Bundle UNKNOWN_ENTRY_BUNDLE = new Bundle();
-    static {
-        UNKNOWN_ENTRY_BUNDLE.putString(Meta.METADATA_KEY_API, Meta.METADATA_VALUE_UNKNOWN_SRC);
-        UNKNOWN_ENTRY_BUNDLE.putString(Meta.METADATA_KEY_MEDIA_ID, Meta.METADATA_VALUE_UNKNOWN_ID);
-        UNKNOWN_ENTRY_BUNDLE.putString(Meta.METADATA_KEY_TYPE, Meta.METADATA_VALUE_UNKNOWN_TYPE);
-        UNKNOWN_ENTRY_BUNDLE.putString(Meta.METADATA_KEY_ALBUM, Meta.METADATA_VALUE_UNKNOWN_ALBUM);
-        UNKNOWN_ENTRY_BUNDLE.putString(Meta.METADATA_KEY_ARTIST, Meta.METADATA_VALUE_UNKNOWN_ARTIST);
-        UNKNOWN_ENTRY_BUNDLE.putString(Meta.METADATA_KEY_TITLE, Meta.METADATA_VALUE_UNKNOWN_TITLE);
-        UNKNOWN_ENTRY_BUNDLE.putString(Meta.METADATA_KEY_PLAYBACK_TYPE, PlaybackEntry.USER_TYPE_EXTERNAL);
-    }
-    public static final Meta UNKNOWN_ENTRY = new Meta(UNKNOWN_ENTRY_BUNDLE);
-
-    // Special keys/values
-    public static final String METADATA_VALUE_UNKNOWN_SRC =
-            "dancingbunnies.metadata.value.UNKNOWN_SRC";
-    public static final String METADATA_VALUE_UNKNOWN_ID =
-            "dancingbunnies.metadata.value.UNKNOWN_ID";
-    public static final String METADATA_VALUE_UNKNOWN_TYPE =
-            "dancingbunnies.metadata.value.UNKNOWN_TYPE";
-    public static final String METADATA_VALUE_UNKNOWN_ARTIST =
-            "dancingbunnies.metadata.value.UNKNOWN_ARTIST";
-    public static final String METADATA_VALUE_UNKNOWN_ALBUM =
-            "dancingbunnies.metadata.value.UNKNOWN_ALBUM";
-    public static final String METADATA_VALUE_UNKNOWN_TITLE =
-            "dancingbunnies.metadata.value.UNKNOWN_TITLE";
-
-    // All metadata keys
-    // When adding a new key, do not forget to:
-    // 1: Add a public static final String below.
-    // 2: Add it to 'keys' below.
-    // 3: Add it to 'typeMap' below.
-    // 4: Think about a better way to maintain this...
-
-    public static final String METADATA_KEY_ADVERTISEMENT =
-            MediaMetadataCompat.METADATA_KEY_ADVERTISEMENT;
-    public static final String METADATA_KEY_ALBUM =
-            MediaMetadataCompat.METADATA_KEY_ALBUM;
-    public static final String METADATA_KEY_ALBUM_ART =
-            MediaMetadataCompat.METADATA_KEY_ALBUM_ART;
-    public static final String METADATA_KEY_ALBUM_ARTIST =
-            MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST;
-    public static final String METADATA_KEY_ALBUM_ART_URI =
-            MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI;
-    public static final String METADATA_KEY_ART =
-            MediaMetadataCompat.METADATA_KEY_ART;
-    public static final String METADATA_KEY_ARTIST =
-            MediaMetadataCompat.METADATA_KEY_ARTIST;
-    public static final String METADATA_KEY_ART_URI =
-            MediaMetadataCompat.METADATA_KEY_ART_URI;
-    public static final String METADATA_KEY_AUTHOR =
-            MediaMetadataCompat.METADATA_KEY_AUTHOR;
-    public static final String METADATA_KEY_BT_FOLDER_TYPE =
-            MediaMetadataCompat.METADATA_KEY_BT_FOLDER_TYPE;
-    public static final String METADATA_KEY_COMPILATION =
-            MediaMetadataCompat.METADATA_KEY_COMPILATION;
-    public static final String METADATA_KEY_COMPOSER =
-            MediaMetadataCompat.METADATA_KEY_COMPOSER;
-    public static final String METADATA_KEY_DATE =
-            MediaMetadataCompat.METADATA_KEY_DATE;
-    public static final String METADATA_KEY_DISC_NUMBER =
-            MediaMetadataCompat.METADATA_KEY_DISC_NUMBER;
-    public static final String METADATA_KEY_DISPLAY_DESCRIPTION =
-            MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION;
-    public static final String METADATA_KEY_DISPLAY_ICON =
-            MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON;
-    public static final String METADATA_KEY_DISPLAY_ICON_URI =
-            MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI;
-    public static final String METADATA_KEY_DISPLAY_SUBTITLE =
-            MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE;
-    public static final String METADATA_KEY_DISPLAY_TITLE =
-            MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE;
-    public static final String METADATA_KEY_DOWNLOAD_STATUS =
-            MediaMetadataCompat.METADATA_KEY_DOWNLOAD_STATUS;
-    public static final String METADATA_KEY_DURATION =
-            MediaMetadataCompat.METADATA_KEY_DURATION;
-    public static final String METADATA_KEY_GENRE =
-            MediaMetadataCompat.METADATA_KEY_GENRE;
-    public static final String METADATA_KEY_MEDIA_ID =
-            MediaMetadataCompat.METADATA_KEY_MEDIA_ID;
-    public static final String METADATA_KEY_MEDIA_URI =
-            MediaMetadataCompat.METADATA_KEY_MEDIA_URI;
-    public static final String METADATA_KEY_NUM_TRACKS =
-            MediaMetadataCompat.METADATA_KEY_NUM_TRACKS;
-    public static final String METADATA_KEY_RATING =
-            MediaMetadataCompat.METADATA_KEY_RATING;
-    public static final String METADATA_KEY_TITLE =
-            MediaMetadataCompat.METADATA_KEY_TITLE;
-    public static final String METADATA_KEY_TRACK_NUMBER =
-            MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER;
-    public static final String METADATA_KEY_USER_RATING =
-            MediaMetadataCompat.METADATA_KEY_USER_RATING;
-    public static final String METADATA_KEY_WRITER =
-            MediaMetadataCompat.METADATA_KEY_WRITER;
-    public static final String METADATA_KEY_YEAR =
-            MediaMetadataCompat.METADATA_KEY_YEAR;
-    public static final String METADATA_KEY_TYPE =
-            "dancingbunnies.metadata.TYPE";
-    public static final String METADATA_KEY_PARENT_ID =
-            "dancingbunnies.metadata.PARENT_ID";
-    public static final String METADATA_KEY_API =
-            "dancingbunnies.metadata.API";
-    public static final String METADATA_KEY_MEDIA_ROOT =
-            "dancingbunnies.metadata.MEDIA_ROOT";
-    public static final String METADATA_KEY_FILE_SIZE =
-            "dancingbunnies.metadata.FILE_SIZE";
-    public static final String METADATA_KEY_CONTENT_TYPE =
-            "dancingbunnies.metadata.CONTENT_TYPE";
-    public static final String METADATA_KEY_FILE_SUFFIX =
-            "dancingbunnies.metadata.FILE_SUFFIX";
-    public static final String METADATA_KEY_TRANSCODED_TYPE =
-            "dancingbunnies.metadata.TRANSCODED_TYPE";
-    public static final String METADATA_KEY_TRANSCODED_SUFFIX =
-            "dancingbunnies.metadata.TRANSCODED_SUFFIX";
-    public static final String METADATA_KEY_BITRATE =
-            "dancingbunnies.metadata.BITRATE";
-    public static final String METADATA_KEY_DATE_ADDED =
-            "dancingbunnies.metadata.DATE_ADDED";
-    public static final String METADATA_KEY_DATE_STARRED =
-            "dancingbunnies.metadata.DATE_STARRED";
-    public static final String METADATA_KEY_ALBUM_ID =
-            "dancingbunnies.metadata.ALBUM_ID";
-    public static final String METADATA_KEY_ARTIST_ID =
-            "dancingbunnies.metadata.ARTIST_ID";
-    public static final String METADATA_KEY_BOOKMARK_POSITION =
-            "dancingbunnies.metadata.BOOKMARK_POSITION";
-    public static final String METADATA_KEY_AVERAGE_RATING =
-            "dancingbunnies.metadata.AVERAGE_RATING";
-    // Only used to identify queue position when de-queueing using onRemoveQueueItem
-    public static final String METADATA_KEY_QUEUE_POS =
-            "dancingbunnies.metadata.QUEUE_POS";
-    // Only used to identify if playback entry is in queue or in playlist
-    public static final String METADATA_KEY_PLAYBACK_TYPE =
-            "dancingbunnies.metadata.PLAYBACK_TYPE";
-    // Only used to identify playback entry preload status
-    public static final String METADATA_KEY_PLAYBACK_PRELOADSTATUS =
-            "dancingbunnies.metadata.PLAYBACK_PRELOADSTATUS";
-
-    private static final HashMap<String, Type> typeMap;
-    static {
-        typeMap = new HashMap<>();
-        typeMap.put(METADATA_KEY_TYPE, STRING);
-        typeMap.put(METADATA_KEY_PARENT_ID, STRING);
-        typeMap.put(METADATA_KEY_API, STRING);
-        typeMap.put(METADATA_KEY_MEDIA_ROOT, STRING);
-        typeMap.put(METADATA_KEY_FILE_SIZE, LONG);
-        typeMap.put(METADATA_KEY_CONTENT_TYPE, STRING);
-        typeMap.put(METADATA_KEY_FILE_SUFFIX, STRING);
-        typeMap.put(METADATA_KEY_TRANSCODED_TYPE, STRING);
-        typeMap.put(METADATA_KEY_TRANSCODED_SUFFIX, STRING);
-        typeMap.put(METADATA_KEY_BITRATE, LONG);
-        typeMap.put(METADATA_KEY_DATE_ADDED, STRING);
-        typeMap.put(METADATA_KEY_DATE_STARRED, STRING);
-        typeMap.put(METADATA_KEY_ALBUM_ID, STRING);
-        typeMap.put(METADATA_KEY_ARTIST_ID, STRING);
-        typeMap.put(METADATA_KEY_BOOKMARK_POSITION, LONG);
-        typeMap.put(METADATA_KEY_AVERAGE_RATING, DOUBLE);
-        typeMap.put(METADATA_KEY_QUEUE_POS, LONG);
-        typeMap.put(METADATA_KEY_PLAYBACK_TYPE, STRING);
-        typeMap.put(METADATA_KEY_PLAYBACK_PRELOADSTATUS, BOOLEAN);
-        // Android keys
-        typeMap.put(METADATA_KEY_ADVERTISEMENT, LONG);
-        typeMap.put(METADATA_KEY_ALBUM, STRING);
-        typeMap.put(METADATA_KEY_ALBUM_ART, BITMAP);
-        typeMap.put(METADATA_KEY_ALBUM_ARTIST, STRING);
-        typeMap.put(METADATA_KEY_ALBUM_ART_URI, STRING);
-        typeMap.put(METADATA_KEY_ART, BITMAP);
-        typeMap.put(METADATA_KEY_ARTIST, STRING);
-        typeMap.put(METADATA_KEY_ART_URI, STRING);
-        typeMap.put(METADATA_KEY_AUTHOR, STRING);
-        typeMap.put(METADATA_KEY_BT_FOLDER_TYPE, LONG);
-        typeMap.put(METADATA_KEY_COMPILATION, STRING);
-        typeMap.put(METADATA_KEY_COMPOSER, STRING);
-        typeMap.put(METADATA_KEY_DATE, STRING);
-        typeMap.put(METADATA_KEY_DISC_NUMBER, LONG);
-        typeMap.put(METADATA_KEY_DISPLAY_DESCRIPTION, STRING);
-        typeMap.put(METADATA_KEY_DISPLAY_ICON, BITMAP);
-        typeMap.put(METADATA_KEY_DISPLAY_ICON_URI, STRING);
-        typeMap.put(METADATA_KEY_DISPLAY_SUBTITLE, STRING);
-        typeMap.put(METADATA_KEY_DISPLAY_TITLE, STRING);
-        typeMap.put(METADATA_KEY_DOWNLOAD_STATUS, LONG);
-        typeMap.put(METADATA_KEY_DURATION, LONG);
-        typeMap.put(METADATA_KEY_GENRE, STRING);
-        typeMap.put(METADATA_KEY_MEDIA_ID, STRING);
-        typeMap.put(METADATA_KEY_MEDIA_URI, STRING);
-        typeMap.put(METADATA_KEY_NUM_TRACKS, LONG);
-        typeMap.put(METADATA_KEY_RATING, LONG);
-        typeMap.put(METADATA_KEY_TITLE, STRING);
-        typeMap.put(METADATA_KEY_TRACK_NUMBER, LONG);
-        typeMap.put(METADATA_KEY_USER_RATING, LONG);
-        typeMap.put(METADATA_KEY_WRITER, STRING);
-        typeMap.put(METADATA_KEY_YEAR, LONG);
-    }
-
-    public static Type getType(String key) {
-        return typeMap.get(key);
-    }
-
-    public static final HashMap<String, String> humanMap;
-    static {
-        humanMap = new HashMap<>();
-        humanMap.put(METADATA_KEY_TYPE, "type");
-        humanMap.put(METADATA_KEY_PARENT_ID, "parent");
-        humanMap.put(METADATA_KEY_API, "api");
-        humanMap.put(METADATA_KEY_MEDIA_ROOT, "media root");
-        humanMap.put(METADATA_KEY_FILE_SIZE, "file size");
-        humanMap.put(METADATA_KEY_CONTENT_TYPE, "content type");
-        humanMap.put(METADATA_KEY_FILE_SUFFIX, "file suffix");
-        humanMap.put(METADATA_KEY_TRANSCODED_TYPE, "transcoded type");
-        humanMap.put(METADATA_KEY_TRANSCODED_SUFFIX, "transcoded suffix");
-        humanMap.put(METADATA_KEY_BITRATE, "bitrate");
-        humanMap.put(METADATA_KEY_DATE_ADDED, "date added");
-        humanMap.put(METADATA_KEY_DATE_STARRED, "date starred");
-        humanMap.put(METADATA_KEY_ALBUM_ID, "album id");
-        humanMap.put(METADATA_KEY_ARTIST_ID, "artist id");
-        humanMap.put(METADATA_KEY_BOOKMARK_POSITION, "bookmark position");
-        humanMap.put(METADATA_KEY_AVERAGE_RATING, "average rating");
-        humanMap.put(METADATA_KEY_QUEUE_POS, "current queue position");
-        humanMap.put(METADATA_KEY_PLAYBACK_TYPE, "entry playback type");
-        humanMap.put(METADATA_KEY_PLAYBACK_PRELOADSTATUS, "entry preload status");
-        // Android keys
-        humanMap.put(METADATA_KEY_ADVERTISEMENT, "advertisement");
-        humanMap.put(METADATA_KEY_ALBUM, "album");
-        humanMap.put(METADATA_KEY_ALBUM_ART, "album art");
-        humanMap.put(METADATA_KEY_ALBUM_ARTIST, "album artist");
-        humanMap.put(METADATA_KEY_ALBUM_ART_URI, "album art URI");
-        humanMap.put(METADATA_KEY_ART, "art");
-        humanMap.put(METADATA_KEY_ARTIST, "artist");
-        humanMap.put(METADATA_KEY_ART_URI, "art URI");
-        humanMap.put(METADATA_KEY_AUTHOR, "author");
-        humanMap.put(METADATA_KEY_BT_FOLDER_TYPE, "Bluetooth folder type");
-        humanMap.put(METADATA_KEY_COMPILATION, "compilation");
-        humanMap.put(METADATA_KEY_COMPOSER, "composer");
-        humanMap.put(METADATA_KEY_DATE, "date");
-        humanMap.put(METADATA_KEY_DISC_NUMBER, "disc number");
-        humanMap.put(METADATA_KEY_DISPLAY_DESCRIPTION, "display description");
-        humanMap.put(METADATA_KEY_DISPLAY_ICON, "display icon");
-        humanMap.put(METADATA_KEY_DISPLAY_ICON_URI, "display icon URI");
-        humanMap.put(METADATA_KEY_DISPLAY_SUBTITLE, "display subtitle");
-        humanMap.put(METADATA_KEY_DISPLAY_TITLE, "display title");
-        humanMap.put(METADATA_KEY_DOWNLOAD_STATUS, "download status");
-        humanMap.put(METADATA_KEY_DURATION, "duration");
-        humanMap.put(METADATA_KEY_GENRE, "genre");
-        humanMap.put(METADATA_KEY_MEDIA_ID, "media ID");
-        humanMap.put(METADATA_KEY_MEDIA_URI, "media URI");
-        humanMap.put(METADATA_KEY_NUM_TRACKS, "number of tracks");
-        humanMap.put(METADATA_KEY_RATING, "rating");
-        humanMap.put(METADATA_KEY_TITLE, "title");
-        humanMap.put(METADATA_KEY_TRACK_NUMBER, "track number");
-        humanMap.put(METADATA_KEY_USER_RATING, "user rating");
-        humanMap.put(METADATA_KEY_WRITER, "writer");
-        humanMap.put(METADATA_KEY_YEAR, "year");
-    }
-
-    public static String getHumanReadable(String string) {
-        return humanMap.get(string);
     }
 }

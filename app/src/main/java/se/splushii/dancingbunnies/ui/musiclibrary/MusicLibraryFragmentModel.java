@@ -15,8 +15,6 @@ import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 
 public class MusicLibraryFragmentModel extends ViewModel {
-    static final String INITIAL_DISPLAY_TYPE = Meta.METADATA_KEY_ARTIST;
-
     private MutableLiveData<MusicLibraryUserState> userState;
     private LinkedList<MusicLibraryUserState> backStack;
     private String currentSubscriptionID;
@@ -24,7 +22,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
 
     private static MusicLibraryUserState initialUserState() {
         MusicLibraryQuery query = new MusicLibraryQuery();
-        query.addToQuery(Meta.METADATA_KEY_TYPE, INITIAL_DISPLAY_TYPE);
+        query.setShowType(MusicLibraryQuery.DEFAULT_SHOW_TYPE);
         return new MusicLibraryUserState(query, 0, 0);
     }
 
@@ -83,9 +81,9 @@ public class MusicLibraryFragmentModel extends ViewModel {
 
     void browse(EntryID entryID) {
         MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
-        String displayType = Meta.METADATA_KEY_ARTIST.equals(entryID.type) ?
-                Meta.METADATA_KEY_ALBUM : Meta.METADATA_KEY_MEDIA_ID;
-        query.addToQuery(Meta.METADATA_KEY_TYPE, displayType);
+        String displayType = Meta.FIELD_ARTIST.equals(entryID.type) ?
+                Meta.FIELD_ALBUM : Meta.FIELD_SPECIAL_MEDIA_ID;
+        query.setShowType(displayType);
         if (entryID.id != null && !entryID.isUnknown()) {
             query.addToQuery(entryID.type, entryID.id);
         }
@@ -94,7 +92,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
 
     void displayType(String displayType) {
         MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
-        query.addToQuery(Meta.METADATA_KEY_TYPE, displayType);
+        query.setShowType(displayType);
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 
@@ -121,7 +119,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
     public void query(String filterType, String filter) {
         addBackStackHistory(new Pair<>(0, 0));
         showOnly(filterType, filter);
-        displayType(Meta.METADATA_KEY_MEDIA_ID);
+        displayType(Meta.FIELD_SPECIAL_MEDIA_ID);
     }
 
     public void search(String query) {

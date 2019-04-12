@@ -140,7 +140,7 @@ public class MusicLibraryService extends Service {
         for (PlaylistEntry entry: entries) {
             PlaylistID id = new PlaylistID(entry.playlist_api, entry.playlist_id, PlaylistID.TYPE_STUPID);
             List<EntryID> entryIDs = newPlaylistMap.getOrDefault(id, new ArrayList<>());
-            entryIDs.add(new EntryID(entry.api, entry.id, Meta.METADATA_KEY_MEDIA_ID));
+            entryIDs.add(new EntryID(entry.api, entry.id, Meta.FIELD_SPECIAL_MEDIA_ID));
             newPlaylistMap.put(id, entryIDs);
         }
         playlistMap = newPlaylistMap;
@@ -155,7 +155,7 @@ public class MusicLibraryService extends Service {
         apis = new HashMap<>();
         metaChangedListeners = new ArrayList<>();
         loadSettings();
-        metaStorage = new MetaStorage(this);
+        metaStorage = MetaStorage.getInstance(this);
         playlistStorage = new PlaylistStorage(this);
         playlistLiveData = playlistStorage.getPlaylists();
         playlistLiveData.observeForever(playlistsObserver);
@@ -284,16 +284,16 @@ public class MusicLibraryService extends Service {
         return ret;
     }
 
-    public LiveData<List<LibraryEntry>> getSubscriptionEntries(Bundle bundleQuery) {
-        return metaStorage.getEntries(bundleQuery);
+    public LiveData<List<LibraryEntry>> getSubscriptionEntries(String showType, Bundle query) {
+        return metaStorage.getEntries(showType, query);
     }
 
     public CompletableFuture<List<EntryID>> getSongEntries(EntryID entryID) {
         return metaStorage.getEntries(entryID);
     }
 
-    public List<LibraryEntry> getSearchEntries(String query) {
-        ArrayList<LibraryEntry> entries = new ArrayList<>();
+    public List<EntryID> getSearchEntries(String query) {
+        ArrayList<EntryID> entries = new ArrayList<>();
         if (!initializeSearcher()) {
             Toast.makeText(this, "Search is not initialized", Toast.LENGTH_SHORT).show();
             return entries;
@@ -305,7 +305,7 @@ public class MusicLibraryService extends Service {
         }
         for (ScoreDoc scoreDoc: topDocs.scoreDocs) {
             Document doc = searcher.getDocument(scoreDoc);
-            entries.add(LibraryEntry.from(doc));
+            entries.add(EntryID.from(doc));
         }
         return entries;
     }

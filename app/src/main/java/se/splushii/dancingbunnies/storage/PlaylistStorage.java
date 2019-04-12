@@ -59,7 +59,7 @@ public class PlaylistStorage {
         Playlist rp = playlistModel.get(playlistID.id, playlistID.src);
         List<PlaylistEntry> rpe = playlistEntryModel.getEntries(playlistID.id, playlistID.src);
         List<EntryID> playlistEntries = rpe.stream()
-                .map(e -> new EntryID(e.api, e.id, Meta.METADATA_KEY_MEDIA_ID))
+                .map(e -> new EntryID(e.api, e.id, Meta.FIELD_SPECIAL_MEDIA_ID))
                 .collect(Collectors.toList());
         return new StupidPlaylist(
                 new PlaylistID(rp.api, rp.id, PlaylistID.TYPE_STUPID),

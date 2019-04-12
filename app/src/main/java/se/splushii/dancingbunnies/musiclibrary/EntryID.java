@@ -12,9 +12,15 @@ import com.google.android.gms.cast.MediaMetadata;
 
 import org.apache.lucene.document.Document;
 
-import se.splushii.dancingbunnies.search.Indexer;
-
 public class EntryID implements Parcelable {
+    static final String BUNDLE_KEY_SRC = "dancingbunnies.bundle.key.entryid.src";
+    static final String BUNDLE_KEY_ID = "dancingbunnies.bundle.key.entryid.id";
+    static final String BUNDLE_KEY_TYPE = "dancingbunnies.bundle.key.entryid.type";
+    public static final EntryID UNKOWN = new EntryID(
+            "dancingbunnies.entryid.UNKNOWN_SRC",
+            "dancingbunnies.entryid.UNKNOWN_ID",
+            "dancingbunnies.entryid.UNKNOWN_TYPE"
+    );
     public final String src;
     public final String id;
     public final String type;
@@ -31,10 +37,8 @@ public class EntryID implements Parcelable {
         type = in.readString();
     }
 
-    public static boolean isUnknown(EntryID entryID) {
-        return Meta.METADATA_VALUE_UNKNOWN_ID.equals(entryID.id)
-                && Meta.METADATA_VALUE_UNKNOWN_SRC.equals(entryID.src)
-                && Meta.METADATA_VALUE_UNKNOWN_TYPE.equals(entryID.type);
+    private static boolean isUnknown(EntryID entryID) {
+        return UNKOWN.equals(entryID);
     }
 
     public boolean isUnknown() {
@@ -67,7 +71,7 @@ public class EntryID implements Parcelable {
 
     @Override
     public String toString() {
-        return "{src: " + src + ", id: " + id + ", type: " + Meta.getHumanReadable(type) + "}";
+        return "{src: " + src + ", id: " + id + ", type: " + type + "}";
     }
 
     @Override
@@ -102,10 +106,6 @@ public class EntryID implements Parcelable {
                 .build();
     }
 
-    public static EntryID from(Meta meta) {
-        return from(meta.getBundle());
-    }
-
     public static EntryID from(MediaItem item) {
         Bundle b = item.getDescription().getExtras();
         return from(b);
@@ -122,22 +122,17 @@ public class EntryID implements Parcelable {
     }
 
     public static EntryID from(Bundle b) {
-        String src = b.getString(Meta.METADATA_KEY_API);
-        String id = b.getString(Meta.METADATA_KEY_MEDIA_ID);
-        String type = b.getString(Meta.METADATA_KEY_TYPE);
+        String src = b.getString(EntryID.BUNDLE_KEY_SRC);
+        String id = b.getString(EntryID.BUNDLE_KEY_ID);
+        String type = b.getString(EntryID.BUNDLE_KEY_TYPE);
         return new EntryID(src, id, type);
     }
 
     public Bundle toBundle() {
-        Bundle b = toBundleQuery();
-        b.putString(Meta.METADATA_KEY_TYPE, type);
-        return b;
-    }
-
-    public Bundle toBundleQuery() {
         Bundle b = new Bundle();
-        b.putString(Meta.METADATA_KEY_API, src);
-        b.putString(Meta.METADATA_KEY_MEDIA_ID, id);
+        b.putString(EntryID.BUNDLE_KEY_SRC, src);
+        b.putString(EntryID.BUNDLE_KEY_ID, id);
+        b.putString(EntryID.BUNDLE_KEY_TYPE, type);
         return b;
     }
 
@@ -146,16 +141,16 @@ public class EntryID implements Parcelable {
     }
 
     public static EntryID from(Document doc) {
-        String src = doc.get(Indexer.meta2fieldNameMap.get(Meta.METADATA_KEY_API));
-        String id = doc.get(Indexer.meta2fieldNameMap.get(Meta.METADATA_KEY_MEDIA_ID));
-        String type = Meta.METADATA_KEY_MEDIA_ID;
+        String src = doc.get(Meta.FIELD_SPECIAL_MEDIA_SRC);
+        String id = doc.get(Meta.FIELD_SPECIAL_MEDIA_ID);
+        String type = Meta.FIELD_SPECIAL_MEDIA_ID;
         return new EntryID(src, id, type);
     }
 
     public static EntryID from(MediaMetadata castMeta) {
-        String src = castMeta.getString(Meta.METADATA_KEY_API);
-        String id = castMeta.getString(Meta.METADATA_KEY_MEDIA_ID);
-        String type = castMeta.getString(Meta.METADATA_KEY_TYPE);
+        String src = castMeta.getString(BUNDLE_KEY_SRC);
+        String id = castMeta.getString(BUNDLE_KEY_ID);
+        String type = castMeta.getString(BUNDLE_KEY_TYPE);
         return new EntryID(src, id, type);
     }
 

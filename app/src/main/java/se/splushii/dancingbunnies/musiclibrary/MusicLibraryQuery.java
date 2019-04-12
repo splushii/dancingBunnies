@@ -11,6 +11,9 @@ import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryQuery {
     private static final String LC = Util.getLogContext(MusicLibraryQuery.class);
+    public static final String DEFAULT_SHOW_TYPE = Meta.FIELD_ARTIST;
+    public static final String BUNDLE_KEY_SHOW = "dancingbunnies.bundle.key.musiclibraryquery.show";
+    public static final String BUNDLE_KEY_QUERY = "dancingbunnies.bundle.key.musiclibraryquery.query";
 
     public enum MusicLibraryQueryType {
         SUBSCRIPTION,
@@ -19,16 +22,27 @@ public class MusicLibraryQuery {
     private final MusicLibraryQueryType type;
     private Bundle subQuery;
     private String searchQuery;
+    private String showType;
 
     public MusicLibraryQuery() {
         this.type = MusicLibraryQueryType.SUBSCRIPTION;
         this.subQuery = new Bundle();
+        this.showType = DEFAULT_SHOW_TYPE;
     }
 
     public MusicLibraryQuery(MusicLibraryQuery query) {
         this.type = MusicLibraryQueryType.SUBSCRIPTION;
         this.subQuery = query.subQuery.deepCopy();
         this.searchQuery = query.searchQuery;
+        this.showType = query.showType;
+    }
+
+    public void setShowType(String showType) {
+        this.showType = showType;
+    }
+
+    public String getShowType() {
+        return showType;
     }
 
     public void addToQuery(String key, String value) {
@@ -37,6 +51,10 @@ public class MusicLibraryQuery {
             return;
         }
         subQuery.putString(key, value);
+    }
+
+    public Bundle getQueryBundle() {
+        return subQuery;
     }
 
     public void removeFromQuery(String key) {
@@ -52,8 +70,11 @@ public class MusicLibraryQuery {
         this.searchQuery = searchQuery;
     }
 
-    public Bundle toBundle() {
-        return subQuery;
+    public Bundle toSubscriptionBundle() {
+        Bundle b = new Bundle();
+        b.putString(BUNDLE_KEY_SHOW, showType);
+        b.putBundle(BUNDLE_KEY_QUERY, subQuery);
+        return b;
     }
 
     private boolean isSubscription() {
@@ -87,7 +108,7 @@ public class MusicLibraryQuery {
             Log.w(LC, "MediaBrowser not connected.");
             return null;
         }
-        Bundle options = toBundle();
+        Bundle options = toSubscriptionBundle();
         MediaBrowserCompat.SubscriptionCallback subCb = new MediaBrowserCompat.SubscriptionCallback() {
             @Override
             public void onChildrenLoaded(@NonNull String parentId,

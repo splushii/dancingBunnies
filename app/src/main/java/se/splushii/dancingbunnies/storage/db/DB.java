@@ -12,7 +12,6 @@ import androidx.room.RoomDatabase;
                 MetaString.class,
                 MetaLong.class,
                 MetaDouble.class,
-                MetaBoolean.class,
                 CacheEntry.class,
                 Playlist.class,
                 PlaylistEntry.class,
@@ -26,7 +25,6 @@ public abstract class DB extends RoomDatabase {
     public static final String TABLE_META_STRING = "meta_string";
     public static final String TABLE_META_LONG = "meta_long";
     public static final String TABLE_META_DOUBLE = "meta_double";
-    public static final String TABLE_META_BOOLEAN = "meta_boolean";
     public static final String COLUMN_API = "api";
     public static final String COLUMN_ID = "id";
     public static final String COLUMN_KEY = "key";

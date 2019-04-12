@@ -365,11 +365,14 @@ public class SubsonicAPIClient extends APIClient {
             return Optional.empty();
         }
         String title = jChild.getString(JSON_TITLE);
-        Meta meta = new Meta();
-        meta.setString(Meta.METADATA_KEY_API, MusicLibraryService.API_ID_SUBSONIC)
-                .setString(Meta.METADATA_KEY_MEDIA_ROOT, musicFolder)
-                .setString(Meta.METADATA_KEY_MEDIA_ID, id)
-                .setString(Meta.METADATA_KEY_TITLE, title);
+        EntryID entryID = new EntryID(
+                MusicLibraryService.API_ID_SUBSONIC,
+                id,
+                Meta.FIELD_SPECIAL_MEDIA_ID
+        );
+        Meta meta = new Meta(entryID);
+        meta.addString(Meta.FIELD_MEDIA_ROOT, musicFolder);
+        meta.addString(Meta.FIELD_TITLE, title);
         // Optional attributes
         Iterator<String> keys = jChild.keys();
         while (keys.hasNext()) {
@@ -381,49 +384,49 @@ public class SubsonicAPIClient extends APIClient {
                     // Already handled
                     break;
                 case JSON_PARENT:
-                    meta.setString(Meta.METADATA_KEY_PARENT_ID, jChild.getString(JSON_PARENT));
+                    meta.addString(Meta.FIELD_PARENT_ID, jChild.getString(JSON_PARENT));
                     break;
                 case JSON_ALBUM:
-                    meta.setString(Meta.METADATA_KEY_ALBUM, jChild.getString(JSON_ALBUM));
+                    meta.addString(Meta.FIELD_ALBUM, jChild.getString(JSON_ALBUM));
                     break;
                 case JSON_ARTIST:
-                    meta.setString(Meta.METADATA_KEY_ARTIST, jChild.getString(JSON_ARTIST));
+                    meta.addString(Meta.FIELD_ARTIST, jChild.getString(JSON_ARTIST));
                     break;
                 case JSON_TRACK:
-                    meta.setLong(Meta.METADATA_KEY_TRACK_NUMBER, jChild.getInt(JSON_TRACK));
+                    meta.addLong(Meta.FIELD_TRACKNUMBER, jChild.getInt(JSON_TRACK));
                     break;
                 case JSON_YEAR:
-                    meta.setLong(Meta.METADATA_KEY_YEAR, jChild.getInt(JSON_YEAR));
+                    meta.addLong(Meta.FIELD_YEAR, jChild.getInt(JSON_YEAR));
                     break;
                 case JSON_GENRE:
-                    meta.setString(Meta.METADATA_KEY_GENRE, jChild.getString(JSON_GENRE));
+                    meta.addString(Meta.FIELD_GENRE, jChild.getString(JSON_GENRE));
                     break;
                 case JSON_COVER_ART:
-                    meta.setString(Meta.METADATA_KEY_ALBUM_ART_URI, jChild.getString(JSON_COVER_ART));
+                    meta.addString(Meta.FIELD_ALBUM_ART_URI, jChild.getString(JSON_COVER_ART));
                     break;
                 case JSON_SIZE:
-                    meta.setLong(Meta.METADATA_KEY_FILE_SIZE, jChild.getLong(JSON_SIZE));
+                    meta.addLong(Meta.FIELD_FILE_SIZE, jChild.getLong(JSON_SIZE));
                     break;
                 case JSON_CONTENT_TYPE:
-                    meta.setString(Meta.METADATA_KEY_CONTENT_TYPE, jChild.getString(JSON_CONTENT_TYPE));
+                    meta.addString(Meta.FIELD_CONTENT_TYPE, jChild.getString(JSON_CONTENT_TYPE));
                     break;
                 case JSON_SUFFIX:
-                    meta.setString(Meta.METADATA_KEY_FILE_SUFFIX, jChild.getString(JSON_SUFFIX));
+                    meta.addString(Meta.FIELD_FILE_SUFFIX, jChild.getString(JSON_SUFFIX));
                     break;
                 case JSON_TRANSCODED_CONTENT_TYPE:
-                    meta.setString(Meta.METADATA_KEY_TRANSCODED_TYPE, jChild.getString(JSON_TRANSCODED_CONTENT_TYPE));
+                    meta.addString(Meta.FIELD_TRANSCODED_TYPE, jChild.getString(JSON_TRANSCODED_CONTENT_TYPE));
                     break;
                 case JSON_TRANSCODED_SUFFIX:
-                    meta.setString(Meta.METADATA_KEY_TRANSCODED_SUFFIX, jChild.getString(JSON_TRANSCODED_SUFFIX));
+                    meta.addString(Meta.FIELD_TRANSCODED_SUFFIX, jChild.getString(JSON_TRANSCODED_SUFFIX));
                     break;
                 case JSON_DURATION:
-                    meta.setLong(Meta.METADATA_KEY_DURATION, jChild.getInt(JSON_DURATION) * 1000L);
+                    meta.addLong(Meta.FIELD_DURATION, jChild.getInt(JSON_DURATION) * 1000L);
                     break;
                 case JSON_BITRATE:
-                    meta.setLong(Meta.METADATA_KEY_BITRATE, jChild.getInt(JSON_BITRATE));
+                    meta.addLong(Meta.FIELD_BITRATE, jChild.getInt(JSON_BITRATE));
                     break;
                 case JSON_PATH:
-                    meta.setString(Meta.METADATA_KEY_MEDIA_URI, jChild.getString(JSON_PATH));
+                    meta.addString(Meta.FIELD_MEDIA_URI, jChild.getString(JSON_PATH));
                     break;
                 case JSON_IS_VIDEO:
                     if (jChild.getBoolean(JSON_IS_VIDEO)) {
@@ -431,29 +434,29 @@ public class SubsonicAPIClient extends APIClient {
                     }
                     break;
                 case JSON_USER_RATING:
-                    meta.setLong(Meta.METADATA_KEY_USER_RATING, jChild.getInt(JSON_USER_RATING));
+                    meta.addLong(Meta.FIELD_USER_RATING, jChild.getInt(JSON_USER_RATING));
                     break;
                 case JSON_AVERAGE_RATING:
-                    meta.setDouble(Meta.METADATA_KEY_AVERAGE_RATING, jChild.getDouble(JSON_AVERAGE_RATING));
+                    meta.addDouble(Meta.FIELD_AVERAGE_RATING, jChild.getDouble(JSON_AVERAGE_RATING));
                     break;
                 case JSON_PLAY_COUNT:
                     // Do not care about subsonic play count
 //                  jChild.getLong(JSON_PLAY_COUNT);
                     break;
                 case JSON_DISC_NUMBER:
-                    meta.setLong(Meta.METADATA_KEY_DISC_NUMBER, jChild.getInt(JSON_DISC_NUMBER));
+                    meta.addLong(Meta.FIELD_DISCNUMBER, jChild.getInt(JSON_DISC_NUMBER));
                     break;
                 case JSON_CREATED:
-                    meta.setString(Meta.METADATA_KEY_DATE_ADDED, jChild.getString(JSON_CREATED));
+                    meta.addString(Meta.FIELD_DATE_ADDED, jChild.getString(JSON_CREATED));
                     break;
                 case JSON_STARRED:
-                    meta.setString(Meta.METADATA_KEY_DATE_STARRED, jChild.getString(JSON_STARRED));
+                    meta.addString(Meta.FIELD_DATE_STARRED, jChild.getString(JSON_STARRED));
                     break;
                 case JSON_ALBUM_ID:
-                    meta.setString(Meta.METADATA_KEY_ALBUM_ID, jChild.getString(JSON_ALBUM_ID));
+                    meta.addString(Meta.FIELD_ALBUM_ID, jChild.getString(JSON_ALBUM_ID));
                     break;
                 case JSON_ARTIST_ID:
-                    meta.setString(Meta.METADATA_KEY_ARTIST_ID, jChild.getString(JSON_ARTIST_ID));
+                    meta.addString(Meta.FIELD_ARTIST_ID, jChild.getString(JSON_ARTIST_ID));
                     break;
                 case JSON_TYPE:
                     if (!jChild.getString(JSON_TYPE).equals(JSON_TYPE_MUSIC)) {
@@ -461,7 +464,7 @@ public class SubsonicAPIClient extends APIClient {
                     }
                     break;
                 case JSON_BOOKMARK_POSITION:
-                    meta.setLong(Meta.METADATA_KEY_BOOKMARK_POSITION, jChild.getLong(JSON_BOOKMARK_POSITION));
+                    meta.addLong(Meta.FIELD_BOOKMARK_POSITION, jChild.getLong(JSON_BOOKMARK_POSITION));
                     break;
                 default:
                     Log.w(LC, "Unhandled JSON attribute in child (" + title + "): " + key);
@@ -668,7 +671,7 @@ public class SubsonicAPIClient extends APIClient {
                                 entries.add(new EntryID(
                                         MusicLibraryService.API_ID_SUBSONIC,
                                         id,
-                                        Meta.METADATA_KEY_MEDIA_ID
+                                        Meta.FIELD_SPECIAL_MEDIA_ID
                                 ));
                             }
                         }

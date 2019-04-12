@@ -10,7 +10,6 @@ import java.util.stream.Collectors;
 
 import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.util.Util;
@@ -378,7 +377,7 @@ class LocalAudioPlayer implements AudioPlayer {
         player = mediaPlayerInstance;
         Log.d(LC, "setCurrentPlayer: " + (player == null ? "null" : player.title()));
         if (player == null) {
-            callback.onMetaChanged(EntryID.from(Meta.UNKNOWN_ENTRY));
+            callback.onMetaChanged(EntryID.UNKOWN);
         } else {
             player.getReady();
             callback.onMetaChanged(player.playbackEntry.entryID);

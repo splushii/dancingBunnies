@@ -171,7 +171,7 @@ public class AudioStorage {
                 roomCacheEntryList.stream().map(roomCacheEntry -> new EntryID(
                         roomCacheEntry.api,
                         roomCacheEntry.id,
-                        Meta.METADATA_KEY_MEDIA_ID
+                        Meta.FIELD_SPECIAL_MEDIA_ID
                 )).collect(Collectors.toList()));
     }
 

@@ -3,10 +3,7 @@ package se.splushii.dancingbunnies.musiclibrary;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import org.apache.lucene.document.Document;
-
 import androidx.annotation.NonNull;
-import se.splushii.dancingbunnies.search.Indexer;
 
 public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
     // Uniquely identifies a LibraryEntry
@@ -78,12 +75,6 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
     public String type() { return entryID.type; }
     public String key() { return entryID.key(); }
     public String name() { return name; }
-
-    public static LibraryEntry from(Document doc) {
-        EntryID entryID = EntryID.from(doc);
-        String name = doc.get(Indexer.meta2fieldNameMap.get(Meta.METADATA_KEY_TITLE));
-        return new LibraryEntry(entryID, name);
-    }
 
     @Override
     public int describeContents() {

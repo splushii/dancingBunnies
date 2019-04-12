@@ -21,11 +21,9 @@ import android.widget.Toast;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 
-import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -43,7 +41,8 @@ import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.storage.db.MetaDao;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
+import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.ui.EntryIDDetailsLookup;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -128,7 +127,9 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 );
             });
             filterChips.addView(chip);
-            Bundle b = newUserState.query.toBundle();
+            String showType = newUserState.query.getShowType();
+            addFilterToView(SHOW_TYPE_KEY, showType);
+            Bundle b = newUserState.query.getQueryBundle();
             for (String metaKey: b.keySet()) {
                 String filterValue = b.getString(metaKey);
                 addFilterToView(metaKey, filterValue);
@@ -226,82 +227,84 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
 
         entryTypeSelect = rootView.findViewById(R.id.musiclibrary_entry_type);
         entryTypeSelectSpinner = rootView.findViewById(R.id.musiclibrary_entry_type_spinner);
-        List<String> filterTypes = new ArrayList<>();
-        List<String> metaKeys = new ArrayList<>();
-        // TODO: Get meta keys dynamically from MetaStorage.
-        List<Map.Entry<String, String>> metaValuesMap = new ArrayList<>(Meta.humanMap.entrySet());
-        metaValuesMap.sort(Comparator.comparing(Map.Entry::getValue));
-        int initialSelectionPos = 0;
-        int index = 0;
-        for (Map.Entry<String, String> entry: metaValuesMap) {
-            String key = entry.getKey();
-            if (!MetaDao.DBKeysSet.contains(key)) {
-                continue;
-            }
-            filterTypes.add(entry.getValue());
-            metaKeys.add(key);
-            if (key.equals(MusicLibraryFragmentModel.INITIAL_DISPLAY_TYPE)) {
-                initialSelectionPos = index;
-            }
-            index++;
-        }
-        ArrayAdapter<String> filterInputTypeAdapter = new ArrayAdapter<>(
-                this.requireContext(),
-                android.R.layout.simple_spinner_dropdown_item,
-                filterTypes
-        );
-        entryTypeSelectSpinner.setAdapter(filterInputTypeAdapter);
-        entryTypeSelectSpinner.setSelection(initialSelectionPos);
-        entryTypeSelectionPos = initialSelectionPos;
-        entryTypeSelectSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                if (entryTypeSelectionPos == position) {
-                    return;
-                }
-                String filterType = filterInputTypeAdapter.getItem(position);
-                String metaKey = metaKeys.get(position);
-                Log.d(LC, "Showing entries of type: " + filterType);
-                Toast.makeText(
-                        requireContext(),
-                        "Showing entries of type: " + filterType,
-                        Toast.LENGTH_SHORT
-                ).show();
-                displayType(metaKey);
-                entryTypeSelect.setVisibility(View.GONE);
-            }
+        filterNew = rootView.findViewById(R.id.musiclibrary_filter_new);
+        filterNewType = rootView.findViewById(R.id.musiclibrary_filter_new_type);
+        MetaStorage.getInstance(requireContext())
+                .getMetaFields()
+                .observe(getViewLifecycleOwner(), fields -> {
+                    Collections.sort(fields, (f1, f2) -> {
+                        if (f1.equals(f2)) {
+                            return 0;
+                        }
+                        for (String field: Meta.FIELD_ORDER) {
+                            if (f1.equals(field)) {
+                                return -1;
+                            }
+                            if (f2.equals(field)) {
+                                return 1;
+                            }
+                        }
+                        return f1.compareTo(f2);
+                    });
+                    int initialSelectionPos = 0;
+                    for (int i = 0; i < fields.size(); i++) {
+                        if (fields.get(i).equals(MusicLibraryQuery.DEFAULT_SHOW_TYPE)) {
+                            initialSelectionPos = i;
+                        }
+                    }
+                    ArrayAdapter<String> fieldsAdapter = new ArrayAdapter<>(
+                            requireContext(),
+                            android.R.layout.simple_spinner_dropdown_item,
+                            fields
+                    );
+                    entryTypeSelectSpinner.setAdapter(fieldsAdapter);
+                    entryTypeSelectSpinner.setSelection(initialSelectionPos);
+                    entryTypeSelectionPos = initialSelectionPos;
+                    entryTypeSelectSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                        @Override
+                        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                            if (entryTypeSelectionPos == position) {
+                                return;
+                            }
+                            String field = fieldsAdapter.getItem(position);
+                            Log.d(LC, "Showing entries of type: " + field);
+                            Toast.makeText(
+                                    requireContext(),
+                                    "Showing entries of type: " + field,
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                            displayType(field);
+                            entryTypeSelect.setVisibility(View.GONE);
+                        }
 
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
-        });
+                        @Override
+                        public void onNothingSelected(AdapterView<?> parent) {}
+                    });
+                    filterNewType.setAdapter(fieldsAdapter);
+                    EditText filterNewInput = rootView.findViewById(R.id.musiclibrary_filter_new_text);
+                    filterNewInput.setOnEditorActionListener((v, actionId, event) -> {
+                        if (actionId == EditorInfo.IME_ACTION_DONE) {
+                            int pos = filterNewType.getSelectedItemPosition();
+                            String field = fields.get(pos);
+                            String filterString = filterNewInput.getText().toString();
+                            Log.d(LC, "Applying filter: " + field + "(" + filterString + ")");
+                            Toast.makeText(
+                                    this.requireContext(),
+                                    "Applying filter: " + field + "(" + filterString + ")",
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                            filter(field, filterString);
+                            return true;
+                        }
+                        return false;
+                    });
+                });
 
         filterChips = rootView.findViewById(R.id.musiclibrary_filter_chips);
 
         filterEdit = rootView.findViewById(R.id.musiclibrary_filter_edit);
         filterEditType = rootView.findViewById(R.id.musiclibrary_filter_edit_type);
         filterEditInput = rootView.findViewById(R.id.musiclibrary_filter_edit_input);
-
-        filterNew = rootView.findViewById(R.id.musiclibrary_filter_new);
-        filterNewType = rootView.findViewById(R.id.musiclibrary_filter_new_type);
-        filterNewType.setAdapter(filterInputTypeAdapter);
-        EditText filterNewInput = rootView.findViewById(R.id.musiclibrary_filter_new_text);
-        filterNewInput.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_DONE) {
-                int pos = filterNewType.getSelectedItemPosition();
-                String metaKey = metaKeys.get(pos);
-                String filterType = filterTypes.get(pos);
-                String filterString = filterNewInput.getText().toString();
-                Log.d(LC, "Applying filter: " + filterType + "(" + filterString + ")");
-                Toast.makeText(
-                        this.requireContext(),
-                        "Applying filter: " + filterType + "(" + filterString + ")",
-                        Toast.LENGTH_SHORT
-                ).show();
-                filter(metaKey, filterString);
-                return true;
-            }
-            return false;
-        });
 
         return rootView;
     }
@@ -323,7 +326,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     void showOnly(String filterType, String filter) {
         model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
         model.showOnly(filterType, filter);
-        model.displayType(Meta.METADATA_KEY_MEDIA_ID);
+        model.displayType(Meta.FIELD_SPECIAL_MEDIA_ID);
     }
 
     void browse(EntryID entryID) {
@@ -345,17 +348,16 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         filterChips.removeAllViews();
     }
 
+    // TODO: Remove key SHOW_TYPE_KEY and its logic when showType is removed from the filter chips
+    private static final String SHOW_TYPE_KEY = "dancingbunnies.musiclibraryfragment.show_type_key";
     private void addFilterToView(String metaKey, String filter) {
-        String filterType = Meta.humanMap.get(metaKey);
-        filter = Meta.METADATA_KEY_TYPE.equals(metaKey) ?
-                Meta.humanMap.get(filter) : filter;
-        String text = String.format("%s: %s", filterType, filter);
+        String text = String.format("%s: %s", metaKey, filter);
         Chip newChip = new Chip(requireContext());
         newChip.setEllipsize(TextUtils.TruncateAt.END);
         newChip.setChipBackgroundColorResource(R.color.colorAccent);
         newChip.setTextColor(ContextCompat.getColor(requireContext(), R.color.white));
         newChip.setText(text);
-        if (metaKey.equals(Meta.METADATA_KEY_TYPE)) {
+        if (metaKey.equals(SHOW_TYPE_KEY)) {
             newChip.setOnClickListener(v -> {
                 filterEdit.setVisibility(View.GONE);
                 filterNew.setVisibility(View.GONE);
@@ -369,25 +371,24 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             filterChips.addView(newChip, 0);
             setEntryTypeSelectSpinnerSelection(filter);
         } else {
-            String finalFilter = filter;
             newChip.setOnClickListener(v -> {
                 entryTypeSelect.setVisibility(View.GONE);
                 filterNew.setVisibility(View.GONE);
-                String filterEditTypeText = filterType + ':';
+                String filterEditTypeText = metaKey + ':';
                 if (chipHasSameFilter(text, filterEditType.getText().toString(),
                         filterEditInput.getText().toString())) {
                     filterEdit.setVisibility(filterEdit.getVisibility() == View.VISIBLE ?
                             View.GONE : View.VISIBLE
                     );
                 } else {
-                    filterEditInput.setText(finalFilter);
+                    filterEditInput.setText(filter);
                     filterEditInput.setOnEditorActionListener((v1, actionId, event) -> {
                         if (actionId == EditorInfo.IME_ACTION_DONE) {
                             String filterString = filterEditInput.getText().toString();
-                            Log.d(LC, "Applying filter: " + filterType + "(" + filterString + ")");
+                            Log.d(LC, "Applying filter: " + metaKey + "(" + filterString + ")");
                             Toast.makeText(
                                     this.requireContext(),
-                                    "Applying filter: " + filterType + "(" + filterString + ")",
+                                    "Applying filter: " + metaKey + "(" + filterString + ")",
                                     Toast.LENGTH_SHORT
                             ).show();
                             filter(metaKey, filterString);

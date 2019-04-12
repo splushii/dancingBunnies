@@ -11,6 +11,9 @@ public class PlaylistID implements Parcelable {
     public static final String defaultPlaylistName = "Default";
     public static final String TYPE_STUPID = "stupid";
     public static final String TYPE_SMART = "smart";
+    private static final String BUNDLE_KEY_SRC = "dancingbunnies.bundle.key.playlistid.src";
+    private static final String BUNDLE_KEY_ID = "dancingbunnies.bundle.key.playlistid.id";
+    private static final String BUNDLE_KEY_TYPE = "dancingbunnies.bundle.key.playlistid.type";
     public final String src;
     public final String id;
     public final String type;
@@ -69,17 +72,17 @@ public class PlaylistID implements Parcelable {
     }
 
     public static PlaylistID from(Bundle extras) {
-        String src = extras.getString(Meta.METADATA_KEY_API);
-        String id = extras.getString(Meta.METADATA_KEY_MEDIA_ID);
-        String type = extras.getString(Meta.METADATA_KEY_TYPE);
+        String src = extras.getString(BUNDLE_KEY_SRC);
+        String id = extras.getString(BUNDLE_KEY_ID);
+        String type = extras.getString(BUNDLE_KEY_TYPE);
         return new PlaylistID(src, id, type);
     }
 
     public Bundle toBundle() {
         Bundle b = new Bundle();
-        b.putString(Meta.METADATA_KEY_API, src);
-        b.putString(Meta.METADATA_KEY_MEDIA_ID, id);
-        b.putString(Meta.METADATA_KEY_TYPE, type);
+        b.putString(BUNDLE_KEY_SRC, src);
+        b.putString(BUNDLE_KEY_ID, id);
+        b.putString(BUNDLE_KEY_TYPE, type);
         return b;
     }
 
