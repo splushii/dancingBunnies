@@ -786,6 +786,14 @@ public class CastAudioPlayer implements AudioPlayer {
             int oldIdleReason = idleReason;
             playerState = remoteMediaClient.getPlayerState();
             idleReason = remoteMediaClient.getIdleReason();
+            // Return if state has not changed
+            if (playerState == oldPlayerState) {
+                if (playerState != MediaStatus.PLAYER_STATE_IDLE) {
+                    return;
+                } else if (idleReason == oldIdleReason) {
+                    return;
+                }
+            }
             Log.d(LC, "onStatusUpdated from " + getStateString(oldPlayerState, oldIdleReason)
                             + " to " + getStateString(playerState, idleReason));
             switch (playerState) {
