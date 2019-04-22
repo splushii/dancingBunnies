@@ -196,6 +196,10 @@ public class MetaStorage {
                 query.append(keyToTableAliasMap.get(sortKey) + "." + DB.COLUMN_VALUE);
                 break;
         }
+        if (Meta.getType(sortKey).equals(Meta.Type.STRING)) {
+            query.append(" COLLATE NOCASE");
+        }
+        query.append(" ASC");
         SimpleSQLiteQuery sqlQuery = new SimpleSQLiteQuery(query.toString(), queryArgs.toArray());
         Log.d(LC, "getEntries:"
                 + "\nquery: " + sqlQuery.getSql()
