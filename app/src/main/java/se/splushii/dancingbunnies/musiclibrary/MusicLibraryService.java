@@ -284,8 +284,10 @@ public class MusicLibraryService extends Service {
         return ret;
     }
 
-    public LiveData<List<LibraryEntry>> getSubscriptionEntries(String showType, Bundle query) {
-        return metaStorage.getEntries(showType, query);
+    public LiveData<List<LibraryEntry>> getSubscriptionEntries(String showField,
+                                                               String sortField,
+                                                               Bundle query) {
+        return metaStorage.getEntries(showField, sortField, query);
     }
 
     public CompletableFuture<List<EntryID>> getSongEntries(EntryID entryID) {

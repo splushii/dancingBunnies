@@ -47,16 +47,19 @@
     <string name="playlist_context_play">Play</string>
     <string name="playlist_context_dequeue">Dequeue</string>
     <string name="playlist_context_remove">Remove</string>
+    <string name="playlist_item_more_actions">Playlist item more actions</string>
     <string name="nowplaying_buffering">buffering…</string>
     <string name="nowplaying_previous_contentdesc">Skip to previous</string>
     <string name="nowplaying_play_pause_contentdesc">Play or pause</string>
     <string name="nowplaying_next_contentdesc">Skip to next</string>
-    <string name="musiclibrary_entry_type_select">Show entries of type:</string>
     <string name="nowplaying_context_play">Play</string>
-    <string name="queue_item_more_actions">Queue item more actions</string>
-    <string name="playlist_item_more_actions">Playlist item more actions</string>
-    <string name="music_library_item_more_actions">Music library item more actions</string>
     <string name="nowplaying_actionmode_action_play">Play</string>
+    <string name="musiclibrary_entry_type_select">Show:</string>
+    <string name="musiclibrary_sort_select">Sort by:</string>
+    <string name="musiclibrary_home">Music library home</string>
+    <string name="musiclibrary_item_more_actions">Music library item more actions</string>
+    <string name="queue_item_more_actions">Queue item more actions</string>
     <string name="search">Search:</string>
     <string name="metadata">Metadata</string>
+    <string name="musiclibrary_filter">Filters:</string>
 </resources>

@@ -154,10 +154,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public void onSubscribe(String id, Bundle options) {
         subscriptionIDs.add(id);
         subscriptionResults.put(id, new ArrayList<>());
-        String showType = options.getString(MusicLibraryQuery.BUNDLE_KEY_SHOW);
+        String showField = options.getString(MusicLibraryQuery.BUNDLE_KEY_SHOW);
+        String sortField = options.getString(MusicLibraryQuery.BUNDLE_KEY_SORT);
         Bundle query = options.getBundle(MusicLibraryQuery.BUNDLE_KEY_QUERY);
         LiveData<List<LibraryEntry>> entries = musicLibraryService.getSubscriptionEntries(
-                showType,
+                showField,
+                sortField,
                 query
         );
         subscriptionLiveData.put(id, entries);

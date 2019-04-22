@@ -11,8 +11,10 @@ import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryQuery {
     private static final String LC = Util.getLogContext(MusicLibraryQuery.class);
-    public static final String DEFAULT_SHOW_TYPE = Meta.FIELD_ARTIST;
+    public static final String DEFAULT_SHOW_FIELD = Meta.FIELD_ARTIST;
+    public static final String DEFAULT_SORT_FIELD = Meta.FIELD_ARTIST;
     public static final String BUNDLE_KEY_SHOW = "dancingbunnies.bundle.key.musiclibraryquery.show";
+    public static final String BUNDLE_KEY_SORT = "dancingbunnies.bundle.key.musiclibraryquery.sort";
     public static final String BUNDLE_KEY_QUERY = "dancingbunnies.bundle.key.musiclibraryquery.query";
 
     public enum MusicLibraryQueryType {
@@ -22,27 +24,38 @@ public class MusicLibraryQuery {
     private final MusicLibraryQueryType type;
     private Bundle subQuery;
     private String searchQuery;
-    private String showType;
+    private String showField;
+    private String sortByField;
 
     public MusicLibraryQuery() {
         this.type = MusicLibraryQueryType.SUBSCRIPTION;
         this.subQuery = new Bundle();
-        this.showType = DEFAULT_SHOW_TYPE;
+        this.showField = DEFAULT_SHOW_FIELD;
+        this.sortByField = DEFAULT_SORT_FIELD;
     }
 
     public MusicLibraryQuery(MusicLibraryQuery query) {
         this.type = MusicLibraryQueryType.SUBSCRIPTION;
         this.subQuery = query.subQuery.deepCopy();
         this.searchQuery = query.searchQuery;
-        this.showType = query.showType;
+        this.showField = query.showField;
+        this.sortByField = query.sortByField;
     }
 
-    public void setShowType(String showType) {
-        this.showType = showType;
+    public void setShowField(String field) {
+        this.showField = field;
     }
 
-    public String getShowType() {
-        return showType;
+    public String getShowField() {
+        return showField;
+    }
+
+    public void setSortByField(String field) {
+        this.sortByField = field;
+    }
+
+    public String getSortByField() {
+        return sortByField;
     }
 
     public void addToQuery(String key, String value) {
@@ -72,7 +85,8 @@ public class MusicLibraryQuery {
 
     public Bundle toSubscriptionBundle() {
         Bundle b = new Bundle();
-        b.putString(BUNDLE_KEY_SHOW, showType);
+        b.putString(BUNDLE_KEY_SHOW, showField);
+        b.putString(BUNDLE_KEY_SORT, sortByField);
         b.putBundle(BUNDLE_KEY_QUERY, subQuery);
         return b;
     }

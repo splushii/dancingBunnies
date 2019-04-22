@@ -61,9 +61,10 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
 
     private ChipGroup filterChips;
 
-    private View entryTypeSelect;
     private Spinner entryTypeSelectSpinner;
     private int entryTypeSelectionPos;
+    private Spinner sortSelectSpinner;
+    private int sortSelectionPos;
 
     private View filterEdit;
     private TextView filterEditType;
@@ -104,7 +105,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private void refreshView(final MusicLibraryUserState newUserState) {
         Log.d(LC, "refreshView");
         searchInfo.setVisibility(View.GONE);
-        entryTypeSelect.setVisibility(View.GONE);
         filterEdit.setVisibility(View.GONE);
         filterNew.setVisibility(View.GONE);
         clearFilterView();
@@ -120,15 +120,18 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             chip.setTextEndPadding(0.0f);
             chip.setChipEndPadding(chip.getChipStartPadding());
             chip.setOnClickListener(v -> {
-                entryTypeSelect.setVisibility(View.GONE);
                 filterEdit.setVisibility(View.GONE);
                 filterNew.setVisibility(filterNew.getVisibility() == View.VISIBLE ?
                         View.GONE : View.VISIBLE
                 );
             });
             filterChips.addView(chip);
-            String showType = newUserState.query.getShowType();
-            addFilterToView(SHOW_TYPE_KEY, showType);
+            String showField = newUserState.query.getShowField();
+            setSpinnerSelection(entryTypeSelectSpinner, showField);
+            entryTypeSelectionPos = entryTypeSelectSpinner.getSelectedItemPosition();
+            String sortField = newUserState.query.getSortByField();
+            setSpinnerSelection(sortSelectSpinner, sortField);
+            sortSelectionPos = sortSelectSpinner.getSelectedItemPosition();
             Bundle b = newUserState.query.getQueryBundle();
             for (String metaKey: b.keySet()) {
                 String filterValue = b.getString(metaKey);
@@ -225,13 +228,21 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         searchInfo = rootView.findViewById(R.id.musiclibrary_search);
         searchText = rootView.findViewById(R.id.musiclibrary_search_query);
 
-        entryTypeSelect = rootView.findViewById(R.id.musiclibrary_entry_type);
+        View homeBtn = rootView.findViewById(R.id.musiclibrary_home);
+        homeBtn.setOnClickListener(v -> {
+            model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
+            model.reset();
+        });
+
         entryTypeSelectSpinner = rootView.findViewById(R.id.musiclibrary_entry_type_spinner);
+        sortSelectSpinner = rootView.findViewById(R.id.musiclibrary_sort_spinner);
         filterNew = rootView.findViewById(R.id.musiclibrary_filter_new);
         filterNewType = rootView.findViewById(R.id.musiclibrary_filter_new_type);
         MetaStorage.getInstance(requireContext())
                 .getMetaFields()
                 .observe(getViewLifecycleOwner(), fields -> {
+                    fields.add(Meta.FIELD_SPECIAL_MEDIA_ID);
+                    fields.add(Meta.FIELD_SPECIAL_MEDIA_SRC);
                     Collections.sort(fields, (f1, f2) -> {
                         if (f1.equals(f2)) {
                             return 0;
@@ -248,7 +259,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                     });
                     int initialSelectionPos = 0;
                     for (int i = 0; i < fields.size(); i++) {
-                        if (fields.get(i).equals(MusicLibraryQuery.DEFAULT_SHOW_TYPE)) {
+                        if (fields.get(i).equals(MusicLibraryQuery.DEFAULT_SHOW_FIELD)) {
                             initialSelectionPos = i;
                         }
                     }
@@ -274,7 +285,28 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                                     Toast.LENGTH_SHORT
                             ).show();
                             displayType(field);
-                            entryTypeSelect.setVisibility(View.GONE);
+                        }
+
+                        @Override
+                        public void onNothingSelected(AdapterView<?> parent) {}
+                    });
+                    sortSelectSpinner.setAdapter(fieldsAdapter);
+                    sortSelectSpinner.setSelection(initialSelectionPos);
+                    sortSelectionPos = initialSelectionPos;
+                    sortSelectSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                        @Override
+                        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                            if (sortSelectionPos == position) {
+                                return;
+                            }
+                            String field = fieldsAdapter.getItem(position);
+                            Log.d(LC, "Sorting by: " + field);
+                            Toast.makeText(
+                                    requireContext(),
+                                    "Sorting by: " + field,
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                            sortBy(field);
                         }
 
                         @Override
@@ -316,6 +348,12 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private void displayType(String displayType) {
         model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
         model.displayType(displayType);
+        model.sortBy(displayType);
+    }
+
+    private void sortBy(String field) {
+        model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
+        model.sortBy(field);
     }
 
     private void filter(String filterType, String filter) {
@@ -334,11 +372,10 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         model.browse(entryID);
     }
 
-    private void setEntryTypeSelectSpinnerSelection(String filterType) {
-        for (int i = 0; i < entryTypeSelectSpinner.getCount(); i++) {
-            if (filterType.equals(entryTypeSelectSpinner.getItemAtPosition(i))) {
-                entryTypeSelectSpinner.setSelection(i);
-                entryTypeSelectionPos = i;
+    private void setSpinnerSelection(Spinner spinner, Object obj) {
+        for (int i = 0; i < spinner.getCount(); i++) {
+            if (obj.equals(spinner.getItemAtPosition(i))) {
+                spinner.setSelection(i);
                 break;
             }
         }
@@ -348,8 +385,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         filterChips.removeAllViews();
     }
 
-    // TODO: Remove key SHOW_TYPE_KEY and its logic when showType is removed from the filter chips
-    private static final String SHOW_TYPE_KEY = "dancingbunnies.musiclibraryfragment.show_type_key";
     private void addFilterToView(String metaKey, String filter) {
         String text = String.format("%s: %s", metaKey, filter);
         Chip newChip = new Chip(requireContext());
@@ -357,54 +392,38 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         newChip.setChipBackgroundColorResource(R.color.colorAccent);
         newChip.setTextColor(ContextCompat.getColor(requireContext(), R.color.white));
         newChip.setText(text);
-        if (metaKey.equals(SHOW_TYPE_KEY)) {
-            newChip.setOnClickListener(v -> {
-                filterEdit.setVisibility(View.GONE);
-                filterNew.setVisibility(View.GONE);
-                if (entryTypeSelect.getVisibility() == View.VISIBLE) {
-                    entryTypeSelect.setVisibility(View.GONE);
-                } else {
-                    entryTypeSelect.setVisibility(View.VISIBLE);
-                    entryTypeSelectSpinner.performClick();
-                }
-            });
-            filterChips.addView(newChip, 0);
-            setEntryTypeSelectSpinnerSelection(filter);
-        } else {
-            newChip.setOnClickListener(v -> {
-                entryTypeSelect.setVisibility(View.GONE);
-                filterNew.setVisibility(View.GONE);
-                String filterEditTypeText = metaKey + ':';
-                if (chipHasSameFilter(text, filterEditType.getText().toString(),
-                        filterEditInput.getText().toString())) {
-                    filterEdit.setVisibility(filterEdit.getVisibility() == View.VISIBLE ?
-                            View.GONE : View.VISIBLE
-                    );
-                } else {
-                    filterEditInput.setText(filter);
-                    filterEditInput.setOnEditorActionListener((v1, actionId, event) -> {
-                        if (actionId == EditorInfo.IME_ACTION_DONE) {
-                            String filterString = filterEditInput.getText().toString();
-                            Log.d(LC, "Applying filter: " + metaKey + "(" + filterString + ")");
-                            Toast.makeText(
-                                    this.requireContext(),
-                                    "Applying filter: " + metaKey + "(" + filterString + ")",
-                                    Toast.LENGTH_SHORT
-                            ).show();
-                            filter(metaKey, filterString);
-                            return true;
-                        }
-                        return false;
-                    });
-                    filterEditType.setText(filterEditTypeText);
-                    filterEdit.setVisibility(View.VISIBLE);
-                }
-            });
-            newChip.setOnCloseIconClickListener(v -> clearFilter(metaKey));
-            newChip.setCloseIconVisible(true);
-            int index = filterChips.getChildCount() <= 0 ? 0 : filterChips.getChildCount() - 1;
-            filterChips.addView(newChip, index);
-        }
+        newChip.setOnClickListener(v -> {
+            filterNew.setVisibility(View.GONE);
+            String filterEditTypeText = metaKey + ':';
+            if (chipHasSameFilter(text, filterEditType.getText().toString(),
+                    filterEditInput.getText().toString())) {
+                filterEdit.setVisibility(filterEdit.getVisibility() == View.VISIBLE ?
+                        View.GONE : View.VISIBLE
+                );
+            } else {
+                filterEditInput.setText(filter);
+                filterEditInput.setOnEditorActionListener((v1, actionId, event) -> {
+                    if (actionId == EditorInfo.IME_ACTION_DONE) {
+                        String filterString = filterEditInput.getText().toString();
+                        Log.d(LC, "Applying filter: " + metaKey + "(" + filterString + ")");
+                        Toast.makeText(
+                                this.requireContext(),
+                                "Applying filter: " + metaKey + "(" + filterString + ")",
+                                Toast.LENGTH_SHORT
+                        ).show();
+                        filter(metaKey, filterString);
+                        return true;
+                    }
+                    return false;
+                });
+                filterEditType.setText(filterEditTypeText);
+                filterEdit.setVisibility(View.VISIBLE);
+            }
+        });
+        newChip.setOnCloseIconClickListener(v -> clearFilter(metaKey));
+        newChip.setCloseIconVisible(true);
+        int index = filterChips.getChildCount() <= 0 ? 0 : filterChips.getChildCount() - 1;
+        filterChips.addView(newChip, index);
     }
 
     private boolean chipHasSameFilter(String chipText, String filterType, String filter) {

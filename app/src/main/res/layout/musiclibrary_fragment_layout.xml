@@ -15,6 +15,63 @@
             android:background="@color/grey100"
             android:orientation="vertical">
             <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <ImageButton
+                    android:id="@+id/musiclibrary_home"
+                    android:layout_width="0dp"
+                    android:layout_weight="0.1"
+                    android:layout_height="match_parent"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:src="@drawable/ic_home_black_24dp"
+                    android:layout_gravity="center_vertical"
+                    android:contentDescription="@string/musiclibrary_home" />
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_weight="0.45"
+                    android:layout_height="wrap_content">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp"
+                        android:paddingStart="2dp"
+                        android:paddingEnd="2dp"
+                        android:textColor="@color/colorPrimaryText"
+                        android:text="@string/musiclibrary_entry_type_select"/>
+                    <Spinner
+                        android:id="@+id/musiclibrary_entry_type_spinner"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:spinnerMode="dropdown"/>
+                </LinearLayout>
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_weight="0.45"
+                    android:layout_height="wrap_content">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp"
+                        android:paddingStart="2dp"
+                        android:paddingEnd="2dp"
+                        android:textColor="@color/colorPrimaryText"
+                        android:text="@string/musiclibrary_sort_select"/>
+                    <Spinner
+                        android:id="@+id/musiclibrary_sort_spinner"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:spinnerMode="dropdown"/>
+                </LinearLayout>
+            </LinearLayout>
+            <LinearLayout
                 android:id="@+id/musiclibrary_search"
                 android:visibility="gone"
                 android:layout_width="match_parent"
@@ -46,23 +103,10 @@
                     android:paddingStart="16dp"
                     android:paddingEnd="2dp"/>
             </LinearLayout>
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/musiclibrary_filter_chips"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="4dp"
-                android:paddingTop="4dp"
-                android:paddingStart="4dp"
-                android:paddingEnd="4dp">
-            </com.google.android.material.chip.ChipGroup>
             <LinearLayout
-                android:id="@+id/musiclibrary_entry_type"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
-                android:visibility="gone">
+                android:orientation="horizontal">
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -71,14 +115,26 @@
                     android:paddingBottom="4sp"
                     android:paddingStart="16sp"
                     android:paddingEnd="2dp"
-                    android:text="@string/musiclibrary_entry_type_select"/>
-                <Spinner
-                    android:id="@+id/musiclibrary_entry_type_spinner"
-                    android:layout_width="wrap_content"
+                    android:textColor="@color/colorPrimaryText"
+                    android:text="@string/musiclibrary_filter"/>
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/musiclibrary_filter_chips"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:paddingStart="4sp"
-                    android:paddingEnd="16sp"/>
+                    android:layout_marginBottom="4dp"
+                    android:paddingTop="4dp"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp">
+                </com.google.android.material.chip.ChipGroup>
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/musiclibrary_entry_type"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:visibility="gone">
             </LinearLayout>
             <LinearLayout
                 android:id="@+id/musiclibrary_filter_edit"

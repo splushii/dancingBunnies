@@ -22,7 +22,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
 
     private static MusicLibraryUserState initialUserState() {
         MusicLibraryQuery query = new MusicLibraryQuery();
-        query.setShowType(MusicLibraryQuery.DEFAULT_SHOW_TYPE);
+        query.setShowField(MusicLibraryQuery.DEFAULT_SHOW_FIELD);
         return new MusicLibraryUserState(query, 0, 0);
     }
 
@@ -73,6 +73,10 @@ public class MusicLibraryFragmentModel extends ViewModel {
         return false;
     }
 
+    void reset() {
+        getMutableUserState().setValue(initialUserState());
+    }
+
     void filter(String filterType, String filter) {
         MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
         query.addToQuery(filterType, filter);
@@ -81,9 +85,12 @@ public class MusicLibraryFragmentModel extends ViewModel {
 
     void browse(EntryID entryID) {
         MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
-        String displayType = Meta.FIELD_ARTIST.equals(entryID.type) ?
+        String showField = Meta.FIELD_ARTIST.equals(entryID.type) ?
                 Meta.FIELD_ALBUM : Meta.FIELD_SPECIAL_MEDIA_ID;
-        query.setShowType(displayType);
+        query.setShowField(showField);
+        String sortField = Meta.FIELD_SPECIAL_MEDIA_ID.equals(showField) ?
+                Meta.FIELD_TITLE : showField;
+        query.setSortByField(sortField);
         if (entryID.id != null && !entryID.isUnknown()) {
             query.addToQuery(entryID.type, entryID.id);
         }
@@ -92,7 +99,13 @@ public class MusicLibraryFragmentModel extends ViewModel {
 
     void displayType(String displayType) {
         MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
-        query.setShowType(displayType);
+        query.setShowField(displayType);
+        getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
+    }
+
+    void sortBy(String field) {
+        MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
+        query.setSortByField(field);
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 

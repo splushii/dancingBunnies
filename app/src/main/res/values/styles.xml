@@ -28,6 +28,16 @@
         <item name="android:tint">@color/white</item>
     </style>
 
+    <style name="SpinnerDropDownItemTheme" parent="Widget.AppCompat.Light.DropDownItem.Spinner">
+        <item name="android:textColor">@color/colorPrimaryText</item>
+        <item name="android:background">@color/grey100</item>
+    </style>
+
+    <style name="ImageButtonStyle" parent="Widget.AppCompat.ImageButton">
+        <item name="android:background">?android:selectableItemBackground</item>
+        <item name="android:textColor">@color/colorPrimaryText</item>
+    </style>
+
     <style name="AppTheme.Base" parent="Theme.MaterialComponents.NoActionBar">
         <item name="android:windowBackground">@color/white</item>
         <item name="android:textColorPrimary">@color/colorPrimaryText</item>
@@ -43,6 +53,8 @@
         <item name="tabStyle">@style/TabTheme</item>
         <item name="searchViewStyle">@style/SearchViewTheme</item>
         <item name="colorControlHighlight">@color/colorAccentLight</item>
+        <item name="android:spinnerDropDownItemStyle">@style/SpinnerDropDownItemTheme</item>
+        <item name="imageButtonStyle">@style/ImageButtonStyle</item>
     </style>
 
     <style name="AppTheme" parent="AppTheme.Base">

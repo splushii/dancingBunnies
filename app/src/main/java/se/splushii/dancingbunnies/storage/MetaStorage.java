@@ -54,11 +54,12 @@ public class MetaStorage {
         Log.d(LC, "insertSongs finish. " + (System.currentTimeMillis() - start) + "ms");
     }
 
-    // TODO: Support sort-by argument in bundleQuery
     // TODO: rework bundleQuery and getEntries to support nested queries
-    public LiveData<List<LibraryEntry>> getEntries(String showType, Bundle bundleQuery) {
+    public LiveData<List<LibraryEntry>> getEntries(String showField,
+                                                   String sortField,
+                                                   Bundle bundleQuery) {
         HashMap<String, String> keyToTableAliasMap = new HashMap<>();
-        String showTypeKey = showType == null ? Meta.FIELD_SPECIAL_MEDIA_ID : showType;
+        String showTypeKey = showField == null ? Meta.FIELD_SPECIAL_MEDIA_ID : showField;
         String showTypeTable = MetaDao.getTable(showTypeKey);
         String showTypeTableAlias = "meta_show";
         keyToTableAliasMap.put(showTypeKey, showTypeTableAlias);
@@ -70,19 +71,24 @@ public class MetaStorage {
         boolean showMeta = !Meta.FIELD_SPECIAL_MEDIA_ID.equals(showTypeKey);
         // Other types (keys) which needs to be joined for the query
         HashSet<String> uniqueQueryKeys = new HashSet<>(bundleQuery.keySet());
-        if (!showMeta) { // Add title to order by
-            uniqueQueryKeys.add(Meta.FIELD_TITLE);
-        }
+        String sortKey = sortField == null ? showTypeKey : sortField;
+        uniqueQueryKeys.add(sortKey);
         List<Object> queryArgs = new ArrayList<>();
         StringBuilder query = new StringBuilder("SELECT");
         if (showMeta) {
             query.append(" DISTINCT");
         }
-        if (showMeta) {
-            query.append(String.format(" %s.%s", showTypeTableAlias, DB.COLUMN_VALUE));
-        } else {
-            query.append(String.format(" %s.%s", showTypeTableAlias, DB.COLUMN_API));
-            query.append(String.format(", %s.%s", showTypeTableAlias, DB.COLUMN_ID));
+        switch (showTypeKey) {
+            case Meta.FIELD_SPECIAL_MEDIA_SRC:
+                query.append(String.format(" %s.%s", showTypeTableAlias, DB.COLUMN_API));
+                break;
+            case Meta.FIELD_SPECIAL_MEDIA_ID:
+                query.append(String.format(" %s.%s", showTypeTableAlias, DB.COLUMN_API));
+                query.append(String.format(", %s.%s", showTypeTableAlias, DB.COLUMN_ID));
+                break;
+            default:
+                query.append(String.format(" %s.%s", showTypeTableAlias, DB.COLUMN_VALUE));
+                break;
         }
         query.append(" FROM ").append(showTypeTable).append(" AS ").append(showTypeTableAlias);
         int tableAliasIndex = 1;
@@ -115,7 +121,8 @@ public class MetaStorage {
             queryArgs.add(key);
         }
         // Add showType filter
-        if (showMeta) {
+        if (!showTypeKey.equals(Meta.FIELD_SPECIAL_MEDIA_ID)
+                && !showTypeKey.equals(Meta.FIELD_SPECIAL_MEDIA_SRC)) {
             query.append("\nWHERE " + showTypeTableAlias + "." + DB.COLUMN_KEY + " = ?");
             queryArgs.add(showTypeKey);
         }
@@ -178,12 +185,17 @@ public class MetaStorage {
         }
         // Sort
         query.append("\nORDER BY ");
-        if (showMeta) {
-            query.append(showTypeTableAlias + "." + DB.COLUMN_VALUE);
-        } else {
-            query.append(keyToTableAliasMap.get(Meta.FIELD_TITLE) + "." + DB.COLUMN_VALUE);
+        switch (sortKey) {
+            case Meta.FIELD_SPECIAL_MEDIA_ID:
+                query.append(showTypeTableAlias + "." + DB.COLUMN_ID);
+                break;
+            case Meta.FIELD_SPECIAL_MEDIA_SRC:
+                query.append(showTypeTableAlias + "." + DB.COLUMN_API);
+                break;
+            default:
+                query.append(keyToTableAliasMap.get(sortKey) + "." + DB.COLUMN_VALUE);
+                break;
         }
-        ;
         SimpleSQLiteQuery sqlQuery = new SimpleSQLiteQuery(query.toString(), queryArgs.toArray());
         Log.d(LC, "getEntries:"
                 + "\nquery: " + sqlQuery.getSql()
@@ -198,21 +210,27 @@ public class MetaStorage {
         );
         return Transformations.map(metaModel.getEntries(sqlQuery), values ->
                 values.stream().map(value -> {
-                            EntryID entryID = showMeta ?
-                                    new EntryID(
-                                            MusicLibraryService.API_ID_DANCINGBUNNIES,
-                                            value.value,
-                                            showTypeKey
-                                    )
-                                    :
-                                    new EntryID(
-                                            value.api,
-                                            value.id,
-                                            showTypeKey
-                                    );
-                            return new LibraryEntry(entryID, value.value);
-                        }
-                ).collect(Collectors.toList())
+                    switch (showTypeKey) {
+                        case Meta.FIELD_SPECIAL_MEDIA_SRC:
+                            return new LibraryEntry(new EntryID(
+                                    MusicLibraryService.API_ID_DANCINGBUNNIES,
+                                    value.api,
+                                    showTypeKey
+                            ), value.api);
+                        case Meta.FIELD_SPECIAL_MEDIA_ID:
+                            return new LibraryEntry(new EntryID(
+                                    value.api,
+                                    value.id,
+                                    showTypeKey
+                            ), value.id);
+                        default:
+                            return new LibraryEntry(new EntryID(
+                                    MusicLibraryService.API_ID_DANCINGBUNNIES,
+                                    value.value,
+                                    showTypeKey
+                            ), value.value);
+                    }
+                }).collect(Collectors.toList())
         );
     }
 
@@ -220,7 +238,11 @@ public class MetaStorage {
         CompletableFuture<List<EntryID>> ret = new CompletableFuture<>();
         Bundle bundleQuery = new Bundle();
         bundleQuery.putString(entryID.type, entryID.id);
-        LiveData<List<LibraryEntry>> liveData = getEntries(Meta.FIELD_SPECIAL_MEDIA_ID, bundleQuery);
+        LiveData<List<LibraryEntry>> liveData = getEntries(
+                Meta.FIELD_SPECIAL_MEDIA_ID,
+                Meta.FIELD_TITLE,
+                bundleQuery
+        );
         liveData.observeForever(new Observer<List<LibraryEntry>>() {
             @Override
             public void onChanged(List<LibraryEntry> libraryEntries) {

@@ -64,7 +64,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         model.getDataSet().observe(fragment.getViewLifecycleOwner(), dataset -> {
             MusicLibraryUserState state = model.getUserState().getValue();
             if(!state.query.isSearchQuery()
-                    && !state.query.getShowType().equals(Meta.FIELD_SPECIAL_MEDIA_ID)) {
+                    && !state.query.getShowField().equals(Meta.FIELD_SPECIAL_MEDIA_ID)) {
                 dataset.add(0, AudioPlayerService.generateMediaItem(
                         new LibraryEntry(EntryID.UNKOWN, "All entries...")
                 ));
