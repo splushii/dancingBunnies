@@ -579,7 +579,7 @@ class PlaybackController {
 
     CompletableFuture<Void> playNow(PlaybackEntry playbackEntry) {
         return queue(Collections.singletonList(playbackEntry), 0)
-                .thenCompose(r -> skipToNext())
+                .thenCompose(r -> getNumQueueEntries() > 1 ? skipToNext() : Util.futureResult(null))
                 .thenCompose(r -> play());
     }
 
