@@ -1,8 +1,11 @@
 package se.splushii.dancingbunnies.util;
 
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -12,6 +15,11 @@ import java.security.SecureRandom;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+
+import androidx.core.util.Pair;
+import androidx.fragment.app.FragmentActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 public class Util {
     private static final String LC = getLogContext(Util.class);
@@ -43,6 +51,27 @@ public class Util {
 
     private static String hex(byte[] in) {
         return String.format("%0" + (in.length * 2) + "x", new BigInteger(1, in));
+    }
+
+    public static void showSoftInput(FragmentActivity activity, View v) {
+        ((InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE))
+                .showSoftInput(v, InputMethodManager.SHOW_IMPLICIT);
+    }
+
+    public static void hideSoftInput(FragmentActivity activity, View v) {
+        ((InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE))
+                .hideSoftInputFromWindow(v.getWindowToken(), InputMethodManager.HIDE_IMPLICIT_ONLY);
+    }
+
+    public static Pair<Integer, Integer> getRecyclerViewPosition(RecyclerView recView) {
+        LinearLayoutManager llm = (LinearLayoutManager) recView.getLayoutManager();
+        int hPos = llm.findFirstCompletelyVisibleItemPosition();
+        View v = llm.getChildAt(0);
+        int hPad = v == null ? 0 : v.getTop() - llm.getPaddingTop();
+        if (hPad < 0 && hPos > 0) {
+            hPos--;
+        }
+        return new Pair<>(hPos, hPad);
     }
 
     public static class FutureException extends Throwable {

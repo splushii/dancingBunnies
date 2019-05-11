@@ -48,7 +48,7 @@
             android:textColor="@color/secondary_text_color"
             android:gravity="center_vertical" />
     </LinearLayout>
-    <se.splushii.dancingbunnies.ui.ItemActionsView
+    <se.splushii.dancingbunnies.ui.TrackItemActionsView
         android:id="@+id/library_entry_actions"
         android:layout_width="wrap_content"
         android:layout_height="match_parent" />

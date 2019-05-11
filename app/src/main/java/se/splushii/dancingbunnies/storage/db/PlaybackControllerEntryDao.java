@@ -14,14 +14,6 @@ import static androidx.room.OnConflictStrategy.REPLACE;
 
 @Dao
 public abstract class PlaybackControllerEntryDao {
-    @Query("UPDATE " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
-            + " SET " + PlaybackControllerEntry.COLUMN_POS + " = "
-            + PlaybackControllerEntry.COLUMN_POS + " + :increment"
-            + " WHERE " + PlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID"
-            + " AND " + PlaybackControllerEntry.COLUMN_POS + " >= :fromPosition")
-    public abstract void _update_pos_before_insert(int queueID, int fromPosition, int increment);
-    @Insert(onConflict = REPLACE)
-    public abstract void _insert(List<PlaybackControllerEntry> entries);
     @Query("SELECT * FROM " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
             + " WHERE " + PlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID"
             + " ORDER BY " + PlaybackControllerEntry.COLUMN_POS + " ASC")
@@ -30,6 +22,8 @@ public abstract class PlaybackControllerEntryDao {
             + " WHERE " + PlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID"
             + " ORDER BY " + PlaybackControllerEntry.COLUMN_POS + " ASC")
     public abstract List<PlaybackControllerEntry> getEntriesSync(int queueID);
+
+    // Delete
     @Query("DELETE FROM " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
             + " WHERE " + PlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID"
             + " AND " + PlaybackControllerEntry.COLUMN_POS + " = :position;")
@@ -52,4 +46,20 @@ public abstract class PlaybackControllerEntryDao {
     @Query("DELETE FROM " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
             + " WHERE " + PlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID;")
     public abstract void removeAll(int queueID);
+
+    // Insert
+    @Query("UPDATE " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
+            + " SET " + PlaybackControllerEntry.COLUMN_POS + " = "
+            + PlaybackControllerEntry.COLUMN_POS + " + :increment"
+            + " WHERE " + PlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID"
+            + " AND " + PlaybackControllerEntry.COLUMN_POS + " >= :fromPosition")
+    public abstract void _update_pos_before_insert(int queueID, int fromPosition, int increment);
+    @Insert(onConflict = REPLACE)
+    public abstract void _insert(List<PlaybackControllerEntry> entries);
+    @Transaction
+    public void insert(int queueID, int toPosition, List<PlaybackControllerEntry> entries) {
+        int numNewEntries = entries.size();
+        _update_pos_before_insert(queueID, toPosition, numNewEntries);
+        _insert(entries);
+    }
 }

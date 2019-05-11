@@ -4,10 +4,9 @@ import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import se.splushii.dancingbunnies.storage.db.Playlist;
+
 public class PlaylistID implements Parcelable {
-    public static final PlaylistID defaultPlaylistID = new PlaylistID(
-            "dancingbunnies", "default", PlaylistID.TYPE_STUPID
-    );
     public static final String defaultPlaylistName = "Default";
     public static final String TYPE_STUPID = "stupid";
     public static final String TYPE_SMART = "smart";
@@ -24,10 +23,16 @@ public class PlaylistID implements Parcelable {
         this.type = type;
     }
 
-    protected PlaylistID(Parcel in) {
+    public PlaylistID(Parcel in) {
         src = in.readString();
         id = in.readString();
         type = in.readString();
+    }
+
+    public PlaylistID(Playlist playlist) {
+        src = playlist.api;
+        id = playlist.id;
+        type = TYPE_STUPID;
     }
 
     public static final Creator<PlaylistID> CREATOR = new Creator<PlaylistID>() {

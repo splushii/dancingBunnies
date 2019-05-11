@@ -60,6 +60,10 @@
     <style name="AppTheme" parent="AppTheme.Base">
     </style>
 
+    <style name="AppTheme.OnAccent" parent="AppTheme">
+        <item name="colorControlHighlight">@color/white</item>
+    </style>
+
     <style name="AppTheme.Settings" parent="AppTheme.Base">
         <item name="android:textColorPrimary">@color/grey50</item>
     </style>

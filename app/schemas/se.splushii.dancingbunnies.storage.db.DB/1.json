@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "645338c97655f192aaadc90db5bcc73e",
+    "identityHash": "69f4ae2c478cc71a5f22f93fd81cf0bb",
     "entities": [
       {
         "tableName": "entry_id",
@@ -281,7 +281,7 @@
       },
       {
         "tableName": "playlists",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY(`api`, `id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `name` TEXT NOT NULL, `pos` INTEGER NOT NULL, PRIMARY KEY(`api`, `id`))",
         "fields": [
           {
             "fieldPath": "api",
@@ -299,6 +299,12 @@
             "fieldPath": "name",
             "columnName": "name",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pos",
+            "columnName": "pos",
+            "affinity": "INTEGER",
             "notNull": true
           }
         ],
@@ -395,11 +401,17 @@
       },
       {
         "tableName": "playback_controller_entries",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowid` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `queue_id` INTEGER NOT NULL, `pos` INTEGER NOT NULL, `api` TEXT NOT NULL, `id` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowid` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `playback_id` INTEGER NOT NULL, `queue_id` INTEGER NOT NULL, `pos` INTEGER NOT NULL, `api` TEXT NOT NULL, `id` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "rowId",
             "columnName": "rowid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playbackID",
+            "columnName": "playback_id",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -440,7 +452,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"645338c97655f192aaadc90db5bcc73e\")"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"69f4ae2c478cc71a5f22f93fd81cf0bb\")"
     ]
   }
 }

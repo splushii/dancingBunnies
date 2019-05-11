@@ -1,7 +1,6 @@
 package se.splushii.dancingbunnies.ui.musiclibrary;
 
-import android.util.Pair;
-
+import androidx.core.util.Pair;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 
 public class MusicLibraryUserState {

@@ -29,17 +29,37 @@ public class MusicLibraryQuery {
 
     public MusicLibraryQuery() {
         this.type = MusicLibraryQueryType.SUBSCRIPTION;
-        this.subQuery = new Bundle();
-        this.showField = DEFAULT_SHOW_FIELD;
-        this.sortByField = DEFAULT_SORT_FIELD;
+        init();
     }
 
     public MusicLibraryQuery(MusicLibraryQuery query) {
         this.type = MusicLibraryQueryType.SUBSCRIPTION;
-        this.subQuery = query.subQuery.deepCopy();
+        if (query == null) {
+            init();
+            return;
+        }
+        if (query.subQuery == null) {
+            subQuery = new Bundle();
+        } else {
+            this.subQuery = query.subQuery.deepCopy();
+        }
+        if (query.showField == null) {
+            showField = DEFAULT_SHOW_FIELD;
+        } else {
+            showField = query.showField;
+        }
+        if (query.sortByField == null) {
+            sortByField = DEFAULT_SORT_FIELD;
+        } else {
+            sortByField = query.sortByField;
+        }
         this.searchQuery = query.searchQuery;
-        this.showField = query.showField;
-        this.sortByField = query.sortByField;
+    }
+
+    private void init() {
+        this.subQuery = new Bundle();
+        this.showField = DEFAULT_SHOW_FIELD;
+        this.sortByField = DEFAULT_SORT_FIELD;
     }
 
     public void setShowField(String field) {

@@ -12,30 +12,30 @@ import androidx.annotation.Nullable;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.util.Util;
 
-public class ItemActionsView extends LinearLayout {
-    private static final String LC = Util.getLogContext(ItemActionsView.class);
+public class TrackItemActionsView extends LinearLayout {
+    private static final String LC = Util.getLogContext(TrackItemActionsView.class);
     private View playAction;
     private View queueAction;
     private View removeAction;
     private View addToPlaylistAction;
     private View infoAction;
 
-    public ItemActionsView(Context context) {
+    public TrackItemActionsView(Context context) {
         super(context);
         init(null, 0, 0);
     }
 
-    public ItemActionsView(Context context, @Nullable AttributeSet attrs) {
+    public TrackItemActionsView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         init(attrs, 0, 0);
     }
 
-    public ItemActionsView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+    public TrackItemActionsView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init(attrs, defStyleAttr, 0);
     }
 
-    public ItemActionsView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+    public TrackItemActionsView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
         init(attrs, defStyleAttr, defStyleRes);
     }
@@ -43,7 +43,7 @@ public class ItemActionsView extends LinearLayout {
     private void init(AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         inflate(getContext(), R.layout.item_actions_view_layout, this);
         final TypedArray a = getContext().obtainStyledAttributes(
-                attrs, R.styleable.ItemActionsView, defStyleAttr, defStyleRes);
+                attrs, R.styleable.TrackItemActionsView, defStyleAttr, defStyleRes);
         a.recycle();
         playAction = findViewById(R.id.item_action_play);
         queueAction = findViewById(R.id.item_action_queue);
@@ -64,6 +64,9 @@ public class ItemActionsView extends LinearLayout {
     }
 
     public void animateShow(boolean show) {
+        if (show) {
+            initialize();
+        }
         animate()
                 .translationX(getTrans(show))
                 .setDuration(200)
@@ -87,7 +90,7 @@ public class ItemActionsView extends LinearLayout {
 
     private void setListener(View view, Runnable r, boolean thenHideActions) {
         if (r == null) {
-            view.setVisibility(INVISIBLE);
+            view.setVisibility(GONE);
         } else {
             view.setOnClickListener(v -> {
                 r.run();
@@ -111,7 +114,7 @@ public class ItemActionsView extends LinearLayout {
         setListener(addToPlaylistAction, r, true);
     }
 
-    public void setOnDequeueListener(Runnable r) {
+    public void setOnRemoveListener(Runnable r) {
         setListener(removeAction, r, true);
     }
 

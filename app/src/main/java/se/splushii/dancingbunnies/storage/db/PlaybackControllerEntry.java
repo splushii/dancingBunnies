@@ -4,7 +4,7 @@ import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
-import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 
 @Entity(tableName = DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
 // The constraints below makes inserts impossible, because incrementing COLUMN_POS
@@ -21,6 +21,7 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 )
 public class PlaybackControllerEntry {
     private static final String COLUMN_ROW_ID = "rowid";
+    static final String COLUMN_PLAYBACK_ID = "playback_id";
     static final String COLUMN_QUEUE_ID = "queue_id";
     static final String COLUMN_POS = "pos";
     static final String COLUMN_API = "api";
@@ -29,6 +30,9 @@ public class PlaybackControllerEntry {
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = COLUMN_ROW_ID)
     int rowId;
+    @NonNull
+    @ColumnInfo(name = COLUMN_PLAYBACK_ID)
+    public long playbackID;
     @NonNull
     @ColumnInfo(name = COLUMN_QUEUE_ID)
     int queueID;
@@ -42,16 +46,15 @@ public class PlaybackControllerEntry {
     @ColumnInfo(name = COLUMN_ID)
     public String id;
 
-    public static PlaybackControllerEntry from(int queueID, EntryID entryID) {
-        return from(queueID, entryID, 1);
-    }
-
-    public static PlaybackControllerEntry from(int queueID, EntryID entryID, int pos) {
+    public static PlaybackControllerEntry from(int queueID,
+                                               PlaybackEntry playbackEntry,
+                                               int pos) {
         PlaybackControllerEntry entry = new PlaybackControllerEntry();
+        entry.playbackID = playbackEntry.playbackID;
         entry.pos = pos;
         entry.queueID = queueID;
-        entry.api = entryID.src;
-        entry.id = entryID.id;
+        entry.api = playbackEntry.entryID.src;
+        entry.id = playbackEntry.entryID.id;
         return entry;
     }
 }

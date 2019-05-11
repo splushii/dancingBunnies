@@ -17,18 +17,13 @@ import org.apache.lucene.search.TopDocs;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.Observer;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.backend.APIClientRequestHandler;
 import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
@@ -39,14 +34,61 @@ import se.splushii.dancingbunnies.search.Searcher;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
-import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryService extends Service {
     private static final String LC = Util.getLogContext(MusicLibraryService.class);
 
+    // Supported API:s
     public static final String API_ID_DANCINGBUNNIES = "dancingbunnies";
     public static final String API_ID_SUBSONIC = "subsonic";
+
+    // API icons
+    public static int getAPIIconResource(String src) {
+        if (src == null) {
+            return 0;
+        }
+        switch (src) {
+            case MusicLibraryService.API_ID_DANCINGBUNNIES:
+                return R.mipmap.dancingbunnies_icon;
+            case MusicLibraryService.API_ID_SUBSONIC:
+                return R.drawable.sub_icon;
+            default:
+                return 0;
+        }
+    }
+
+    // API actions
+    public static final String PLAYLIST_DELETE = "playlist_delete";
+    public static final String PLAYLIST_ENTRY_DELETE = "playlist_entry_delete";
+    public static final String PLAYLIST_ENTRY_MOVE = "playlist_entry_move";
+    public static boolean checkAPISupport(String src, String action) {
+        switch (src) {
+            case API_ID_DANCINGBUNNIES:
+                switch (action) {
+                    case PLAYLIST_ENTRY_DELETE:
+                        return true;
+                    case PLAYLIST_ENTRY_MOVE:
+                        return true;
+                    case PLAYLIST_DELETE:
+                        return true;
+                }
+                return false;
+            case API_ID_SUBSONIC:
+                switch (action) {
+                    case PLAYLIST_ENTRY_DELETE:
+                        return false;
+                    case PLAYLIST_ENTRY_MOVE:
+                        return false;
+                    case PLAYLIST_DELETE:
+                        return false;
+                }
+                return false;
+            default:
+                return false;
+        }
+    }
+
     private static final String LUCENE_INDEX_PATH = "lucene_index";
 
     private File indexDirectoryPath;
@@ -55,61 +97,37 @@ public class MusicLibraryService extends Service {
     private MetaStorage metaStorage;
     private AudioStorage audioStorage;
     private PlaylistStorage playlistStorage;
-    private LiveData<List<PlaylistItem>> playlistLiveData;
-    private LiveData<List<PlaylistEntry>> playlistEntriesLiveData;
-    private List<PlaylistItem> playlists = new ArrayList<>();
-    private HashMap<PlaylistID, List<EntryID>> playlistMap = new HashMap<>();
 
     private final IBinder binder = new MusicLibraryBinder();
     private List<Runnable> metaChangedListeners;
 
-    public List<PlaybackEntry> playlistGetNext(PlaylistID playlistID, long index, int maxEntries) {
-        List<PlaybackEntry> playbackEntries = new LinkedList<>();
-        List<EntryID> entryIDs = playlistMap.get(playlistID);
-        if (entryIDs == null || entryIDs.isEmpty()) {
-            return playbackEntries;
-        }
-        for (int count = 0; count < maxEntries && index < entryIDs.size(); count++, index++) {
-            EntryID entryID = entryIDs.get((int)index);
-            playbackEntries.add(new PlaybackEntry(entryID, PlaybackEntry.USER_TYPE_PLAYLIST));
-        }
-        return playbackEntries;
-    }
+    // TODO: Implement this in PlaylistStorage or something similar instead.
+    // TODO: May need to be here to support both stupid and smart playlists.
+    // TODO: smart entries are fetched using MetaStorage.
+    // TODO: stupid entries are fetched using PlaylistStorage.
+//    public List<PlaybackEntry> playlistGetNext(PlaylistID playlistID, long index, int maxEntries) {
+//        List<PlaybackEntry> playbackEntries = new LinkedList<>();
+//        List<EntryID> entryIDs = playlistMap.get(playlistID);
+//        if (entryIDs == null || entryIDs.isEmpty()) {
+//            return playbackEntries;
+//        }
+//        for (int count = 0; count < maxEntries && index < entryIDs.size(); count++, index++) {
+//            EntryID entryID = entryIDs.get((int)index);
+//            playbackEntries.add(new PlaybackEntry(entryID, PlaybackEntry.USER_TYPE_PLAYLIST));
+//        }
+//        return playbackEntries;
+//    }
 
-    public List<PlaybackEntry> playlistGetPrevious(PlaylistID playlistID, long index, int maxEntries) {
-        // TODO: Implement
-        Log.e(LC, "playlistGetPrevious not implemented");
-        return new LinkedList<>();
-    }
-
-    public long playlistPosition(PlaylistID playlistID, long playlistPosition, int offset) {
-        if (offset == 0) {
-            return playlistPosition;
-        }
-        List<EntryID> playlistEntries = playlistMap.getOrDefault(playlistID, Collections.emptyList());
-        int playlistSize = playlistEntries.size();
-        playlistPosition += offset;
-        return playlistPosition > playlistSize ? playlistSize : playlistPosition;
-    }
-
-    public List<PlaylistItem> getPlaylists() {
-        return playlists;
-    }
-
-    // TODO: Make this work similar to musiclibrary entries
-    public List<LibraryEntry> getPlaylistEntries(PlaylistID playlistID) {
-        return playlistMap.getOrDefault(playlistID, Collections.emptyList()).stream()
-                .map(e -> new LibraryEntry(e, "<fixme>"))
-                .collect(Collectors.toList());
-    }
-
-    public void playlistAddEntries(PlaylistID playlistID, List<EntryID> entryIDs) {
-        playlistStorage.addToPlaylist(playlistID, entryIDs);
-    }
-
-    public void playlistRemoveEntry(PlaylistID playlistID, int position) {
-        playlistStorage.removeFromPlaylist(playlistID, position);
-    }
+    // TODO: Implement this in PlaylistStorage or something similar instead
+//    public long playlistPosition(PlaylistID playlistID, long playlistPosition, int offset) {
+//        if (offset == 0) {
+//            return playlistPosition;
+//        }
+//        List<EntryID> playlistEntries = playlistMap.getOrDefault(playlistID, Collections.emptyList());
+//        int playlistSize = playlistEntries.size();
+//        playlistPosition += offset;
+//        return playlistPosition > playlistSize ? playlistSize : playlistPosition;
+//    }
 
     public int addMetaChangedListener(Runnable runnable) {
         int position = metaChangedListeners.size();
@@ -127,27 +145,6 @@ public class MusicLibraryService extends Service {
         }
     }
 
-    private final Observer<List<PlaylistItem>> playlistsObserver = entries -> {
-        Log.d(LC, "playlistsObserver: " + entries.size() + " entries.");
-        playlists = entries;
-    };
-
-    private final Observer<List<PlaylistEntry>> playlistEntriesObserver = entries -> {
-        long start = System.currentTimeMillis();
-        Log.d(LC, "playlistEntriesObserver: " + entries.size() + " entries."
-                + " Building playlist map...");
-        HashMap<PlaylistID, List<EntryID>> newPlaylistMap = new HashMap<>();
-        for (PlaylistEntry entry: entries) {
-            PlaylistID id = new PlaylistID(entry.playlist_api, entry.playlist_id, PlaylistID.TYPE_STUPID);
-            List<EntryID> entryIDs = newPlaylistMap.getOrDefault(id, new ArrayList<>());
-            entryIDs.add(new EntryID(entry.api, entry.id, Meta.FIELD_SPECIAL_MEDIA_ID));
-            newPlaylistMap.put(id, entryIDs);
-        }
-        playlistMap = newPlaylistMap;
-        Log.d(LC, "playlistEntriesObserver: Finished building playlist map. "
-                + (System.currentTimeMillis() - start) + "ms.");
-    };
-
     @Override
     public void onCreate() {
         super.onCreate();
@@ -156,11 +153,7 @@ public class MusicLibraryService extends Service {
         metaChangedListeners = new ArrayList<>();
         loadSettings();
         metaStorage = MetaStorage.getInstance(this);
-        playlistStorage = new PlaylistStorage(this);
-        playlistLiveData = playlistStorage.getPlaylists();
-        playlistLiveData.observeForever(playlistsObserver);
-        playlistEntriesLiveData = playlistStorage.getPlaylistEntries();
-        playlistEntriesLiveData.observeForever(playlistEntriesObserver);
+        playlistStorage = PlaylistStorage.getInstance(this);
         audioStorage = AudioStorage.getInstance(this);
         prepareIndex();
         notifyLibraryChanged();
@@ -182,8 +175,6 @@ public class MusicLibraryService extends Service {
     @Override
     public void onDestroy() {
         Log.d(LC, "onDestroy");
-        playlistEntriesLiveData.removeObserver(playlistEntriesObserver);
-        playlistLiveData.removeObserver(playlistsObserver);
         super.onDestroy();
     }
 
@@ -353,7 +344,7 @@ public class MusicLibraryService extends Service {
     private void savePlaylistsToStorage(List<Playlist> data) {
         long start = System.currentTimeMillis();
         Log.d(LC, "saveLibraryToStorage start");
-        playlistStorage.insertPlaylists(data);
+        playlistStorage.insertPlaylists(0, data);
         Log.d(LC, "saveLibraryToStorage finish " + (System.currentTimeMillis() - start));
     }
 
@@ -367,16 +358,16 @@ public class MusicLibraryService extends Service {
     public void fetchAPILibrary(final String api, final MusicLibraryRequestHandler handler) {
         handler.onStart();
         loadSettings();
-        if (!apis.containsKey(api)) {
+        APIClient client = apis.get(api);
+        if (client == null) {
             handler.onFailure("Can not fetch library. API " + api + " not found.");
             return;
         }
-        APIClient client = apis.get(api);
         if (!client.hasLibrary()) {
             handler.onFailure("Can not fetch library. API " + api + " does not support library.");
             return;
         }
-        apis.get(api).getLibrary(new APIClientRequestHandler() {
+        client.getLibrary(new APIClientRequestHandler() {
             @Override
             public void onProgress(String s) {
                 handler.onProgress(s);
@@ -405,17 +396,17 @@ public class MusicLibraryService extends Service {
     public void fetchPlayLists(final String api, final MusicLibraryRequestHandler handler) {
         handler.onStart();
         loadSettings();
-        if (!apis.containsKey(api)) {
+        APIClient client = apis.get(api);
+        if (client == null) {
             handler.onFailure("Can not fetch playlists. API " + api + " not found.");
             return;
         }
-        APIClient client = apis.get(api);
         if (!client.hasPlaylists()) {
             handler.onFailure("Can not fetch playlists. API " + api
                     + " does not support playlists.");
             return;
         }
-        apis.get(api).getPlaylists(new APIClientRequestHandler() {
+        client.getPlaylists(new APIClientRequestHandler() {
             @Override
             public void onProgress(String s) {
                 handler.onProgress(s);

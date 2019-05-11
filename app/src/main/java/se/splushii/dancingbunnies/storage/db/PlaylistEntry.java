@@ -1,5 +1,10 @@
 package se.splushii.dancingbunnies.storage.db;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
+import java.util.Objects;
+
 import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
@@ -34,7 +39,7 @@ import static androidx.room.ForeignKey.CASCADE;
                 PlaylistEntry.COLUMN_POS
         }
 )
-public class PlaylistEntry {
+public class PlaylistEntry implements Parcelable {
     static final String COLUMN_PLAYLIST_API = "playlist_api";
     static final String COLUMN_PLAYLIST_ID = "playlist_id";
     static final String COLUMN_POS = "pos";
@@ -43,12 +48,10 @@ public class PlaylistEntry {
 
     @NonNull
     @ColumnInfo(name = COLUMN_PLAYLIST_API)
-    public
-    String playlist_api;
+    public String playlist_api;
     @NonNull
     @ColumnInfo(name = COLUMN_PLAYLIST_ID)
-    public
-    String playlist_id;
+    public String playlist_id;
     @NonNull
     @ColumnInfo(name = COLUMN_API)
     public String api;
@@ -57,12 +60,30 @@ public class PlaylistEntry {
     public String id;
     @NonNull
     @ColumnInfo(name = COLUMN_POS)
+    public
     long pos;
 
+    PlaylistEntry() {}
 
-    public static PlaylistEntry from(PlaylistID playlistID, EntryID entryID) {
-        return from(playlistID, entryID, 1);
+    protected PlaylistEntry(Parcel in) {
+        playlist_api = in.readString();
+        playlist_id = in.readString();
+        api = in.readString();
+        id = in.readString();
+        pos = in.readLong();
     }
+
+    public static final Creator<PlaylistEntry> CREATOR = new Creator<PlaylistEntry>() {
+        @Override
+        public PlaylistEntry createFromParcel(Parcel in) {
+            return new PlaylistEntry(in);
+        }
+
+        @Override
+        public PlaylistEntry[] newArray(int size) {
+            return new PlaylistEntry[size];
+        }
+    };
 
     public static PlaylistEntry from(PlaylistID playlistID, EntryID entryID, int pos) {
         PlaylistEntry roomPlaylistEntry = new PlaylistEntry();
@@ -72,5 +93,36 @@ public class PlaylistEntry {
         roomPlaylistEntry.id = entryID.id;
         roomPlaylistEntry.pos = pos;
         return roomPlaylistEntry;
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(playlist_api);
+        dest.writeString(playlist_id);
+        dest.writeString(api);
+        dest.writeString(id);
+        dest.writeLong(pos);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        PlaylistEntry entry = (PlaylistEntry) o;
+        return pos == entry.pos &&
+                Objects.equals(playlist_api, entry.playlist_api) &&
+                Objects.equals(playlist_id, entry.playlist_id) &&
+                Objects.equals(api, entry.api) &&
+                Objects.equals(id, entry.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(playlist_api, playlist_id, api, id, pos);
     }
 }

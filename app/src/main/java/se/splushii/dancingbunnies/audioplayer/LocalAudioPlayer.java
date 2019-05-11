@@ -37,14 +37,12 @@ class LocalAudioPlayer implements AudioPlayer {
         playlistPlayers = new LinkedList<>();
         historyPlayers = new LinkedList<>();
         if (initFromStorage) {
-            EntryID entryID = storage.getLocalAudioPlayerCurrentEntry();
+            PlaybackEntry playbackEntry = storage.getLocalAudioPlayerCurrentEntry();
             long lastPos = storage.getLocalAudioPlayerCurrentLastPos();
-            if (entryID != null) {
-                player = new MediaPlayerInstance(new PlaybackEntry(
-                        entryID,
-                        PlaybackEntry.USER_TYPE_QUEUE
-                ), mediaPlayerCallback, musicLibraryService);
+            if (playbackEntry != null) {
+                player = new MediaPlayerInstance(playbackEntry, mediaPlayerCallback);
                 player.seekTo(lastPos);
+                callback.onMetaChanged(playbackEntry.entryID);
             }
             storage.getLocalAudioPlayerQueueEntries()
                     .thenApply(entries -> {
@@ -61,8 +59,7 @@ class LocalAudioPlayer implements AudioPlayer {
                         historyPlayers.addAll(entries.stream().map(entry -> {
                             MediaPlayerInstance instance = new MediaPlayerInstance(
                                     entry,
-                                    mediaPlayerCallback,
-                                    musicLibraryService
+                                    mediaPlayerCallback
                             );
                             instance.release();
                             return instance;
@@ -114,8 +111,7 @@ class LocalAudioPlayer implements AudioPlayer {
         for (PlaybackEntry entry: entries) {
             MediaPlayerInstance playerInstance = new MediaPlayerInstance(
                     entry,
-                    mediaPlayerCallback,
-                    musicLibraryService
+                    mediaPlayerCallback
             );
             musicLibraryService.downloadAudioData(playerInstance.playbackEntry.entryID);
             if (entry.playbackType.equals(PlaybackEntry.USER_TYPE_QUEUE)) {
@@ -212,21 +208,21 @@ class LocalAudioPlayer implements AudioPlayer {
                         PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_QUEUE,
                         0,
                         queuePlayers.stream()
-                                .map(p -> p.playbackEntry.entryID)
+                                .map(p -> p.playbackEntry)
                                 .collect(Collectors.toList())
                 ))
                 .thenCompose(aVoid -> storage.insert(
                         PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_PLAYLIST,
                         0,
                         playlistPlayers.stream()
-                                .map(p -> p.playbackEntry.entryID)
+                                .map(p -> p.playbackEntry)
                                 .collect(Collectors.toList())
                 ))
                 .thenCompose(aVoid -> storage.insert(
                         PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_HISTORY,
                         0,
                         historyPlayers.stream()
-                                .map(p -> p.playbackEntry.entryID)
+                                .map(p -> p.playbackEntry)
                                 .collect(Collectors.toList())
                 ))
                 .thenRun(() -> {
@@ -333,8 +329,7 @@ class LocalAudioPlayer implements AudioPlayer {
             for (PlaybackEntry entry: entries) {
                 MediaPlayerInstance instance = new MediaPlayerInstance(
                         entry,
-                        mediaPlayerCallback,
-                        musicLibraryService
+                        mediaPlayerCallback
                 );
                 musicLibraryService.downloadAudioData(instance.playbackEntry.entryID);
                 playersToQueue.add(instance);

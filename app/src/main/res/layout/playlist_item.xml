@@ -1,34 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/playlist"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:layout_marginTop="4dp"
-    android:layout_marginBottom="4dp"
-    android:layout_marginStart="16dp"
-    android:layout_marginEnd="16dp">
-    <TextView
-        android:id="@+id/playlist_name"
-        android:layout_width="0dp"
+    android:background="@drawable/playlist_entry_drawable">
+    <LinearLayout
+        android:background="?android:selectableItemBackground"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:gravity="center_vertical"
-        android:textColor="@color/bluegrey900"
-        android:fontFamily="sans-serif"
-        android:textSize="16sp"/>
-    <TextView
-        android:id="@+id/playlist_num_entries"
+        android:layout_marginEnd="8dp">
+        <TextView
+            android:id="@+id/playlist_name"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:gravity="center_vertical"
+            android:textColor="@color/primary_text_color"
+            android:fontFamily="sans-serif"
+            android:textSize="14sp" />
+        <ImageView
+            android:id="@+id/playlist_src"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:gravity="center_vertical"
+            android:contentDescription="@string/item_source" />
+    </LinearLayout>
+    <se.splushii.dancingbunnies.ui.TrackItemActionsView
+        android:id="@+id/library_entry_actions"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:textColor="@color/bluegrey900"
-        android:fontFamily="sans-serif"/>
-    <TextView
-        android:id="@+id/playlist_src"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:textColor="@color/grey500"
-        android:fontFamily="sans-serif"/>
-</LinearLayout>
+        android:layout_height="match_parent" />
+</FrameLayout>

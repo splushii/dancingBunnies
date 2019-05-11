@@ -7,7 +7,6 @@ import android.util.Log;
 
 import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.util.Util;
 
 class MediaPlayerInstance {
@@ -33,8 +32,7 @@ class MediaPlayerInstance {
     private long lastSeek = -1;
 
     MediaPlayerInstance(PlaybackEntry playbackEntry,
-                        LocalAudioPlayer.MediaPlayerCallback callback,
-                        MusicLibraryService musicLibraryService) {
+                        LocalAudioPlayer.MediaPlayerCallback callback) {
         reconstruct();
         this.playbackEntry = playbackEntry;
         this.callback = callback;

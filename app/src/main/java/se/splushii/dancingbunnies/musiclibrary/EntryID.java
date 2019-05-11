@@ -12,6 +12,8 @@ import com.google.android.gms.cast.MediaMetadata;
 
 import org.apache.lucene.document.Document;
 
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
+
 public class EntryID implements Parcelable {
     static final String BUNDLE_KEY_SRC = "dancingbunnies.bundle.key.entryid.src";
     static final String BUNDLE_KEY_ID = "dancingbunnies.bundle.key.entryid.id";
@@ -119,6 +121,10 @@ public class EntryID implements Parcelable {
     public static EntryID from(QueueItem queueItem) {
         Bundle b = queueItem.getDescription().getExtras();
         return from(b);
+    }
+
+    public static EntryID from(PlaylistEntry playlistEntry) {
+        return new EntryID(playlistEntry.api, playlistEntry.id, Meta.FIELD_SPECIAL_MEDIA_ID);
     }
 
     public static EntryID from(Bundle b) {

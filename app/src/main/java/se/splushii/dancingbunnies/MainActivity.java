@@ -39,8 +39,10 @@ public final class MainActivity extends AppCompatActivity {
     public static final String INTENT_EXTRA_PAGER_SELECTION = "dancingbunnies.mainactivity.pagerselection";
     public static final String INTENT_EXTRA_FILTER_TYPE = "dancingbunnies.mainactivity.filter_type";
     public static final String INTENT_EXTRA_FILTER_VALUE = "dancingbunnies.mainactivity.filter_value";
-    public static final String SELECTION_ID_NOWPLAYING = "nowplaying_selection_id";
-    public static final String SELECTION_ID_MUSICLIBRARY = "musiclibrary_selection_id";
+    public static final String SELECTION_ID_NOWPLAYING = "dancingbunnies.selection_id.nowplaying";
+    public static final String SELECTION_ID_MUSICLIBRARY = "dancingbunnies.selection_id.musiclibrary";
+    public static final String SELECTION_ID_PLAYLIST = "dancingbunnies.selection_id.playlist";
+    public static final String SELECTION_ID_PLAYLIST_ENTRIES = "dancingbunnies.selection_id.playlist_entries";
 
     private SearchView searchView;
     private ViewPager mViewPager;
@@ -234,6 +236,9 @@ public final class MainActivity extends AppCompatActivity {
                 }
                 if (nowPlayingFragment != null) {
                     nowPlayingFragment.clearSelection();
+                }
+                if (playlistFragment != null) {
+                    playlistFragment.clearSelection();
                 }
             }
         }

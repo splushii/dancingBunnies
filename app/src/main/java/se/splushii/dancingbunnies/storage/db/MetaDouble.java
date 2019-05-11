@@ -40,8 +40,7 @@ public class MetaDouble {
     public String key;
     @NonNull
     @ColumnInfo(name = DB.COLUMN_VALUE)
-    public
-    double value;
+    public double value;
 
     public static MetaDouble from(String api, String id, String key, double value) {
         MetaDouble t = new MetaDouble();

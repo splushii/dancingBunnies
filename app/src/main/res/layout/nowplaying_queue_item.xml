@@ -5,8 +5,11 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/nowplaying_queue_item_drawable">
-    <include layout="@layout/nowplaying_item_content" />
-    <se.splushii.dancingbunnies.ui.ItemActionsView
+    <se.splushii.dancingbunnies.ui.TrackItemView
+        android:id="@+id/nowplaying_item_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+    <se.splushii.dancingbunnies.ui.TrackItemActionsView
         android:id="@+id/nowplaying_item_actions"
         android:layout_width="wrap_content"
         android:layout_height="match_parent" />

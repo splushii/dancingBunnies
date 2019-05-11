@@ -40,8 +40,7 @@ public class MetaLong {
     public String key;
     @NonNull
     @ColumnInfo(name = DB.COLUMN_VALUE)
-    public
-    long value;
+    public long value;
 
     public static MetaLong from(String api, String id, String key, long value) {
         MetaLong t = new MetaLong();

@@ -43,7 +43,7 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.storage.MetaStorage;
-import se.splushii.dancingbunnies.ui.EntryIDDetailsLookup;
+import se.splushii.dancingbunnies.ui.selection.EntryIDItemDetailsLookup;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryFragment extends AudioBrowserFragment {
@@ -169,7 +169,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 false);
 
         RecyclerView recyclerView = rootView.findViewById(R.id.musiclibrary_recyclerview);
-        recyclerView.setHasFixedSize(true);
         LinearLayoutManager recViewLayoutManager =
                 new LinearLayoutManager(this.getContext());
         recyclerView.setLayoutManager(recViewLayoutManager);
@@ -192,7 +191,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 MainActivity.SELECTION_ID_MUSICLIBRARY,
                 recyclerView,
                 new MusicLibraryKeyProvider(recyclerViewAdapter),
-                new EntryIDDetailsLookup(recyclerView),
+                new EntryIDItemDetailsLookup(recyclerView),
                 StorageStrategy.createParcelableStorage(EntryID.class)
         ).withSelectionPredicate(
                 SelectionPredicates.createSelectAnything()
@@ -461,21 +460,15 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             selection.forEach(selectionList::add);
             switch (item.getItemId()) {
                 case R.id.musiclibrary_actionmode_action_play_now:
-                    queue(
-                            selectionList,
-                            0
-                    ).thenAccept(success -> {
-                        if (success) {
-                            next();
-                            play();
-                        }
-                    });
+                    play(selectionList);
                     break;
                 case R.id.musiclibrary_actionmode_action_queue:
                     queue(selectionList, AudioPlayerService.QUEUE_LAST);
                     break;
                 case R.id.musiclibrary_actionmode_action_add_to_playlist:
-                    addToPlaylist(selectionList);
+                    // TODO: Implement
+                    Log.e(LC, "Add to playlist not implemented");
+//                    addToPlaylist(selectionList);
                     break;
                 default:
                     return false;

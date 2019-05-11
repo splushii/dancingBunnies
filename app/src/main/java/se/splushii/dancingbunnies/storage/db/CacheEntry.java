@@ -18,12 +18,10 @@ public class CacheEntry {
 
     @NonNull
     @ColumnInfo(name = COLUMN_API)
-    public
-    String api;
+    public String api;
     @NonNull
     @ColumnInfo(name = COLUMN_ID)
-    public
-    String id;
+    public String id;
 
     public static CacheEntry from(EntryID entryID) {
         CacheEntry cacheEntry = new CacheEntry();

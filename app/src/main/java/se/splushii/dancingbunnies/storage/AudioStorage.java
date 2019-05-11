@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
@@ -29,7 +28,7 @@ public class AudioStorage {
     private static volatile AudioStorage instance;
     private final HashMap<EntryID, AudioDataSource> audioMap;
     private final HashMap<EntryID, List<AudioDataDownloadHandler>> handlerMap;
-    private final MutableLiveData<List<AudioDataFetchState>> fetchState;
+    private final MutableLiveData<HashMap<EntryID,AudioDataFetchState>> fetchStateMapLiveData;
     private final HashMap<EntryID, AudioDataFetchState> fetchStateMap;
     private final CacheDao cacheModel;
 
@@ -44,7 +43,7 @@ public class AudioStorage {
         audioMap = new HashMap<>();
         handlerMap = new HashMap<>();
         fetchStateMap = new HashMap<>();
-        fetchState = new MutableLiveData<>();
+        fetchStateMapLiveData = new MutableLiveData<>();
         cacheModel = DB.getDB(context).cacheModel();
     }
 
@@ -61,12 +60,16 @@ public class AudioStorage {
     }
 
     public synchronized AudioDataSource put(EntryID entryID, AudioDataSource audioDataSource) {
-        fetchStateMap.put(entryID, new AudioDataFetchState(entryID));
+        synchronized (fetchStateMap) {
+            fetchStateMap.put(entryID, new AudioDataFetchState(entryID));
+        }
         return audioMap.put(entryID, audioDataSource);
     }
 
     private synchronized void release(EntryID entryID) {
-        fetchStateMap.remove(entryID);
+        synchronized (fetchStateMap) {
+            fetchStateMap.remove(entryID);
+        }
         audioMap.remove(entryID);
         Log.d(LC, audioMap.keySet().size() + " AudioDataSource entries in memory. "
                 + "Released entryID: " + entryID);
@@ -162,8 +165,8 @@ public class AudioStorage {
         release(entryID);
     }
 
-    public LiveData<List<AudioDataFetchState>> getFetchState() {
-        return fetchState;
+    public LiveData<HashMap<EntryID,AudioDataFetchState>> getFetchState() {
+        return fetchStateMapLiveData;
     }
 
     public LiveData<List<EntryID>> getCachedEntries() {
@@ -261,9 +264,7 @@ public class AudioStorage {
 
     private void updateFetchState() {
         synchronized (fetchStateMap) {
-            fetchState.postValue(fetchStateMap.entrySet().stream()
-                    .map(Map.Entry::getValue).collect(Collectors.toList())
-            );
+            fetchStateMapLiveData.postValue(fetchStateMap);
         }
     }
 }

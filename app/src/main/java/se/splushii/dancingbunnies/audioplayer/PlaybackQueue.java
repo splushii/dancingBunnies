@@ -53,13 +53,7 @@ class PlaybackQueue {
     CompletableFuture<Void> add(int toPosition, List<PlaybackEntry> entries) {
         Log.d(LC, "add(" + toPosition + ", " + entries + ") to \""
                 + PlaybackControllerStorage.getQueueName(queueID) + "\"");
-        return storage.insert(
-                queueID,
-                toPosition,
-                entries.stream()
-                        .map(pe -> pe.entryID)
-                        .collect(Collectors.toList())
-        );
+        return storage.insert(queueID, toPosition, entries);
     }
 
     CompletableFuture<List<PlaybackEntry>> poll(int num) {

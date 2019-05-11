@@ -36,14 +36,16 @@ public class PlaybackControllerStorage {
 
     private final PlaybackControllerEntryDao entryModel;
     private final SharedPreferences preferences;
-    private final String src_key;
-    private final String id_key;
+    private final String current_src_key;
+    private final String current_id_key;
+    private final String current_playback_id_key;
     private final String lastPos_key;
     private final String playlist_src_key;
     private final String playlist_id_key;
     private final String playlist_type_key;
     private final String playlist_name_key;
     private final String playlist_position_key;
+    private final String playback_id_counter;
 
     public PlaybackControllerStorage(Context context) {
         entryModel = DB.getDB(context).playbackControllerEntryModel();
@@ -63,9 +65,11 @@ public class PlaybackControllerStorage {
         playlist_position_key = context.getResources().getString(
                 R.string.pref_key_playbackcontroller_position_name
         );
-        src_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_src);
-        id_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_id);
+        current_src_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_src);
+        current_id_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_id);
+        current_playback_id_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_playback_id);
         lastPos_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_lastpos);
+        playback_id_counter = context.getResources().getString(R.string.pref_key_localaudioplayer_playback_id_counter);
     }
 
     public static String getQueueName(int queueID) {
@@ -115,29 +119,28 @@ public class PlaybackControllerStorage {
         return roomPlaybackControllerEntries.stream().map(entry ->
                 new PlaybackEntry(
                         new EntryID(entry.api, entry.id, Meta.FIELD_SPECIAL_MEDIA_ID),
+                        entry.playbackID,
                         playbackType
                 )
         ).collect(Collectors.toList());
     }
 
-    public CompletableFuture<Void> insert(int queueID, int toPosition, List<EntryID> entries) {
+    public CompletableFuture<Void> insert(int queueID, int toPosition, List<PlaybackEntry> entries) {
         return CompletableFuture.supplyAsync(() -> {
             List<PlaybackControllerEntry> roomEntries = new ArrayList<>();
             int entryPosition = toPosition;
             StringBuilder sb = new StringBuilder();
-            for (EntryID entryID: entries) {
-                sb.append("insert entryID: ").append(entryID)
+            for (PlaybackEntry playbackEntry: entries) {
+                sb.append("insert entryID: ").append(playbackEntry)
                         .append(" pos: ").append(entryPosition)
                         .append("\n");
-                roomEntries.add(PlaybackControllerEntry.from(queueID, entryID, entryPosition++));
+                roomEntries.add(PlaybackControllerEntry.from(queueID, playbackEntry, entryPosition++));
             }
-            int numNewEntries = entries.size();
             Log.d(LC, "insert to " + getQueueName(queueID) + ":\n"
                     + "updatepos from: " + toPosition
-                    + " inc: " + numNewEntries
+                    + " inc: " + roomEntries.size()
                     + "\n" + sb.toString());
-            entryModel._update_pos_before_insert(queueID, toPosition, numNewEntries);
-            entryModel._insert(roomEntries);
+            entryModel.insert(queueID, toPosition, roomEntries);
             return null;
         });
     }
@@ -158,26 +161,31 @@ public class PlaybackControllerStorage {
 
     public void setLocalAudioPlayerCurrent(EntryID entryID, long lastPos) {
         preferences.edit()
-                .putString(src_key, entryID.src)
-                .putString(id_key, entryID.id)
+                .putString(current_src_key, entryID.src)
+                .putString(current_id_key, entryID.id)
                 .putLong(lastPos_key, lastPos)
                 .apply();
     }
 
     public void removeLocalAudioPlayerCurrent() {
         preferences.edit()
-                .remove(src_key)
-                .remove(id_key)
+                .remove(current_src_key)
+                .remove(current_id_key)
                 .apply();
     }
 
-    public EntryID getLocalAudioPlayerCurrentEntry() {
-        String src = preferences.getString(src_key, null);
-        String id = preferences.getString(id_key, null);
-        if (src == null || id == null) {
+    public PlaybackEntry getLocalAudioPlayerCurrentEntry() {
+        String src = preferences.getString(current_src_key, null);
+        String id = preferences.getString(current_id_key, null);
+        String playbackID = preferences.getString(current_playback_id_key, null);
+        if (src == null || id == null || playbackID == null) {
             return null;
         }
-        return new EntryID(src, id, Meta.FIELD_SPECIAL_MEDIA_ID);
+        return new PlaybackEntry(
+                new EntryID(src, id, Meta.FIELD_SPECIAL_MEDIA_ID),
+                Long.parseLong(playbackID),
+                PlaybackEntry.USER_TYPE_QUEUE
+        );
     }
 
     public long getLocalAudioPlayerCurrentLastPos() {
@@ -227,7 +235,7 @@ public class PlaybackControllerStorage {
         String type = preferences.getString(playlist_type_key, null);
         String name = preferences.getString(playlist_name_key, null);
         if (src == null || id == null || type == null) {
-            return PlaylistItem.defaultPlaylist;
+            return null;
         }
         return new PlaylistItem(new PlaylistID(src, id, type), name);
     }
@@ -249,5 +257,15 @@ public class PlaybackControllerStorage {
         preferences.edit()
                 .putLong(playlist_position_key, position)
                 .apply();
+    }
+
+    public long getNextPlaybackID() {
+        long id = preferences.getLong(playback_id_counter, 0);
+        if (!preferences.edit()
+                .putLong(playback_id_counter, id + 1)
+                .commit()) {
+            throw new RuntimeException("Could not update playback ID");
+        }
+        return id;
     }
 }

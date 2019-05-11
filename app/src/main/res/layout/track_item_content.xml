@@ -14,7 +14,7 @@
         android:layout_marginEnd="16dp"
         android:layout_weight="1">
         <TextView
-            android:id="@+id/nowplaying_item_title"
+            android:id="@+id/track_item_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
@@ -22,30 +22,42 @@
             android:fontFamily="sans-serif"
             android:textSize="16sp"/>
         <TextView
-            android:id="@+id/nowplaying_item_artist"
+            android:id="@+id/track_item_artist"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="@color/secondary_text_color"/>
     </LinearLayout>
-    <TextView
-        android:id="@+id/nowplaying_item_preload_status"
+    <ImageView
+        android:id="@+id/track_item_preload_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="4dp"
         android:layout_gravity="center_vertical"
-        android:textColor="@color/secondary_text_color"/>
+        android:background="@drawable/ic_hot_tub_black_50alpha_24dp"
+        android:contentDescription="@string/preload_status"
+        android:visibility="gone"/>
     <TextView
-        android:id="@+id/nowplaying_item_source"
+        android:id="@+id/track_item_cache_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="4dp"
         android:layout_gravity="center_vertical"
-        android:textColor="@color/secondary_text_color"/>
-    <TextView
-        android:id="@+id/nowplaying_item_cache_status"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:textColor="@color/secondary_text_color"
+        android:visibility="gone"/>
+    <ImageView
+        android:id="@+id/track_item_cached"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="4dp"
+        android:layout_gravity="center_vertical"
+        android:background="@drawable/ic_offline_pin_black_50alpha_24dp"
+        android:contentDescription="@string/cached"
+        android:visibility="gone"/>
+    <ImageView
+        android:id="@+id/track_item_source"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
         android:layout_marginEnd="8dp"
         android:layout_gravity="center_vertical"
-        android:textColor="@color/secondary_text_color"/>
+        android:contentDescription="@string/item_source" />
 </LinearLayout>

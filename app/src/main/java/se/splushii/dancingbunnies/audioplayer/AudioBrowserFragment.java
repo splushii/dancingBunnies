@@ -16,13 +16,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 import androidx.fragment.app.Fragment;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
+import se.splushii.dancingbunnies.ui.nowplaying.QueueEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 public abstract class AudioBrowserFragment extends Fragment {
@@ -62,10 +60,18 @@ public abstract class AudioBrowserFragment extends Fragment {
         }
     }
 
-    protected List<PlaybackEntry> getQueue() {
-        return mediaController.getQueue().stream()
-                .map(queueItem -> new PlaybackEntry(queueItem.getDescription()))
-                .collect(Collectors.toList());
+    protected List<QueueEntry> getQueue() {
+        List<MediaSessionCompat.QueueItem> queueItems = mediaController.getQueue();
+        List<QueueEntry> queueEntries = new ArrayList<>();
+        for (int i = 0; i < queueItems.size(); i++) {
+            MediaSessionCompat.QueueItem queueItem = queueItems.get(i);
+            queueEntries.add(new QueueEntry(
+                    new PlaybackEntry(queueItem.getDescription()),
+                    queueItem.getQueueId(),
+                    i
+            ));
+        }
+        return queueEntries;
     }
 
     public void play() {
@@ -76,11 +82,21 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.getTransportControls().playFromMediaId(entryID.id, entryID.toBundle());
     }
 
+    public CompletableFuture<Void> play(List<EntryID> selectionList) {
+        return queue(selectionList, 0)
+                .thenAccept(success -> {
+                    if (success) {
+                        next();
+                        play();
+                    }
+                });
+    }
+
     public void queue(EntryID entryID) {
         mediaController.addQueueItem(entryID.toMediaDescriptionCompat());
     }
 
-    protected CompletableFuture<Boolean> queue(List<EntryID> entryIDs, int toPosition) {
+    public CompletableFuture<Boolean> queue(List<EntryID> entryIDs, int toPosition) {
         return AudioPlayerService.queue(
                 mediaController,
                 entryIDs,
@@ -100,7 +116,7 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.removeQueueItem(mediaDescription);
     }
 
-    protected void dequeue(List<Long> positionList) {
+    public void dequeue(List<Long> positionList) {
         AudioPlayerService.dequeue(
                 mediaController,
                 positionList
@@ -124,28 +140,6 @@ public abstract class AudioBrowserFragment extends Fragment {
         });
     }
 
-    public void addToPlaylist(List<EntryID> entryIDs) {
-        AudioPlayerService.addToPlaylist(
-                mediaController,
-                entryIDs
-        ).thenAccept(success -> {
-            if (!success) {
-                Log.e(LC, "addToPlaylist failed");
-            }
-        });
-    }
-
-    // TODO: Rewrite other commands in the same spirit as removeFromPlaylist
-    public void removeFromPlaylist(PlaylistID playlistID, int position) {
-        AudioPlayerService.removeFromPlaylist(mediaController, playlistID, position).thenAccept(
-                success -> {
-                    if (!success) {
-                        Log.e(LC, "removeFromPlaylist failed");
-                    }
-                }
-        );
-    }
-
     protected CompletableFuture<Optional<PlaylistItem>> getCurrentPlaylist() {
         CompletableFuture<Optional<PlaylistItem>> future = new CompletableFuture<>();
         mediaController.sendCommand(AudioPlayerService.COMMAND_GET_CURRENT_PLAYLIST, null,
@@ -158,77 +152,10 @@ public abstract class AudioBrowserFragment extends Fragment {
                             return;
                         }
                         PlaylistItem playlistItem = AudioPlayerService.getPlaylist(resultData);
-                        future.complete(Optional.of(playlistItem));
+                        future.complete(playlistItem == null ?
+                                Optional.empty() : Optional.of(playlistItem));
                     }
                 });
-        return future;
-    }
-
-    protected CompletableFuture<Optional<List<PlaylistItem>>> getPlaylists() {
-        CompletableFuture<Optional<List<PlaylistItem>>> future = new CompletableFuture<>();
-        mediaController.sendCommand(AudioPlayerService.COMMAND_GET_PLAYLISTS, null,
-                new ResultReceiver(null) {
-                    @Override
-                    protected void onReceiveResult(int resultCode, Bundle resultData) {
-                        if (resultCode != 0) {
-                            Log.e(LC, "error on COMMAND_GET_PLAYLISTS");
-                            future.complete(Optional.empty());
-                            return;
-                        }
-                        ArrayList<PlaylistItem> playlists =
-                                AudioPlayerService.getPlaylistItems(resultData);
-                        if (playlists == null) {
-                            Log.w(LC, "playlists is null");
-                            future.complete(Optional.empty());
-                            return;
-                        }
-                        future.complete(Optional.of(playlists));
-                    }
-                });
-        return future;
-    }
-
-    protected CompletableFuture<Optional<List<LibraryEntry>>> getPlaylistEntries(PlaylistID playlistID) {
-        CompletableFuture<Optional<List<LibraryEntry>>> future = new CompletableFuture<>();
-        mediaController.sendCommand(
-                AudioPlayerService.COMMAND_GET_PLAYLIST_ENTRIES,
-                playlistID.toBundle(),
-                new ResultReceiver(null) {
-                    @Override
-                    protected void onReceiveResult(int resultCode, Bundle resultData) {
-                        if (resultCode != 0) {
-                            Log.e(LC, "error on COMMAND_GET_PLAYLIST_ENTRIES");
-                            future.complete(Optional.empty());
-                            return;
-                        }
-                        ArrayList<LibraryEntry> entries =
-                                AudioPlayerService.getPlaylistEntries(resultData);
-                        future.complete(Optional.of(entries));
-                    }
-                }
-        );
-        return future;
-    }
-
-    protected CompletableFuture<Optional<List<PlaybackEntry>>> getPlaylistNext(int maxEntries) {
-        CompletableFuture<Optional<List<PlaybackEntry>>> future = new CompletableFuture<>();
-        Bundle params = new Bundle();
-        params.putInt("MAX_ENTRIES", maxEntries);
-        mediaController.sendCommand(
-                AudioPlayerService.COMMAND_GET_PLAYLIST_NEXT, params,
-                new ResultReceiver(null) {
-                    @Override
-                    protected void onReceiveResult(int resultCode, Bundle resultData) {
-                        if (resultCode != 0) {
-                            future.complete(Optional.empty());
-                            return;
-                        }
-                        List<PlaybackEntry> playbackEntries =
-                                AudioPlayerService.getPlaybackEntryList(resultData);
-                        future.complete(Optional.of(playbackEntries));
-                    }
-                }
-        );
         return future;
     }
 

@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies.ui;
+package se.splushii.dancingbunnies.ui.selection;
 
 import android.view.MotionEvent;
 import android.view.View;
@@ -10,10 +10,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.ui.musiclibrary.MusicLibraryAdapter;
 
-public class EntryIDDetailsLookup extends ItemDetailsLookup<EntryID> {
+public class EntryIDItemDetailsLookup extends ItemDetailsLookup<EntryID> {
     private final RecyclerView recyclerView;
 
-    public EntryIDDetailsLookup(RecyclerView recyclerView) {
+    public EntryIDItemDetailsLookup(RecyclerView recyclerView) {
         this.recyclerView = recyclerView;
     }
 

@@ -1,18 +1,18 @@
 package se.splushii.dancingbunnies.ui.musiclibrary;
 
 import android.support.v4.media.MediaBrowserCompat;
-import android.util.Pair;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.util.Pair;
 import androidx.recyclerview.selection.ItemDetailsLookup;
 import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -23,8 +23,8 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.storage.MetaStorage;
-import se.splushii.dancingbunnies.ui.ItemActionsView;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
+import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapter.SongViewHolder> {
@@ -34,7 +34,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     private final FastScrollerBubble fastScrollerBubble;
     private SongViewHolder currentFastScrollerHolder;
     private List<MediaBrowserCompat.MediaItem> dataset;
-    private ItemActionsView selectedActionView;
+    private TrackItemActionsView selectedActionView;
     private SelectionTracker<EntryID> selectionTracker;
 
     MusicLibraryAdapter(MusicLibraryFragment fragment,
@@ -92,7 +92,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         private final TextView libraryEntryTitle;
         private final TextView libraryEntryArtist;
         private final TextView libraryEntryAlbum;
-        private final ItemActionsView actionsView;
+        private final TrackItemActionsView actionsView;
         private EntryID entryId;
         public Meta meta;
 
@@ -220,7 +220,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         holder.actionsView.setOnPlayListener(() -> fragment.play(entryID));
         holder.actionsView.setOnQueueListener(() -> fragment.queue(entryID));
         holder.actionsView.setOnAddToPlaylistListener(() ->
-                fragment.addToPlaylist(Collections.singletonList(entryID))
+                // TODO: Implement. Dialog with applicable playlists?
+                Log.e(LC, "Not implemented")
         );
         holder.actionsView.setOnInfoListener(() ->
                 MetaDialogFragment.showMeta(fragment, holder.meta)
@@ -235,14 +236,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
 
     Pair<Integer, Integer> getCurrentPosition() {
         RecyclerView rv = fragment.getView().findViewById(R.id.musiclibrary_recyclerview);
-        LinearLayoutManager llm = (LinearLayoutManager) rv.getLayoutManager();
-        int hPos = llm.findFirstCompletelyVisibleItemPosition();
-        View v = llm.getChildAt(0);
-        int hPad = v == null ? 0 : v.getTop() - llm.getPaddingTop();
-        if (hPad < 0 && hPos > 0) {
-            hPos--;
-        }
-        return new Pair<>(hPos, hPad);
+        return Util.getRecyclerViewPosition(rv);
     }
 
     @Override

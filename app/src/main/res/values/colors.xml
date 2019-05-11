@@ -10,6 +10,7 @@
     <color name="colorSecondaryText">@color/grey500</color>
     <color name="colorSecondaryTextSelected">@color/colorAccentLight</color>
     <color name="white">@android:color/white</color>
+    <color name="overlayBackground">@color/grey100</color>
     <color name="grey100">#F5F5F5</color>
     <color name="grey50">#FAFAFA</color>
     <color name="grey">#EEEEEE</color>

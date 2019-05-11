@@ -1,11 +1,23 @@
 package se.splushii.dancingbunnies.ui.playlist;
 
+import android.content.Context;
+
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 
 import androidx.core.util.Pair;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.storage.AudioStorage;
+import se.splushii.dancingbunnies.storage.PlaylistStorage;
+import se.splushii.dancingbunnies.storage.db.Playlist;
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 
 class PlaylistFragmentModel extends ViewModel {
 
@@ -16,7 +28,7 @@ class PlaylistFragmentModel extends ViewModel {
         return new PlaylistUserState(0, 0);
     }
 
-    MutableLiveData<PlaylistUserState> getUserState() {
+    private synchronized MutableLiveData<PlaylistUserState> getMutableUserState() {
         if (userState == null) {
             userState = new MutableLiveData<>();
             userState.setValue(initialUserState());
@@ -24,8 +36,12 @@ class PlaylistFragmentModel extends ViewModel {
         return userState;
     }
 
+    LiveData<PlaylistUserState> getUserState() {
+        return getMutableUserState();
+    }
+
     private void updateUserState(int pos, int pad) {
-        getUserState().setValue(new PlaylistUserState(getUserState().getValue(), pos, pad));
+        getMutableUserState().setValue(new PlaylistUserState(getUserState().getValue(), pos, pad));
     }
 
     void updateUserState(Pair<Integer,Integer> currentPosition) {
@@ -50,13 +66,36 @@ class PlaylistFragmentModel extends ViewModel {
 
     boolean popBackStack() {
         if (getBackStack().size() > 0) {
-            getUserState().setValue(getBackStack().pop());
+            getMutableUserState().setValue(getBackStack().pop());
             return true;
         }
         return false;
     }
 
     void browsePlaylist(PlaylistID playlistID) {
-        getUserState().setValue(new PlaylistUserState(playlistID, 0, 0));
+        getMutableUserState().setValue(new PlaylistUserState(playlistID, 0, 0));
+    }
+
+    LiveData<List<Playlist>> getPlaylists(Context context) {
+        return PlaylistStorage.getInstance(context).getPlaylists();
+    }
+
+    LiveData<Playlist> getPlaylist(Context context, PlaylistID playlistID) {
+        return PlaylistStorage.getInstance(context).getPlaylist(playlistID);
+    }
+
+    LiveData<List<PlaylistEntry>> getPlaylistEntries(PlaylistID playlistID, Context context) {
+        return PlaylistStorage.getInstance(context).getPlaylistEntries(playlistID);
+    }
+
+    LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> getFetchState(Context context) {
+        return AudioStorage.getInstance(context).getFetchState();
+    }
+
+    LiveData<HashSet<EntryID>> getCachedEntries(Context context) {
+        return Transformations.map(
+                AudioStorage.getInstance(context).getCachedEntries(),
+                HashSet::new
+        );
     }
 }

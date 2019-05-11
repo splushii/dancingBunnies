@@ -30,6 +30,7 @@ import se.splushii.dancingbunnies.util.Util;
 
 public class CastAudioPlayer implements AudioPlayer {
     private static final String LC = Util.getLogContext(CastAudioPlayer.class);
+    public static final String CASTMETA_KEY_PLAYBACK_ID = "dancingbunnies.castmeta.PLAYBACK_ID";
     public static final String CASTMETA_KEY_PLAYBACK_TYPE = "dancingbunnies.castmeta.PLAYBACK_TYPE";
 
     private final MusicLibraryService musicLibraryService;
@@ -232,7 +233,7 @@ public class CastAudioPlayer implements AudioPlayer {
             }
             MediaQueueItem mediaQueueItem = queueItemMap.get(itemId);
             PlaybackEntry playbackEntry = mediaQueueItem == null ?
-                    new PlaybackEntry(EntryID.UNKOWN, PlaybackEntry.USER_TYPE_EXTERNAL) :
+                    new PlaybackEntry(EntryID.UNKOWN, -1, PlaybackEntry.USER_TYPE_EXTERNAL) :
                     new PlaybackEntry(mediaQueueItem.getMedia().getMetadata());
             playbackEntry.setPreloaded(true);
             entries.add(playbackEntry);
@@ -507,6 +508,8 @@ public class CastAudioPlayer implements AudioPlayer {
             );
             String itemString = queueItem == null ? "null" :
                     queueItem.getMedia().getMetadata().getString(MediaMetadata.KEY_TITLE);
+            String playbackID = queueItem == null ? "?" :
+                    queueItem.getMedia().getMetadata().getString(CASTMETA_KEY_PLAYBACK_ID);
             String type = queueItem == null ? "?" :
                     queueItem.getMedia().getMetadata().getString(CASTMETA_KEY_PLAYBACK_TYPE);
             if (itemId == currentItemId) {
@@ -514,6 +517,8 @@ public class CastAudioPlayer implements AudioPlayer {
             }
             sb
                     .append(type)
+                    .append(".")
+                    .append(playbackID)
                     .append("[")
                     .append(itemIndex)
                     .append("] ")
@@ -597,6 +602,7 @@ public class CastAudioPlayer implements AudioPlayer {
             return null;
         }
         MediaMetadata castMeta = meta.toCastMediaMetadata();
+        castMeta.putString(CASTMETA_KEY_PLAYBACK_ID, Long.toString(playbackEntry.playbackID));
         castMeta.putString(CASTMETA_KEY_PLAYBACK_TYPE, playbackEntry.playbackType);
         long duration = meta.getFirstLong(Meta.FIELD_DURATION, 0);
         String contentType = meta.getFirstString(Meta.FIELD_CONTENT_TYPE);

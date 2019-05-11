@@ -1,12 +1,12 @@
 package se.splushii.dancingbunnies.ui.musiclibrary;
 
 import android.support.v4.media.MediaBrowserCompat;
-import android.util.Pair;
 
 import java.util.LinkedList;
 import java.util.List;
 
 import androidx.annotation.NonNull;
+import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;

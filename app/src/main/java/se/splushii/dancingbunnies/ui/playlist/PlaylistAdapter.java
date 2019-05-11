@@ -1,9 +1,11 @@
 package se.splushii.dancingbunnies.ui.playlist;
 
 import android.util.Log;
+import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.LinkedList;
@@ -11,174 +13,199 @@ import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.core.util.Pair;
-import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.selection.Selection;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
+import se.splushii.dancingbunnies.storage.PlaylistStorage;
+import se.splushii.dancingbunnies.storage.db.Playlist;
+import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
+import se.splushii.dancingbunnies.ui.selection.SelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
-class PlaylistAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
-    private static final String LC = Util.getLogContext(PlaylistAdapter.class);
-    private static final int VIEWTYPE_PLAYLIST = 0;
-    private static final int VIEWTYPE_PLAYLIST_ENTRIES = 1;
+import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.PLAYLIST_DELETE;
 
-    private List<PlaylistItem> playlistDataset;
-    private List<LibraryEntry> playlistEntriesDataset;
+class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, PlaylistAdapter.PlaylistHolder> {
+    private static final String LC = Util.getLogContext(PlaylistAdapter.class);
 
     private final PlaylistFragment fragment;
-    private PlaylistID playlistID;
+    private final PlaylistStorage playlistStorage;
+    private PlaylistFragmentModel model;
+
+    private List<Playlist> playlistDataset;
 
     PlaylistAdapter(PlaylistFragment playlistFragment) {
-        playlistID = null;
         playlistDataset = new LinkedList<>();
-        playlistEntriesDataset = new LinkedList<>();
         fragment = playlistFragment;
-    }
-
-    static class PlaylistHolder extends RecyclerView.ViewHolder {
-        private final View entry;
-        private final TextView name;
-        private final TextView numEntries;
-        private final TextView src;
-
-        PlaylistHolder(View v) {
-            super(v);
-            entry = v.findViewById(R.id.playlist);
-            name = v.findViewById(R.id.playlist_name);
-            src = v.findViewById(R.id.playlist_src);
-            numEntries = v.findViewById(R.id.playlist_num_entries);
-        }
-    }
-
-    static class PlaylistEntryHolder extends RecyclerView.ViewHolder {
-        private final View entry;
-        private final TextView name;
-        private final TextView src;
-        private final View moreActions;
-        private final View deleteAction;
-
-        PlaylistEntryHolder(View v) {
-            super(v);
-            entry = v.findViewById(R.id.playlist_entry);
-            name = v.findViewById(R.id.playlist_entry_name);
-            src = v.findViewById(R.id.playlist_entry_src);
-            moreActions = v.findViewById(R.id.playlist_entry_more_actions);
-            deleteAction = v.findViewById(R.id.playlist_entry_action_remove);
-        }
+        playlistStorage = PlaylistStorage.getInstance(fragment.getContext());
     }
 
     @Override
-    public int getItemViewType(int position) {
-        return playlistID == null ? VIEWTYPE_PLAYLIST : VIEWTYPE_PLAYLIST_ENTRIES;
+    protected void moveItemInDataset(int from, int to) {
+        playlistDataset.add(to, playlistDataset.remove(from));
     }
 
-    @NonNull
     @Override
-    public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
-        switch (viewType) {
+    protected void addItemToDataset(int pos, Playlist item) {
+        playlistDataset.add(pos, item);
+    }
+
+    @Override
+    protected void removeItemFromDataset(int pos) {
+        playlistDataset.remove(pos);
+    }
+
+    @Override
+    protected void onSelectionChanged() {}
+
+    @Override
+    protected Playlist getKey(int pos) {
+        return playlistDataset.get(pos);
+    }
+
+    @Override
+    protected int getPosition(@NonNull Playlist playlist) {
+        int index = playlistDataset.indexOf(playlist);
+        return index < 0 ? RecyclerView.NO_POSITION : index;
+    }
+
+    @Override
+    public void onSelectionDrop(List<Playlist> selection, int lastDragPos) {
+        playlistStorage.movePlaylists(selection, lastDragPos);
+    }
+
+    @Override
+    public void onUseViewHolderForDrag(PlaylistHolder dragViewHolder, List<Playlist> selection) {
+        dragViewHolder.nameTextView.setText(selection.size() + " selected");
+        dragViewHolder.srcImageView.setBackgroundResource(0);
+    }
+
+    @Override
+    public void onResetDragViewHolder(PlaylistHolder dragViewHolder) {
+        dragViewHolder.nameTextView.setText(dragViewHolder.name);
+        dragViewHolder.srcImageView.setBackgroundResource(dragViewHolder.srcResourceID);
+    }
+
+    @Override
+    public boolean onActionItemClicked(int menuItemID, List<Playlist> selectionList) {
+        switch (menuItemID) {
+            // TODO: Add support in RecyclerViewActionModeSelectionTracker to specify when
+            // TODO: certain actions are supported depending on currently selected items.
+            case R.id.playlist_actionmode_action_delete:
+                playlistStorage.deletePlaylists(selectionList);
+                return true;
             default:
-            case VIEWTYPE_PLAYLIST:
-                return new PlaylistHolder(layoutInflater.inflate(
-                        R.layout.playlist_item, parent, false
-                ));
-            case VIEWTYPE_PLAYLIST_ENTRIES:
-                return new PlaylistEntryHolder(layoutInflater.inflate(
-                        R.layout.playlist_entry_item, parent, false
-                ));
+                return false;
         }
+    }
+
+    private void updateActionModeView(ActionMode actionMode, Selection<Playlist> selection) {
+        actionMode.setTitle(selection.size() + " entries");
+        boolean showDelete = true;
+        for (Playlist playlist: selection) {
+            if (!MusicLibraryService.checkAPISupport(playlist.api, PLAYLIST_DELETE)) {
+                showDelete = false;
+            }
+        }
+        actionMode.getMenu().findItem(R.id.playlist_actionmode_action_delete)
+                .setVisible(showDelete);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-        switch (getItemViewType(position)) {
-            default:
-            case VIEWTYPE_PLAYLIST:
-                onBindPlaylistHolder((PlaylistHolder) holder, position);
-                break;
-            case VIEWTYPE_PLAYLIST_ENTRIES:
-                onBindPlaylistEntryHolder((PlaylistEntryHolder) holder, position);
-        }
+    public void onActionModeStarted(ActionMode actionMode, Selection<Playlist> selection) {
+        updateActionModeView(actionMode, selection);
     }
 
-    private void onBindPlaylistEntryHolder(PlaylistEntryHolder holder, int position) {
-        holder.entry.setOnClickListener(view -> {
-            LibraryEntry item = playlistEntriesDataset.get(position);
-            // TODO: Handle clicking entryID
-            holder.moreActions.setVisibility(holder.moreActions.getVisibility() == View.VISIBLE ?
-                    View.GONE : View.VISIBLE
-            );
-        });
-        if (playlistID.src.equals(MusicLibraryService.API_ID_DANCINGBUNNIES)
-                && playlistID.type.equals(PlaylistID.TYPE_STUPID)) {
-            holder.deleteAction.setOnClickListener(v ->
-                    fragment.removeFromPlaylist(playlistID, position)
-            );
-            holder.deleteAction.setVisibility(View.VISIBLE);
-        } else {
-             holder.deleteAction.setVisibility(View.GONE);
-        }
-        String name = playlistEntriesDataset.get(position).name();
-        String src = playlistEntriesDataset.get(position).src();
-        holder.entry.setOnLongClickListener(view -> {
-            Log.d(LC, "onLongClick on " + name);
-            return true;
-        });
-        holder.name.setText(name);
-        holder.src.setText(src);
+    @Override
+    public void onActionModeSelectionChanged(ActionMode actionMode, Selection<Playlist> selection) {
+        updateActionModeView(actionMode, selection);
     }
 
-    private void onBindPlaylistHolder(PlaylistHolder holder, int position) {
-        holder.entry.setOnClickListener(view ->
-                fragment.browsePlaylist(playlistDataset.get(position).playlistID)
-        );
-        String name = playlistDataset.get(position).name;
-        String src = playlistDataset.get(position).playlistID.src;
-        holder.entry.setOnLongClickListener(view -> {
-            Log.d(LC, "onLongClick on " + name);
-            return true;
-        });
-        holder.name.setText(name);
-        holder.src.setText(src);
-    }
+    @Override
+    public void onActionModeEnding(ActionMode actionMode) {}
 
-    PlaylistItem getPlaylistItemData(int position) {
-        return playlistDataset.get(position);
-    }
-
-    public LibraryEntry getPlaylistEntryItemData(int position) {
-        return playlistEntriesDataset.get(position);
+    @Override
+    public boolean onDragInitiated(Selection<Playlist> selection) {
+        return true;
     }
 
     @Override
     public int getItemCount() {
-        return playlistID == null ? playlistDataset.size() : playlistEntriesDataset.size();
+        return playlistDataset.size();
     }
 
-    void setPlaylistDataSet(List<PlaylistItem> playlists) {
-        playlistID = null;
+    private void setDataSet(List<Playlist> playlists) {
+        Log.d(LC, "playlists: " + playlists);
         playlistDataset = playlists;
         notifyDataSetChanged();
     }
 
-    void setPlaylistEntriesDataSet(PlaylistID id, List<LibraryEntry> entries) {
-        playlistID = id;
-        playlistEntriesDataset = entries;
-        notifyDataSetChanged();
+    void setModel(PlaylistFragmentModel model) {
+        this.model = model;
+        model.getPlaylists(fragment.getContext())
+                .observe(fragment.getViewLifecycleOwner(), this::setDataSet);
     }
 
-    Pair<Integer, Integer> getCurrentPosition() {
-        RecyclerView rv = fragment.getView().findViewById(R.id.playlist_recyclerview);
-        LinearLayoutManager llm = (LinearLayoutManager) rv.getLayoutManager();
-        int hPos = llm.findFirstCompletelyVisibleItemPosition();
-        View v = llm.getChildAt(0);
-        int hPad = v == null ? 0 : v.getTop() - llm.getPaddingTop();
-        if (hPad < 0 && hPos > 0) {
-            hPos--;
+    class PlaylistHolder extends ItemDetailsViewHolder<Playlist> {
+        private final View entry;
+        private String name = "";
+        final TextView nameTextView;
+        private int srcResourceID = 0;
+        final ImageView srcImageView;
+
+        PlaylistHolder(View v) {
+            super(v);
+            entry = v.findViewById(R.id.playlist);
+            nameTextView = v.findViewById(R.id.playlist_name);
+            srcImageView = v.findViewById(R.id.playlist_src);
         }
-        return new Pair<>(hPos, hPad);
+
+        @Override
+        protected int getPositionOf() {
+            return getAdapterPosition();
+        }
+
+        @Override
+        protected Playlist getSelectionKeyOf() {
+            return playlistDataset.get(getPositionOf());
+        }
+
+        void setSourceResourceID(int srcResourceID) {
+            this.srcResourceID = srcResourceID;
+            srcImageView.setBackgroundResource(srcResourceID);
+        }
+
+        public void setName(String name) {
+            this.name = name;
+            nameTextView.setText(name);
+        }
+    }
+
+    @NonNull
+    @Override
+    public PlaylistHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
+        return new PlaylistHolder(layoutInflater.inflate(R.layout.playlist_item, parent, false));
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull PlaylistHolder holder, int position) {
+        holder.entry.setOnClickListener(view -> {
+            PlaylistID playlistID = new PlaylistID(playlistDataset.get(position));
+            Log.d(LC, "browse playlist: " + playlistID);
+            model.addBackStackHistory(getCurrentPosition());
+            model.browsePlaylist(playlistID);
+        });
+        String name = playlistDataset.get(position).name;
+        String src = playlistDataset.get(position).api;
+        holder.setName(name);
+        holder.setSourceResourceID(MusicLibraryService.getAPIIconResource(src));
+        holder.entry.setActivated(isSelected(holder.getKey()));
+    }
+
+    private Pair<Integer, Integer> getCurrentPosition() {
+        RecyclerView rv = fragment.getView().findViewById(R.id.playlist_recyclerview);
+        return Util.getRecyclerViewPosition(rv);
     }
 }
