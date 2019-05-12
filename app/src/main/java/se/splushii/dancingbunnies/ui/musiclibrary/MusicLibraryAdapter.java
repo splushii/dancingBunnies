@@ -205,6 +205,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 && selectionTracker.isSelected(holder.getItemDetails().getSelectionKey());
         holder.libraryEntry.setActivated(selected);
         holder.libraryEntry.setOnClickListener(view -> {
+            if (selectionTracker.hasSelection()) {
+                return;
+            }
             if (browsable) {
                 fragment.browse(entryID);
             } else {

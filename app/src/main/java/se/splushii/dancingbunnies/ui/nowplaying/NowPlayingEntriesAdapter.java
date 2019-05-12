@@ -181,6 +181,9 @@ public class NowPlayingEntriesAdapter extends
             itemContent = v.findViewById(R.id.nowplaying_item_content);
             actionsView = v.findViewById(R.id.nowplaying_item_actions);
             item.setOnClickListener(view -> {
+                if (hasSelection()) {
+                    return;
+                }
                 if (selectedActionView != null && selectedActionView != actionsView) {
                     selectedActionView.animateShow(false);
                 }

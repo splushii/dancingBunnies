@@ -261,6 +261,9 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
             itemContent = v.findViewById(R.id.playlist_entry_content);
             actionsView = v.findViewById(R.id.playlist_entry_actions);
             entry.setOnClickListener(view -> {
+                if (hasSelection()) {
+                    return;
+                }
                 if (selectedActionView != null && selectedActionView != actionsView) {
                     selectedActionView.animateShow(false);
                 }
