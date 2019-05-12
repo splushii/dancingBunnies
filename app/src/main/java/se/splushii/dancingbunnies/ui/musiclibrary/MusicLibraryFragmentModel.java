@@ -6,6 +6,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import androidx.annotation.NonNull;
+import androidx.core.util.Consumer;
 import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
@@ -19,6 +20,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
     private LinkedList<MusicLibraryUserState> backStack;
     private String currentSubscriptionID;
     private MutableLiveData<List<MediaBrowserCompat.MediaItem>> dataset;
+    private Consumer<CharSequence> setSearchQueryListener = s -> {};
 
     private static MusicLibraryUserState initialUserState() {
         MusicLibraryQuery query = new MusicLibraryQuery();
@@ -170,5 +172,13 @@ public class MusicLibraryFragmentModel extends ViewModel {
                 }
         );
         setCurrentSubscriptionID(currentSubscriptionID);
+    }
+
+    public void setSearchQueryClickedListener(Consumer<CharSequence> listener) {
+        setSearchQueryListener = listener;
+    }
+
+    void searchQueryClicked(CharSequence query) {
+        setSearchQueryListener.accept(query);
     }
 }

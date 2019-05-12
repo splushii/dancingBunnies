@@ -46,6 +46,9 @@ import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.ui.selection.EntryIDItemDetailsLookup;
 import se.splushii.dancingbunnies.util.Util;
 
+import static android.view.View.GONE;
+import static android.view.View.VISIBLE;
+
 public class MusicLibraryFragment extends AudioBrowserFragment {
     private static final String LC = Util.getLogContext(MusicLibraryFragment.class);
 
@@ -56,8 +59,10 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private FastScroller fastScroller;
     private FastScrollerBubble fastScrollerBubble;
 
-    private View searchInfo;
+    private View searchView;
     private TextView searchText;
+
+    private View filterView;
 
     private ChipGroup filterChips;
 
@@ -79,7 +84,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         Log.d(LC, "onActivityCreated");
         super.onActivityCreated(savedInstanceState);
-        model = ViewModelProviders.of(getActivity()).get(MusicLibraryFragmentModel.class);
+        model = ViewModelProviders.of(requireActivity()).get(MusicLibraryFragmentModel.class);
         model.getUserState().observe(getViewLifecycleOwner(), state -> {
             refreshView(state);
             model.query(mediaBrowser);
@@ -103,16 +108,18 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     }
 
     private void refreshView(final MusicLibraryUserState newUserState) {
+        if (newUserState == null) {
+            return;
+        }
         Log.d(LC, "refreshView");
-        searchInfo.setVisibility(View.GONE);
-        filterEdit.setVisibility(View.GONE);
-        filterNew.setVisibility(View.GONE);
         clearFilterView();
         if (newUserState.query.isSearchQuery()) {
+            filterView.setVisibility(GONE);
             fastScroller.enableBubble(false);
             searchText.setText(newUserState.query.getSearchQuery());
-            searchInfo.setVisibility(View.VISIBLE);
+            searchView.setVisibility(VISIBLE);
         } else {
+            searchView.setVisibility(GONE);
             fastScroller.enableBubble(true);
             Chip chip = new Chip(requireContext());
             chip.setChipIconResource(R.drawable.ic_add_black_24dp);
@@ -120,10 +127,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             chip.setTextEndPadding(0.0f);
             chip.setChipEndPadding(chip.getChipStartPadding());
             chip.setOnClickListener(v -> {
-                filterEdit.setVisibility(View.GONE);
-                filterNew.setVisibility(filterNew.getVisibility() == View.VISIBLE ?
-                        View.GONE : View.VISIBLE
-                );
+                filterEdit.setVisibility(GONE);
+                filterNew.setVisibility(filterNew.getVisibility() == VISIBLE ? GONE : VISIBLE);
             });
             filterChips.addView(chip);
             String showField = newUserState.query.getShowField();
@@ -137,11 +142,12 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 String filterValue = b.getString(metaKey);
                 addFilterToView(metaKey, filterValue);
             }
+            filterView.setVisibility(VISIBLE);
         }
         if (filterChips.getChildCount() > 0) {
-            filterChips.setVisibility(View.VISIBLE);
+            filterChips.setVisibility(VISIBLE);
         } else {
-            filterChips.setVisibility(View.GONE);
+            filterChips.setVisibility(GONE);
         }
     }
 
@@ -168,6 +174,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         final View rootView = inflater.inflate(R.layout.musiclibrary_fragment_layout, container,
                 false);
 
+        searchView = rootView.findViewById(R.id.musiclibrary_search);
+        filterView = rootView.findViewById(R.id.musiclibrary_filter);
         RecyclerView recyclerView = rootView.findViewById(R.id.musiclibrary_recyclerview);
         LinearLayoutManager recViewLayoutManager =
                 new LinearLayoutManager(this.getContext());
@@ -224,11 +232,16 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             selectionTracker.onRestoreInstanceState(savedInstanceState);
         }
 
-        searchInfo = rootView.findViewById(R.id.musiclibrary_search);
         searchText = rootView.findViewById(R.id.musiclibrary_search_query);
+        searchText.setOnClickListener(v -> model.searchQueryClicked(searchText.getText()));
 
-        View homeBtn = rootView.findViewById(R.id.musiclibrary_home);
-        homeBtn.setOnClickListener(v -> {
+        View filterHomeBtn = rootView.findViewById(R.id.musiclibrary_home_filter);
+        View searchHomeBtn = rootView.findViewById(R.id.musiclibrary_home_search);
+        filterHomeBtn.setOnClickListener(v -> {
+            model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
+            model.reset();
+        });
+        searchHomeBtn.setOnClickListener(v -> {
             model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
             model.reset();
         });
@@ -392,13 +405,11 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         newChip.setTextColor(ContextCompat.getColor(requireContext(), R.color.white));
         newChip.setText(text);
         newChip.setOnClickListener(v -> {
-            filterNew.setVisibility(View.GONE);
+            filterNew.setVisibility(GONE);
             String filterEditTypeText = metaKey + ':';
             if (chipHasSameFilter(text, filterEditType.getText().toString(),
                     filterEditInput.getText().toString())) {
-                filterEdit.setVisibility(filterEdit.getVisibility() == View.VISIBLE ?
-                        View.GONE : View.VISIBLE
-                );
+                filterEdit.setVisibility(filterEdit.getVisibility() == VISIBLE ? GONE : VISIBLE);
             } else {
                 filterEditInput.setText(filter);
                 filterEditInput.setOnEditorActionListener((v1, actionId, event) -> {
@@ -416,7 +427,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                     return false;
                 });
                 filterEditType.setText(filterEditTypeText);
-                filterEdit.setVisibility(View.VISIBLE);
+                filterEdit.setVisibility(VISIBLE);
             }
         });
         newChip.setOnCloseIconClickListener(v -> clearFilter(metaKey));

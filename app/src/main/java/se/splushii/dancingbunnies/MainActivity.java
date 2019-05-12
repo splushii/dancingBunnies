@@ -45,6 +45,7 @@ public final class MainActivity extends AppCompatActivity {
     public static final String SELECTION_ID_PLAYLIST_ENTRIES = "dancingbunnies.selection_id.playlist_entries";
 
     private SearchView searchView;
+    private MenuItem searchMenuItem;
     private ViewPager mViewPager;
     private SectionsPagerAdapter mSectionsPagerAdapter;
 
@@ -55,6 +56,11 @@ public final class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity_layout);
         musicLibraryModel = ViewModelProviders.of(this).get(MusicLibraryFragmentModel.class);
+        musicLibraryModel.setSearchQueryClickedListener(s -> {
+            searchMenuItem.expandActionView();
+            searchView.setQuery(s, false);
+            searchView.requestFocus();
+        });
 
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
 
@@ -116,7 +122,7 @@ public final class MainActivity extends AppCompatActivity {
         MenuInflater menuInflater = getMenuInflater();
         menuInflater.inflate(R.menu.main_activity_menu, menu);
         SearchManager searchManager = (SearchManager) getSystemService(SEARCH_SERVICE);
-        MenuItem searchMenuItem = menu.findItem(R.id.action_search);
+        searchMenuItem = menu.findItem(R.id.action_search);
         searchView = (SearchView) searchMenuItem.getActionView();
         searchView.setSearchableInfo(Objects.requireNonNull(searchManager).getSearchableInfo(getComponentName()));
         searchView.setIconifiedByDefault(false);
