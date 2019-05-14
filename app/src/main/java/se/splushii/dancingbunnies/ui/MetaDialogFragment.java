@@ -29,8 +29,7 @@ import se.splushii.dancingbunnies.util.Util;
 public class MetaDialogFragment extends DialogFragment {
     private static final String LC = Util.getLogContext(MetaDialogFragment.class);
 
-    public static final int REQUEST_CODE = 1337;
-    public static final String TAG = "dancingbunnies.splushii.se.meta_dialog_tag";
+    public static final String TAG = "dancingbunnies.splushii.se.fragment_tag.meta_dialog";
 
     private Meta meta = Meta.UNKNOWN_ENTRY;
 
@@ -42,7 +41,7 @@ public class MetaDialogFragment extends DialogFragment {
         }
         ft.addToBackStack(null);
         DialogFragment dialogFragment = new MetaDialogFragment();
-        dialogFragment.setTargetFragment(fragment, MetaDialogFragment.REQUEST_CODE);
+        dialogFragment.setTargetFragment(fragment, MainActivity.REQUEST_CODE_META_DIALOG);
         if (meta != null) {
             dialogFragment.setArguments(meta.toBundle());
         }

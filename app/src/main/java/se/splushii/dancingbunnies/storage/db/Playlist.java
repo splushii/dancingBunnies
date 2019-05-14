@@ -41,8 +41,7 @@ public class Playlist implements Parcelable {
     public String name;
     @NonNull
     @ColumnInfo(name = COLUMN_POS)
-    public
-    long pos;
+    public long pos;
 
     public Playlist() {}
 

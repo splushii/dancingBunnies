@@ -39,6 +39,7 @@ public class NowPlayingEntriesAdapter extends
     NowPlayingEntriesAdapter(NowPlayingFragment fragment) {
         this.fragment = fragment;
         queueEntries = new ArrayList<>();
+        setHasStableIds(true);
     }
 
     void setModel(NowPlayingFragmentModel model) {

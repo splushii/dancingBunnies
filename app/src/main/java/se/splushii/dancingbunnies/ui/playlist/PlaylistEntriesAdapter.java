@@ -50,6 +50,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         fragment = playlistFragment;
         playlistEntriesDataset = new LinkedList<>();
         playlistStorage = PlaylistStorage.getInstance(fragment.getContext());
+        setHasStableIds(true);
     }
 
     @Override
@@ -73,17 +74,17 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
 
     @Override
     public void onSelectionDrop(List<PlaylistEntry> selection, int lastDragPos) {
-        throw new RuntimeException("Not implemented");
+        playlistStorage.movePlaylistEntries(playlistID, selection, lastDragPos);
     }
 
     @Override
     public void onUseViewHolderForDrag(PlaylistEntryHolder dragViewHolder, List<PlaylistEntry> selection) {
-        throw new RuntimeException("Not implemented");
+        dragViewHolder.itemContent.setDragTitle(selection.size() + " entries");
     }
 
     @Override
     public void onResetDragViewHolder(PlaylistEntryHolder dragViewHolder) {
-        throw new RuntimeException("Not implemented");
+        dragViewHolder.itemContent.reset();
     }
 
     @Override
@@ -112,12 +113,10 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
 
     private void updateActionModeView(ActionMode actionMode, Selection<PlaylistEntry> selection) {
         actionMode.setTitle(selection.size() + " entries");
-        boolean showDelete = true;
-        for (PlaylistEntry entry: selection) {
-            if (!MusicLibraryService.checkAPISupport(entry.api, PLAYLIST_ENTRY_DELETE)) {
-                showDelete = false;
-            }
-        }
+        boolean showDelete = MusicLibraryService.checkAPISupport(
+                playlistID.src,
+                PLAYLIST_ENTRY_DELETE
+        );
         actionMode.getMenu().findItem(R.id.playlist_entries_actionmode_action_delete)
                 .setVisible(showDelete);
     }
@@ -137,27 +136,22 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
 
     @Override
     public boolean onDragInitiated(Selection<PlaylistEntry> selection) {
-        for (PlaylistEntry entry: selection) {
-            if (!MusicLibraryService.checkAPISupport(entry.api, PLAYLIST_ENTRY_MOVE)) {
-                return false;
-            }
-        }
-        return true;
+        return MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_MOVE);
     }
 
     @Override
     protected void moveItemInDataset(int from, int to) {
-        throw new RuntimeException("Not implemented");
+        playlistEntriesDataset.add(to, playlistEntriesDataset.remove(from));
     }
 
     @Override
     protected void addItemToDataset(int pos, PlaylistEntry item) {
-        throw new RuntimeException("Not implemented");
+        playlistEntriesDataset.add(pos, item);
     }
 
     @Override
     protected void removeItemFromDataset(int pos) {
-        throw new RuntimeException("Not implemented");
+        playlistEntriesDataset.remove(pos);
     }
 
     @NonNull
@@ -246,6 +240,11 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
                 setDataSet(null, Collections.emptyList());
             }
         });
+    }
+
+    @Override
+    public long getItemId(int position) {
+        return playlistEntriesDataset.get(position).rowId;
     }
 
     public class PlaylistEntryHolder extends ItemDetailsViewHolder<PlaylistEntry> {

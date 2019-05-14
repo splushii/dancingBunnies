@@ -71,4 +71,5 @@
     <string name="item_source">Item source</string>
     <string name="preload_status">Preload status</string>
     <string name="cached">Cached</string>
+    <string name="add_to_playlist">Add to playlist</string>
 </resources>

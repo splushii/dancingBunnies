@@ -34,7 +34,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
@@ -711,36 +710,11 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             cb.send(-1, null);
             return;
         }
-        List<CompletableFuture<List<EntryID>>> futureEntryLists = new ArrayList<>();
         Log.d(LC, "queue() adding " + entryIDs.size() + " entryIDs");
-        for (EntryID entryID: entryIDs) {
-            CompletableFuture<List<EntryID>> songEntries;
-            if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
-                Log.d(LC, "queue() adding: " + entryID.toString());
-                songEntries = CompletableFuture.completedFuture(Collections.singletonList(entryID));
-            } else {
-                Log.d(LC, "queue() adding all entries for: " + entryID.toString());
-                songEntries = musicLibraryService.getSongEntries(entryID);
-            }
-            futureEntryLists.add(songEntries);
-        }
-        CompletableFuture.allOf(futureEntryLists.toArray(new CompletableFuture[0]))
-                .thenComposeAsync(aVoid -> {
-                    List<EntryID> entryIDList = futureEntryLists.stream()
-                            .map(futureEntryList -> {
-                                try {
-                                    return futureEntryList.get();
-                                } catch (ExecutionException e) {
-                                    e.printStackTrace();
-                                } catch (InterruptedException e) {
-                                    e.printStackTrace();
-                                }
-                                return Collections.<EntryID>emptyList();
-                            })
-                            .flatMap(List::stream)
-                            .collect(Collectors.toList());
-                    Log.d(LC, "queue() total song entries: " + entryIDList.size());
-                    return playbackController.queue(entryIDList, toPosition);
+        musicLibraryService.getSongEntries(entryIDs)
+                .thenComposeAsync(songEntryIDs -> {
+                    Log.d(LC, "queue() total song entries: " + songEntryIDs.size());
+                    return playbackController.queue(songEntryIDs, toPosition);
                 }, Util.getMainThreadExecutor())
                 .handle((r, t) -> {
                     handleControllerResult(r, t);

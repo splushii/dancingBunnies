@@ -59,7 +59,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         Log.d(LC, "onActivityCreated");
         super.onActivityCreated(savedInstanceState);
-        model = ViewModelProviders.of(getActivity()).get(PlaylistFragmentModel.class);
+        model = ViewModelProviders.of(requireActivity()).get(PlaylistFragmentModel.class);
         model.getUserState().observe(getViewLifecycleOwner(), this::refreshView);
         playlistRecViewAdapter.setModel(model);
         playlistEntriesRecViewAdapter.setModel(model);
@@ -137,6 +137,12 @@ public class PlaylistFragment extends AudioBrowserFragment {
                 new LinearLayoutManager(this.getContext());
         playlistRecView.setLayoutManager(playlistRecViewLayoutManager);
         playlistRecViewAdapter = new PlaylistAdapter(this);
+        playlistRecViewAdapter.setOnItemClickListener(playlist -> {
+            PlaylistID playlistID = new PlaylistID(playlist);
+            Log.d(LC, "browse playlist: " + playlistID);
+            model.addBackStackHistory(Util.getRecyclerViewPosition(playlistRecView));
+            model.browsePlaylist(playlistID);
+        });
         playlistRecView.setAdapter(playlistRecViewAdapter);
         playlistSelectionTracker = new RecyclerViewActionModeSelectionTracker<>(
                 getActivity(),
@@ -152,7 +158,6 @@ public class PlaylistFragment extends AudioBrowserFragment {
         playlistContentInfo = rootView.findViewById(R.id.playlist_content_info);
         playlistContentInfoName = rootView.findViewById(R.id.playlist_content_info_name);
         playlistEntriesRecView = rootView.findViewById(R.id.playlist_content_entries_recyclerview);
-        playlistEntriesRecView.setHasFixedSize(true);
         LinearLayoutManager playlistEntriesRecViewLayoutManager =
                 new LinearLayoutManager(this.getContext());
         playlistEntriesRecView.setLayoutManager(playlistEntriesRecViewLayoutManager);
@@ -181,7 +186,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         newPlaylistFAB.setOnClickListener(v -> {
             newPlaylistView.setVisibility(View.VISIBLE);
             newPlaylistName.requestFocus();
-            Util.showSoftInput(getActivity(), newPlaylistName);
+            Util.showSoftInput(requireActivity(), newPlaylistName);
             newPlaylistFAB.hide();
         });
         newPlaylistName.setOnEditorActionListener((v, actionId, event) -> {
@@ -203,7 +208,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
                 );
                 newPlaylistName.setText("");
                 newPlaylistName.clearFocus();
-                Util.hideSoftInput(getActivity(), newPlaylistName);
+                Util.hideSoftInput(requireActivity(), newPlaylistName);
                 return true;
             }
             return false;

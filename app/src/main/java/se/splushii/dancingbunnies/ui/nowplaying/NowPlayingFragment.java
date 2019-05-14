@@ -61,13 +61,11 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private TextView sizeText;
     private Meta currentMeta = Meta.UNKNOWN_ENTRY;
 
-    private RecyclerView recView;
     private final NowPlayingEntriesAdapter recViewAdapter;
     private RecyclerViewActionModeSelectionTracker<QueueEntry, NowPlayingEntriesAdapter, NowPlayingEntriesAdapter.ViewHolder> selectionTracker;
 
     public NowPlayingFragment() {
         recViewAdapter = new NowPlayingEntriesAdapter(this);
-        recViewAdapter.setHasStableIds(true);
     }
 
     @Override
@@ -76,7 +74,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         final View rootView = inflater.inflate(R.layout.nowplaying_fragment_layout, container,
                 false);
 
-        recView = rootView.findViewById(R.id.nowplaying_recyclerview);
+        RecyclerView recView = rootView.findViewById(R.id.nowplaying_recyclerview);
         LinearLayoutManager recViewLayoutManager = new LinearLayoutManager(this.getContext());
         recViewLayoutManager.setReverseLayout(true);
         recView.setLayoutManager(recViewLayoutManager);
@@ -196,7 +194,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         refreshView();
     }
 
-    void refreshView() {
+    private void refreshView() {
         if (mediaController == null || !mediaController.isSessionReady()) {
             Log.w(LC, "Media session not ready");
             return;

@@ -10,6 +10,7 @@ import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
+import androidx.room.PrimaryKey;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 
@@ -30,22 +31,33 @@ import static androidx.room.ForeignKey.CASCADE;
         ),
         indices = @Index(value = {
                 PlaylistEntry.COLUMN_PLAYLIST_API,
-                PlaylistEntry.COLUMN_PLAYLIST_ID,
-                PlaylistEntry.COLUMN_POS
-        }, unique = true),
-        primaryKeys = {
-                PlaylistEntry.COLUMN_PLAYLIST_API,
-                PlaylistEntry.COLUMN_PLAYLIST_ID,
-                PlaylistEntry.COLUMN_POS
-        }
+                PlaylistEntry.COLUMN_PLAYLIST_ID
+        })
+// Not possible to constrain the pos because of inserts, because incrementing COLUMN_POS
+// needs to be done in a TEMP table, something not supported in Room as far as I know.
+// See: https://stackoverflow.com/questions/22494148/incrementing-value-in-table-with-unique-key-causes-constraint-error?noredirect=1&lq=1
+//        indices = @Index(value = {
+//                PlaylistEntry.COLUMN_PLAYLIST_API,
+//                PlaylistEntry.COLUMN_PLAYLIST_ID,
+//                PlaylistEntry.COLUMN_POS
+//        }, unique = true),
+//        primaryKeys = {
+//                PlaylistEntry.COLUMN_PLAYLIST_API,
+//                PlaylistEntry.COLUMN_PLAYLIST_ID,
+//                PlaylistEntry.COLUMN_POS
+//        }
 )
 public class PlaylistEntry implements Parcelable {
+    private static final String COLUMN_ROW_ID = "rowid";
     static final String COLUMN_PLAYLIST_API = "playlist_api";
     static final String COLUMN_PLAYLIST_ID = "playlist_id";
     static final String COLUMN_POS = "pos";
     private static final String COLUMN_API = "api";
     private static final String COLUMN_ID = "id";
 
+    @PrimaryKey(autoGenerate = true)
+    @ColumnInfo(name = COLUMN_ROW_ID)
+    public int rowId;
     @NonNull
     @ColumnInfo(name = COLUMN_PLAYLIST_API)
     public String playlist_api;
@@ -60,16 +72,15 @@ public class PlaylistEntry implements Parcelable {
     public String id;
     @NonNull
     @ColumnInfo(name = COLUMN_POS)
-    public
-    long pos;
+    public long pos;
 
     PlaylistEntry() {}
 
     protected PlaylistEntry(Parcel in) {
-        playlist_api = in.readString();
-        playlist_id = in.readString();
-        api = in.readString();
-        id = in.readString();
+        playlist_api = Objects.requireNonNull(in.readString());
+        playlist_id = Objects.requireNonNull(in.readString());
+        api = Objects.requireNonNull(in.readString());
+        id = Objects.requireNonNull(in.readString());
         pos = in.readLong();
     }
 

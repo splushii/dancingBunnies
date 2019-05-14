@@ -85,8 +85,10 @@ public class PlaylistStorage {
         return playlistModel.get(playlistID.src, playlistID.id);
     }
 
-    public void addToPlaylist(PlaylistID playlistID, List<EntryID> entryIDs) {
-        playlistEntryModel.addLast(playlistID, entryIDs);
+    public CompletableFuture<Void> addToPlaylist(PlaylistID playlistID, List<EntryID> entryIDs) {
+        return CompletableFuture.runAsync(() ->
+                playlistEntryModel.addLast(playlistID, entryIDs)
+        );
     }
 
     public CompletableFuture<Void> removeFromPlaylist(PlaylistID playlistID, List<PlaylistEntry> entries) {
@@ -112,5 +114,19 @@ public class PlaylistStorage {
                         pos
                 )
         );
+    }
+
+    public CompletableFuture<Void> movePlaylistEntries(PlaylistID playlistID,
+                                                       List<PlaylistEntry> selection,
+                                                       int pos) {
+        return CompletableFuture.runAsync(() ->
+                playlistEntryModel.move(
+                        playlistID.src,
+                        playlistID.id,
+                        selection.stream()
+                                .map(s -> s.pos)
+                                .collect(Collectors.toList()),
+                        pos
+                ));
     }
 }

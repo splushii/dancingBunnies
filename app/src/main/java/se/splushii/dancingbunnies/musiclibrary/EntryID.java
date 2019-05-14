@@ -12,6 +12,9 @@ import com.google.android.gms.cast.MediaMetadata;
 
 import org.apache.lucene.document.Document;
 
+import java.util.Objects;
+
+import androidx.annotation.NonNull;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 
 public class EntryID implements Parcelable {
@@ -23,20 +26,20 @@ public class EntryID implements Parcelable {
             "dancingbunnies.entryid.UNKNOWN_ID",
             "dancingbunnies.entryid.UNKNOWN_TYPE"
     );
-    public final String src;
-    public final String id;
-    public final String type;
+    @NonNull public final String src;
+    @NonNull public final String id;
+    @NonNull public final String type;
 
-    public EntryID(String src, String id, String type) {
+    public EntryID(@NonNull String src, @NonNull String id, @NonNull String type) {
         this.src = src;
         this.id = id;
         this.type = type;
     }
 
     protected EntryID(Parcel in) {
-        src = in.readString();
-        id = in.readString();
-        type = in.readString();
+        src = Objects.requireNonNull(in.readString());
+        id = Objects.requireNonNull(in.readString());
+        type = Objects.requireNonNull(in.readString());
     }
 
     private static boolean isUnknown(EntryID entryID) {
@@ -128,9 +131,9 @@ public class EntryID implements Parcelable {
     }
 
     public static EntryID from(Bundle b) {
-        String src = b.getString(EntryID.BUNDLE_KEY_SRC);
-        String id = b.getString(EntryID.BUNDLE_KEY_ID);
-        String type = b.getString(EntryID.BUNDLE_KEY_TYPE);
+        String src = Objects.requireNonNull(b.getString(EntryID.BUNDLE_KEY_SRC));
+        String id = Objects.requireNonNull(b.getString(EntryID.BUNDLE_KEY_ID));
+        String type = Objects.requireNonNull(b.getString(EntryID.BUNDLE_KEY_TYPE));
         return new EntryID(src, id, type);
     }
 

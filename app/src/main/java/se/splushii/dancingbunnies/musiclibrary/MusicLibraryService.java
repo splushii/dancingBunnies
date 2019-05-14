@@ -62,6 +62,7 @@ public class MusicLibraryService extends Service {
     public static final String PLAYLIST_DELETE = "playlist_delete";
     public static final String PLAYLIST_ENTRY_DELETE = "playlist_entry_delete";
     public static final String PLAYLIST_ENTRY_MOVE = "playlist_entry_move";
+    public static final String PLAYLIST_ENTRY_ADD = "playlist_entry_add";
     public static boolean checkAPISupport(String src, String action) {
         switch (src) {
             case API_ID_DANCINGBUNNIES:
@@ -72,6 +73,8 @@ public class MusicLibraryService extends Service {
                         return true;
                     case PLAYLIST_DELETE:
                         return true;
+                    case PLAYLIST_ENTRY_ADD:
+                        return true;
                 }
                 return false;
             case API_ID_SUBSONIC:
@@ -81,6 +84,8 @@ public class MusicLibraryService extends Service {
                     case PLAYLIST_ENTRY_MOVE:
                         return false;
                     case PLAYLIST_DELETE:
+                        return false;
+                    case PLAYLIST_ENTRY_ADD:
                         return false;
                 }
                 return false;
@@ -281,8 +286,8 @@ public class MusicLibraryService extends Service {
         return metaStorage.getEntries(showField, sortField, query);
     }
 
-    public CompletableFuture<List<EntryID>> getSongEntries(EntryID entryID) {
-        return metaStorage.getEntries(entryID);
+    public CompletableFuture<List<EntryID>> getSongEntries(List<EntryID> entryIDs) {
+        return metaStorage.getSongEntries(entryIDs);
     }
 
     public List<EntryID> getSearchEntries(String query) {

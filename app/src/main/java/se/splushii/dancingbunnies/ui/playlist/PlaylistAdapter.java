@@ -12,12 +12,12 @@ import java.util.LinkedList;
 import java.util.List;
 
 import androidx.annotation.NonNull;
-import androidx.core.util.Pair;
+import androidx.core.util.Consumer;
+import androidx.fragment.app.Fragment;
 import androidx.recyclerview.selection.Selection;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
@@ -26,18 +26,18 @@ import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.PLAYLIST_DELETE;
 
-class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, PlaylistAdapter.PlaylistHolder> {
+public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, PlaylistAdapter.PlaylistHolder> {
     private static final String LC = Util.getLogContext(PlaylistAdapter.class);
 
-    private final PlaylistFragment fragment;
+    private final Fragment fragment;
     private final PlaylistStorage playlistStorage;
-    private PlaylistFragmentModel model;
 
     private List<Playlist> playlistDataset;
+    private Consumer<Playlist> onItemClickListener = p -> {};
 
-    PlaylistAdapter(PlaylistFragment playlistFragment) {
+    public PlaylistAdapter(Fragment fragment) {
+        this.fragment = fragment;
         playlistDataset = new LinkedList<>();
-        fragment = playlistFragment;
         playlistStorage = PlaylistStorage.getInstance(fragment.getContext());
     }
 
@@ -135,14 +135,13 @@ class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, PlaylistAda
         return playlistDataset.size();
     }
 
-    private void setDataSet(List<Playlist> playlists) {
+    public void setDataSet(List<Playlist> playlists) {
         Log.d(LC, "playlists: " + playlists);
         playlistDataset = playlists;
         notifyDataSetChanged();
     }
 
     void setModel(PlaylistFragmentModel model) {
-        this.model = model;
         model.getPlaylists(fragment.getContext())
                 .observe(fragment.getViewLifecycleOwner(), this::setDataSet);
     }
@@ -189,23 +188,19 @@ class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, PlaylistAda
         return new PlaylistHolder(layoutInflater.inflate(R.layout.playlist_item, parent, false));
     }
 
+    public void setOnItemClickListener(Consumer<Playlist> listener) {
+        onItemClickListener = listener;
+    }
+
     @Override
     public void onBindViewHolder(@NonNull PlaylistHolder holder, int position) {
         holder.entry.setOnClickListener(view -> {
-            PlaylistID playlistID = new PlaylistID(playlistDataset.get(position));
-            Log.d(LC, "browse playlist: " + playlistID);
-            model.addBackStackHistory(getCurrentPosition());
-            model.browsePlaylist(playlistID);
+            onItemClickListener.accept(playlistDataset.get(position));
         });
         String name = playlistDataset.get(position).name;
         String src = playlistDataset.get(position).api;
         holder.setName(name);
         holder.setSourceResourceID(MusicLibraryService.getAPIIconResource(src));
         holder.entry.setActivated(isSelected(holder.getKey()));
-    }
-
-    private Pair<Integer, Integer> getCurrentPosition() {
-        RecyclerView rv = fragment.getView().findViewById(R.id.playlist_recyclerview);
-        return Util.getRecyclerViewPosition(rv);
     }
 }

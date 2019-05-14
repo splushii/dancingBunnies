@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "69f4ae2c478cc71a5f22f93fd81cf0bb",
+    "identityHash": "a7301ca1f9b879bd3ce1ca3afb47b8cf",
     "entities": [
       {
         "tableName": "entry_id",
@@ -330,8 +330,14 @@
       },
       {
         "tableName": "playlist_entries",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`playlist_api` TEXT NOT NULL, `playlist_id` TEXT NOT NULL, `api` TEXT NOT NULL, `id` TEXT NOT NULL, `pos` INTEGER NOT NULL, PRIMARY KEY(`playlist_api`, `playlist_id`, `pos`), FOREIGN KEY(`playlist_api`, `playlist_id`) REFERENCES `playlists`(`api`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowid` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `playlist_api` TEXT NOT NULL, `playlist_id` TEXT NOT NULL, `api` TEXT NOT NULL, `id` TEXT NOT NULL, `pos` INTEGER NOT NULL, FOREIGN KEY(`playlist_api`, `playlist_id`) REFERENCES `playlists`(`api`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
+          {
+            "fieldPath": "rowId",
+            "columnName": "rowid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
           {
             "fieldPath": "playlist_api",
             "columnName": "playlist_api",
@@ -365,22 +371,19 @@
         ],
         "primaryKey": {
           "columnNames": [
-            "playlist_api",
-            "playlist_id",
-            "pos"
+            "rowid"
           ],
-          "autoGenerate": false
+          "autoGenerate": true
         },
         "indices": [
           {
-            "name": "index_playlist_entries_playlist_api_playlist_id_pos",
-            "unique": true,
+            "name": "index_playlist_entries_playlist_api_playlist_id",
+            "unique": false,
             "columnNames": [
               "playlist_api",
-              "playlist_id",
-              "pos"
+              "playlist_id"
             ],
-            "createSql": "CREATE UNIQUE INDEX `index_playlist_entries_playlist_api_playlist_id_pos` ON `${TABLE_NAME}` (`playlist_api`, `playlist_id`, `pos`)"
+            "createSql": "CREATE  INDEX `index_playlist_entries_playlist_api_playlist_id` ON `${TABLE_NAME}` (`playlist_api`, `playlist_id`)"
           }
         ],
         "foreignKeys": [
@@ -452,7 +455,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"69f4ae2c478cc71a5f22f93fd81cf0bb\")"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"a7301ca1f9b879bd3ce1ca3afb47b8cf\")"
     ]
   }
 }

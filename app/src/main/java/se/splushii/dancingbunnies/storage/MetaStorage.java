@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import androidx.lifecycle.LiveData;
@@ -238,7 +239,37 @@ public class MetaStorage {
         );
     }
 
-    public CompletableFuture<List<EntryID>> getEntries(EntryID entryID) {
+    public CompletableFuture<List<EntryID>> getSongEntries(List<EntryID> entryIDs) {
+        List<CompletableFuture<List<EntryID>>> futureEntryLists = new ArrayList<>();
+        Log.d(LC, "getEntries for " + entryIDs.size() + " entryIDs");
+        for (EntryID entryID : entryIDs) {
+            CompletableFuture<List<EntryID>> songEntries;
+            if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
+                Log.d(LC, "getEntries single: " + entryID.toString());
+                songEntries = CompletableFuture.completedFuture(Collections.singletonList(entryID));
+            } else {
+                Log.d(LC, "getEntries all entries for: " + entryID.toString());
+                songEntries = getSongEntries(entryID);
+            }
+            futureEntryLists.add(songEntries);
+        }
+        return CompletableFuture.allOf(futureEntryLists.toArray(new CompletableFuture[0]))
+                .thenApply(aVoid -> futureEntryLists.stream()
+                        .map(futureEntryList -> {
+                            try {
+                                return futureEntryList.get();
+                            } catch (ExecutionException e) {
+                                e.printStackTrace();
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            return Collections.<EntryID>emptyList();
+                        })
+                        .flatMap(List::stream)
+                        .collect(Collectors.toList()));
+    }
+
+    private CompletableFuture<List<EntryID>> getSongEntries(EntryID entryID) {
         CompletableFuture<List<EntryID>> ret = new CompletableFuture<>();
         Bundle bundleQuery = new Bundle();
         bundleQuery.putString(entryID.type, entryID.id);

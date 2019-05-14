@@ -21,6 +21,7 @@ import android.widget.Toast;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -43,6 +44,7 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.storage.MetaStorage;
+import se.splushii.dancingbunnies.ui.AddToPlaylistDialogFragment;
 import se.splushii.dancingbunnies.ui.selection.EntryIDItemDetailsLookup;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -477,9 +479,10 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                     queue(selectionList, AudioPlayerService.QUEUE_LAST);
                     break;
                 case R.id.musiclibrary_actionmode_action_add_to_playlist:
-                    // TODO: Implement
-                    Log.e(LC, "Add to playlist not implemented");
-//                    addToPlaylist(selectionList);
+                    AddToPlaylistDialogFragment.showDialog(
+                            MusicLibraryFragment.this,
+                            new ArrayList<>(selectionList)
+                    );
                     break;
                 default:
                     return false;

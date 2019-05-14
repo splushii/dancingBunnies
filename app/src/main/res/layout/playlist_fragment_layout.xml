@@ -7,7 +7,7 @@
     <LinearLayout
         android:id="@+id/playlist_rootview"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:orientation="vertical">
         <LinearLayout
             android:id="@+id/playlist_new_playlist"
@@ -57,7 +57,7 @@
         android:id="@+id/playlist_content_rootview"
         android:visibility="gone"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:orientation="vertical">
         <LinearLayout
             android:id="@+id/playlist_content_info"
@@ -95,7 +95,8 @@
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/playlist_content_entries_recyclerview"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
             android:paddingTop="8dp"
             android:clipToPadding="false"/>
     </LinearLayout>

@@ -1,13 +1,13 @@
 package se.splushii.dancingbunnies.ui.musiclibrary;
 
 import android.support.v4.media.MediaBrowserCompat;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import androidx.annotation.NonNull;
@@ -23,6 +23,7 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.storage.MetaStorage;
+import se.splushii.dancingbunnies.ui.AddToPlaylistDialogFragment;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.util.Util;
@@ -223,8 +224,10 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         holder.actionsView.setOnPlayListener(() -> fragment.play(entryID));
         holder.actionsView.setOnQueueListener(() -> fragment.queue(entryID));
         holder.actionsView.setOnAddToPlaylistListener(() ->
-                // TODO: Implement. Dialog with applicable playlists?
-                Log.e(LC, "Not implemented")
+                AddToPlaylistDialogFragment.showDialog(
+                        fragment,
+                        new ArrayList<>(Collections.singletonList(holder.entryId))
+                )
         );
         holder.actionsView.setOnInfoListener(() ->
                 MetaDialogFragment.showMeta(fragment, holder.meta)
