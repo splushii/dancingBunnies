@@ -6,6 +6,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -73,12 +74,13 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
     }
 
     @Override
-    public void onSelectionDrop(List<PlaylistEntry> selection, int lastDragPos) {
+    public void onSelectionDrop(Collection<PlaylistEntry> selection, int lastDragPos) {
         playlistStorage.movePlaylistEntries(playlistID, selection, lastDragPos);
     }
 
     @Override
-    public void onUseViewHolderForDrag(PlaylistEntryHolder dragViewHolder, List<PlaylistEntry> selection) {
+    public void onUseViewHolderForDrag(PlaylistEntryHolder dragViewHolder,
+                                       Collection<PlaylistEntry> selection) {
         dragViewHolder.itemContent.setDragTitle(selection.size() + " entries");
     }
 

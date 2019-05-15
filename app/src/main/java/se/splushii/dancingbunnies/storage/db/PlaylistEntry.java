@@ -136,4 +136,16 @@ public class PlaylistEntry implements Parcelable {
     public int hashCode() {
         return Objects.hash(playlist_api, playlist_id, api, id, pos);
     }
+
+    @Override
+    public String toString() {
+        return "PlaylistEntry{" +
+                "rowId=" + rowId +
+                ", playlist_api='" + playlist_api + '\'' +
+                ", playlist_id='" + playlist_id + '\'' +
+                ", api='" + api + '\'' +
+                ", id='" + id + '\'' +
+                ", pos=" + pos +
+                '}';
+    }
 }

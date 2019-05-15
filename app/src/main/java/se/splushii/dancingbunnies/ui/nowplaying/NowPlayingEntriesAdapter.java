@@ -6,8 +6,8 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
@@ -86,26 +86,18 @@ public class NowPlayingEntriesAdapter extends
     }
 
     @Override
-    public void onSelectionDrop(List<QueueEntry> selection, int lastDragPos) {
-        CompletableFuture.runAsync(() -> {
-            // TODO: FIXME: The entries are dropped in wrong order. Use the sleep and perform a drag with
-            // TODO: multiple values to see it.
-//            try {
-//                Thread.sleep(1000);
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
-            fragment.moveQueueItems(
-                    selection.stream()
-                            .map(q -> q.pos)
-                            .collect(Collectors.toList()),
-                    lastDragPos
-            );
-        });
+    public void onSelectionDrop(Collection<QueueEntry> selection, int lastDragPos) {
+        fragment.moveQueueItems(
+                selection.stream()
+                        .map(q -> q.pos)
+                        .collect(Collectors.toList()),
+                lastDragPos
+        );
     }
 
     @Override
-    public void onUseViewHolderForDrag(ViewHolder dragViewHolder, List<QueueEntry> selection) {
+    public void onUseViewHolderForDrag(ViewHolder dragViewHolder,
+                                       Collection<QueueEntry> selection) {
         dragViewHolder.itemContent.setDragTitle(selection.size() + " entries");
     }
 

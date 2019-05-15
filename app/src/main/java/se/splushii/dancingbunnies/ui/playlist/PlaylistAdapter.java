@@ -8,6 +8,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -71,12 +72,13 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
     }
 
     @Override
-    public void onSelectionDrop(List<Playlist> selection, int lastDragPos) {
+    public void onSelectionDrop(Collection<Playlist> selection, int lastDragPos) {
         playlistStorage.movePlaylists(selection, lastDragPos);
     }
 
     @Override
-    public void onUseViewHolderForDrag(PlaylistHolder dragViewHolder, List<Playlist> selection) {
+    public void onUseViewHolderForDrag(PlaylistHolder dragViewHolder,
+                                       Collection<Playlist> selection) {
         dragViewHolder.nameTextView.setText(selection.size() + " selected");
         dragViewHolder.srcImageView.setBackgroundResource(0);
     }

@@ -1,8 +1,10 @@
 package se.splushii.dancingbunnies.ui.selection;
 
-import android.util.Log;
 import android.view.ActionMode;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.TreeMap;
 
@@ -36,9 +38,15 @@ public abstract class SelectionRecyclerViewAdapter<
     protected abstract void removeItemFromDataset(int pos);
     TreeMap<Integer, ID> removeItems(List<ID> items) {
         TreeMap<Integer, ID> removedItemsMap = new TreeMap<>();
+        List<Integer> positionsToRemove = new ArrayList<>();
         for (ID item: items) {
             int pos = getPosition(item);
+            positionsToRemove.add(pos);
             removedItemsMap.put(pos, item);
+        }
+        // Remove in reverse order preserve higher positions
+        Collections.sort(positionsToRemove, Collections.reverseOrder());
+        for (int pos: positionsToRemove) {
             removeItemFromDataset(pos);
             notifyItemRemoved(pos);
         }
@@ -50,7 +58,6 @@ public abstract class SelectionRecyclerViewAdapter<
         selectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
             @Override
             public void onSelectionChanged() {
-                Log.e(LC, "onSelectionChanged: " + selectionTracker.getSelection());
                 SelectionRecyclerViewAdapter.this.onSelectionChanged();
             }
         });
@@ -76,8 +83,8 @@ public abstract class SelectionRecyclerViewAdapter<
     };
     protected abstract ID getKey(int pos);
     protected abstract int getPosition(@NonNull ID key);
-    public abstract void onSelectionDrop(List<ID> selection, int lastDragPos);
-    public abstract void onUseViewHolderForDrag(ViewHolder dragViewHolder, List<ID> selection);
+    public abstract void onSelectionDrop(Collection<ID> selection, int lastDragPos);
+    public abstract void onUseViewHolderForDrag(ViewHolder dragViewHolder, Collection<ID> selection);
     public abstract void onResetDragViewHolder(ViewHolder dragViewHolder);
     public abstract boolean onActionItemClicked(int menuItemID, List<ID> selectionList);
     public abstract void onActionModeStarted(ActionMode actionMode, Selection<ID> selection);

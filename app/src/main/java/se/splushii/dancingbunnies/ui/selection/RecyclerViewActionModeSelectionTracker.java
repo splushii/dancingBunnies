@@ -10,6 +10,7 @@ import android.view.MotionEvent;
 import android.view.View;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import androidx.annotation.NonNull;
@@ -42,7 +43,7 @@ public class RecyclerViewActionModeSelectionTracker<ID,
                 recViewAdapter,
                 new ItemTouchHelperCallback.Listener<ID, ViewHolder>() {
                     @Override
-                    public void onDrop(List<ID> selection, int lastDragPos) {
+                    public void onDrop(Collection<ID> selection, int lastDragPos) {
                         Log.d(LC, "ItemTouchHelper onDrop at " + lastDragPos);
                         recViewAdapter.onSelectionDrop(selection, lastDragPos);
                         actionMode.finish();
@@ -54,7 +55,8 @@ public class RecyclerViewActionModeSelectionTracker<ID,
                     }
 
                     @Override
-                    public void onUseViewHolderForDrag(ViewHolder dragViewHolder, List<ID> selection) {
+                    public void onUseViewHolderForDrag(ViewHolder dragViewHolder,
+                                                       Collection<ID> selection) {
                         Log.d(LC, "ItemTouchHelper onUseViewHolderForDrag");
                         recViewAdapter.onUseViewHolderForDrag(dragViewHolder, selection);
                     }

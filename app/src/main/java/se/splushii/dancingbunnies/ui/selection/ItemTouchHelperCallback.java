@@ -2,6 +2,8 @@ package se.splushii.dancingbunnies.ui.selection;
 
 import android.util.Log;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.TreeMap;
@@ -20,19 +22,20 @@ public class ItemTouchHelperCallback<
         extends ItemTouchHelper.Callback {
     private static final String LC = Util.getLogContext(ItemTouchHelperCallback.class);
     private final Adapter adapter;
-    private final List<ID> selection;
-    private TreeMap<Integer, ID> removedSelectedItems;
-    private int secondarySelectionId;
-    private int lastDragPos = -1;
-    private boolean abort = false;
-    private ViewHolder dragViewHolder;
     private Listener<ID, ViewHolder> listener;
+    private boolean abort = false;
+    private TreeMap<Integer, ID> initialSelection;
+    private TreeMap<Integer, ID> removedSelectedItems;
     private SelectionTracker<ID> selectionTracker;
+    private ViewHolder dragViewHolder;
+    private ID dragID;
+    private int initialDragPos;
+    private int lastDragPos = -1;
 
     public interface Listener<ID, ViewHolder> {
-        void onDrop(List<ID> selection, int lastDragPos);
+        void onDrop(Collection<ID> selection, int lastDragPos);
         void onAbort();
-        void onUseViewHolderForDrag(ViewHolder dragViewHolder, List<ID> selection);
+        void onUseViewHolderForDrag(ViewHolder dragViewHolder, Collection<ID> selection);
         void onResetDragViewHolder(ViewHolder dragViewHolder);
         void onDropMode();
         void onAbortMode();
@@ -40,7 +43,6 @@ public class ItemTouchHelperCallback<
 
     ItemTouchHelperCallback(Adapter adapter, Listener<ID, ViewHolder> listener) {
         this.adapter = adapter;
-        this.selection = new LinkedList<>();
         this.listener = listener;
     }
 
@@ -49,25 +51,24 @@ public class ItemTouchHelperCallback<
     }
 
     void prepareDrag(ViewHolder viewHolder) {
+        dragViewHolder = viewHolder;
+        lastDragPos = initialDragPos = dragViewHolder.getAdapterPosition();
+
         MutableSelection<ID> mutableSelection = new MutableSelection<>();
         selectionTracker.copySelection(mutableSelection);
-        selection.clear();
-        ID initialSelectionID = viewHolder.getKey();
+        dragID = dragViewHolder.getKey();
         List<ID> selectionToRemove = new LinkedList<>();
         mutableSelection.forEach(id -> {
-            if (!id.equals(initialSelectionID)) {
+            if (!id.equals(dragID)) {
                 selectionToRemove.add(id);
             }
-            selection.add(id);
         });
-        Log.e(LC, "prepareDrag selection: " + selection);
-        Log.e(LC, "prepareDrag toRemove: " + selectionToRemove);
         removedSelectedItems = adapter.removeItems(selectionToRemove);
+        initialSelection = new TreeMap<>(removedSelectedItems);
+        initialSelection.put(initialDragPos, dragID);
         // The id of the draggable item when other items are removed
-        lastDragPos = secondarySelectionId = viewHolder.getAdapterPosition();
-        dragViewHolder = viewHolder;
-        if (selection.size() > 1) {
-            listener.onUseViewHolderForDrag(dragViewHolder, selection);
+        if (initialSelection.size() > 1) {
+            listener.onUseViewHolderForDrag(dragViewHolder, initialSelection.values());
         }
         setDropMode();
     }
@@ -139,17 +140,17 @@ public class ItemTouchHelperCallback<
             listener.onResetDragViewHolder(dragViewHolder);
             listener.onAbort();
             // Reset adapter items
-            adapter.moveItem(lastDragPos, secondarySelectionId);
+            adapter.moveItem(lastDragPos, initialDragPos);
             adapter.insertItems(removedSelectedItems);
         } else {
-            TreeMap<Integer, ID> movedSelectionItems = new TreeMap<>();
-            int newPos = lastDragPos + 1;
-            for (int pos: removedSelectedItems.keySet()) {
-                movedSelectionItems.put(newPos++, removedSelectedItems.get(pos));
+            int newPos = lastDragPos;
+            adapter.removeItems(Collections.singletonList(dragID));
+            TreeMap<Integer, ID> movedSelection = new TreeMap<>();
+            for (ID id: initialSelection.values()) {
+                movedSelection.put(newPos++, id);
             }
-            adapter.insertItems(movedSelectionItems);
-            adapter.insertItems(movedSelectionItems);
-            listener.onDrop(selection, lastDragPos);
+            adapter.insertItems(movedSelection);
+            listener.onDrop(initialSelection.values(), lastDragPos);
         }
     }
 

@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -105,7 +106,7 @@ public class PlaylistStorage {
         return playlistEntryModel.getEntries(playlistID.src, playlistID.id);
     }
 
-    public CompletableFuture<Void> movePlaylists(List<Playlist> selection, int pos) {
+    public CompletableFuture<Void> movePlaylists(Collection<Playlist> selection, int pos) {
         return CompletableFuture.runAsync(() ->
                 playlistModel.move(
                         selection.stream()
@@ -117,7 +118,7 @@ public class PlaylistStorage {
     }
 
     public CompletableFuture<Void> movePlaylistEntries(PlaylistID playlistID,
-                                                       List<PlaylistEntry> selection,
+                                                       Collection<PlaylistEntry> selection,
                                                        int pos) {
         return CompletableFuture.runAsync(() ->
                 playlistEntryModel.move(
