@@ -159,10 +159,11 @@ public class PlaybackControllerStorage {
         });
     }
 
-    public void setLocalAudioPlayerCurrent(EntryID entryID, long lastPos) {
+    public void setLocalAudioPlayerCurrent(PlaybackEntry playbackEntry, long lastPos) {
         preferences.edit()
-                .putString(current_src_key, entryID.src)
-                .putString(current_id_key, entryID.id)
+                .putString(current_src_key, playbackEntry.entryID.src)
+                .putString(current_id_key, playbackEntry.entryID.id)
+                .putString(current_playback_id_key, Long.toString(playbackEntry.playbackID))
                 .putLong(lastPos_key, lastPos)
                 .apply();
     }
@@ -171,6 +172,7 @@ public class PlaybackControllerStorage {
         preferences.edit()
                 .remove(current_src_key)
                 .remove(current_id_key)
+                .remove(current_playback_id_key)
                 .apply();
     }
 

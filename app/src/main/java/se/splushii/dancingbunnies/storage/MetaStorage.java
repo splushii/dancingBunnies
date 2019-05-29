@@ -294,15 +294,15 @@ public class MetaStorage {
         metaModel.deleteWhereSourceIs(src);
     }
 
-    public CompletableFuture<Meta> getMeta(EntryID entryID) {
+    public CompletableFuture<Meta> getMetaOnce(EntryID entryID) {
         CompletableFuture<List<MetaString>> stringFuture = CompletableFuture.supplyAsync(() ->
-                metaModel.getStringMeta(entryID.src, entryID.id)
+                metaModel.getStringMetaSync(entryID.src, entryID.id)
         );
         CompletableFuture<List<MetaLong>> longFuture = CompletableFuture.supplyAsync(() ->
-                metaModel.getLongMeta(entryID.src, entryID.id)
+                metaModel.getLongMetaSync(entryID.src, entryID.id)
         );
         CompletableFuture<List<MetaDouble>> doubleFuture = CompletableFuture.supplyAsync(() ->
-                metaModel.getDoubleMeta(entryID.src, entryID.id)
+                metaModel.getDoubleMetaSync(entryID.src, entryID.id)
         );
         CompletableFuture[] futures = new CompletableFuture[] {
                 stringFuture,
@@ -326,6 +326,41 @@ public class MetaStorage {
         return ret;
     }
 
+    public LiveData<Meta> getMeta(EntryID entryID) {
+        LiveData<List<MetaString>> metaStrings = metaModel.getStringMeta(entryID.src, entryID.id);
+        LiveData<List<MetaLong>> metaLongs = metaModel.getLongMeta(entryID.src, entryID.id);
+        LiveData<List<MetaDouble>> metaDoubles = metaModel.getDoubleMeta(entryID.src, entryID.id);
+        MediatorLiveData<Meta> meta = new MediatorLiveData<>();
+        meta.addSource(metaStrings, strings -> combineMetaValues(entryID, meta, metaStrings, metaLongs, metaDoubles));
+        meta.addSource(metaLongs, longs -> combineMetaValues(entryID, meta, metaStrings, metaLongs, metaDoubles));
+        meta.addSource(metaDoubles, doubles -> combineMetaValues(entryID, meta, metaStrings, metaLongs, metaDoubles));
+        return meta;
+    }
+
+    private void combineMetaValues(EntryID entryID,
+                                   MediatorLiveData<Meta> metaMediator,
+                                   LiveData<List<MetaString>> metaStringsLiveData,
+                                   LiveData<List<MetaLong>> metaLongsLiveData,
+                                   LiveData<List<MetaDouble>> metaDoublesLiveData) {
+        List<MetaString> strings = metaStringsLiveData.getValue();
+        List<MetaLong> longs = metaLongsLiveData.getValue();
+        List<MetaDouble> doubles = metaDoublesLiveData.getValue();
+        if (strings == null || longs == null || doubles == null) {
+            return;
+        }
+        Meta meta = new Meta(entryID);
+        for (MetaString m: strings) {
+            meta.addString(m.key, m.value);
+        }
+        for (MetaLong m: longs) {
+            meta.addLong(m.key, m.value);
+        }
+        for (MetaDouble m: doubles) {
+            meta.addDouble(m.key, m.value);
+        }
+        metaMediator.setValue(meta);
+    }
+
     public LiveData<List<String>> getMetaFields() {
         MediatorLiveData<List<String>> allMetaKeys = new MediatorLiveData<>();
         LiveData<List<String>> stringKeys = metaModel.getStringMetaKeys();
@@ -333,9 +368,9 @@ public class MetaStorage {
         LiveData<List<String>> doubleKeys = metaModel.getDoubleMetaKeys();
         List<LiveData<List<String>>> sources = Arrays.asList(stringKeys, longKeys, doubleKeys);
         for (LiveData<List<String>> source: sources) {
-            allMetaKeys.addSource(source, keys -> {
-                allMetaKeys.setValue(combineMetaKeys(sources));
-            });
+            allMetaKeys.addSource(source, keys ->
+                    allMetaKeys.setValue(combineMetaKeys(sources))
+            );
         }
         return allMetaKeys;
     }

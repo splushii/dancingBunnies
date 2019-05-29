@@ -230,7 +230,7 @@ class LocalAudioPlayer implements AudioPlayer {
                         storage.removeLocalAudioPlayerCurrent();
                     } else {
                         storage.setLocalAudioPlayerCurrent(
-                                player.playbackEntry.entryID,
+                                player.playbackEntry,
                                 player.getCurrentPosition()
                         );
                     }

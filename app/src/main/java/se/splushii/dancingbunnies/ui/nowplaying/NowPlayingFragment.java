@@ -269,7 +269,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
 
     @Override
     protected void onMetadataChanged(EntryID entryID) {
-        MetaStorage.getInstance(requireContext()).getMeta(entryID)
+        MetaStorage.getInstance(requireContext()).getMetaOnce(entryID)
                 .thenAcceptAsync(meta -> {
                     currentMeta = meta;
                     updateMeta(meta);
@@ -336,7 +336,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         updatePlaybackState(state);
         MediaMetadataCompat mediaMetadataCompat = mediaController.getMetadata();
         if (mediaMetadataCompat != null) {
-            MetaStorage.getInstance(requireContext()).getMeta(EntryID.from(mediaMetadataCompat))
+            MetaStorage.getInstance(requireContext()).getMetaOnce(EntryID.from(mediaMetadataCompat))
                     .thenAcceptAsync(meta -> {
                         currentMeta = meta;
                         updateMeta(meta);

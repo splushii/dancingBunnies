@@ -8,8 +8,12 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.util.HashMap;
+import java.util.HashSet;
+
 import androidx.annotation.Nullable;
 import se.splushii.dancingbunnies.R;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.util.Util;
@@ -29,6 +33,7 @@ public class TrackItemView extends LinearLayout {
     private String cacheStatus;
     private boolean isCached;
     private boolean isPreloaded;
+    private EntryID entryID;
 
     public TrackItemView(Context context) {
         super(context);
@@ -74,7 +79,16 @@ public class TrackItemView extends LinearLayout {
         setIsCached(false);
     }
 
-    public void setFetchState(AudioStorage.AudioDataFetchState state) {
+    public void setFetchState(HashMap<EntryID, AudioStorage.AudioDataFetchState> fetchStateMap) {
+        if (fetchStateMap != null && fetchStateMap.containsKey(entryID)) {
+            setFetchState(fetchStateMap.get(entryID));
+        }
+    }
+
+    private void setFetchState(AudioStorage.AudioDataFetchState state) {
+        if (state == null) {
+            return;
+        }
         cacheStatus = state.getStatusMsg();
         setCacheStatus();
     }
@@ -91,7 +105,14 @@ public class TrackItemView extends LinearLayout {
         }
     }
 
-    public void setIsCached(Boolean isCached) {
+    public void setCached(HashSet<EntryID> cachedEntries) {
+        if (cachedEntries == null) {
+            return;
+        }
+        setIsCached(cachedEntries.contains(entryID));
+    }
+
+    private void setIsCached(Boolean isCached) {
         this.isCached = isCached;
         setCacheStatus();
     }
@@ -131,5 +152,10 @@ public class TrackItemView extends LinearLayout {
         setSource(src);
         setCacheStatus();
         setPreloaded(isPreloaded);
+    }
+
+    public void setEntryID(EntryID entryID) {
+        this.entryID = entryID;
+        setSource(entryID.src);
     }
 }

@@ -263,7 +263,7 @@ public class MusicLibraryService extends Service {
     }
 
     public CompletableFuture<Meta> getSongMeta(EntryID entryID) {
-        return metaStorage.getMeta(entryID);
+        return metaStorage.getMetaOnce(entryID);
     }
 
     public CompletableFuture<List<Meta>> getSongMetas(List<EntryID> entryIDs) {

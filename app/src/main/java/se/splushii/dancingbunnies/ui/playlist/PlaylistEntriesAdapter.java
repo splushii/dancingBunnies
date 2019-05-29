@@ -8,12 +8,16 @@ import android.view.ViewGroup;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Transformations;
 import androidx.recyclerview.selection.Selection;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
@@ -22,7 +26,7 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
-import se.splushii.dancingbunnies.storage.MetaStorage;
+import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
@@ -41,11 +45,10 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
     private final PlaylistStorage playlistStorage;
 
     private PlaylistID playlistID;
-    private LiveData<List<PlaylistEntry>> playlistEntries;
     private List<PlaylistEntry> playlistEntriesDataset;
-
     private TrackItemActionsView selectedActionView;
-    private PlaylistFragmentModel model;
+    private LiveData<HashSet<EntryID>> cachedEntriesLiveData;
+    private LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> fetchStateLiveData;
 
     PlaylistEntriesAdapter(PlaylistFragment playlistFragment) {
         fragment = playlistFragment;
@@ -160,43 +163,33 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
     @Override
     public PlaylistEntryHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
-        return new PlaylistEntryHolder(layoutInflater.inflate(R.layout.playlist_entry_item, parent, false));
+        PlaylistEntryHolder holder = new PlaylistEntryHolder(
+                layoutInflater.inflate(R.layout.playlist_entry_item, parent, false)
+        );
+        cachedEntriesLiveData.observe(
+                fragment.getViewLifecycleOwner(),
+                holder.itemContent::setCached
+        );
+        fetchStateLiveData.observe(
+                fragment.getViewLifecycleOwner(),
+                holder.itemContent::setFetchState
+        );
+        holder.initMetaObserver(fragment.requireContext());
+        holder.observeMeta(fragment.getViewLifecycleOwner(), holder::setMeta);
+        return holder;
     }
 
     @Override
     public void onBindViewHolder(@NonNull PlaylistEntryHolder holder, int position) {
         holder.actionsView.initialize();
-        holder.itemContent.initialize();
-        PlaylistEntry playlistEntry = playlistEntriesDataset.get(position);
         holder.position = position;
-        holder.entryID = EntryID.from(playlistEntry);
-        holder.itemContent.setSource(holder.entryID.src);
+        PlaylistEntry playlistEntry = playlistEntriesDataset.get(position);
+        EntryID entryID = EntryID.from(playlistEntry);
+        holder.itemContent.setEntryID(entryID);
         holder.entry.setActivated(isSelected(holder.getKey()));
-        // TODO: Observer-leak? Is there a need to remove observers?
-        // TODO: Register in onViewDetachedFromWindow and deregister in onViewDetachedFromWindow
-        model.getCachedEntries(fragment.getContext())
-                .observe(fragment.getViewLifecycleOwner(), cachedEntries ->
-                        holder.itemContent.setIsCached(cachedEntries.contains(holder.entryID))
-                );
-        model.getFetchState(fragment.getContext())
-                .observe(fragment.getViewLifecycleOwner(), fetchStateMap -> {
-                    if (fetchStateMap.containsKey(holder.entryID)) {
-                        holder.itemContent.setFetchState(fetchStateMap.get(holder.entryID));
-                    }
-                });
-        MetaStorage.getInstance(fragment.requireContext()).getMeta(holder.entryID)
-                .thenAcceptAsync(meta -> {
-                    holder.actionsView.setOnInfoListener(() ->
-                            MetaDialogFragment.showMeta(fragment, meta)
-                    );
-                    String title = meta.getAsString(Meta.FIELD_TITLE);
-                    holder.itemContent.setTitle(title);
-                    String artist = meta.getAsString(Meta.FIELD_ARTIST);
-                    holder.itemContent.setArtist(artist);
-                    String src = meta.entryID.src;
-                    holder.itemContent.setSource(src);
-                }, Util.getMainThreadExecutor());
-
+        holder.itemContent.setCached(cachedEntriesLiveData.getValue());
+        holder.itemContent.setFetchState(fetchStateLiveData.getValue());
+        holder.setEntryID(entryID);
         if (MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_DELETE)
                 && PlaylistID.TYPE_STUPID.equals(playlistID.type)) {
             holder.actionsView.setOnRemoveListener(() ->
@@ -208,8 +201,8 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         } else {
             holder.actionsView.setOnRemoveListener(null);
         }
-        holder.actionsView.setOnPlayListener(() -> fragment.play(holder.entryID));
-        holder.actionsView.setOnQueueListener(() -> fragment.queue(holder.entryID));
+        holder.actionsView.setOnPlayListener(() -> fragment.play(entryID));
+        holder.actionsView.setOnQueueListener(() -> fragment.queue(entryID));
     }
 
     @Override
@@ -217,31 +210,30 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         return playlistEntriesDataset.size();
     }
 
-    private void setDataSet(PlaylistID id, List<PlaylistEntry> entries) {
+    private void setPlaylistID(PlaylistID id) {
+        playlistEntriesDataset = Collections.emptyList();
         playlistID = id;
+        notifyDataSetChanged();
+    }
+
+    private void setDataSet(List<PlaylistEntry> entries) {
         playlistEntriesDataset = entries;
         notifyDataSetChanged();
     }
 
     void setModel(PlaylistFragmentModel model) {
-        this.model = model;
-        model.getUserState().observe(fragment.getViewLifecycleOwner(), playlistUserState -> {
-            if (!playlistUserState.playlistMode) {
-                PlaylistID playlistID = playlistUserState.playlistID;
-                Log.d(LC, "New playlistID: " + playlistID);
-                if (playlistEntries != null) {
-                    // TODO: Needed?
-//                    playlistEntries.removeObserver();
-                }
-                playlistEntries = model.getPlaylistEntries(playlistID, fragment.getContext());
-                playlistEntries.observe(fragment.getViewLifecycleOwner(), entries -> {
-                    Log.d(LC, "Playlist entries changed");
-                    setDataSet(playlistID, entries);
-                });
-            } else {
-                setDataSet(null, Collections.emptyList());
+        Transformations.switchMap(model.getUserState(), playlistUserState -> {
+            if (playlistUserState.playlistMode) {
+                setPlaylistID(null);
+                return new MutableLiveData<>();
             }
-        });
+            PlaylistID playlistID = playlistUserState.playlistID;
+            Log.d(LC, "New playlistID: " + playlistID);
+            setPlaylistID(playlistID);
+            return model.getPlaylistEntries(playlistID, fragment.getContext());
+        }).observe(fragment.getViewLifecycleOwner(), this::setDataSet);
+        cachedEntriesLiveData = model.getCachedEntries(fragment.getContext());
+        fetchStateLiveData = model.getFetchState(fragment.getContext());
     }
 
     @Override
@@ -254,7 +246,6 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         private final TrackItemView itemContent;
         private final TrackItemActionsView actionsView;
         public int position;
-        EntryID entryID;
 
         PlaylistEntryHolder(View v) {
             super(v);
@@ -283,6 +274,16 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         @Override
         protected PlaylistEntry getSelectionKeyOf() {
             return playlistEntriesDataset.get(getPositionOf());
+        }
+
+        public void setMeta(Meta meta) {
+            actionsView.setOnInfoListener(() -> MetaDialogFragment.showMeta(fragment, meta));
+            String title = meta.getAsString(Meta.FIELD_TITLE);
+            itemContent.setTitle(title);
+            String artist = meta.getAsString(Meta.FIELD_ARTIST);
+            itemContent.setArtist(artist);
+            String src = meta.entryID.src;
+            itemContent.setSource(src);
         }
     }
 }

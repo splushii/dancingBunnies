@@ -87,18 +87,29 @@ public abstract class MetaDao {
     @Query("DELETE FROM " + DB.TABLE_ENTRY_ID + " WHERE " + DB.COLUMN_API + " = :src")
     public abstract void deleteWhereSourceIs(String src);
 
-    @Query("SELECT * FROM " + DB.TABLE_META_STRING
+    private static final String getStringMeta = "SELECT * FROM " + DB.TABLE_META_STRING
             + " WHERE " + DB.COLUMN_API + " = :src "
-            + " AND " + DB.COLUMN_ID + " = :id")
-    public abstract List<MetaString> getStringMeta(String src, String id);
-    @Query("SELECT * FROM " + DB.TABLE_META_LONG
+            + " AND " + DB.COLUMN_ID + " = :id";
+    @Query(getStringMeta)
+    public abstract List<MetaString> getStringMetaSync(String src, String id);
+    @Query(getStringMeta)
+    public abstract LiveData<List<MetaString>> getStringMeta(String src, String id);
+
+    private static final String getLongMeta = "SELECT * FROM " + DB.TABLE_META_LONG
             + " WHERE " + DB.COLUMN_API + " = :src "
-            + " AND " + DB.COLUMN_ID + " = :id")
-    public abstract List<MetaLong> getLongMeta(String src, String id);
-    @Query("SELECT * FROM " + DB.TABLE_META_DOUBLE
+            + " AND " + DB.COLUMN_ID + " = :id";
+    @Query(getLongMeta)
+    public abstract List<MetaLong> getLongMetaSync(String src, String id);
+    @Query(getLongMeta)
+    public abstract LiveData<List<MetaLong>> getLongMeta(String src, String id);
+
+    private static final String getDoubleMeta = "SELECT * FROM " + DB.TABLE_META_DOUBLE
             + " WHERE " + DB.COLUMN_API + " = :src "
-            + " AND " + DB.COLUMN_ID + " = :id")
-    public abstract List<MetaDouble> getDoubleMeta(String src, String id);
+            + " AND " + DB.COLUMN_ID + " = :id";
+    @Query(getDoubleMeta)
+    public abstract List<MetaDouble> getDoubleMetaSync(String src, String id);
+    @Query(getDoubleMeta)
+    public abstract LiveData<List<MetaDouble>> getDoubleMeta(String src, String id);
 
     @Query("SELECT DISTINCT \"" + DB.COLUMN_KEY + "\" FROM " + DB.TABLE_META_STRING)
     public abstract LiveData<List<String>> getStringMetaKeys();

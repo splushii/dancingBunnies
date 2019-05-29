@@ -7,10 +7,13 @@ import android.view.ViewGroup;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
+import androidx.lifecycle.LiveData;
 import androidx.recyclerview.selection.Selection;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
@@ -18,7 +21,7 @@ import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.storage.MetaStorage;
+import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
@@ -30,11 +33,11 @@ public class NowPlayingEntriesAdapter extends
         SelectionRecyclerViewAdapter<QueueEntry, NowPlayingEntriesAdapter.ViewHolder> {
     private static final String LC = Util.getLogContext(NowPlayingEntriesAdapter.class);
     private final NowPlayingFragment fragment;
+
     private List<QueueEntry> queueEntries;
-
     private TrackItemActionsView selectedActionView;
-
-    private NowPlayingFragmentModel model;
+    private LiveData<HashSet<EntryID>> cachedEntriesLiveData;
+    private LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> fetchStateLiveData;
 
     NowPlayingEntriesAdapter(NowPlayingFragment fragment) {
         this.fragment = fragment;
@@ -43,7 +46,8 @@ public class NowPlayingEntriesAdapter extends
     }
 
     void setModel(NowPlayingFragmentModel model) {
-        this.model = model;
+        cachedEntriesLiveData = model.getCachedEntries(fragment.getContext());
+        fetchStateLiveData = model.getFetchState(fragment.getContext());
     }
 
     void setQueueEntries(List<QueueEntry> queueEntries) {
@@ -166,7 +170,6 @@ public class NowPlayingEntriesAdapter extends
         private final View item;
         final TrackItemView itemContent;
         private final TrackItemActionsView actionsView;
-        private EntryID entryID;
 
         ViewHolder(View v) {
             super(v);
@@ -196,6 +199,16 @@ public class NowPlayingEntriesAdapter extends
         protected QueueEntry getSelectionKeyOf() {
             return queueEntries.get(getPositionOf());
         }
+
+        public void setMeta(Meta meta) {
+            actionsView.setOnInfoListener(() -> MetaDialogFragment.showMeta(fragment, meta));
+            String title = meta.getAsString(Meta.FIELD_TITLE);
+            itemContent.setTitle(title);
+            String artist = meta.getAsString(Meta.FIELD_ARTIST);
+            itemContent.setArtist(artist);
+            String src = meta.entryID.src;
+            itemContent.setSource(src);
+        }
     }
 
     @Override
@@ -207,49 +220,38 @@ public class NowPlayingEntriesAdapter extends
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
-        return new ViewHolder(layoutInflater.inflate(R.layout.nowplaying_queue_item, parent, false));
+        ViewHolder holder = new ViewHolder(layoutInflater.inflate(R.layout.nowplaying_queue_item, parent, false));
+        cachedEntriesLiveData.observe(
+                fragment.getViewLifecycleOwner(),
+                holder.itemContent::setCached
+        );
+        fetchStateLiveData.observe(
+                fragment.getViewLifecycleOwner(),
+                holder.itemContent::setFetchState
+        );
+        holder.initMetaObserver(fragment.requireContext());
+        holder.observeMeta(fragment.getViewLifecycleOwner(), holder::setMeta);
+        return holder;
     }
 
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, int position) {
         holder.actionsView.initialize();
-        holder.itemContent.initialize();
         QueueEntry queueEntry = queueEntries.get(position);
         PlaybackEntry entry = queueEntry.playbackEntry;
         holder.itemContent.setPreloaded(entry.isPreloaded());
-        holder.entryID = entry.entryID;
+        holder.itemContent.setEntryID(entry.entryID);
         holder.item.setActivated(isSelected(holder.getKey()));
         holder.actionsView.setOnPlayListener(() -> {
             fragment.skipItems(position + 1);
             fragment.play();
         });
-        holder.actionsView.setOnRemoveListener(() -> {
-            fragment.dequeue(entry.entryID, position);
-        });
-        // TODO: Observer-leak? Is there a need to remove observers?
-        // TODO: Register in onViewDetachedFromWindow and deregister in onViewDetachedFromWindow
-        model.getCachedEntries(fragment.getContext())
-                .observe(fragment.getViewLifecycleOwner(), cachedEntries ->
-                        holder.itemContent.setIsCached(cachedEntries.contains(holder.entryID))
-                );
-        model.getFetchState(fragment.getContext())
-                .observe(fragment.getViewLifecycleOwner(), fetchStateMap -> {
-                    if (fetchStateMap.containsKey(holder.entryID)) {
-                        holder.itemContent.setFetchState(fetchStateMap.get(holder.entryID));
-                    }
-                });
-        MetaStorage.getInstance(fragment.requireContext()).getMeta(entry.entryID)
-                .thenAcceptAsync(meta -> {
-                    holder.actionsView.setOnInfoListener(() ->
-                            MetaDialogFragment.showMeta(fragment, meta)
-                    );
-                    String title = meta.getAsString(Meta.FIELD_TITLE);
-                    holder.itemContent.setTitle(title);
-                    String artist = meta.getAsString(Meta.FIELD_ARTIST);
-                    holder.itemContent.setArtist(artist);
-                    String src = meta.entryID.src;
-                    holder.itemContent.setSource(src);
-                }, Util.getMainThreadExecutor());
+        holder.actionsView.setOnRemoveListener(() ->
+                fragment.dequeue(entry.entryID, position)
+        );
+        holder.itemContent.setFetchState(fetchStateLiveData.getValue());
+        holder.itemContent.setCached(cachedEntriesLiveData.getValue());
+        holder.setEntryID(entry.entryID);
     }
 
     @Override
