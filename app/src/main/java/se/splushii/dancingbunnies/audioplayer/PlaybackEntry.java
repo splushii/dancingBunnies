@@ -67,7 +67,7 @@ public class PlaybackEntry implements Parcelable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         PlaybackEntry that = (PlaybackEntry) o;
-        return playbackID == that.playbackID &&
+        return playbackID == that.playbackID && // TODO: Isn't it enough to compare playbackID?
                 Objects.equals(entryID, that.entryID);
     }
 

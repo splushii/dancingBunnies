@@ -46,6 +46,18 @@ public class PlaybackControllerEntry {
     @ColumnInfo(name = COLUMN_ID)
     public String id;
 
+    @Override
+    public String toString() {
+        return "PlaybackControllerEntry{" +
+                "rowId=" + rowId +
+                ", playbackID=" + playbackID +
+                ", queueID=" + queueID +
+                ", pos=" + pos +
+                ", api='" + api + '\'' +
+                ", id='" + id + '\'' +
+                '}';
+    }
+
     public static PlaybackControllerEntry from(int queueID,
                                                PlaybackEntry playbackEntry,
                                                int pos) {

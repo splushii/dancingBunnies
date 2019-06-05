@@ -281,10 +281,10 @@ public class MetaStorage {
         liveData.observeForever(new Observer<List<LibraryEntry>>() {
             @Override
             public void onChanged(List<LibraryEntry> libraryEntries) {
+                liveData.removeObserver(this);
                 ret.complete(libraryEntries.stream()
                         .map(libraryEntry -> libraryEntry.entryID)
                         .collect(Collectors.toList()));
-                liveData.removeObserver(this);
             }
         });
         return ret;

@@ -51,8 +51,9 @@ import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
+import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 // TODO: Handle incoming call. PhoneStateListener.LISTEN_CALL_STATE.
@@ -66,15 +67,22 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static final String MEDIA_ID_ROOT = "dancingbunnies.media.id.root";
 
     public static final String SESSION_EVENT_PLAYLIST_POSITION_CHANGED = "PLAYLIST_POSITION_CHANGED";
-    public static final String SESSION_EVENT_PLAYLIST_CHANGED = "PLAYLIST_CHANGED";
+    public static final String SESSION_EVENT_PLAYLIST_SELECTION_CHANGED = "PLAYLIST_SELECTION_CHANGED";
 
-    public static final String COMMAND_GET_CURRENT_PLAYLIST = "GET_CURRENT_PLAYLIST";
+    private static final String COMMAND_SET_CURRENT_PLAYLIST = "SET_CURRENT_PLAYLIST";
+    private static final String COMMAND_GET_CURRENT_PLAYLIST = "GET_CURRENT_PLAYLIST";
+    private static final String COMMAND_GET_CURRENT_PLAYLIST_ENTRY = "GET_CURRENT_PLAYLIST_ENTRY";
     private static final String COMMAND_QUEUE_ENTRYIDS = "QUEUE_ENTRYIDS";
     private static final String COMMAND_DEQUEUE = "DEQUEUE";
     private static final String COMMAND_MOVE_QUEUE_ITEMS = "MOVE_QUEUE_ITEMS";
 
-    public static final String BUNDLE_KEY_DEQUEUE_QUEUE_POS =
-            "dancingbunnies.bundle.key.audioplayerservice.dequeue_queue_pos";
+
+    public static final String BUNDLE_KEY_PLAYBACK_ENTRY =
+            "dancingbunnies.bundle.key.audioplayerservice.playback_entry";
+    public static final String BUNDLE_KEY_POS =
+            "dancingbunnies.bundle.key.audioplayerservice.pos";
+    static final String BUNDLE_KEY_PLAYLIST_ID =
+            "dancingbunnies.bundle.key.audioplayerservice.playlist_id";
 
     public static final int QUEUE_LAST = -1;
 
@@ -409,7 +417,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         mediaSession.setQueue(new LinkedList<>());
         metaChangedListenerID = musicLibraryService.addMetaChangedListener(() -> {
             playbackController.updateCurrent();
-            playbackController.updateQueue();
+            playbackController.onQueueChanged();
         });
     }
 
@@ -578,8 +586,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         public void onRemoveQueueItem(MediaDescriptionCompat description) {
             Log.d(LC, "onRemoveQueueItem");
             assert description.getExtras() != null;
-            long pos = description.getExtras().getLong(BUNDLE_KEY_DEQUEUE_QUEUE_POS);
-            playbackController.deQueue(new long[]{pos})
+            PlaybackEntry playbackEntry = description.getExtras().getParcelable(BUNDLE_KEY_PLAYBACK_ENTRY);
+            playbackController.deQueueByID(Collections.singletonList(playbackEntry), true)
                     .handle(AudioPlayerService.this::handleControllerResult);
         }
 
@@ -661,9 +669,14 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onCommand(String command, Bundle extras, ResultReceiver cb) {
             switch (command) {
+                case COMMAND_SET_CURRENT_PLAYLIST:
+                    setPlaylist(cb, extras);
+                    break;
                 case COMMAND_GET_CURRENT_PLAYLIST:
-                    // TODO: Rewrite this in the same spirit as below commands
-                    cb.send(0, putPlaylist(playbackController.getCurrentPlaylist()));
+                    getPlaylist(cb, extras);
+                    break;
+                case COMMAND_GET_CURRENT_PLAYLIST_ENTRY:
+                    getPlaylistEntry(cb, extras);
                     break;
                 case COMMAND_QUEUE_ENTRYIDS:
                     queue(cb, extras);
@@ -724,9 +737,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     public static CompletableFuture<Boolean> dequeue(MediaControllerCompat mediaController,
-                                                     List<Long> positionList) {
+                                                     List<PlaybackEntry> playbackEntries) {
         Bundle params = new Bundle();
-        params.putLongArray("positionList", positionList.stream().mapToLong(l -> l).toArray());
+        params.putParcelableArrayList("playbackEntries", new ArrayList<>(playbackEntries));
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
                 AudioPlayerService.COMMAND_DEQUEUE,
@@ -742,18 +755,18 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void dequeue(ResultReceiver cb, Bundle extras) {
-        long[] positions = extras.getLongArray("positionList");
-        playbackController.deQueue(positions).handle((r, t) -> {
+        List<PlaybackEntry> playbackEntries = extras.getParcelableArrayList("playbackEntries");
+        playbackController.deQueueByID(playbackEntries, true).handle((r, t) -> {
             cb.send(t == null ? 0 : 1, null);
             return handleControllerResult(r, t);
         });
     }
 
     public static CompletableFuture<Boolean> moveQueueItems(MediaControllerCompat mediaController,
-                                                            List<Long> positionList,
+                                                            List<PlaybackEntry> playbackEntries,
                                                             int toPosition) {
         Bundle params = new Bundle();
-        params.putLongArray("positionList", positionList.stream().mapToLong(l -> l).toArray());
+        params.putParcelableArrayList("playbackEntries", new ArrayList<>(playbackEntries));
         params.putInt("toPosition", toPosition);
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
@@ -770,25 +783,101 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void moveQueueItems(ResultReceiver cb, Bundle extras) {
-        long[] positions = extras.getLongArray("positionList");
+        List<PlaybackEntry> playbackEntries = extras.getParcelableArrayList("playbackEntries");
         int toPosition = extras.getInt("toPosition");
-        playbackController.moveQueueItems(positions, toPosition).handle((r, t) -> {
+        playbackController.moveQueueItemsByID(playbackEntries, toPosition).handle((r, t) -> {
             cb.send(t == null ? 0 : 1, null);
             return handleControllerResult(r, t);
         });
     }
 
-    private static final String BUNDLE_KEY_PLAYLIST_ITEM =
-            "BUNDLE_KEY_PLAYLIST_ITEM";
-
-    private static Bundle putPlaylist(PlaylistItem playlistItem) {
-        Bundle b = new Bundle();
-        b.putParcelable(BUNDLE_KEY_PLAYLIST_ITEM, playlistItem);
-        return b;
+    public static CompletableFuture<Boolean> setCurrentPlaylist(MediaControllerCompat mediaController,
+                                                                PlaylistID playlistID) {
+        Bundle params = new Bundle();
+        params.putParcelable("playlistID", playlistID);
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        mediaController.sendCommand(
+                AudioPlayerService.COMMAND_SET_CURRENT_PLAYLIST,
+                params,
+                new ResultReceiver(null) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        future.complete(resultCode == 0);
+                    }
+                }
+        );
+        return future;
     }
 
-    public static PlaylistItem getPlaylist(Bundle resultData) {
-        return resultData.getParcelable(BUNDLE_KEY_PLAYLIST_ITEM);
+    private void setPlaylist(ResultReceiver cb, Bundle extras) {
+        PlaylistID playlistID = extras.getParcelable("playlistID");
+        playbackController.setCurrentPlaylist(playlistID);
+        cb.send(0, null);
+    }
+
+    public static CompletableFuture<PlaylistID> getCurrentPlaylist(MediaControllerCompat mediaController) {
+        CompletableFuture<PlaylistID> ret = new CompletableFuture<>();
+        mediaController.sendCommand(AudioPlayerService.COMMAND_GET_CURRENT_PLAYLIST, null,
+                new ResultReceiver(null) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        if (resultCode != 0) {
+                            Log.e(LC, "error on COMMAND_GET_CURRENT_PLAYLIST");
+                            ret.complete(null);
+                            return;
+                        }
+                        PlaylistID playlistID = resultData.getParcelable("playlistID");
+                        ret.complete(playlistID);
+                    }
+                });
+        return ret;
+    }
+
+    public void getPlaylist(ResultReceiver cb, Bundle extras) {
+        Bundle result = new Bundle();
+        result.putParcelable("playlistID", playbackController.getCurrentPlaylistID());
+        cb.send(0, result);
+    }
+
+    public static CompletableFuture<PlaylistEntry> getCurrentPlaylistEntry(
+            MediaControllerCompat mediaController
+    ) {
+        CompletableFuture<PlaylistEntry> ret = new CompletableFuture<>();
+        mediaController.sendCommand(AudioPlayerService.COMMAND_GET_CURRENT_PLAYLIST_ENTRY, null,
+                new ResultReceiver(null) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        if (resultCode != 0) {
+                            Log.e(LC, "error on COMMAND_GET_CURRENT_PLAYLIST_ENTRY");
+                            ret.complete(null);
+                            return;
+                        }
+                        PlaylistEntry playlistEntry = resultData.getParcelable("playlistEntry");
+                        ret.complete(playlistEntry);
+                    }
+                });
+        return ret;
+    }
+
+    private void getPlaylistEntry(ResultReceiver cb, Bundle extras) {
+        PlaylistID playlistID = playbackController.getCurrentPlaylistID();
+        if (playlistID == null) {
+            cb.send(0, new Bundle());
+            return;
+        }
+        long pos = playbackController.getCurrentPlaylistPosition();
+        int shuffleSeed = playbackController.getShuffleSeed();
+        musicLibraryService.playlistGetNext(playlistID, pos, 1, shuffleSeed)
+                .thenAccept(playlistEntries -> {
+                    if (playlistEntries.size() == 0) {
+                        cb.send(0, new Bundle());
+                    } else if (playlistEntries.size() != 1) {
+                        cb.send(1, null);
+                    }
+                    Bundle result = new Bundle();
+                    result.putParcelable("playlistEntry", playlistEntries.get(0));
+                    cb.send(0, result);
+                });
     }
 
     private class PlaybackCallback implements PlaybackController.Callback {
@@ -900,7 +989,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             setNotification();
         }
 
-        private void setPlaybackState(int newPlaybackState, long position, float playbackSpeed) {
+        private synchronized void setPlaybackState(int newPlaybackState, long position, float playbackSpeed) {
             Log.d(LC, "setPlaybackState: " + getPlaybackStateString(newPlaybackState)
                     + " pos: " + position + " speed: " + playbackSpeed);
             playbackState = playbackStateBuilder
@@ -931,10 +1020,23 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         }
 
         @Override
-        public void onPlaylistPositionChanged() {
+        public void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {
+            Bundle b = new Bundle();
+            b.putParcelable(AudioPlayerService.BUNDLE_KEY_PLAYLIST_ID, playlistID);
+            b.putLong(AudioPlayerService.BUNDLE_KEY_POS, pos);
+            mediaSession.sendSessionEvent(
+                    AudioPlayerService.SESSION_EVENT_PLAYLIST_SELECTION_CHANGED,
+                    b
+            );
+        }
+
+        @Override
+        public void onPlaylistPositionChanged(long pos) {
+            Bundle b = new Bundle();
+            b.putLong(BUNDLE_KEY_POS, pos);
             mediaSession.sendSessionEvent(
                     AudioPlayerService.SESSION_EVENT_PLAYLIST_POSITION_CHANGED,
-                    null
+                    b
             );
         }
 

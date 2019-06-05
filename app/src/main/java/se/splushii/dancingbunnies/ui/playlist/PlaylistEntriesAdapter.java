@@ -223,15 +223,20 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
 
     void setModel(PlaylistFragmentModel model) {
         Transformations.switchMap(model.getUserState(), playlistUserState -> {
-            if (playlistUserState.playlistMode) {
+            if (playlistUserState.showPlaylists) {
                 setPlaylistID(null);
                 return new MutableLiveData<>();
             }
-            PlaylistID playlistID = playlistUserState.playlistID;
+            PlaylistID playlistID = playlistUserState.browsedPlaylistID;
             Log.d(LC, "New playlistID: " + playlistID);
             setPlaylistID(playlistID);
             return model.getPlaylistEntries(playlistID, fragment.getContext());
-        }).observe(fragment.getViewLifecycleOwner(), this::setDataSet);
+        }).observe(fragment.getViewLifecycleOwner(), entries -> {
+            setDataSet(entries);
+            int pos = model.getUserStateValue().pos;
+            int pad = model.getUserStateValue().pad;
+            fragment.scrollPlaylistEntriesTo(pos, pad);
+        });
         cachedEntriesLiveData = model.getCachedEntries(fragment.getContext());
         fetchStateLiveData = model.getFetchState(fragment.getContext());
     }

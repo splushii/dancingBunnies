@@ -18,7 +18,6 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.recyclerview.selection.ItemDetailsLookup;
 import androidx.recyclerview.selection.SelectionTracker;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
@@ -34,7 +33,6 @@ import se.splushii.dancingbunnies.util.Util;
 public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapter.SongViewHolder> {
     private static final String LC = Util.getLogContext(MusicLibraryAdapter.class);
     private final MusicLibraryFragment fragment;
-    private final LinearLayoutManager layoutManager;
     private final FastScrollerBubble fastScrollerBubble;
     private SongViewHolder currentFastScrollerHolder;
     private List<MediaBrowserCompat.MediaItem> dataset;
@@ -42,13 +40,11 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     private SelectionTracker<EntryID> selectionTracker;
 
     MusicLibraryAdapter(MusicLibraryFragment fragment,
-                        LinearLayoutManager recViewLayoutManager,
                         RecyclerView recyclerView,
                         FastScrollerBubble fastScrollerBubble
     ) {
         this.dataset = new ArrayList<>();
         this.fragment = fragment;
-        this.layoutManager = recViewLayoutManager;
         this.fastScrollerBubble = fastScrollerBubble;
         fastScrollerBubble.setUpdateCallback(pos -> {
             currentFastScrollerHolder =
@@ -74,7 +70,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 ));
             }
             setDataset(dataset);
-            layoutManager.scrollToPositionWithOffset(state.pos, state.pad);
+            fragment.scrollTo(state.pos, state.pad);
         });
     }
 

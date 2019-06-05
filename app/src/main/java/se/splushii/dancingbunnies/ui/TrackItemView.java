@@ -74,11 +74,6 @@ public class TrackItemView extends LinearLayout {
         isPreloaded = false;
     }
 
-    public void initialize() {
-        cacheStatus = "";
-        setIsCached(false);
-    }
-
     public void setFetchState(HashMap<EntryID, AudioStorage.AudioDataFetchState> fetchStateMap) {
         if (fetchStateMap != null && fetchStateMap.containsKey(entryID)) {
             setFetchState(fetchStateMap.get(entryID));

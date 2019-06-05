@@ -19,7 +19,6 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
 import se.splushii.dancingbunnies.storage.db.DB;
 import se.splushii.dancingbunnies.storage.db.PlaybackControllerEntry;
 import se.splushii.dancingbunnies.storage.db.PlaybackControllerEntryDao;
@@ -43,8 +42,8 @@ public class PlaybackControllerStorage {
     private final String playlist_src_key;
     private final String playlist_id_key;
     private final String playlist_type_key;
-    private final String playlist_name_key;
     private final String playlist_position_key;
+    private final String playlist_fetch_position_key;
     private final String playback_id_counter;
 
     public PlaybackControllerStorage(Context context) {
@@ -59,11 +58,11 @@ public class PlaybackControllerStorage {
         playlist_type_key = context.getResources().getString(
                 R.string.pref_key_playbackcontroller_playlist_type
         );
-        playlist_name_key = context.getResources().getString(
-                R.string.pref_key_playbackcontroller_playlist_name
-        );
         playlist_position_key = context.getResources().getString(
-                R.string.pref_key_playbackcontroller_position_name
+                R.string.pref_key_playbackcontroller_playlist_position
+        );
+        playlist_fetch_position_key = context.getResources().getString(
+                R.string.pref_key_playbackcontroller_playlist_fetch_position
         );
         current_src_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_src);
         current_id_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_id);
@@ -75,11 +74,11 @@ public class PlaybackControllerStorage {
     public static String getQueueName(int queueID) {
         switch (queueID) {
             case PlaybackControllerStorage.QUEUE_ID_QUEUE:
-                return "queue";
+                return "controller_queue";
             case PlaybackControllerStorage.QUEUE_ID_PLAYLIST:
-                return "playlist";
+                return "controller_playlist";
             case PlaybackControllerStorage.QUEUE_ID_HISTORY:
-                return "history";
+                return "controller_history";
             case PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_QUEUE:
                 return "localaudioplayer_queue";
             case PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_PLAYLIST:
@@ -126,21 +125,29 @@ public class PlaybackControllerStorage {
     }
 
     public CompletableFuture<Void> insert(int queueID, int toPosition, List<PlaybackEntry> entries) {
+        if (entries == null || entries.isEmpty()) {
+            return Util.futureResult(null);
+        }
         return CompletableFuture.supplyAsync(() -> {
             List<PlaybackControllerEntry> roomEntries = new ArrayList<>();
             int entryPosition = toPosition;
-            StringBuilder sb = new StringBuilder();
             for (PlaybackEntry playbackEntry: entries) {
-                sb.append("insert entryID: ").append(playbackEntry)
-                        .append(" pos: ").append(entryPosition)
-                        .append("\n");
                 roomEntries.add(PlaybackControllerEntry.from(queueID, playbackEntry, entryPosition++));
             }
-            Log.d(LC, "insert to " + getQueueName(queueID) + ":\n"
-                    + "updatepos from: " + toPosition
-                    + " inc: " + roomEntries.size()
-                    + "\n" + sb.toString());
+            Log.d(LC, Util.getPlaybackEntriesChangedStatus(
+                    "insert to " + getQueueName(queueID) + "[" + entryPosition + "]:",
+                    "\n+ ",
+                    "",
+                    entries
+            ));
             entryModel.insert(queueID, toPosition, roomEntries);
+            return null;
+        });
+    }
+
+    public CompletableFuture<Void> removeEntries(int queueID, List<PlaybackEntry> playbackEntries) {
+        return CompletableFuture.supplyAsync(() -> {
+            entryModel.removeEntries(queueID, playbackEntries);
             return null;
         });
     }
@@ -231,23 +238,29 @@ public class PlaybackControllerStorage {
         return null;
     }
 
-    public PlaylistItem getCurrentPlaylist() {
+    public PlaylistID getCurrentPlaylist() {
         String src = preferences.getString(playlist_src_key, null);
         String id = preferences.getString(playlist_id_key, null);
         String type = preferences.getString(playlist_type_key, null);
-        String name = preferences.getString(playlist_name_key, null);
         if (src == null || id == null || type == null) {
             return null;
         }
-        return new PlaylistItem(new PlaylistID(src, id, type), name);
+        return new PlaylistID(src, id, type);
     }
 
-    public void setCurrentPlaylist(PlaylistItem playlist) {
+    public void setCurrentPlaylist(PlaylistID playlistID) {
+        String src = null;
+        String id = null;
+        String type = null;
+        if (playlistID != null) {
+            src = playlistID.src;
+            id = playlistID.id;
+            type = playlistID.type;
+        }
         preferences.edit()
-                .putString(playlist_src_key, playlist.playlistID.src)
-                .putString(playlist_id_key, playlist.playlistID.id)
-                .putString(playlist_type_key, playlist.playlistID.type)
-                .putString(playlist_name_key, playlist.name)
+                .putString(playlist_src_key, src)
+                .putString(playlist_id_key, id)
+                .putString(playlist_type_key, type)
                 .apply();
     }
 
@@ -255,13 +268,16 @@ public class PlaybackControllerStorage {
         return preferences.getLong(playlist_position_key, 0);
     }
 
+    public long getPlaylistFetchPosition() {
+        return preferences.getLong(playlist_fetch_position_key, 0);
+    }
     public void setPlaylistPosition(long position) {
         preferences.edit()
                 .putLong(playlist_position_key, position)
                 .apply();
     }
 
-    public long getNextPlaybackID() {
+    public synchronized long getNextPlaybackID() {
         long id = preferences.getLong(playback_id_counter, 0);
         if (!preferences.edit()
                 .putLong(playback_id_counter, id + 1)

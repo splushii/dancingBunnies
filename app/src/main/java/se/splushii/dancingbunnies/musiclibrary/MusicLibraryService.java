@@ -23,6 +23,8 @@ import java.util.concurrent.CompletableFuture;
 
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.Transformations;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.backend.APIClientRequestHandler;
@@ -34,6 +36,7 @@ import se.splushii.dancingbunnies.search.Searcher;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryService extends Service {
@@ -106,33 +109,62 @@ public class MusicLibraryService extends Service {
     private final IBinder binder = new MusicLibraryBinder();
     private List<Runnable> metaChangedListeners;
 
-    // TODO: Implement this in PlaylistStorage or something similar instead.
-    // TODO: May need to be here to support both stupid and smart playlists.
-    // TODO: smart entries are fetched using MetaStorage.
-    // TODO: stupid entries are fetched using PlaylistStorage.
-//    public List<PlaybackEntry> playlistGetNext(PlaylistID playlistID, long index, int maxEntries) {
-//        List<PlaybackEntry> playbackEntries = new LinkedList<>();
-//        List<EntryID> entryIDs = playlistMap.get(playlistID);
-//        if (entryIDs == null || entryIDs.isEmpty()) {
-//            return playbackEntries;
-//        }
-//        for (int count = 0; count < maxEntries && index < entryIDs.size(); count++, index++) {
-//            EntryID entryID = entryIDs.get((int)index);
-//            playbackEntries.add(new PlaybackEntry(entryID, PlaybackEntry.USER_TYPE_PLAYLIST));
-//        }
-//        return playbackEntries;
-//    }
+    // Set shuffleSeed = 0 to get normal offset
+    public CompletableFuture<List<PlaylistEntry>> playlistGetNext(PlaylistID playlistID,
+                                                                  long index,
+                                                                  int maxEntries,
+                                                                  int shuffleSeed) {
+        CompletableFuture<List<PlaylistEntry>> ret = new CompletableFuture<>();
+        if (PlaylistID.TYPE_SMART.equals(playlistID.type)) {
+            // TODO: Support smart entries. Fetch using MetaStorage.
+            throw new RuntimeException("Not implemented");
+        }
+        LiveData<List<PlaylistEntry>> entriesLiveData = Transformations.map(
+                PlaylistStorage.getInstance(this).getPlaylistEntries(playlistID), p -> {
+                    List<PlaylistEntry> chosenEntries = new ArrayList<>(maxEntries);
+                    long nextIndex = index;
+                    for (int i = 0; i < maxEntries; i++) {
+                        PlaylistEntry playlistEntry = p.get((int)nextIndex);
+                        chosenEntries.add(playlistEntry);
+                        nextIndex = playlistPosition(
+                                nextIndex,
+                                1,
+                                p.size(),
+                                shuffleSeed
+                        );
+                    }
+                    return chosenEntries;
+                });
+        entriesLiveData.observeForever(new Observer<List<PlaylistEntry>>() {
+            @Override
+            public void onChanged(List<PlaylistEntry> playlistEntries) {
+                entriesLiveData.removeObserver(this);
+                ret.complete(playlistEntries);
+            }
+        });
+        return ret;
+    }
 
-    // TODO: Implement this in PlaylistStorage or something similar instead
-//    public long playlistPosition(PlaylistID playlistID, long playlistPosition, int offset) {
-//        if (offset == 0) {
-//            return playlistPosition;
-//        }
-//        List<EntryID> playlistEntries = playlistMap.getOrDefault(playlistID, Collections.emptyList());
-//        int playlistSize = playlistEntries.size();
-//        playlistPosition += offset;
-//        return playlistPosition > playlistSize ? playlistSize : playlistPosition;
-//    }
+    public CompletableFuture<Integer> playlistPosition(PlaylistID playlistID,
+                                                       long index,
+                                                       int offset,
+                                                       int shuffleSeed) {
+        CompletableFuture<Integer> ret = new CompletableFuture<>();
+        LiveData<List<PlaylistEntry>> entryLiveData = PlaylistStorage.getInstance(this).getPlaylistEntries(playlistID);
+        entryLiveData.observeForever(new Observer<List<PlaylistEntry>>() {
+            @Override
+            public void onChanged(List<PlaylistEntry> playlistEntries) {
+                entryLiveData.removeObserver(this);
+                ret.complete(playlistPosition(index, offset, playlistEntries.size(), shuffleSeed));
+            }
+        });
+        return ret;
+    }
+
+    // Set shuffleSeed = 0 to get normal offset
+    public int playlistPosition(long index, int offset, int playlistSize, int shuffleSeed) {
+        return (int)(index + offset + (shuffleSeed * offset)) % playlistSize;
+    }
 
     public int addMetaChangedListener(Runnable runnable) {
         int position = metaChangedListeners.size();

@@ -57,6 +57,15 @@ public class QueueEntry implements Parcelable {
     }
 
     @Override
+    public String toString() {
+        return "QueueEntry{" +
+                "pos=" + pos +
+                ", id=" + id +
+                ", playbackEntry=" + playbackEntry +
+                '}';
+    }
+
+    @Override
     public int hashCode() {
         return Objects.hash(id);
     }

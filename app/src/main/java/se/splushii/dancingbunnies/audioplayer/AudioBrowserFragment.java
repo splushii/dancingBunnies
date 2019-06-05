@@ -3,7 +3,6 @@ package se.splushii.dancingbunnies.audioplayer;
 import android.content.ComponentName;
 import android.os.Bundle;
 import android.os.RemoteException;
-import android.os.ResultReceiver;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
@@ -12,15 +11,14 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import androidx.fragment.app.Fragment;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistItem;
-import se.splushii.dancingbunnies.ui.nowplaying.QueueEntry;
+import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 public abstract class AudioBrowserFragment extends Fragment {
@@ -60,20 +58,6 @@ public abstract class AudioBrowserFragment extends Fragment {
         }
     }
 
-    protected List<QueueEntry> getQueue() {
-        List<MediaSessionCompat.QueueItem> queueItems = mediaController.getQueue();
-        List<QueueEntry> queueEntries = new ArrayList<>();
-        for (int i = 0; i < queueItems.size(); i++) {
-            MediaSessionCompat.QueueItem queueItem = queueItems.get(i);
-            queueEntries.add(new QueueEntry(
-                    new PlaybackEntry(queueItem.getDescription()),
-                    queueItem.getQueueId(),
-                    i
-            ));
-        }
-        return queueEntries;
-    }
-
     public void play() {
         mediaController.getTransportControls().play();
     }
@@ -90,6 +74,18 @@ public abstract class AudioBrowserFragment extends Fragment {
                         play();
                     }
                 });
+    }
+
+    public List<PlaybackEntry> getQueue() {
+        return sessionQueueToPlaybackEntries(mediaController.getQueue());
+    }
+
+    private List<PlaybackEntry> sessionQueueToPlaybackEntries(
+            List<MediaSessionCompat.QueueItem> queue
+    ) {
+        return queue.stream()
+                .map(queueItem -> new PlaybackEntry(queueItem.getDescription()))
+                .collect(Collectors.toList());
     }
 
     public void queue(EntryID entryID) {
@@ -109,17 +105,17 @@ public abstract class AudioBrowserFragment extends Fragment {
         });
     }
 
-    public void dequeue(EntryID entryID, long pos) {
-        MediaDescriptionCompat mediaDescription = entryID.toMediaDescriptionCompat();
+    public void dequeue(PlaybackEntry playbackEntry) {
+        MediaDescriptionCompat mediaDescription = playbackEntry.entryID.toMediaDescriptionCompat();
         assert mediaDescription.getExtras() != null;
-        mediaDescription.getExtras().putLong(AudioPlayerService.BUNDLE_KEY_DEQUEUE_QUEUE_POS, pos);
+        mediaDescription.getExtras().putParcelable(AudioPlayerService.BUNDLE_KEY_PLAYBACK_ENTRY, playbackEntry);
         mediaController.removeQueueItem(mediaDescription);
     }
 
-    public void dequeue(List<Long> positionList) {
+    public void dequeue(List<PlaybackEntry> playbackEntries) {
         AudioPlayerService.dequeue(
                 mediaController,
-                positionList
+                playbackEntries
         ).thenAccept(success -> {
             if (!success) {
                 Log.e(LC, "dequeue entries failed");
@@ -127,10 +123,11 @@ public abstract class AudioBrowserFragment extends Fragment {
         });
     }
 
-    public CompletableFuture<Boolean> moveQueueItems(List<Long> positionList, int toPosition) {
+    public CompletableFuture<Boolean> moveQueueItems(List<PlaybackEntry> playbackEntries,
+                                                     int toPosition) {
         return AudioPlayerService.moveQueueItems(
                 mediaController,
-                positionList,
+                playbackEntries,
                 toPosition
         ).thenApply(success -> {
             if (!success) {
@@ -140,23 +137,24 @@ public abstract class AudioBrowserFragment extends Fragment {
         });
     }
 
-    protected CompletableFuture<Optional<PlaylistItem>> getCurrentPlaylist() {
-        CompletableFuture<Optional<PlaylistItem>> future = new CompletableFuture<>();
-        mediaController.sendCommand(AudioPlayerService.COMMAND_GET_CURRENT_PLAYLIST, null,
-                new ResultReceiver(null) {
-                    @Override
-                    protected void onReceiveResult(int resultCode, Bundle resultData) {
-                        if (resultCode != 0) {
-                            Log.e(LC, "error on COMMAND_GET_CURRENT_PLAYLIST");
-                            future.complete(Optional.empty());
-                            return;
-                        }
-                        PlaylistItem playlistItem = AudioPlayerService.getPlaylist(resultData);
-                        future.complete(playlistItem == null ?
-                                Optional.empty() : Optional.of(playlistItem));
-                    }
-                });
-        return future;
+    protected CompletableFuture<Boolean> setCurrentPlaylist(PlaylistID playlistID) {
+        return AudioPlayerService.setCurrentPlaylist(
+                mediaController,
+                playlistID
+        ).thenApply(success -> {
+            if (!success) {
+                Log.e(LC, "setCurrentPlaylist (" + playlistID + ") failed");
+            }
+            return success;
+        });
+    }
+
+    protected CompletableFuture<PlaylistID> getCurrentPlaylist() {
+        return AudioPlayerService.getCurrentPlaylist(mediaController);
+    }
+
+    protected CompletableFuture<PlaylistEntry> getCurrentPlaylistEntry() {
+        return AudioPlayerService.getCurrentPlaylistEntry(mediaController);
     }
 
     protected void pause() {
@@ -220,7 +218,19 @@ public abstract class AudioBrowserFragment extends Fragment {
 
                 @Override
                 public void onSessionEvent(String event, Bundle extras) {
-                    AudioBrowserFragment.this.onSessionEvent(event, extras);
+                    switch (event) {
+                        case AudioPlayerService.SESSION_EVENT_PLAYLIST_SELECTION_CHANGED:
+                            PlaylistID playlistID = extras.getParcelable(
+                                    AudioPlayerService.BUNDLE_KEY_PLAYLIST_ID
+                            );
+                            long pos = extras.getLong(AudioPlayerService.BUNDLE_KEY_POS);
+                            AudioBrowserFragment.this.onPlaylistSelectionChanged(playlistID, pos);
+                            break;
+                        case AudioPlayerService.SESSION_EVENT_PLAYLIST_POSITION_CHANGED:
+                            pos = extras.getLong(AudioPlayerService.BUNDLE_KEY_POS);
+                            AudioBrowserFragment.this.onPlaylistPositionChanged(pos);
+                            break;
+                    }
                 }
 
                 @Override
@@ -235,15 +245,18 @@ public abstract class AudioBrowserFragment extends Fragment {
 
                 @Override
                 public void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {
-                    AudioBrowserFragment.this.onQueueChanged(queue);
+                    AudioBrowserFragment.this.onQueueChanged(
+                            sessionQueueToPlaybackEntries(queue)
+                    );
                 }
             };
 
     protected void onMediaBrowserConnected() {}
     protected void onPlaybackStateChanged(PlaybackStateCompat state) {}
     protected void onMetadataChanged(EntryID entryID) {}
-    protected void onSessionEvent(String event, Bundle extras) {}
     private void onSessionDestroyed() {}
     protected void onSessionReady() {}
-    protected void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {}
+    protected void onQueueChanged(List<PlaybackEntry> queue) {}
+    protected void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {}
+    protected void onPlaylistPositionChanged(long pos) {}
 }

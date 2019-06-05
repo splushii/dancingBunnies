@@ -144,6 +144,7 @@ public class ItemTouchHelperCallback<
             adapter.insertItems(removedSelectedItems);
         } else {
             int newPos = lastDragPos;
+            Log.e(LC, "newPos: " + newPos);
             adapter.removeItems(Collections.singletonList(dragID));
             TreeMap<Integer, ID> movedSelection = new TreeMap<>();
             for (ID id: initialSelection.values()) {

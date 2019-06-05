@@ -3,6 +3,8 @@ package se.splushii.dancingbunnies.audioplayer;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -133,7 +135,7 @@ class LocalAudioPlayer implements AudioPlayer {
     public CompletableFuture<Void> play() {
         playWhenReady = true;
         if (player == null) {
-            return Util.futureResult("Player is null");
+            return next();
         }
         player.play();
         updatePlaybackState();
@@ -144,7 +146,8 @@ class LocalAudioPlayer implements AudioPlayer {
     public CompletableFuture<Void> pause() {
         playWhenReady = false;
         if (player == null) {
-            return Util.futureResult("Player is null");
+            updatePlaybackState();
+            return Util.futureResult(null);
         }
         player.pause();
         updatePlaybackState();
@@ -187,7 +190,7 @@ class LocalAudioPlayer implements AudioPlayer {
         updatePlaybackState();
         callback.onPreloadChanged();
         CompletableFuture<Void> persist = persistState();
-        return playWhenReady ? persist.thenCompose(aVoid -> play()) : persist;
+        return player != null && playWhenReady ? persist.thenCompose(aVoid -> play()) : persist;
     }
 
     @Override
@@ -343,15 +346,34 @@ class LocalAudioPlayer implements AudioPlayer {
     }
 
     @Override
-    public CompletableFuture<Void> deQueue(List<Integer> positions) {
-        // Start from largest index because queues are modified
-        for (int i = 0; i < positions.size(); i++) {
-            int queuePosition = positions.get(positions.size() - 1 - i);
-            // TODO: Also cancel the download
-            queuePlayers.remove(queuePosition).release();
+    public CompletableFuture<Void> deQueueEntries(List<PlaybackEntry> playbackEntries) {
+        // TODO: Continue to implement this (by using playbackEntries instead of positions)
+        // TODO: AND CONTINUE TO IMPLEMENT USING playbackID INSTEAD OF positions
+        // TODO: I THINK THE PLAN WAS TO THEN PUT A PLAYLIST POS INTO PlaybackEntry
+        // TODO: IN ORDER TO GET RID OF playlistIDToPosMap WHICH DOES NOT WORK ACROSS REBOOTS AND SO
+        HashSet<PlaybackEntry> entries = new HashSet<>(playbackEntries);
+        List<MediaPlayerInstance> mediaPlayersToRemove = new ArrayList<>();
+        for (MediaPlayerInstance mp: queuePlayers) {
+            if (entries.contains(mp.playbackEntry)) {
+                mediaPlayersToRemove.add(mp);
+            }
+        }
+        for (MediaPlayerInstance mp: mediaPlayersToRemove) {
+            queuePlayers.remove(mp);
         }
         return persistState();
     }
+
+//    @Override
+//    public CompletableFuture<Void> deQueue(List<Integer> positions) {
+//        // Start from largest index because queues are modified
+//        for (int i = 0; i < positions.size(); i++) {
+//            int queuePosition = positions.get(positions.size() - 1 - i);
+//            // TODO: Also cancel the download
+//            queuePlayers.remove(queuePosition).release();
+//        }
+//        return persistState();
+//    }
 
     @Override
     public CompletableFuture<Void> previous() {
@@ -369,6 +391,9 @@ class LocalAudioPlayer implements AudioPlayer {
     }
 
     private void setCurrentPlayer(MediaPlayerInstance mediaPlayerInstance) {
+        if (player == mediaPlayerInstance) {
+            return;
+        }
         player = mediaPlayerInstance;
         Log.d(LC, "setCurrentPlayer: " + (player == null ? "null" : player.title()));
         if (player == null) {
