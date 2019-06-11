@@ -55,6 +55,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private static final String LC = Util.getLogContext(MusicLibraryFragment.class);
 
     private MusicLibraryAdapter recyclerViewAdapter;
+    private LinearLayoutManager recViewLayoutManager;
     private SelectionTracker<EntryID> selectionTracker;
     private ActionMode actionMode;
 
@@ -62,7 +63,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private FastScrollerBubble fastScrollerBubble;
 
     private View searchView;
-    private TextView searchText;
+    private View searchInfoView;
+    private TextView searchInfoText;
 
     private View filterView;
 
@@ -118,7 +120,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         if (newUserState.query.isSearchQuery()) {
             filterView.setVisibility(GONE);
             fastScroller.enableBubble(false);
-            searchText.setText(newUserState.query.getSearchQuery());
+            searchInfoText.setText(newUserState.query.getSearchQuery());
             searchView.setVisibility(VISIBLE);
         } else {
             searchView.setVisibility(GONE);
@@ -179,8 +181,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         searchView = rootView.findViewById(R.id.musiclibrary_search);
         filterView = rootView.findViewById(R.id.musiclibrary_filter);
         RecyclerView recyclerView = rootView.findViewById(R.id.musiclibrary_recyclerview);
-        LinearLayoutManager recViewLayoutManager =
-                new LinearLayoutManager(this.getContext());
+        recViewLayoutManager = new LinearLayoutManager(this.getContext());
         recyclerView.setLayoutManager(recViewLayoutManager);
         recyclerView.getRecycledViewPool().setMaxRecycledViews(0, 50);
 
@@ -189,12 +190,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         fastScrollerBubble = rootView.findViewById(R.id.musiclibrary_fastscroller_bubble);
         fastScroller.setBubble(fastScrollerBubble);
 
-        recyclerViewAdapter = new MusicLibraryAdapter(
-                this,
-                recViewLayoutManager,
-                recyclerView,
-                fastScrollerBubble
-        );
+        recyclerViewAdapter = new MusicLibraryAdapter(this, recyclerView, fastScrollerBubble);
         recyclerView.setAdapter(recyclerViewAdapter);
 
         selectionTracker = new SelectionTracker.Builder<>(
@@ -234,11 +230,12 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             selectionTracker.onRestoreInstanceState(savedInstanceState);
         }
 
-        searchText = rootView.findViewById(R.id.musiclibrary_search_query);
-        searchText.setOnClickListener(v -> model.searchQueryClicked(searchText.getText()));
+        searchInfoText = rootView.findViewById(R.id.musiclibrary_search_info_query);
+        searchInfoView = rootView.findViewById(R.id.musiclibrary_search_info);
+        searchInfoView.setOnClickListener(v -> model.searchQueryClicked(searchInfoText.getText()));
 
         View filterHomeBtn = rootView.findViewById(R.id.musiclibrary_home_filter);
-        View searchHomeBtn = rootView.findViewById(R.id.musiclibrary_home_search);
+        View searchHomeBtn = rootView.findViewById(R.id.musiclibrary_search_home);
         filterHomeBtn.setOnClickListener(v -> {
             model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
             model.reset();
@@ -503,5 +500,9 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         if (selectionTracker != null) {
             selectionTracker.clearSelection();
         }
+    }
+
+    void scrollTo(int pos, int pad) {
+        recViewLayoutManager.scrollToPositionWithOffset(pos, pad);
     }
 }

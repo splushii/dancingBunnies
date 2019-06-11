@@ -3,6 +3,8 @@ package se.splushii.dancingbunnies.audioplayer;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -16,7 +18,7 @@ import se.splushii.dancingbunnies.util.Util;
 
 class LocalAudioPlayer implements AudioPlayer {
     private static final String LC = Util.getLogContext(LocalAudioPlayer.class);
-    private final Callback callback;
+    private Callback callback;
     private final PlaybackControllerStorage storage;
 
     private MediaPlayerInstance player;
@@ -73,9 +75,19 @@ class LocalAudioPlayer implements AudioPlayer {
     }
 
     @Override
+    public CompletableFuture<Void> initialize() {
+        Log.d(LC, "initialize");
+        Log.d(LC, "initialized");
+        return Util.futureResult(null);
+    }
+
+    @Override
     public CompletableFuture<Void> destroy() {
+        Log.d(LC, "destroy");
+        callback = AudioPlayer.dummyCallback;
         return stop()
-                .thenCompose(v -> clearState());
+                .thenCompose(v -> clearState())
+                .thenRun(() -> Log.d(LC, "destroyed"));
     }
 
     private CompletableFuture<Void> clearState() {
@@ -133,7 +145,7 @@ class LocalAudioPlayer implements AudioPlayer {
     public CompletableFuture<Void> play() {
         playWhenReady = true;
         if (player == null) {
-            return Util.futureResult("Player is null");
+            return next();
         }
         player.play();
         updatePlaybackState();
@@ -144,7 +156,8 @@ class LocalAudioPlayer implements AudioPlayer {
     public CompletableFuture<Void> pause() {
         playWhenReady = false;
         if (player == null) {
-            return Util.futureResult("Player is null");
+            updatePlaybackState();
+            return Util.futureResult(null);
         }
         player.pause();
         updatePlaybackState();
@@ -187,7 +200,7 @@ class LocalAudioPlayer implements AudioPlayer {
         updatePlaybackState();
         callback.onPreloadChanged();
         CompletableFuture<Void> persist = persistState();
-        return playWhenReady ? persist.thenCompose(aVoid -> play()) : persist;
+        return player != null && playWhenReady ? persist.thenCompose(aVoid -> play()) : persist;
     }
 
     @Override
@@ -324,32 +337,51 @@ class LocalAudioPlayer implements AudioPlayer {
 
     @Override
     public CompletableFuture<Void> queue(List<PlaybackEntry> entries, int offset) {
-        if (!entries.isEmpty()) {
-            List<MediaPlayerInstance> playersToQueue = new LinkedList<>();
-            for (PlaybackEntry entry: entries) {
-                MediaPlayerInstance instance = new MediaPlayerInstance(
-                        entry,
-                        mediaPlayerCallback
-                );
-                musicLibraryService.downloadAudioData(instance.playbackEntry.entryID);
-                playersToQueue.add(instance);
-            }
-            queuePlayers.addAll(offset, playersToQueue);
+        if (entries.isEmpty()) {
+            return Util.futureResult(null);
         }
+        List<MediaPlayerInstance> playersToQueue = new LinkedList<>();
+        for (PlaybackEntry entry: entries) {
+            MediaPlayerInstance instance = new MediaPlayerInstance(
+                    entry,
+                    mediaPlayerCallback
+            );
+            musicLibraryService.downloadAudioData(instance.playbackEntry.entryID);
+            playersToQueue.add(instance);
+        }
+        queuePlayers.addAll(offset, playersToQueue);
         if (player == null) {
             return next();
         }
+        callback.onPreloadChanged();
         return persistState();
     }
 
     @Override
-    public CompletableFuture<Void> deQueue(List<Integer> positions) {
-        // Start from largest index because queues are modified
-        for (int i = 0; i < positions.size(); i++) {
-            int queuePosition = positions.get(positions.size() - 1 - i);
-            // TODO: Also cancel the download
-            queuePlayers.remove(queuePosition).release();
+    public CompletableFuture<Void> dePreload(List<PlaybackEntry> playbackEntries) {
+        if (playbackEntries.isEmpty()) {
+            return Util.futureResult(null);
         }
+        HashSet<PlaybackEntry> entries = new HashSet<>(playbackEntries);
+        List<MediaPlayerInstance> mediaPlayersToRemove = new ArrayList<>();
+        for (MediaPlayerInstance mp: queuePlayers) {
+            if (entries.contains(mp.playbackEntry)) {
+                mediaPlayersToRemove.add(mp);
+            }
+        }
+        for (MediaPlayerInstance mp: mediaPlayersToRemove) {
+            queuePlayers.remove(mp);
+        }
+        mediaPlayersToRemove.clear();
+        for (MediaPlayerInstance mp: playlistPlayers) {
+            if (entries.contains(mp.playbackEntry)) {
+                mediaPlayersToRemove.add(mp);
+            }
+        }
+        for (MediaPlayerInstance mp: mediaPlayersToRemove) {
+            playlistPlayers.remove(mp);
+        }
+        callback.onPreloadChanged();
         return persistState();
     }
 
@@ -369,6 +401,9 @@ class LocalAudioPlayer implements AudioPlayer {
     }
 
     private void setCurrentPlayer(MediaPlayerInstance mediaPlayerInstance) {
+        if (player == mediaPlayerInstance) {
+            return;
+        }
         player = mediaPlayerInstance;
         Log.d(LC, "setCurrentPlayer: " + (player == null ? "null" : player.title()));
         if (player == null) {

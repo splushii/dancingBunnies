@@ -11,6 +11,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
@@ -83,6 +84,11 @@ public class PlaylistStorage {
     }
 
     public LiveData<Playlist> getPlaylist(PlaylistID playlistID) {
+        if (playlistID == null) {
+            MutableLiveData<Playlist> ret = new MutableLiveData<>();
+            ret.setValue(null);
+            return ret;
+        }
         return playlistModel.get(playlistID.src, playlistID.id);
     }
 
@@ -104,6 +110,12 @@ public class PlaylistStorage {
 
     public LiveData<List<PlaylistEntry>> getPlaylistEntries(PlaylistID playlistID) {
         return playlistEntryModel.getEntries(playlistID.src, playlistID.id);
+    }
+
+    public CompletableFuture<List<PlaylistEntry>> getPlaylistEntriesOnce(PlaylistID playlistID) {
+        return CompletableFuture.supplyAsync(() ->
+                playlistEntryModel.getEntriesOnce(playlistID.src, playlistID.id)
+        );
     }
 
     public CompletableFuture<Void> movePlaylists(Collection<Playlist> selection, int pos) {

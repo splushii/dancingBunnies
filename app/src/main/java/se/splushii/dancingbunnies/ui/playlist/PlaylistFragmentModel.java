@@ -18,14 +18,26 @@ import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
+import se.splushii.dancingbunnies.util.Util;
 
-class PlaylistFragmentModel extends ViewModel {
+public class PlaylistFragmentModel extends ViewModel {
+    private static final String LC = Util.getLogContext(PlaylistFragmentModel.class);
 
     private MutableLiveData<PlaylistUserState> userState;
     private LinkedList<PlaylistUserState> backStack;
 
+    private MutableLiveData<PlaylistID> currentPlaylistID;
+
     private static PlaylistUserState initialUserState() {
-        return new PlaylistUserState(0, 0);
+        return new PlaylistUserState.Builder().build();
+    }
+
+    boolean isUserStateInitial() {
+        return getUserStateValue().isInitial();
+    }
+
+    synchronized void resetUserState() {
+        userState.setValue(initialUserState());
     }
 
     private synchronized MutableLiveData<PlaylistUserState> getMutableUserState() {
@@ -40,8 +52,16 @@ class PlaylistFragmentModel extends ViewModel {
         return getMutableUserState();
     }
 
+    PlaylistUserState getUserStateValue() {
+        return getUserState().getValue();
+    }
+
     private void updateUserState(int pos, int pad) {
-        getMutableUserState().setValue(new PlaylistUserState(getUserState().getValue(), pos, pad));
+        getMutableUserState().setValue(new PlaylistUserState.Builder()
+                .fromState(getUserStateValue())
+                .setPos(pos, pad)
+                .build()
+        );
     }
 
     void updateUserState(Pair<Integer,Integer> currentPosition) {
@@ -57,11 +77,11 @@ class PlaylistFragmentModel extends ViewModel {
     }
 
     void addBackStackHistory(Pair<Integer, Integer> currentPosition) {
-        getBackStack().push(new PlaylistUserState(
-                getUserState().getValue(),
-                currentPosition.first,
-                currentPosition.second
-        ));
+        getBackStack().push(new PlaylistUserState.Builder()
+                .fromState(getUserStateValue())
+                .setPos(currentPosition.first, currentPosition.second)
+                .build()
+        );
     }
 
     boolean popBackStack() {
@@ -73,7 +93,11 @@ class PlaylistFragmentModel extends ViewModel {
     }
 
     void browsePlaylist(PlaylistID playlistID) {
-        getMutableUserState().setValue(new PlaylistUserState(playlistID, 0, 0));
+        getMutableUserState().setValue(new PlaylistUserState.Builder()
+                .fromState(getUserStateValue())
+                .setBrowsedPlaylist(playlistID)
+                .build()
+        );
     }
 
     LiveData<List<Playlist>> getPlaylists(Context context) {
@@ -96,6 +120,36 @@ class PlaylistFragmentModel extends ViewModel {
         return Transformations.map(
                 AudioStorage.getInstance(context).getCachedEntries(),
                 HashSet::new
+        );
+    }
+
+    private synchronized MutableLiveData<PlaylistID> getMutableCurrentPlaylist() {
+        if (currentPlaylistID == null) {
+            currentPlaylistID = new MutableLiveData<>();
+        }
+        return currentPlaylistID;
+    }
+
+    void setCurrentPlaylist(PlaylistID playlistID) {
+        getMutableCurrentPlaylist().setValue(playlistID);
+    }
+
+    LiveData<PlaylistID> getCurrentPlaylistID() {
+        return getMutableCurrentPlaylist();
+    }
+
+    boolean isBrowsedCurrent() {
+        PlaylistID currentPlaylistID = getCurrentPlaylistID().getValue();
+        PlaylistUserState userState = getUserStateValue();
+        return userState != null && userState.isBrowsedCurrent(currentPlaylistID);
+    }
+
+    public void goToPlaylist(PlaylistID playlistID, long pos) {
+        getMutableUserState().setValue(new PlaylistUserState.Builder()
+                .fromState(getUserStateValue())
+                .setBrowsedPlaylist(playlistID)
+                .setPos((int) pos, 0)
+                .build()
         );
     }
 }

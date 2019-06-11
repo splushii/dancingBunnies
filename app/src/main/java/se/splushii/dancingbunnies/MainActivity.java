@@ -23,10 +23,12 @@ import androidx.fragment.app.FragmentPagerAdapter;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.mediarouter.app.MediaRouteButton;
 import androidx.viewpager.widget.ViewPager;
+import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.ui.musiclibrary.MusicLibraryFragment;
 import se.splushii.dancingbunnies.ui.musiclibrary.MusicLibraryFragmentModel;
 import se.splushii.dancingbunnies.ui.nowplaying.NowPlayingFragment;
 import se.splushii.dancingbunnies.ui.playlist.PlaylistFragment;
+import se.splushii.dancingbunnies.ui.playlist.PlaylistFragmentModel;
 import se.splushii.dancingbunnies.util.Util;
 
 public final class MainActivity extends AppCompatActivity {
@@ -39,6 +41,8 @@ public final class MainActivity extends AppCompatActivity {
     public static final String INTENT_EXTRA_PAGER_SELECTION = "dancingbunnies.mainactivity.pagerselection";
     public static final String INTENT_EXTRA_FILTER_TYPE = "dancingbunnies.mainactivity.filter_type";
     public static final String INTENT_EXTRA_FILTER_VALUE = "dancingbunnies.mainactivity.filter_value";
+    public static final String INTENT_EXTRA_PLAYLIST_ID = "dancingbunnies.mainactivity.playlist_id";
+    public static final String INTENT_EXTRA_PLAYLIST_POS = "dancingbunnies.mainactivity.playlist_pos";
     public static final String SELECTION_ID_NOWPLAYING = "dancingbunnies.selection_id.nowplaying";
     public static final String SELECTION_ID_MUSICLIBRARY = "dancingbunnies.selection_id.musiclibrary";
     public static final String SELECTION_ID_PLAYLIST = "dancingbunnies.selection_id.playlist";
@@ -52,6 +56,7 @@ public final class MainActivity extends AppCompatActivity {
     private SectionsPagerAdapter mSectionsPagerAdapter;
 
     private MusicLibraryFragmentModel musicLibraryModel;
+    private PlaylistFragmentModel playlistModel;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -63,6 +68,7 @@ public final class MainActivity extends AppCompatActivity {
             searchView.setQuery(s, false);
             searchView.requestFocus();
         });
+        playlistModel = ViewModelProviders.of(this).get(PlaylistFragmentModel.class);
 
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
 
@@ -97,9 +103,17 @@ public final class MainActivity extends AppCompatActivity {
         String filterType = intent.getStringExtra(INTENT_EXTRA_FILTER_TYPE);
         String filter = intent.getStringExtra(INTENT_EXTRA_FILTER_VALUE);
         if (filterType != null && filter != null) {
-            Log.e(LC, "mainactivity query: " + filterType + ": " + filter);
+            Log.d(LC, "mainactivity query: " + filterType + ": " + filter);
             mViewPager.setCurrentItem(PAGER_MUSICLIBRARY);
             musicLibraryModel.query(filterType, filter);
+            return;
+        }
+        PlaylistID playlistID = intent.getParcelableExtra(INTENT_EXTRA_PLAYLIST_ID);
+        long pos = intent.getLongExtra(INTENT_EXTRA_PLAYLIST_POS, 0);
+        if (playlistID != null) {
+            Log.d(LC, "mainactivity goto playlist: " + playlistID + " pos: " + pos);
+            mViewPager.setCurrentItem(PAGER_PLAYLIST);
+            playlistModel.goToPlaylist(playlistID, pos);
             return;
         }
         int page_id = intent.getIntExtra(INTENT_EXTRA_PAGER_SELECTION, -1);

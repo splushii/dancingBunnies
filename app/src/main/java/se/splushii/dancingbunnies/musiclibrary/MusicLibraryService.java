@@ -17,6 +17,7 @@ import org.apache.lucene.search.TopDocs;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -34,6 +35,7 @@ import se.splushii.dancingbunnies.search.Searcher;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryService extends Service {
@@ -106,33 +108,41 @@ public class MusicLibraryService extends Service {
     private final IBinder binder = new MusicLibraryBinder();
     private List<Runnable> metaChangedListeners;
 
-    // TODO: Implement this in PlaylistStorage or something similar instead.
-    // TODO: May need to be here to support both stupid and smart playlists.
-    // TODO: smart entries are fetched using MetaStorage.
-    // TODO: stupid entries are fetched using PlaylistStorage.
-//    public List<PlaybackEntry> playlistGetNext(PlaylistID playlistID, long index, int maxEntries) {
-//        List<PlaybackEntry> playbackEntries = new LinkedList<>();
-//        List<EntryID> entryIDs = playlistMap.get(playlistID);
-//        if (entryIDs == null || entryIDs.isEmpty()) {
-//            return playbackEntries;
-//        }
-//        for (int count = 0; count < maxEntries && index < entryIDs.size(); count++, index++) {
-//            EntryID entryID = entryIDs.get((int)index);
-//            playbackEntries.add(new PlaybackEntry(entryID, PlaybackEntry.USER_TYPE_PLAYLIST));
-//        }
-//        return playbackEntries;
-//    }
+    // Set shuffleSeed = 0 to get normal offset
+    public CompletableFuture<List<PlaylistEntry>> playlistGetNext(PlaylistID playlistID,
+                                                                  long index,
+                                                                  int offset,
+                                                                  int maxEntries,
+                                                                  int shuffleSeed) {
+        if (playlistID == null) {
+            return Util.futureResult(null, Collections.emptyList());
+        }
+        if (PlaylistID.TYPE_SMART.equals(playlistID.type)) {
+            // TODO: Support smart entries. Fetch using MetaStorage.
+            throw new RuntimeException("Not implemented");
+        }
+        return PlaylistStorage.getInstance(this).getPlaylistEntriesOnce(playlistID)
+                .thenApply(p -> {
+                    List<PlaylistEntry> chosenEntries = new ArrayList<>(maxEntries);
+                    long nextIndex = playlistPosition(index, offset, p.size(), shuffleSeed);
+                    for (int i = 0; i < maxEntries; i++) {
+                        PlaylistEntry playlistEntry = p.get((int)nextIndex);
+                        chosenEntries.add(playlistEntry);
+                        nextIndex = playlistPosition(
+                                nextIndex,
+                                1,
+                                p.size(),
+                                shuffleSeed
+                        );
+                    }
+                    return chosenEntries;
+                });
+    }
 
-    // TODO: Implement this in PlaylistStorage or something similar instead
-//    public long playlistPosition(PlaylistID playlistID, long playlistPosition, int offset) {
-//        if (offset == 0) {
-//            return playlistPosition;
-//        }
-//        List<EntryID> playlistEntries = playlistMap.getOrDefault(playlistID, Collections.emptyList());
-//        int playlistSize = playlistEntries.size();
-//        playlistPosition += offset;
-//        return playlistPosition > playlistSize ? playlistSize : playlistPosition;
-//    }
+    // Set shuffleSeed = 0 to get normal offset
+    public int playlistPosition(long index, int offset, int playlistSize, int shuffleSeed) {
+        return (int)(index + offset + (shuffleSeed * offset)) % playlistSize;
+    }
 
     public int addMetaChangedListener(Runnable runnable) {
         int position = metaChangedListeners.size();

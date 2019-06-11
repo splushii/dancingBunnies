@@ -10,6 +10,7 @@ import com.google.android.gms.cast.MediaMetadata;
 import java.util.Objects;
 
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 
 public class PlaybackEntry implements Parcelable {
     public static final String USER_TYPE_PLAYLIST = "playlist";
@@ -19,10 +20,14 @@ public class PlaybackEntry implements Parcelable {
     private static final String BUNDLE_KEY_PLAYBACKID = "dancingbunnies.bundle.key.playbackentry.playbackID";
     private static final String BUNDLE_KEY_PLAYBACKTYPE = "dancingbunnies.bundle.key.playbackentry.playbackType";
     private static final String BUNDLE_KEY_PRELOADED = "dancingbunnies.bundle.key.playbackentry.preloaded";
+    private static final String BUNDLE_KEY_PLAYLIST_POS = "dancingbunnies.bundle.key.playbackentry.playlistPos";
+    static final long PLAYBACK_ID_UNKNOWN = -1;
+    static final long PLAYLIST_POS_NONE = -1;
 
     public final EntryID entryID;
     public final long playbackID;
     public final String playbackType;
+    public final long playlistPos;
     private boolean preloaded = false;
 
     public PlaybackEntry(MediaMetadata metadata) {
@@ -30,12 +35,21 @@ public class PlaybackEntry implements Parcelable {
         this.playbackID = Long.parseLong(metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYBACK_ID));
         String playbackType = metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYBACK_TYPE);
         this.playbackType = playbackType != null ? playbackType : PlaybackEntry.USER_TYPE_EXTERNAL;
+        this.playlistPos = Long.parseLong(metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYLIST_POS));
     }
 
-    public PlaybackEntry(EntryID entryID, long playbackID, String playbackType) {
+    public PlaybackEntry(PlaylistEntry playlistEntry, long playbackID) {
+        this.entryID = EntryID.from(playlistEntry);
+        this.playbackID = playbackID;
+        this.playbackType = USER_TYPE_PLAYLIST;
+        this.playlistPos = playlistEntry.pos;
+    }
+
+    public PlaybackEntry(EntryID entryID, long playbackID, String playbackType, long playlistPos) {
         this.entryID = entryID;
         this.playbackID = playbackID;
         this.playbackType = playbackType;
+        this.playlistPos = playlistPos;
     }
 
     private PlaybackEntry(Parcel in) {
@@ -43,6 +57,7 @@ public class PlaybackEntry implements Parcelable {
         playbackID = in.readLong();
         playbackType = in.readString();
         preloaded = in.readByte() != 0;
+        playlistPos = in.readLong();
     }
 
     public static final Creator<PlaybackEntry> CREATOR = new Creator<PlaybackEntry>() {
@@ -67,7 +82,7 @@ public class PlaybackEntry implements Parcelable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         PlaybackEntry that = (PlaybackEntry) o;
-        return playbackID == that.playbackID &&
+        return playbackID == that.playbackID && // TODO: Isn't it enough to compare playbackID?
                 Objects.equals(entryID, that.entryID);
     }
 
@@ -87,6 +102,7 @@ public class PlaybackEntry implements Parcelable {
         dest.writeLong(playbackID);
         dest.writeString(playbackType);
         dest.writeByte((byte) (preloaded ? 1 : 0));
+        dest.writeLong(playlistPos);
     }
 
     void setPreloaded(boolean preloaded) {
@@ -110,6 +126,7 @@ public class PlaybackEntry implements Parcelable {
         b.putString(BUNDLE_KEY_PLAYBACKID, Long.toString(playbackID));
         b.putString(BUNDLE_KEY_PLAYBACKTYPE, playbackType);
         b.putBoolean(BUNDLE_KEY_PRELOADED, preloaded);
+        b.putString(BUNDLE_KEY_PLAYLIST_POS, Long.toString(playlistPos));
         return b;
     }
 
@@ -119,5 +136,6 @@ public class PlaybackEntry implements Parcelable {
         playbackID = Long.parseLong(b.getString(BUNDLE_KEY_PLAYBACKID));
         playbackType = b.getString(BUNDLE_KEY_PLAYBACKTYPE);
         preloaded = b.getBoolean(BUNDLE_KEY_PRELOADED);
+        playlistPos = Long.parseLong(b.getString(BUNDLE_KEY_PLAYLIST_POS));
     }
 }

@@ -91,4 +91,6 @@ public abstract class SelectionRecyclerViewAdapter<
     public abstract void onActionModeSelectionChanged(ActionMode actionMode, Selection<ID> selection);
     public abstract void onActionModeEnding(ActionMode actionMode);
     public abstract boolean onDragInitiated(Selection<ID> selection);
+    public abstract boolean validMove(ViewHolder current, ViewHolder target);
+    public abstract boolean validDrag(ViewHolder viewHolder);
 }

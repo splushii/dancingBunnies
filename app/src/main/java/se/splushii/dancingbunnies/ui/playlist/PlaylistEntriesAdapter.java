@@ -145,6 +145,16 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
     }
 
     @Override
+    public boolean validMove(PlaylistEntryHolder current, PlaylistEntryHolder target) {
+        return true;
+    }
+
+    @Override
+    public boolean validDrag(PlaylistEntryHolder viewHolder) {
+        return true;
+    }
+
+    @Override
     protected void moveItemInDataset(int from, int to) {
         playlistEntriesDataset.add(to, playlistEntriesDataset.remove(from));
     }
@@ -189,6 +199,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         holder.entry.setActivated(isSelected(holder.getKey()));
         holder.itemContent.setCached(cachedEntriesLiveData.getValue());
         holder.itemContent.setFetchState(fetchStateLiveData.getValue());
+        holder.itemContent.setPos(playlistEntry.pos);
         holder.setEntryID(entryID);
         if (MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_DELETE)
                 && PlaylistID.TYPE_STUPID.equals(playlistID.type)) {
@@ -223,15 +234,20 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
 
     void setModel(PlaylistFragmentModel model) {
         Transformations.switchMap(model.getUserState(), playlistUserState -> {
-            if (playlistUserState.playlistMode) {
+            if (playlistUserState.showPlaylists) {
                 setPlaylistID(null);
                 return new MutableLiveData<>();
             }
-            PlaylistID playlistID = playlistUserState.playlistID;
+            PlaylistID playlistID = playlistUserState.browsedPlaylistID;
             Log.d(LC, "New playlistID: " + playlistID);
             setPlaylistID(playlistID);
             return model.getPlaylistEntries(playlistID, fragment.getContext());
-        }).observe(fragment.getViewLifecycleOwner(), this::setDataSet);
+        }).observe(fragment.getViewLifecycleOwner(), entries -> {
+            setDataSet(entries);
+            int pos = model.getUserStateValue().pos;
+            int pad = model.getUserStateValue().pad;
+            fragment.scrollPlaylistEntriesTo(pos, pad);
+        });
         cachedEntriesLiveData = model.getCachedEntries(fragment.getContext());
         fetchStateLiveData = model.getFetchState(fragment.getContext());
     }

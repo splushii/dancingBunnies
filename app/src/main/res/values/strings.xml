@@ -21,11 +21,11 @@
     <string name="pref_key_playbackcontroller_playlist_src">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_src</string>
     <string name="pref_key_playbackcontroller_playlist_id">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_id</string>
     <string name="pref_key_playbackcontroller_playlist_type">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_type</string>
-    <string name="pref_key_playbackcontroller_playlist_name">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_name</string>
-    <string name="pref_key_playbackcontroller_position_name">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_position</string>
+    <string name="pref_key_playbackcontroller_playlist_position">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_position</string>
     <string name="pref_key_localaudioplayer_current_src">se.splushii.dancingbunnies.pref_localaudioplayer_current_src</string>
     <string name="pref_key_localaudioplayer_current_id">se.splushii.dancingbunnies.pref_localaudioplayer_current_id</string>
     <string name="pref_key_localaudioplayer_current_playback_id">se.splushii.dancingbunnies.pref_localaudioplayer_current_playback_id</string>
+    <string name="pref_key_localaudioplayer_current_playlist_pos">se.splushii.dancingbunnies.pref_localaudioplayer_current_playlist_pos</string>
     <string name="pref_key_localaudioplayer_current_lastpos">se.splushii.dancingbunnies.pref_localaudioplayer_current_lastpost</string>
     <string name="pref_key_localaudioplayer_playback_id_counter">se.splushii.dancingbunnies.pref_localaudioplayer_playback_id_counter</string>
     <string name="fastscroller_handle">Fastscroller handle</string>
@@ -53,6 +53,7 @@
     <string name="playlist_item_more_actions">Playlist item more actions</string>
     <string name="playlist_new_playlist_name">Name:</string>
     <string name="playlist_new_playlist_name_hint">New playlist name</string>
+    <string name="playlist_action_select">Select</string>
     <string name="nowplaying_buffering">buffering…</string>
     <string name="nowplaying_previous_contentdesc">Skip to previous</string>
     <string name="nowplaying_play_pause_contentdesc">Play or pause</string>
@@ -72,4 +73,6 @@
     <string name="preload_status">Preload status</string>
     <string name="cached">Cached</string>
     <string name="add_to_playlist">Add to playlist</string>
+    <string name="playlist_select">Select</string>
+    <string name="playlist_deselect">Deselect playlist</string>
 </resources>

@@ -133,6 +133,16 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
     }
 
     @Override
+    public boolean validMove(PlaylistHolder current, PlaylistHolder target) {
+        return true;
+    }
+
+    @Override
+    public boolean validDrag(PlaylistHolder viewHolder) {
+        return true;
+    }
+
+    @Override
     public int getItemCount() {
         return playlistDataset.size();
     }
@@ -145,7 +155,14 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
 
     void setModel(PlaylistFragmentModel model) {
         model.getPlaylists(fragment.getContext())
-                .observe(fragment.getViewLifecycleOwner(), this::setDataSet);
+                .observe(fragment.getViewLifecycleOwner(), entries -> {
+                    setDataSet(entries);
+                    int pos = model.getUserStateValue().pos;
+                    int pad = model.getUserStateValue().pad;
+                    if (fragment instanceof PlaylistFragment) {
+                        ((PlaylistFragment)fragment).scrollPlaylistsTo(pos, pad);
+                    }
+                });
     }
 
     class PlaylistHolder extends ItemDetailsViewHolder<Playlist> {

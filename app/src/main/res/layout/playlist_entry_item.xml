@@ -9,44 +9,6 @@
         android:id="@+id/playlist_entry_content"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
-    <!--<include layout="@layout/track_item_content" />-->
-    <!--<LinearLayout-->
-        <!--android:layout_width="match_parent"-->
-        <!--android:layout_height="wrap_content"-->
-        <!--android:background="?android:selectableItemBackground">-->
-        <!--<LinearLayout-->
-            <!--android:orientation="vertical"-->
-            <!--android:layout_width="0dp"-->
-            <!--android:layout_height="wrap_content"-->
-            <!--android:layout_marginTop="4dp"-->
-            <!--android:layout_marginBottom="4dp"-->
-            <!--android:layout_marginStart="16dp"-->
-            <!--android:layout_marginEnd="16dp"-->
-            <!--android:layout_weight="1">-->
-            <!--<TextView-->
-                <!--android:id="@+id/playlist_entry_name"-->
-                <!--android:layout_width="wrap_content"-->
-                <!--android:layout_height="wrap_content"-->
-                <!--android:gravity="center_vertical"-->
-                <!--android:textColor="@color/bluegrey900"-->
-                <!--android:fontFamily="sans-serif"-->
-                <!--android:textSize="16sp"/>-->
-        <!--</LinearLayout>-->
-        <!--&lt;!&ndash;<TextView&ndash;&gt;-->
-            <!--&lt;!&ndash;android:id="@+id/playlist_entry_item_more_info"&ndash;&gt;-->
-            <!--&lt;!&ndash;android:layout_width="wrap_content"&ndash;&gt;-->
-            <!--&lt;!&ndash;android:layout_height="wrap_content"&ndash;&gt;-->
-            <!--&lt;!&ndash;android:layout_marginEnd="16dp"&ndash;&gt;-->
-            <!--&lt;!&ndash;android:layout_gravity="center_vertical"&ndash;&gt;-->
-            <!--&lt;!&ndash;android:textColor="@color/playlist_entry_color"/>&ndash;&gt;-->
-        <!--<ImageView-->
-            <!--android:id="@+id/playlist_entry_src"-->
-            <!--android:layout_width="24dp"-->
-            <!--android:layout_height="24dp"-->
-            <!--android:layout_marginEnd="8dp"-->
-            <!--android:layout_gravity="center_vertical"-->
-            <!--android:contentDescription="@string/item_source" />-->
-    <!--</LinearLayout>-->
     <se.splushii.dancingbunnies.ui.TrackItemActionsView
         android:id="@+id/playlist_entry_actions"
         android:layout_width="wrap_content"

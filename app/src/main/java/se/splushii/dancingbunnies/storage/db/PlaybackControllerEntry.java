@@ -22,6 +22,7 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 public class PlaybackControllerEntry {
     private static final String COLUMN_ROW_ID = "rowid";
     static final String COLUMN_PLAYBACK_ID = "playback_id";
+    static final String COLUMN_PLAYLIST_POS = "playlist_pos";
     static final String COLUMN_QUEUE_ID = "queue_id";
     static final String COLUMN_POS = "pos";
     static final String COLUMN_API = "api";
@@ -33,6 +34,9 @@ public class PlaybackControllerEntry {
     @NonNull
     @ColumnInfo(name = COLUMN_PLAYBACK_ID)
     public long playbackID;
+    @NonNull
+    @ColumnInfo(name = COLUMN_PLAYLIST_POS)
+    public long playlistPos;
     @NonNull
     @ColumnInfo(name = COLUMN_QUEUE_ID)
     int queueID;
@@ -46,11 +50,25 @@ public class PlaybackControllerEntry {
     @ColumnInfo(name = COLUMN_ID)
     public String id;
 
+    @Override
+    public String toString() {
+        return "PlaybackControllerEntry{" +
+                "rowId=" + rowId +
+                ", playbackID=" + playbackID +
+                ", playbackPos=" + playlistPos +
+                ", queueID=" + queueID +
+                ", pos=" + pos +
+                ", api='" + api + '\'' +
+                ", id='" + id + '\'' +
+                '}';
+    }
+
     public static PlaybackControllerEntry from(int queueID,
                                                PlaybackEntry playbackEntry,
                                                int pos) {
         PlaybackControllerEntry entry = new PlaybackControllerEntry();
         entry.playbackID = playbackEntry.playbackID;
+        entry.playlistPos = playbackEntry.playlistPos;
         entry.pos = pos;
         entry.queueID = queueID;
         entry.api = playbackEntry.entryID.src;

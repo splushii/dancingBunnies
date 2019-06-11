@@ -10,6 +10,7 @@ import android.widget.TextView;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Locale;
 
 import androidx.annotation.Nullable;
 import se.splushii.dancingbunnies.R;
@@ -26,6 +27,7 @@ public class TrackItemView extends LinearLayout {
     private ImageView preloadedView;
     private TextView cacheStatusView;
     private ImageView cachedView;
+    private TextView posView;
 
     private String title;
     private String artist;
@@ -66,17 +68,13 @@ public class TrackItemView extends LinearLayout {
         preloadedView = findViewById(R.id.track_item_preload_status);
         cachedView = findViewById(R.id.track_item_cached);
         cacheStatusView = findViewById(R.id.track_item_cache_status);
+        posView = findViewById(R.id.track_item_pos);
         title = "";
         artist = "";
         cacheStatus = "";
         src = "";
         isCached = false;
         isPreloaded = false;
-    }
-
-    public void initialize() {
-        cacheStatus = "";
-        setIsCached(false);
     }
 
     public void setFetchState(HashMap<EntryID, AudioStorage.AudioDataFetchState> fetchStateMap) {
@@ -157,5 +155,13 @@ public class TrackItemView extends LinearLayout {
     public void setEntryID(EntryID entryID) {
         this.entryID = entryID;
         setSource(entryID.src);
+    }
+
+    public void setPos(long pos) {
+        posView.setText(String.format(Locale.getDefault(), "%01d", pos));
+    }
+
+    public void resetPos() {
+        posView.setText("");
     }
 }

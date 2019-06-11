@@ -25,22 +25,20 @@ public abstract class PlaylistEntryDao {
             + " ORDER BY " + PlaylistEntry.COLUMN_POS + " ASC")
     public abstract LiveData<List<PlaylistEntry>> getAllEntries();
 
-    @Query("SELECT * FROM " + DB.TABLE_PLAYLIST_ENTRIES
+    private static final String getEntries = "SELECT * FROM " + DB.TABLE_PLAYLIST_ENTRIES
             + " WHERE " + isSpecifiedPlaylist
-            + " ORDER BY " + PlaylistEntry.COLUMN_POS + " ASC")
+            + " ORDER BY " + PlaylistEntry.COLUMN_POS + " ASC";
+    @Query(getEntries)
     public abstract LiveData<List<PlaylistEntry>> getEntries(String playlistSrc, String playlistId);
-
-    @Query("SELECT * FROM " + DB.TABLE_PLAYLIST_ENTRIES
-            + " WHERE " + isSpecifiedPlaylist
-            + " ORDER BY " + PlaylistEntry.COLUMN_POS + " ASC")
-    public abstract List<PlaylistEntry> getEntriesSync(String playlistSrc, String playlistId);
+    @Query(getEntries)
+    public abstract List<PlaylistEntry> getEntriesOnce(String playlistSrc, String playlistId);
 
     // Insert
     @Insert(onConflict = REPLACE)
     abstract void _insert(List<PlaylistEntry> entries);
     @Transaction
     public void addLast(PlaylistID playlistID, List<EntryID> entryIDs) {
-        int size = getEntriesSync(playlistID.src, playlistID.id).size();
+        int size = getEntriesOnce(playlistID.src, playlistID.id).size();
         List<PlaylistEntry> entries = new ArrayList<>();
         for (EntryID entryID: entryIDs) {
             entries.add(PlaylistEntry.from(playlistID, entryID, size++));

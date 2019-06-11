@@ -4,4 +4,8 @@
         android:id="@+id/nowplaying_actionmode_action_dequeue"
         android:title="@string/item_action_remove"
         android:icon="@drawable/ic_delete_white_24dp"/>
+    <item
+        android:id="@+id/nowplaying_actionmode_action_queue"
+        android:title="@string/item_action_queue"
+        android:icon="@drawable/ic_queue_white_24dp"/>
 </menu>

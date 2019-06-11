@@ -39,6 +39,8 @@ public class ItemTouchHelperCallback<
         void onResetDragViewHolder(ViewHolder dragViewHolder);
         void onDropMode();
         void onAbortMode();
+        boolean validMove(ViewHolder current, ViewHolder target);
+        boolean validDrag(ViewHolder v);
     }
 
     ItemTouchHelperCallback(Adapter adapter, Listener<ID, ViewHolder> listener) {
@@ -96,7 +98,11 @@ public class ItemTouchHelperCallback<
     @Override
     public int getMovementFlags(@NonNull RecyclerView recyclerView,
                                 @NonNull RecyclerView.ViewHolder viewHolder) {
-        return makeMovementFlags(ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0);
+        ViewHolder v = (ViewHolder) viewHolder;
+        return makeMovementFlags(
+                listener.validDrag(v) ? ItemTouchHelper.UP | ItemTouchHelper.DOWN : 0,
+                0
+        );
     }
 
     @Override
@@ -129,7 +135,7 @@ public class ItemTouchHelperCallback<
 
     private boolean validMove(RecyclerView.ViewHolder current,
                               RecyclerView.ViewHolder target) {
-        return true;
+        return listener.validMove((ViewHolder) current, (ViewHolder) target);
     }
 
     @Override

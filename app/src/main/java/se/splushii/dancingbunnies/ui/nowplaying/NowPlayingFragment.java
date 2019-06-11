@@ -1,11 +1,11 @@
 package se.splushii.dancingbunnies.ui.nowplaying;
 
+import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.support.v4.media.MediaMetadataCompat;
-import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -26,6 +26,8 @@ import java.util.concurrent.TimeUnit;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.selection.StorageStrategy;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -33,14 +35,22 @@ import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
-import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
+import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.MetaStorage;
+import se.splushii.dancingbunnies.storage.PlaylistStorage;
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
+import se.splushii.dancingbunnies.ui.TrackItemView;
 import se.splushii.dancingbunnies.ui.selection.RecyclerViewActionModeSelectionTracker;
 import se.splushii.dancingbunnies.util.Util;
+
+import static android.view.View.GONE;
+import static android.view.View.INVISIBLE;
+import static android.view.View.VISIBLE;
 
 public class NowPlayingFragment extends AudioBrowserFragment {
     private static final String LC = Util.getLogContext(NowPlayingFragment.class);
@@ -62,7 +72,15 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private Meta currentMeta = Meta.UNKNOWN_ENTRY;
 
     private final NowPlayingEntriesAdapter recViewAdapter;
-    private RecyclerViewActionModeSelectionTracker<QueueEntry, NowPlayingEntriesAdapter, NowPlayingEntriesAdapter.ViewHolder> selectionTracker;
+    private RecyclerViewActionModeSelectionTracker<PlaybackEntry, NowPlayingEntriesAdapter, NowPlayingEntriesAdapter.ViewHolder> selectionTracker;
+    private TextView currentPlaylistName;
+
+    private NowPlayingFragmentModel model;
+    private MutableLiveData<PlaylistID> currentPlaylistIDLiveData = new MutableLiveData<>();
+    private MutableLiveData<PlaylistEntry> currentPlaylistEntryLiveData = new MutableLiveData<>();
+    private View currentPlaylistView;
+    private TrackItemView currentPlaylistTrackItemView;
+    private long currentPos;
 
     public NowPlayingFragment() {
         recViewAdapter = new NowPlayingEntriesAdapter(this);
@@ -85,7 +103,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 MainActivity.SELECTION_ID_NOWPLAYING,
                 recView,
                 recViewAdapter,
-                StorageStrategy.createParcelableStorage(QueueEntry.class),
+                StorageStrategy.createParcelableStorage(PlaybackEntry.class),
                 savedInstanceState
         );
 
@@ -135,21 +153,39 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         mediaInfoText = rootView.findViewById(R.id.nowplaying_media_info);
         bufferingText = rootView.findViewById(R.id.nowplaying_buffering);
         sizeText = rootView.findViewById(R.id.nowplaying_size);
+
+        currentPlaylistView = rootView.findViewById(R.id.nowplaying_current_playlist);
+        View currentPlaylistNameLayout =
+                rootView.findViewById(R.id.nowplaying_current_playlist_info_layout);
+        currentPlaylistNameLayout.setOnClickListener(v -> goToPlaylistEntry());
+        currentPlaylistName = rootView.findViewById(R.id.nowplaying_current_playlist_name);
+        currentPlaylistTrackItemView =
+                rootView.findViewById(R.id.nowplaying_current_playlist_next_trackitem);
+
+        ImageButton currentPlaylistDeselectBtn =
+                rootView.findViewById(R.id.nowplaying_current_playlist_deselect);
+        currentPlaylistDeselectBtn.setOnClickListener(v -> setCurrentPlaylist(null));
         return rootView;
     }
 
-    @Override
-    public void onStart() {
-        super.onStart();
-        refreshView();
-        Log.d(LC, "onStart");
+    private void goToPlaylistEntry() {
+        NowPlayingState state = model.getState().getValue();
+        if (state == null) {
+            return;
+        }
+        PlaylistID playlistID = state.currentPlaylistID;
+        long pos = currentPos;
+        Intent intent = new Intent(requireContext(), MainActivity.class);
+        intent.putExtra(MainActivity.INTENT_EXTRA_PLAYLIST_ID, playlistID);
+        intent.putExtra(MainActivity.INTENT_EXTRA_PLAYLIST_POS, pos);
+        requireContext().startActivity(intent);
     }
 
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         Log.d(LC, "onActivityCreated");
         super.onActivityCreated(savedInstanceState);
-        NowPlayingFragmentModel model = ViewModelProviders.of(requireActivity()).get(NowPlayingFragmentModel.class);
+        model = ViewModelProviders.of(requireActivity()).get(NowPlayingFragmentModel.class);
         model.getFetchState(requireContext()).observe(getViewLifecycleOwner(), audioDataFetchStates -> {
             boolean showSize = false;
             AudioStorage.AudioDataFetchState state = audioDataFetchStates.get(currentMeta.entryID);
@@ -164,9 +200,37 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                     showSize = true;
                 }
             }
-            sizeText.setVisibility(showSize ? View.VISIBLE : View.INVISIBLE);
+            sizeText.setVisibility(showSize ? VISIBLE : INVISIBLE);
         });
         recViewAdapter.setModel(model);
+        Transformations.switchMap(currentPlaylistIDLiveData, playlistID ->
+                PlaylistStorage.getInstance(requireContext()).getPlaylist(playlistID)
+        ).observe(getViewLifecycleOwner(), playlist -> {
+            if (playlist == null) {
+                currentPlaylistView.setVisibility(GONE);
+            } else {
+                currentPlaylistName.setText(playlist.name);
+                currentPlaylistView.setVisibility(VISIBLE);
+            }
+        });
+        Transformations.switchMap(currentPlaylistEntryLiveData, playlistEntry -> {
+            if (playlistEntry == null) {
+                MutableLiveData<Meta> ret = new MutableLiveData<>();
+                ret.setValue(null);
+                return ret;
+            }
+            return MetaStorage.getInstance(requireContext()).getMeta(EntryID.from(playlistEntry));
+        }).observe(getViewLifecycleOwner(), meta -> {
+            if (meta == null) {
+                currentPlaylistTrackItemView.setVisibility(GONE);
+                return;
+            }
+            currentPlaylistTrackItemView.setEntryID(meta.entryID);
+            currentPlaylistTrackItemView.setTitle(meta.getAsString(Meta.FIELD_TITLE));
+            currentPlaylistTrackItemView.setArtist(meta.getAsString(Meta.FIELD_ARTIST));
+            currentPlaylistTrackItemView.setVisibility(VISIBLE);
+        });
+        model.getState().observe(getViewLifecycleOwner(), this::refreshView);
     }
 
     private String getFormattedFileSize(Meta currentMeta) {
@@ -191,21 +255,26 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     @Override
     protected void onSessionReady() {
         super.onSessionReady();
-        refreshView();
+        getCurrentPlaylist().thenAccept(playlistID -> model.setCurrentPlaylist(playlistID));
+        getCurrentPlaylistEntry().thenAccept(playlistEntry -> model.setCurrentPlaylistEntry(playlistEntry));
+        model.setQueue(getQueue());
+        refreshView(model.getState().getValue());
     }
 
-    private void refreshView() {
+    private void refreshView(NowPlayingState state) {
         if (mediaController == null || !mediaController.isSessionReady()) {
             Log.w(LC, "Media session not ready");
             return;
         }
-        // TODO: Show current playlist
-        // TODO: Show upcoming tracks from playlist
+        if (state == null) {
+            return;
+        }
+        currentPlaylistIDLiveData.setValue(state.currentPlaylistID);
+        currentPlaylistEntryLiveData.setValue(state.currentPlaylistEntry);
         // TODO: Implement playbackhistory in AudioPlayerService/PlaybackController, then in UI.
         //getPlaybackHistory().thenAccept(opt -> opt.ifPresent(recViewAdapter::setPlaybackHistory));
-        List<QueueEntry> queueEntries = getQueue();
-        Log.d(LC, "refreshView: queue(" + queueEntries.size() + ")");
-        recViewAdapter.setQueueEntries(queueEntries);
+        Log.d(LC, "refreshView: queue(" + state.queue.size() + ")");
+        recViewAdapter.setQueueEntries(state.queue);
     }
 
     @Override
@@ -227,7 +296,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 Log.d(LC, "state: playing");
                 seekBar.setEnabled(true);
                 playPauseBtn.setImageDrawable(pauseDrawable);
-                bufferingText.setVisibility(View.INVISIBLE);
+                bufferingText.setVisibility(INVISIBLE);
                 isPlaying = true;
                 scheduleProgressUpdate();
                 break;
@@ -237,7 +306,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             case PlaybackStateCompat.STATE_PAUSED:
                 seekBar.setEnabled(true);
                 playPauseBtn.setImageDrawable(playDrawable);
-                bufferingText.setVisibility(View.INVISIBLE);
+                bufferingText.setVisibility(INVISIBLE);
                 isPlaying = false;
                 updateProgress();
                 stopProgressUpdate();
@@ -246,7 +315,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             case PlaybackStateCompat.STATE_BUFFERING:
                 seekBar.setEnabled(true);
                 playPauseBtn.setImageDrawable(playDrawable);
-                bufferingText.setVisibility(View.VISIBLE);
+                bufferingText.setVisibility(VISIBLE);
                 isPlaying = false;
                 updateProgress();
                 stopProgressUpdate();
@@ -260,7 +329,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             case PlaybackStateCompat.STATE_ERROR:
                 seekBar.setEnabled(false);
                 playPauseBtn.setImageDrawable(playDrawable);
-                bufferingText.setVisibility(View.INVISIBLE);
+                bufferingText.setVisibility(INVISIBLE);
                 isPlaying = false;
                 stopProgressUpdate();
                 break;
@@ -310,9 +379,9 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         String formattedFileSize = getFormattedFileSize(metadata);
         if (formattedFileSize != null) {
             sizeText.setText(formattedFileSize);
-            sizeText.setVisibility(View.VISIBLE);
+            sizeText.setVisibility(VISIBLE);
         } else {
-            sizeText.setVisibility(View.INVISIBLE);
+            sizeText.setVisibility(INVISIBLE);
         }
         String contentType = metadata.getFirstString(Meta.FIELD_CONTENT_TYPE);
         String suffix = metadata.getFirstString(Meta.FIELD_FILE_SUFFIX);
@@ -402,18 +471,19 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     @Override
-    protected void onQueueChanged(List<MediaSessionCompat.QueueItem> queue) {
-        refreshView();
+    protected void onQueueChanged(List<PlaybackEntry> queue) {
+        model.setQueue(queue);
     }
 
     @Override
-    protected void onSessionEvent(String event, Bundle extras) {
-        switch (event) {
-            case AudioPlayerService.SESSION_EVENT_PLAYLIST_POSITION_CHANGED:
-            case AudioPlayerService.SESSION_EVENT_PLAYLIST_CHANGED:
-                refreshView();
-                break;
-        }
+    protected void onPlaylistPositionChanged(long pos) {
+        currentPos = pos;
+        getCurrentPlaylistEntry().thenAccept(playlistEntry -> model.setCurrentPlaylistEntry(playlistEntry));
+    }
+
+    @Override
+    protected void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {
+        model.setCurrentPlaylist(playlistID);
     }
 
     public void clearSelection() {

@@ -1,5 +1,6 @@
 package se.splushii.dancingbunnies.ui.playlist;
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -14,9 +15,11 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.selection.StorageStrategy;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -24,7 +27,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
-import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
@@ -41,6 +43,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
     private View playlistRootView;
     private RecyclerView playlistRecView;
     private PlaylistAdapter playlistRecViewAdapter;
+    private LinearLayoutManager playlistRecViewLayoutManager;
     private RecyclerViewActionModeSelectionTracker<Playlist, PlaylistAdapter, PlaylistAdapter.PlaylistHolder> playlistSelectionTracker;
 
     private View playlistContentRootView;
@@ -48,29 +51,58 @@ public class PlaylistFragment extends AudioBrowserFragment {
     private TextView playlistContentInfoName;
     private RecyclerView playlistEntriesRecView;
     private PlaylistEntriesAdapter playlistEntriesRecViewAdapter;
+    private LinearLayoutManager playlistEntriesRecViewLayoutManager;
     private RecyclerViewActionModeSelectionTracker<PlaylistEntry, PlaylistEntriesAdapter, PlaylistEntriesAdapter.PlaylistEntryHolder> playlistEntriesSelectionTracker;
 
-    private PlaylistFragmentModel model;
+    private SwitchCompat playlistSelectSwitch;
+
+    private FloatingActionButton newPlaylistFAB;
     private EditText newPlaylistName;
+
+    private PlaylistFragmentModel model;
 
     private PlaylistStorage playlistStorage;
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         Log.d(LC, "onActivityCreated");
         super.onActivityCreated(savedInstanceState);
         model = ViewModelProviders.of(requireActivity()).get(PlaylistFragmentModel.class);
         model.getUserState().observe(getViewLifecycleOwner(), this::refreshView);
+        model.getCurrentPlaylistID().observe(getViewLifecycleOwner(), currentPlaylistID -> {
+            refreshView(model.getUserStateValue());
+        });
         playlistRecViewAdapter.setModel(model);
         playlistEntriesRecViewAdapter.setModel(model);
         playlistStorage = PlaylistStorage.getInstance(getContext());
+        playlistSelectSwitch.setChecked(model.isBrowsedCurrent());
+        AtomicBoolean userSelectedPlaylist = new AtomicBoolean(false);
+        playlistSelectSwitch.setOnTouchListener((v, event) -> {
+            userSelectedPlaylist.set(true);
+            return false;
+        });
+        playlistSelectSwitch.setOnCheckedChangeListener((view, checked) -> {
+            if (userSelectedPlaylist.get()) {
+                userSelectedPlaylist.set(false);
+                if (checked) {
+                    PlaylistUserState userState = model.getUserStateValue();
+                    if (userState == null) {
+                        return;
+                    }
+                    setCurrentPlaylist(userState.browsedPlaylistID);
+                } else {
+                    setCurrentPlaylist(null);
+                }
+            }
+        });
     }
 
     @Override
     public void onStop() {
         Log.d(LC, "onStop");
-        PlaylistUserState state = model.getUserState().getValue();
-        if (state != null && state.playlistMode) {
+        PlaylistUserState state = model.getUserStateValue();
+        if (state != null && state.showPlaylists) {
             model.updateUserState(Util.getRecyclerViewPosition(playlistRecView));
         } else {
             model.updateUserState(Util.getRecyclerViewPosition(playlistEntriesRecView));
@@ -81,35 +113,38 @@ public class PlaylistFragment extends AudioBrowserFragment {
     @Override
     protected void onSessionReady() {
         if (model != null) {
-            refreshView(model.getUserState().getValue());
+            getCurrentPlaylist().thenAccept(playlistID -> model.setCurrentPlaylist(playlistID));
+            refreshView(model.getUserStateValue());
         }
     }
 
     @Override
-    protected void onSessionEvent(String event, Bundle extras) {
-        switch (event) {
-            case AudioPlayerService.SESSION_EVENT_PLAYLIST_CHANGED:
-                refreshView(model.getUserState().getValue());
-                break;
-        }
+    protected void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {
+        model.setCurrentPlaylist(playlistID);
     }
 
-    private void refreshView(@Nullable PlaylistUserState newUserState) {
-        if (newUserState == null) {
+    private void refreshView(@Nullable PlaylistUserState state) {
+        if (state == null) {
             return;
         }
         if (mediaController == null || !mediaController.isSessionReady()) {
             Log.w(LC, "Media session not ready");
             return;
         }
-        if (newUserState.playlistMode) {
+        if (state.showPlaylists) {
+            newPlaylistFAB.show();
             playlistContentInfo.setVisibility(View.GONE);
             playlistContentRootView.setVisibility(View.GONE);
+            playlistSelectSwitch.setChecked(false);
+            playlistSelectSwitch.clearAnimation();
             playlistRootView.setVisibility(View.VISIBLE);
-            scrollTo(playlistRecView, newUserState.pos, newUserState.pad);
         } else {
-            PlaylistID playlistID = newUserState.playlistID;
+            PlaylistID playlistID = state.browsedPlaylistID;
+            newPlaylistFAB.hide();
             playlistRootView.setVisibility(View.GONE);
+            playlistContentInfoName.setText("");
+            playlistSelectSwitch.setChecked(model.isBrowsedCurrent());
+            playlistSelectSwitch.clearAnimation();
             playlistContentRootView.setVisibility(View.VISIBLE);
             playlistContentInfo.setVisibility(View.VISIBLE);
             model.getPlaylist(getContext(), playlistID)
@@ -118,13 +153,15 @@ public class PlaylistFragment extends AudioBrowserFragment {
                             playlistContentInfoName.setText(playlist.name);
                         }
                     });
-            scrollTo(playlistEntriesRecView, newUserState.pos, newUserState.pad);
         }
     }
 
-    private void scrollTo(RecyclerView recView, int pos, int pad) {
-        LinearLayoutManager llm = (LinearLayoutManager) recView.getLayoutManager();
-        llm.scrollToPositionWithOffset(pos, pad);
+    void scrollPlaylistsTo(int pos, int pad) {
+        playlistRecViewLayoutManager.scrollToPositionWithOffset(pos, pad);
+    }
+
+    void scrollPlaylistEntriesTo(int pos, int pad) {
+        playlistEntriesRecViewLayoutManager.scrollToPositionWithOffset(pos, pad);
     }
 
     @Override
@@ -133,8 +170,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         View rootView = inflater.inflate(R.layout.playlist_fragment_layout, container, false);
         playlistRootView = rootView.findViewById(R.id.playlist_rootview);
         playlistRecView = rootView.findViewById(R.id.playlist_recyclerview);
-        LinearLayoutManager playlistRecViewLayoutManager =
-                new LinearLayoutManager(this.getContext());
+        playlistRecViewLayoutManager = new LinearLayoutManager(this.getContext());
         playlistRecView.setLayoutManager(playlistRecViewLayoutManager);
         playlistRecViewAdapter = new PlaylistAdapter(this);
         playlistRecViewAdapter.setOnItemClickListener(playlist -> {
@@ -157,9 +193,9 @@ public class PlaylistFragment extends AudioBrowserFragment {
         playlistContentRootView = rootView.findViewById(R.id.playlist_content_rootview);
         playlistContentInfo = rootView.findViewById(R.id.playlist_content_info);
         playlistContentInfoName = rootView.findViewById(R.id.playlist_content_info_name);
+        playlistSelectSwitch = rootView.findViewById(R.id.playlist_select_switch);
         playlistEntriesRecView = rootView.findViewById(R.id.playlist_content_entries_recyclerview);
-        LinearLayoutManager playlistEntriesRecViewLayoutManager =
-                new LinearLayoutManager(this.getContext());
+        playlistEntriesRecViewLayoutManager = new LinearLayoutManager(this.getContext());
         playlistEntriesRecView.setLayoutManager(playlistEntriesRecViewLayoutManager);
         playlistEntriesRecViewAdapter = new PlaylistEntriesAdapter(this);
         playlistEntriesRecView.setAdapter(playlistEntriesRecViewAdapter);
@@ -176,7 +212,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         ViewGroup newPlaylistView = rootView.findViewById(R.id.playlist_new_playlist);
         newPlaylistName = rootView.findViewById(R.id.playlist_new_playlist_name);
         newPlaylistName.setShowSoftInputOnFocus(true);
-        FloatingActionButton newPlaylistFAB = rootView.findViewById(R.id.playlist_new_playlist_fab);
+        newPlaylistFAB = rootView.findViewById(R.id.playlist_new_playlist_fab);
         rootView.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
             if (newPlaylistView.getFocusedChild() == null) {
                 newPlaylistView.setVisibility(View.GONE);
@@ -237,6 +273,13 @@ public class PlaylistFragment extends AudioBrowserFragment {
             newPlaylistName.clearFocus();
             return true;
         }
-        return model.popBackStack();
+        if (model.popBackStack()) {
+            return true;
+        }
+        if (!model.isUserStateInitial()) {
+            model.resetUserState();
+            return true;
+        }
+        return false;
     }
 }

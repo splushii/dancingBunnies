@@ -78,6 +78,16 @@ public class RecyclerViewActionModeSelectionTracker<ID,
                         Log.d(LC, "ItemTouchHelper onAbortMode");
                         // TODO: Implement
                     }
+
+                    @Override
+                    public boolean validMove(ViewHolder current, ViewHolder target) {
+                        return recViewAdapter.validMove(current, target);
+                    }
+
+                    @Override
+                    public boolean validDrag(ViewHolder viewHolder) {
+                        return recViewAdapter.validDrag(viewHolder);
+                    }
                 }
         );
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(itemTouchHelperCallback);
