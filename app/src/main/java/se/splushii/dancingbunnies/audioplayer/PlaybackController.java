@@ -48,8 +48,6 @@ import se.splushii.dancingbunnies.util.Util;
 //
 // It is responsible for shifting state between audio players.
 
-// TODO: Stuff fed to the executor do not need to run on main thread. It's remoteMediaClient that
-// TODO: needs the main thread. Get the main thread when needed in CastAudioPlayer instead.
 class PlaybackController {
     private static final String LC = Util.getLogContext(PlaybackController.class);
     private static final int MAX_PLAYLIST_ENTRIES_TO_PREFETCH = 3;
@@ -344,7 +342,7 @@ class PlaybackController {
         // Get queue entries
         return queue.poll(numToPreload)
                 // Get playlist entries from controller
-                .thenComposeAsync(entries -> {
+                .thenCompose(entries -> {
                     int numPlaylistEntriesToPreload = numToPreload - entries.size();
                     Log.d(LC, "updatePreload: Preload needed from playlist: "
                             + numPlaylistEntriesToPreload);
@@ -358,11 +356,9 @@ class PlaybackController {
                                 });
                     }
                     return Util.futureResult(null, entries);
-                }, Util.getMainThreadExecutor())
-                .thenComposeAsync(entries -> entries.isEmpty() ?
-                                Util.futureResult(null) : audioPlayer.preload(entries),
-                        Util.getMainThreadExecutor()
-                );
+                })
+                .thenCompose(entries -> entries.isEmpty() ?
+                                Util.futureResult(null) : audioPlayer.preload(entries));
     }
 
     private CompletableFuture<Void> syncPlaylistEntries() {
@@ -399,7 +395,7 @@ class PlaybackController {
                             + " Playlist entries not before any other type."
                             + " Correct: " + !incorrect);
                     return incorrect;
-                }, Util.getMainThreadExecutor())
+                })
                 .thenCompose(playlistIsIncorrect -> {
                     if (playlistIsIncorrect) {
                         return Util.futureResult(null, true);
@@ -483,15 +479,13 @@ class PlaybackController {
                     // Get the queue entry from player
                     Log.d(LC, "skip short queue offset");
                     nextEntry = audioPlayer.getQueueEntry(queueOffset);
-                    result = result.thenComposeAsync(v ->
+                    result = result.thenCompose(v ->
                             audioPlayer.dePreload(
                                     1,
                                     queueOffset,
                                     0,
                                     0
-                            ),
-                            Util.getMainThreadExecutor()
-                    );
+                            ));
                 } else {
                     // Get the queue entry from controller
                     int controllerQueueOffset = queueOffset - numPlayerQueueEntries;
@@ -505,9 +499,8 @@ class PlaybackController {
                 }
                 // Queue after current and play
                 return result
-                        .thenComposeAsync(
-                                v -> audioPlayer.queue(Collections.singletonList(nextEntry), 0),
-                                Util.getMainThreadExecutor())
+                        .thenCompose(v ->
+                                        audioPlayer.queue(Collections.singletonList(nextEntry), 0))
                         .thenCompose(v -> audioPlayer.next())
                         .thenCompose(v -> audioPlayer.play());
             } else {
@@ -666,38 +659,37 @@ class PlaybackController {
         );
 
         return CompletableFuture.completedFuture(null)
-                .thenComposeAsync(v -> {
+                .thenCompose(v -> {
                     if (numQueueEntriesToDepreload > 0 || numPlaylistEntriesToDepreload > 0) {
                         return audioPlayer.dePreload(
                                 numQueueEntriesToDepreload,
                                 queueEntriesToDepreloadOffset,
                                 numPlaylistEntriesToDepreload,
                                 playlistEntriesToDepreloadOffset
-                        ).thenComposeAsync(aVoid -> {
+                        ).thenCompose(aVoid -> {
                             if (!playlistEntriesToDePreload.isEmpty()) {
                                 return dePreloadPlaylistEntries(playlistEntriesToDePreload);
                             }
                             return Util.futureResult(null);
-                        }, Util.getMainThreadExecutor()).thenComposeAsync(aVoid -> {
+                        }).thenCompose(aVoid -> {
                             if (!queueEntriesToDePreload.isEmpty()) {
                                 return dePreloadQueueEntries(queueEntriesToDePreload, 0);
                             }
                             return Util.futureResult(null);
-                        }, Util.getMainThreadExecutor());
+                        });
                     } else {
                         return Util.futureResult(null);
                     }
-                }, Util.getMainThreadExecutor())
-                .thenComposeAsync(v -> newEntriesToPreload.isEmpty() ?
-                                CompletableFuture.completedFuture(null)
-                                :
-                                audioPlayer.queue(
-                                        newEntriesToPreload,
-                                        newEntriesToPreloadOffset
-                                ),
-                        Util.getMainThreadExecutor()
+                })
+                .thenCompose(v -> newEntriesToPreload.isEmpty() ?
+                        CompletableFuture.completedFuture(null)
+                        :
+                        audioPlayer.queue(
+                                newEntriesToPreload,
+                                newEntriesToPreloadOffset
+                        )
                 )
-                .thenComposeAsync(aVoid -> {
+                .thenCompose(aVoid -> {
                     if (newEntriesToController.size() > 0) {
                         return dePreloadQueueEntries(
                                 newEntriesToController,
@@ -705,7 +697,7 @@ class PlaybackController {
                         );
                     }
                     return Util.futureResult(null);
-                }, Util.getMainThreadExecutor())
+                })
                 .thenCompose(v -> updateState());
     }
 
@@ -741,13 +733,8 @@ class PlaybackController {
     private CompletableFuture<Void> _deQueue(List<PlaybackEntry> playbackEntries, boolean thenUpdateState) {
         Log.d(LC, "deQueue");
         CompletableFuture<Void> result = queue.removeEntries(playbackEntries)
-                .thenComposeAsync(
-                        v -> audioPlayer.dePreload(playbackEntries),
-                        Util.getMainThreadExecutor()
-                );
-        return thenUpdateState ?
-                result.thenCompose(aVoid -> updateState())
-                : result;
+                .thenCompose(v -> audioPlayer.dePreload(playbackEntries));
+        return thenUpdateState ? result.thenCompose(aVoid -> updateState()) : result;
     }
 
     private CompletionStage<List<PlaybackEntry>> consumeQueueEntries(List<Integer> queuePositions) {
@@ -763,12 +750,7 @@ class PlaybackController {
                 Log.d(LC, "moveQueueItems("
                         + playbackEntries + ", " + toPosition + ")");
                 return _deQueue(playbackEntries, false)
-                        .thenComposeAsync(
-                                v -> queuePlaybackEntries(
-                                        playbackEntries,
-                                        toPosition
-                                ), Util.getMainThreadExecutor()
-                        );
+                        .thenCompose(v -> queuePlaybackEntries(playbackEntries, toPosition));
             });
         }
     }
@@ -893,12 +875,8 @@ class PlaybackController {
         }
         return audioPlayer.initialize()
                 .thenCompose(aVoid -> queue.add(0, queueEntries))
-                .thenComposeAsync(
-                        aVoid -> playlistItems.add(0, playlistEntries),
-                        Util.getMainThreadExecutor())
-                .thenComposeAsync(
-                        aVoid -> history.add(0, state.history),
-                        Util.getMainThreadExecutor())
+                .thenCompose(aVoid -> playlistItems.add(0, playlistEntries))
+                .thenCompose(aVoid -> history.add(0, state.history))
                 .thenCompose(aVoid -> updateState());
     }
 

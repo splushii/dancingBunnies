@@ -142,11 +142,13 @@ public class ItemTouchHelperCallback<
     public void clearView(@NonNull RecyclerView recyclerView,
                           @NonNull RecyclerView.ViewHolder viewHolder) {
         super.clearView(recyclerView, viewHolder);
-        if (abort) {
+        if (abort || lastDragPos == initialDragPos) {
             listener.onResetDragViewHolder(dragViewHolder);
             listener.onAbort();
             // Reset adapter items
-            adapter.moveItem(lastDragPos, initialDragPos);
+            if (lastDragPos != initialDragPos) {
+                adapter.moveItem(lastDragPos, initialDragPos);
+            }
             adapter.insertItems(removedSelectedItems);
         } else {
             int newPos = lastDragPos;
