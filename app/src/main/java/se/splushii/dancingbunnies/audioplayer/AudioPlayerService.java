@@ -1012,6 +1012,14 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             List<MediaSessionCompat.QueueItem> queueItems = new ArrayList<>();
             for (int i = 0; i < queue.size(); i++) {
                 PlaybackEntry playbackEntry = queue.get(i);
+                if (playbackEntry.playbackID == PlaybackEntry.PLAYBACK_ID_UNKNOWN) {
+                    playbackEntry = new PlaybackEntry(
+                            playbackEntry.entryID,
+                            playbackController.generatePlaybackID(),
+                            playbackEntry.playbackType,
+                            playbackEntry.playlistPos
+                    );
+                }
                 queueItems.add(new MediaSessionCompat.QueueItem(
                         playbackEntry.toMediaDescriptionCompat(),
                         playbackEntry.playbackID

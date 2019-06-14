@@ -223,10 +223,8 @@ public class MusicLibraryService extends Service {
     }
 
     private AudioDataSource getAudioDataSource(EntryID entryID) {
-        if (!apis.containsKey(entryID.src)) {
-            return null;
-        }
-        return apis.get(entryID.src).getAudioData(entryID);
+        APIClient apiClient = apis.get(entryID.src);
+        return apiClient == null ? null : apiClient.getAudioData(entryID);
     }
 
     public String getAudioURL(EntryID entryID) {

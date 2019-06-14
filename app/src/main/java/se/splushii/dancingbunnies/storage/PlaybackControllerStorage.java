@@ -6,13 +6,11 @@ import android.preference.PreferenceManager;
 import android.util.Log;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
@@ -29,8 +27,7 @@ public class PlaybackControllerStorage {
     public static final int QUEUE_ID_QUEUE = 0;
     public static final int QUEUE_ID_PLAYLIST = 1;
     public static final int QUEUE_ID_HISTORY = 2;
-    public static final int QUEUE_ID_LOCALAUDIOPLAYER_QUEUE = 3;
-    public static final int QUEUE_ID_LOCALAUDIOPLAYER_PLAYLIST = 4;
+    public static final int QUEUE_ID_LOCALAUDIOPLAYER_PRELOAD = 3;
     public static final int QUEUE_ID_LOCALAUDIOPLAYER_HISTORY = 5;
 
     private final PlaybackControllerEntryDao entryModel;
@@ -77,10 +74,8 @@ public class PlaybackControllerStorage {
                 return "controller_playlist";
             case PlaybackControllerStorage.QUEUE_ID_HISTORY:
                 return "controller_history";
-            case PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_QUEUE:
-                return "localaudioplayer_queue";
-            case PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_PLAYLIST:
-                return "localaudioplayer_playlist";
+            case PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_PRELOAD:
+                return "localaudioplayer_preload";
             case PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_HISTORY:
                 return "localaudioplayer_history";
             default:
@@ -101,24 +96,20 @@ public class PlaybackControllerStorage {
     }
 
     private LiveData<List<PlaybackEntry>> getEntries(int queueID) {
-        String playbackType = getPlaybackType(queueID);
-        if (playbackType == null) {
-                return new MutableLiveData<>();
-        }
-        return Transformations.map(entryModel.getEntries(queueID), entries ->
-                RoomPlaybackControllerEntryList2PlaybackEntryList(entries, playbackType)
+        return Transformations.map(
+                entryModel.getEntries(queueID),
+                this::RoomPlaybackControllerEntryList2PlaybackEntryList
         );
     }
 
     private List<PlaybackEntry> RoomPlaybackControllerEntryList2PlaybackEntryList(
-            List<PlaybackControllerEntry> roomPlaybackControllerEntries,
-            String playbackType
+            List<PlaybackControllerEntry> roomPlaybackControllerEntries
     ) {
         return roomPlaybackControllerEntries.stream().map(entry ->
                 new PlaybackEntry(
                         new EntryID(entry.api, entry.id, Meta.FIELD_SPECIAL_MEDIA_ID),
                         entry.playbackID,
-                        playbackType,
+                        entry.playbackType,
                         entry.playlistPos
                 )
         ).collect(Collectors.toList());
@@ -205,11 +196,7 @@ public class PlaybackControllerStorage {
     }
 
     public CompletableFuture<List<PlaybackEntry>> getLocalAudioPlayerQueueEntries() {
-        return getEntriesSync(PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_QUEUE);
-    }
-
-    public CompletableFuture<List<PlaybackEntry>> getLocalAudioPlayerPlaylistEntries() {
-        return getEntriesSync(PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_PLAYLIST);
+        return getEntriesSync(PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_PRELOAD);
     }
 
     public CompletableFuture<List<PlaybackEntry>> getLocalAudioPlayerHistoryEntries() {
@@ -217,28 +204,8 @@ public class PlaybackControllerStorage {
     }
 
     private CompletableFuture<List<PlaybackEntry>> getEntriesSync(int queueID) {
-        String playbackType = getPlaybackType(queueID);
-        if (playbackType == null) {
-            return CompletableFuture.completedFuture(Collections.emptyList());
-        }
         return CompletableFuture.supplyAsync(() -> entryModel.getEntriesSync(queueID))
-                .thenApply(entries ->
-                        RoomPlaybackControllerEntryList2PlaybackEntryList(entries, playbackType)
-                );
-    }
-
-    private String getPlaybackType(int queueID) {
-        switch (queueID) {
-            case PlaybackControllerStorage.QUEUE_ID_QUEUE:
-            case PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_QUEUE:
-                return PlaybackEntry.USER_TYPE_QUEUE;
-            case PlaybackControllerStorage.QUEUE_ID_PLAYLIST:
-            case PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_PLAYLIST:
-                return PlaybackEntry.USER_TYPE_PLAYLIST;
-            case PlaybackControllerStorage.QUEUE_ID_HISTORY:
-                return PlaybackEntry.USER_TYPE_HISTORY;
-        }
-        return null;
+                .thenApply(this::RoomPlaybackControllerEntryList2PlaybackEntryList);
     }
 
     public PlaylistID getCurrentPlaylist() {

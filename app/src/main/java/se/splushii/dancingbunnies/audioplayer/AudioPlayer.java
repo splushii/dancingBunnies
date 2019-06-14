@@ -37,32 +37,21 @@ interface AudioPlayer {
         CAST
     }
 
-    // TODO: Get rid of Queue/Playlist. Simply return PlaybackEntries.
-    // TODO: Make PlaybackController take care of that distinction.
     AudioPlayerState getLastState();
     long getSeekPosition();
     int getMaxToPreload();
     int getNumPreloaded();
-    int getNumQueueEntries();
-    int getNumPlaylistEntries();
     PlaybackEntry getCurrentEntry();
-    PlaybackEntry getQueueEntry(int queuePosition);
-    PlaybackEntry getPlaylistEntry(int playlistPosition);
-    List<PlaybackEntry> getQueueEntries(int maxNum);
-    List<PlaybackEntry> getPlaylistEntries(int maxNum);
+    PlaybackEntry getPreloadEntry(int position);
+    List<PlaybackEntry> getPreloadEntries();
     CompletableFuture<Void> play();
     CompletableFuture<Void> pause();
     CompletableFuture<Void> stop();
     CompletableFuture<Void> seekTo(long pos);
     CompletableFuture<Void> next();
     CompletableFuture<Void> previous();
-    CompletableFuture<Void> queue(List<PlaybackEntry> entries, int offset);
-    CompletableFuture<Void> preload(List<PlaybackEntry> entries);
+    CompletableFuture<Void> preload(List<PlaybackEntry> entries, int offset);
     CompletableFuture<Void> dePreload(List<PlaybackEntry> playbackEntries);
-    CompletableFuture<Void> dePreload(int numQueueEntriesToDepreload,
-                                      int queueOffset,
-                                      int numPlaylistEntriesToDepreload,
-                                      int playlistOffset);
     CompletableFuture<Void> initialize();
     CompletableFuture<Void> destroy();
 

@@ -26,7 +26,6 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.StampedLock;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
@@ -256,6 +255,23 @@ public class CastAudioPlayer implements AudioPlayer {
         return new PlaybackEntry(castMeta);
     }
 
+    @Override
+    public PlaybackEntry getCurrentEntry() {
+        int itemIndex = getCurrentIndex();
+        return getMediaQueueEntry(itemIndex);
+    }
+
+    @Override
+    public PlaybackEntry getPreloadEntry(int position) {
+        int itemIndex = getCurrentIndex() + 1 + position;
+        return getMediaQueueEntry(itemIndex);
+    }
+
+    private PlaybackEntry getMediaQueueEntry(int mediaQueueItemIndex) {
+        int mediaQueueItemId = getItemId(mediaQueueItemIndex);
+        return mediaQueueItem2PlaybackEntry(queueItemMap.get(mediaQueueItemId));
+    }
+
     private List<PlaybackEntry> getEntries(boolean excludeCurrentItem) {
         int currentItemId = getCurrentItemId();
         LinkedList<PlaybackEntry> entries = new LinkedList<>();
@@ -283,98 +299,14 @@ public class CastAudioPlayer implements AudioPlayer {
         return entries;
     }
 
-    private List<PlaybackEntry> getEntriesOfType(String type, int maxNum) {
-        LinkedList<PlaybackEntry> entries = new LinkedList<>();
-        for (PlaybackEntry playbackEntry: getEntries(true)) {
-            if (entries.size() > maxNum) {
-                break;
-            }
-            if (playbackEntry.playbackType.equals(type)) {
-                entries.add(playbackEntry);
-            }
-        }
-        return entries;
-    }
-
     @Override
-    public List<PlaybackEntry> getQueueEntries(int maxNum) {
-        return getEntriesOfType(PlaybackEntry.USER_TYPE_QUEUE, maxNum);
-    }
-
-    @Override
-    public List<PlaybackEntry> getPlaylistEntries(int maxNum) {
-        return getEntriesOfType(PlaybackEntry.USER_TYPE_PLAYLIST, maxNum);
-    }
-
-    @Override
-    public PlaybackEntry getCurrentEntry() {
-        int itemIndex = getCurrentIndex();
-        return getEntry(itemIndex);
-    }
-
-    @Override
-    public PlaybackEntry getQueueEntry(int queuePosition) {
-        int itemIndex = getCurrentIndex() + 1 + queuePosition;
-        return getEntry(itemIndex);
-    }
-
-    @Override
-    public PlaybackEntry getPlaylistEntry(int playlistPosition) {
-        int itemIndex = getCurrentIndex() + 1 + getNumPlaylistEntries() + playlistPosition;
-        return getEntry(itemIndex);
-    }
-
-    private PlaybackEntry getEntry(int mediaQueueItemIndex) {
-        int mediaQueueItemId = getItemId(mediaQueueItemIndex);
-        return mediaQueueItem2PlaybackEntry(queueItemMap.get(mediaQueueItemId));
+    public List<PlaybackEntry> getPreloadEntries() {
+        return getEntries(true);
     }
 
     private int getItemId(int mediaQueueItemIndex) {
         return mediaQueueItemIndex < 0 || mediaQueueItemIndex >= lastItemIds.length ?
                 MediaQueueItem.INVALID_ITEM_ID : lastItemIds[mediaQueueItemIndex];
-    }
-
-    @Override
-    public int getNumPlaylistEntries() {
-        return getPlaylistEntries(Integer.MAX_VALUE).size();
-    }
-
-    @Override
-    public int getNumQueueEntries() {
-        return getQueueEntries(Integer.MAX_VALUE).size();
-    }
-
-    // Changes queue
-    public CompletableFuture<Void> dePreload(int numQueueEntriesToDepreload,
-                                             int queueOffset,
-                                             int numPlaylistEntriesToDepreload,
-                                             int playlistOffset) {
-        int queueEntriesToDepreloadItemIds[] = getItemIds(numQueueEntriesToDepreload, queueOffset);
-        int playlistEntriesToDepreloadItemIds[] = getItemIds(
-                numPlaylistEntriesToDepreload,
-                getNumQueueEntries() + playlistOffset
-        );
-        logCurrentQueue();
-        Log.d(LC, "dePreload()"
-                + "\nQueue entries to de-preload: "
-                + queueEntriesToDepreloadItemIds.length + " items "
-                + Arrays.toString(queueEntriesToDepreloadItemIds)
-                + "\nPlaylist entries to de-preload: "
-                + playlistEntriesToDepreloadItemIds.length + " items "
-                + Arrays.toString(playlistEntriesToDepreloadItemIds));
-        int[] itemIdsToRemove = IntStream.concat(
-                Arrays.stream(queueEntriesToDepreloadItemIds),
-                Arrays.stream(playlistEntriesToDepreloadItemIds)
-        ).toArray();
-        if (itemIdsToRemove.length <= 0) {
-            return Util.futureResult(null);
-        }
-        return CompletableFuture.completedFuture(null)
-                .thenComposeAsync(aVoid -> handleMediaClientQueueRequest(
-                        "dePreload() queueRemoveItems superfluous entries",
-                        "Could not depreload superfluous items",
-                        remoteMediaClient.queueRemoveItems(itemIdsToRemove, null)
-                ), Util.getMainThreadExecutor());
     }
 
     @Override
@@ -387,28 +319,31 @@ public class CastAudioPlayer implements AudioPlayer {
 
     // Changes queue
     @Override
-    public CompletableFuture<Void> queue(List<PlaybackEntry> entries, int offset) {
-        Log.d(LC, "queue()");
+    public CompletableFuture<Void> preload(List<PlaybackEntry> entries, int offset) {
+        Log.d(LC, "preload()");
+        if (entries == null || entries.isEmpty()) {
+            return Util.futureResult(null);
+        }
+        if (remoteMediaClient == null) {
+            return Util.futureResult("remoteMediaClient is null");
+        }
         return CompletableFuture.completedFuture(null)
                 .thenComposeAsync(aVoid -> {
                     if (!remoteMediaClient.hasMediaSession()) {
                         return setQueue(entries, 0);
                     }
-                    return getQueueItemsToQueue(entries)
-                            .thenComposeAsync(queueItemsToQueue -> {
-                                int queueInsertBeforeItemId = getInsertBeforeItemId(offset);
-
+                    return buildMediaQueueItems(entries, playWhenReady)
+                            .thenComposeAsync(items -> {
+                                int beforeItemId = getInsertBeforeItemId(offset);
                                 logCurrentQueue();
-                                Log.d(LC, "queue()"
-                                        + "\nNew entries to queue: " + queueItemsToQueue.length
-                                        + " before "+ queueInsertBeforeItemId);
-
+                                Log.d(LC, "preload inserting " + items.length + " items"
+                                        + " before " + beforeItemId);
                                 return handleMediaClientQueueRequest(
-                                        "queue() queueInsertItems",
-                                        "Could not insert queue items.",
+                                        "preload queueInsertItems",
+                                        "Could not insert queue items",
                                         remoteMediaClient.queueInsertItems(
-                                                queueItemsToQueue,
-                                                queueInsertBeforeItemId,
+                                                items,
+                                                beforeItemId,
                                                 null
                                         )
                                 );
@@ -420,22 +355,6 @@ public class CastAudioPlayer implements AudioPlayer {
         int currentIndex = getCurrentIndex();
         int queueInsertBeforeIndex = currentIndex + 1 + offset;
         return getItemId(queueInsertBeforeIndex);
-    }
-
-    private CompletableFuture<MediaQueueItem[]> getQueueItemsToQueue(
-            List<PlaybackEntry> entriesToQueue
-    ) {
-        if (entriesToQueue.isEmpty()) {
-            return CompletableFuture.completedFuture(new MediaQueueItem[0]);
-        }
-        return buildMediaQueueItems(entriesToQueue, playWhenReady);
-    }
-
-    private int[] getItemIds(int num, int offset) {
-        int startIndex = getCurrentIndex() + 1 + offset;
-        int itemIds[] = new int[num];
-        System.arraycopy(lastItemIds, startIndex, itemIds, 0, num);
-        return itemIds;
     }
 
     @Override
@@ -516,38 +435,6 @@ public class CastAudioPlayer implements AudioPlayer {
     @Override
     public int getMaxToPreload() {
         return 3;
-    }
-
-    // Changes queue
-    @Override
-    public CompletableFuture<Void> preload(List<PlaybackEntry> entries) {
-        Log.d(LC, "preload()");
-        if (entries == null || entries.isEmpty()) {
-            return Util.futureResult(null);
-        }
-        if (remoteMediaClient == null) {
-            return Util.futureResult("remoteMediaClient is null");
-        }
-        return CompletableFuture.completedFuture(null)
-                .thenComposeAsync(aVoid -> {
-                    if (!remoteMediaClient.hasMediaSession()) {
-                        return setQueue(entries, 0);
-                    }
-                    return buildMediaQueueItems(entries, playWhenReady)
-                            .thenComposeAsync(items -> {
-                                logCurrentQueue();
-                                Log.d(LC, "preload appending " + items.length + " items.");
-                                return handleMediaClientQueueRequest(
-                                        "preload queueInsertItems",
-                                        "Could not insert queue items",
-                                        remoteMediaClient.queueInsertItems(
-                                                items,
-                                                MediaQueueItem.INVALID_ITEM_ID,
-                                                null
-                                        )
-                                );
-                            }, Util.getMainThreadExecutor());
-                }, Util.getMainThreadExecutor());
     }
 
     // Changes queue

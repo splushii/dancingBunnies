@@ -180,7 +180,7 @@ class PlaybackController {
 
     private CompletableFuture<Void> removePlaylistEntries() {
         Log.d(LC, "removePlaylistEntries");
-        return audioPlayer.dePreload(audioPlayer.getPlaylistEntries(Integer.MAX_VALUE))
+        return audioPlayer.dePreload(getPlayerPlaylistEntries())
                 .thenComposeAsync(aVoid -> playlistItems.clear());
     }
 
@@ -243,10 +243,6 @@ class PlaybackController {
         synchronized (executorLock) {
             return submitCompletableFuture(() -> audioPlayer.previous());
         }
-    }
-
-    private int getNumQueueEntries() {
-        return queue.size();
     }
 
     private CompletableFuture<List<PlaybackEntry>> requestPlaylistEntries(int num) {
@@ -357,8 +353,8 @@ class PlaybackController {
                     }
                     return Util.futureResult(null, entries);
                 })
-                .thenCompose(entries -> entries.isEmpty() ?
-                                Util.futureResult(null) : audioPlayer.preload(entries));
+                .thenCompose(entries -> entries.isEmpty() ? Util.futureResult(null) :
+                        audioPlayer.preload(entries, audioPlayer.getNumPreloaded()));
     }
 
     private CompletableFuture<Void> syncPlaylistEntries() {
@@ -435,8 +431,8 @@ class PlaybackController {
                                 removePlaylistEntries() : Util.futureResult(null))
                 .thenCompose(aVoid -> {
                     // Fill up with playlist entries
-                    int numPlaylistEntriesToFetch = MAX_PLAYLIST_ENTRIES_TO_PREFETCH
-                            - (audioPlayer.getNumPlaylistEntries() + playlistItems.size());
+                    int numPlaylistEntriesToFetch =
+                            MAX_PLAYLIST_ENTRIES_TO_PREFETCH - getAllPlaylistEntries().size();
                     Log.d(LC, "syncPlaylistEntries: request " + numPlaylistEntriesToFetch
                             + " playlist entries");
                     if (numPlaylistEntriesToFetch > 0) {
@@ -465,54 +461,50 @@ class PlaybackController {
         if (offset == 1) {
             return audioPlayer.next();
         }
-        int numPlayerQueueEntries = audioPlayer.getNumQueueEntries();
-        int numControllerQueueEntries = getNumQueueEntries();
+        int numPlayerQueueEntries = getPlayerQueueEntries().size();
+        int numControllerQueueEntries = queue.size();
         int totalQueueEntries = numPlayerQueueEntries + numControllerQueueEntries;
         PlaybackEntry nextEntry;
         if (offset > 0) {
+            offset--;
             // Skip forward
-            if (offset <= totalQueueEntries) {
+            if (offset < totalQueueEntries) {
                 // Play queue item at offset now
-                int queueOffset = offset - 1;
                 CompletableFuture<Void> result = CompletableFuture.completedFuture(null);
-                if (queueOffset < numPlayerQueueEntries) {
+                if (offset < numPlayerQueueEntries) {
                     // Get the queue entry from player
                     Log.d(LC, "skip short queue offset");
-                    nextEntry = audioPlayer.getQueueEntry(queueOffset);
+                    nextEntry = audioPlayer.getPreloadEntry(offset);
                     result = result.thenCompose(v ->
-                            audioPlayer.dePreload(
-                                    1,
-                                    queueOffset,
-                                    0,
-                                    0
-                            ));
+                            audioPlayer.dePreload(Collections.singletonList(nextEntry))
+                    );
                 } else {
                     // Get the queue entry from controller
-                    int controllerQueueOffset = queueOffset - numPlayerQueueEntries;
+                    int controllerQueueOffset = offset - numPlayerQueueEntries;
                     Log.d(LC, "skip long queue offset");
                     nextEntry = getQueueEntry(controllerQueueOffset);
-                    result = result.thenCompose(v ->
-                            consumeQueueEntries(
-                                    Collections.singletonList(controllerQueueOffset)
-                            )
-                    ).thenApply(entries -> null);
+                    result = result.thenCompose(
+                            v -> queue.remove(Collections.singletonList(controllerQueueOffset)))
+                            .thenApply(entries -> null);
                 }
                 // Queue after current and play
                 return result
                         .thenCompose(v ->
-                                        audioPlayer.queue(Collections.singletonList(nextEntry), 0))
+                                        audioPlayer.preload(Collections.singletonList(nextEntry), 0))
                         .thenCompose(v -> audioPlayer.next())
                         .thenCompose(v -> audioPlayer.play());
             } else {
                 // Skip all playlist items until offset
-                int playlistOffset =  offset - numPlayerQueueEntries;
-                int numPlayerPlaylistEntries = audioPlayer.getNumPlaylistEntries();
-                if (playlistOffset <= numPlayerPlaylistEntries) {
+                if (offset < audioPlayer.getNumPreloaded()) {
                     // Remove all playlist items until offset, then queue and play offset
                     Log.d(LC, "skip short playlist offset");
-                    nextEntry = audioPlayer.getPlaylistEntry(playlistOffset);
-                    return audioPlayer.dePreload(0, 0, playlistOffset, 0)
-                            .thenCompose(v -> audioPlayer.queue(Collections.singletonList(nextEntry), 0))
+                    nextEntry = audioPlayer.getPreloadEntry(offset);
+                    List<PlaybackEntry> entriesToDePreload = getPlayerPlaylistEntries()
+                            .stream()
+                            .limit(offset - numPlayerQueueEntries)
+                            .collect(Collectors.toList());
+                    return audioPlayer.dePreload(entriesToDePreload)
+                            .thenCompose(v -> audioPlayer.preload(Collections.singletonList(nextEntry), 0))
                             .thenCompose(v -> audioPlayer.next())
                             .thenCompose(v -> audioPlayer.play());
                 } else {
@@ -565,7 +557,7 @@ class PlaybackController {
         return queuePlaybackEntries(newPlaybackEntries, toPosition);
     }
 
-    private long generatePlaybackID() {
+    long generatePlaybackID() {
         return storage.getNextPlaybackID();
     }
 
@@ -575,11 +567,11 @@ class PlaybackController {
             return Util.futureResult(null);
         }
         Log.d(LC, "queuePlaybackEntries() to " + toPosition + " : " + entries.toString());
-        List<PlaybackEntry> playerPlaylist = audioPlayer.getPlaylistEntries(Integer.MAX_VALUE);
-        List<PlaybackEntry> playerQueue = audioPlayer.getQueueEntries(Integer.MAX_VALUE);
+        List<PlaybackEntry> playerPlaylist = getPlayerPlaylistEntries();
+        List<PlaybackEntry> playerQueue = getPlayerQueueEntries();
         int numPlayerPlaylist = playerPlaylist.size();
         int numPlayerQueue = playerQueue.size();
-        int numControllerQueue = getNumQueueEntries();
+        int numControllerQueue = queue.size();
         int numNew = entries.size();
         int maxToPreload = audioPlayer.getMaxToPreload();
         if (toPosition == AudioPlayerService.QUEUE_LAST) {
@@ -660,20 +652,20 @@ class PlaybackController {
 
         return CompletableFuture.completedFuture(null)
                 .thenCompose(v -> {
-                    if (numQueueEntriesToDepreload > 0 || numPlaylistEntriesToDepreload > 0) {
+                    List<PlaybackEntry> entriesToDePreload = new ArrayList<>();
+                    entriesToDePreload.addAll(queueEntriesToDePreload);
+                    entriesToDePreload.addAll(playlistEntriesToDePreload);
+                    if (!entriesToDePreload.isEmpty()) {
                         return audioPlayer.dePreload(
-                                numQueueEntriesToDepreload,
-                                queueEntriesToDepreloadOffset,
-                                numPlaylistEntriesToDepreload,
-                                playlistEntriesToDepreloadOffset
+                                entriesToDePreload
                         ).thenCompose(aVoid -> {
                             if (!playlistEntriesToDePreload.isEmpty()) {
-                                return dePreloadPlaylistEntries(playlistEntriesToDePreload);
+                                return playlistItems.add(0, playlistEntriesToDePreload);
                             }
                             return Util.futureResult(null);
                         }).thenCompose(aVoid -> {
                             if (!queueEntriesToDePreload.isEmpty()) {
-                                return dePreloadQueueEntries(queueEntriesToDePreload, 0);
+                                return queue.add(0, queueEntriesToDePreload);
                             }
                             return Util.futureResult(null);
                         });
@@ -684,17 +676,11 @@ class PlaybackController {
                 .thenCompose(v -> newEntriesToPreload.isEmpty() ?
                         CompletableFuture.completedFuture(null)
                         :
-                        audioPlayer.queue(
-                                newEntriesToPreload,
-                                newEntriesToPreloadOffset
-                        )
+                        audioPlayer.preload(newEntriesToPreload, newEntriesToPreloadOffset)
                 )
                 .thenCompose(aVoid -> {
                     if (newEntriesToController.size() > 0) {
-                        return dePreloadQueueEntries(
-                                newEntriesToController,
-                                newEntriesToControllerOffset
-                        );
+                        return queue.add(newEntriesToControllerOffset, newEntriesToController);
                     }
                     return Util.futureResult(null);
                 })
@@ -715,15 +701,6 @@ class PlaybackController {
         callback.onQueueChanged(getAllEntries());
     }
 
-    private CompletableFuture<Void> dePreloadQueueEntries(List<PlaybackEntry> queueEntries,
-                                                          int toPosition) {
-        return queue.add(toPosition, queueEntries);
-    }
-
-    private CompletableFuture<Void> dePreloadPlaylistEntries(List<PlaybackEntry> playlistEntries) {
-        return playlistItems.add(0, playlistEntries);
-    }
-
     CompletableFuture<Void> deQueue(List<PlaybackEntry> playbackEntries) {
         synchronized (executorLock) {
             return submitCompletableFuture(() -> _deQueue(playbackEntries, true));
@@ -735,10 +712,6 @@ class PlaybackController {
         CompletableFuture<Void> result = queue.removeEntries(playbackEntries)
                 .thenCompose(v -> audioPlayer.dePreload(playbackEntries));
         return thenUpdateState ? result.thenCompose(aVoid -> updateState()) : result;
-    }
-
-    private CompletionStage<List<PlaybackEntry>> consumeQueueEntries(List<Integer> queuePositions) {
-        return queue.remove(queuePositions);
     }
 
     CompletableFuture<Void> moveQueueItems(List<PlaybackEntry> playbackEntries, int toPosition) {
@@ -773,7 +746,7 @@ class PlaybackController {
     }
 
     private int getNumTotalQueueEntries() {
-        return audioPlayer.getNumQueueEntries() + getNumQueueEntries();
+        return getPlayerQueueEntries().size() + queue.size();
     }
 
     void updateCurrent() {
@@ -782,16 +755,32 @@ class PlaybackController {
         callback.onMetaChanged(entryID);
     }
 
+    private List<PlaybackEntry> getPlayerEntries() {
+        return audioPlayer.getPreloadEntries();
+    }
+
+    private List<PlaybackEntry> getPlayerQueueEntries() {
+        return getPlayerEntries().stream()
+                .filter(p -> !PlaybackEntry.USER_TYPE_PLAYLIST.equals(p.playbackType))
+                .collect(Collectors.toList());
+    }
+
+    private List<PlaybackEntry> getPlayerPlaylistEntries() {
+        return getPlayerEntries().stream()
+                .filter(p -> PlaybackEntry.USER_TYPE_PLAYLIST.equals(p.playbackType))
+                .collect(Collectors.toList());
+    }
+
     private List<PlaybackEntry> getAllQueueEntries() {
         List<PlaybackEntry> playbackEntries = new ArrayList<>();
-        playbackEntries.addAll(audioPlayer.getQueueEntries(Integer.MAX_VALUE));
+        playbackEntries.addAll(getPlayerQueueEntries());
         playbackEntries.addAll(queue.getEntries());
         return playbackEntries;
     }
 
     private List<PlaybackEntry> getAllPlaylistEntries() {
         List<PlaybackEntry> playbackEntries = new ArrayList<>();
-        playbackEntries.addAll(audioPlayer.getPlaylistEntries(Integer.MAX_VALUE));
+        playbackEntries.addAll(getPlayerPlaylistEntries());
         playbackEntries.addAll(playlistItems.getEntries());
         return playbackEntries;
     }

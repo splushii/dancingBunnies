@@ -230,6 +230,13 @@ public class NowPlayingEntriesAdapter extends
         }
 
         public void setMeta(Meta meta) {
+            if (meta == null) {
+                actionsView.setOnInfoListener(null);
+                itemContent.setTitle("");
+                itemContent.setArtist("");
+                itemContent.setSource("");
+                return;
+            }
             actionsView.setOnInfoListener(() -> MetaDialogFragment.showMeta(fragment, meta));
             String title = meta.getAsString(Meta.FIELD_TITLE);
             itemContent.setTitle(title);
