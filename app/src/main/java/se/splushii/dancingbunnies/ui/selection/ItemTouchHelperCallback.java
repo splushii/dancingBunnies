@@ -30,10 +30,10 @@ public class ItemTouchHelperCallback<
     private ViewHolder dragViewHolder;
     private ID dragID;
     private int initialDragPos;
-    private int lastDragPos = -1;
+    private int targetDragPos = -1;
 
     public interface Listener<ID, ViewHolder> {
-        void onDrop(Collection<ID> selection, int lastDragPos);
+        void onDrop(Collection<ID> selection, int targetPos, ID idAfterTargetPos);
         void onAbort();
         void onUseViewHolderForDrag(ViewHolder dragViewHolder, Collection<ID> selection);
         void onResetDragViewHolder(ViewHolder dragViewHolder);
@@ -54,7 +54,7 @@ public class ItemTouchHelperCallback<
 
     void prepareDrag(ViewHolder viewHolder) {
         dragViewHolder = viewHolder;
-        lastDragPos = initialDragPos = dragViewHolder.getAdapterPosition();
+        targetDragPos = initialDragPos = dragViewHolder.getAdapterPosition();
 
         MutableSelection<ID> mutableSelection = new MutableSelection<>();
         selectionTracker.copySelection(mutableSelection);
@@ -123,12 +123,12 @@ public class ItemTouchHelperCallback<
         int from = current.getAdapterPosition();
         int to = target.getAdapterPosition();
         Log.d(LC, "onMove from: " + from + " to " + to);
-        if (to != lastDragPos && canDropOver(recyclerView, current, target)) {
+        if (to != targetDragPos && canDropOver(recyclerView, current, target)) {
             if (abort) {
                 setDropMode();
             }
             adapter.moveItem(from, to);
-            lastDragPos = to;
+            targetDragPos = to;
         }
         return true;
     }
@@ -142,23 +142,28 @@ public class ItemTouchHelperCallback<
     public void clearView(@NonNull RecyclerView recyclerView,
                           @NonNull RecyclerView.ViewHolder viewHolder) {
         super.clearView(recyclerView, viewHolder);
-        if (abort || lastDragPos == initialDragPos) {
+        if (abort || targetDragPos == initialDragPos) {
             listener.onResetDragViewHolder(dragViewHolder);
             listener.onAbort();
             // Reset adapter items
-            if (lastDragPos != initialDragPos) {
-                adapter.moveItem(lastDragPos, initialDragPos);
+            if (targetDragPos != initialDragPos) {
+                adapter.moveItem(targetDragPos, initialDragPos);
             }
             adapter.insertItems(removedSelectedItems);
         } else {
-            int newPos = lastDragPos;
+            int newPos = targetDragPos;
+            ID idAfterTargetPos = adapter.getKey(newPos + 1);
             adapter.removeItems(Collections.singletonList(dragID));
             TreeMap<Integer, ID> movedSelection = new TreeMap<>();
             for (ID id: initialSelection.values()) {
                 movedSelection.put(newPos++, id);
             }
             adapter.insertItems(movedSelection);
-            listener.onDrop(initialSelection.values(), lastDragPos);
+            listener.onDrop(
+                    initialSelection.values(),
+                    targetDragPos,
+                    idAfterTargetPos
+            );
         }
     }
 

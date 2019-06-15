@@ -21,7 +21,6 @@ import androidx.lifecycle.Transformations;
 import androidx.recyclerview.selection.Selection;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
@@ -77,8 +76,10 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
     }
 
     @Override
-    public void onSelectionDrop(Collection<PlaylistEntry> selection, int lastDragPos) {
-        playlistStorage.movePlaylistEntries(playlistID, selection, lastDragPos);
+    public void onSelectionDrop(Collection<PlaylistEntry> selection,
+                                int targetPos,
+                                PlaylistEntry idAfterTargetPos) {
+        playlistStorage.movePlaylistEntries(playlistID, selection, targetPos);
     }
 
     @Override
@@ -104,11 +105,9 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
                         .collect(Collectors.toList()));
                 return true;
             case R.id.playlist_entries_actionmode_action_queue:
-                fragment.queue(
-                        selectionList.stream()
-                                .map(EntryID::from)
-                                .collect(Collectors.toList()),
-                        AudioPlayerService.QUEUE_LAST
+                fragment.queue(selectionList.stream()
+                        .map(EntryID::from)
+                        .collect(Collectors.toList())
                 );
                 return true;
             default:

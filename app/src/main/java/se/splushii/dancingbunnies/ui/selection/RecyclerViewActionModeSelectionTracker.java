@@ -43,9 +43,14 @@ public class RecyclerViewActionModeSelectionTracker<ID,
                 recViewAdapter,
                 new ItemTouchHelperCallback.Listener<ID, ViewHolder>() {
                     @Override
-                    public void onDrop(Collection<ID> selection, int lastDragPos) {
-                        Log.d(LC, "ItemTouchHelper onDrop at " + lastDragPos);
-                        recViewAdapter.onSelectionDrop(selection, lastDragPos);
+                    public void onDrop(
+                            Collection<ID> selection,
+                            int targetPos,
+                            ID idAfterTargetPos
+                    ) {
+                        Log.d(LC, "ItemTouchHelper onDrop at " + targetPos
+                                + " before " + idAfterTargetPos);
+                        recViewAdapter.onSelectionDrop(selection, targetPos, idAfterTargetPos);
                         actionMode.finish();
                     }
 

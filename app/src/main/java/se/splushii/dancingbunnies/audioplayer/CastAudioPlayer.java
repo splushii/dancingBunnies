@@ -288,7 +288,7 @@ public class CastAudioPlayer implements AudioPlayer {
             PlaybackEntry playbackEntry = mediaQueueItem == null ?
                     new PlaybackEntry(
                             EntryID.UNKOWN,
-                            PlaybackEntry.PLAYBACK_ID_UNKNOWN,
+                            PlaybackEntry.PLAYBACK_ID_INVALID,
                             PlaybackEntry.USER_TYPE_EXTERNAL,
                             PlaybackEntry.PLAYLIST_POS_NONE
                     ) :
@@ -802,21 +802,28 @@ public class CastAudioPlayer implements AudioPlayer {
             Log.d(LC, "mediaQueueChanged: queueChangeLock released");
 
             // Check if the queue state is up to date
-            boolean isQueueStateUpToDate = true;
-            for (int itemId: mediaQueue.getItemIds()) {
-                if (queueItemMap.get(itemId) == null) {
-                    isQueueStateUpToDate = false;
-                    // Trigger fetch of MediaQueueItem
-                    mediaQueue.getItemAtIndex(mediaQueue.indexOfItemWithId(itemId));
-                }
-            }
+            boolean isQueueStateUpToDate = isQueueUpToDate(true);
             if (isQueueStateUpToDate) {
                 queueStateLock.unlockWrite(queueStateLockStamp);
                 Log.d(LC, "mediaQueueChanged: queueStateLock released");
+                callback.onPreloadChanged();
             }
-
-            callback.onPreloadChanged();
         }
+    }
+
+    private boolean isQueueUpToDate(boolean triggerFetch) {
+        boolean isQueueStateUpToDate = true;
+        for (int itemId: mediaQueue.getItemIds()) {
+            if (queueItemMap.get(itemId) == null) {
+                if (triggerFetch) {
+                    isQueueStateUpToDate = false;
+                    mediaQueue.getItemAtIndex(mediaQueue.indexOfItemWithId(itemId));
+                } else {
+                    return false;
+                }
+            }
+        }
+        return isQueueStateUpToDate;
     }
 
     private class RemoteMediaClientCallback extends RemoteMediaClient.Callback {
@@ -897,15 +904,14 @@ public class CastAudioPlayer implements AudioPlayer {
             Log.d(LC, "onQueueStatusUpdated");
             queueChangeLock.drainPermits();
             queueChangeLock.release();
-            Log.e(LC, "lastCurrentItemId: " + lastCurrentItemId);
-            Log.e(LC, "currentItemId: " + (remoteMediaClient.getCurrentItem() == null ? "null"
-                    : remoteMediaClient.getCurrentItem().getItemId()));
             MediaQueueItem currentItem = remoteMediaClient.getCurrentItem();
             if (currentItem != null) {
                 lastCurrentItemId = currentItem.getItemId();
             }
             Log.d(LC, "onQueueStatusUpdated queueChangeLock released");
-            callback.onPreloadChanged();
+            if (isQueueUpToDate(false)) {
+                callback.onPreloadChanged();
+            }
         }
 
         @Override

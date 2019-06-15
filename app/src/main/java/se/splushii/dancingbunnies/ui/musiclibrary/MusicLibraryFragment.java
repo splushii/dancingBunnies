@@ -39,7 +39,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
-import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
@@ -473,7 +472,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                     play(selectionList);
                     break;
                 case R.id.musiclibrary_actionmode_action_queue:
-                    queue(selectionList, AudioPlayerService.QUEUE_LAST);
+                    queue(selectionList);
                     break;
                 case R.id.musiclibrary_actionmode_action_add_to_playlist:
                     AddToPlaylistDialogFragment.showDialog(

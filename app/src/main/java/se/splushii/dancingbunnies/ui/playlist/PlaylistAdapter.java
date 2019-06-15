@@ -72,8 +72,10 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
     }
 
     @Override
-    public void onSelectionDrop(Collection<Playlist> selection, int lastDragPos) {
-        playlistStorage.movePlaylists(selection, lastDragPos);
+    public void onSelectionDrop(Collection<Playlist> selection,
+                                int targetPos,
+                                Playlist idAfterTargetPos) {
+        playlistStorage.movePlaylists(selection, targetPos);
     }
 
     @Override

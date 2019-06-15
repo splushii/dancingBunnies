@@ -484,7 +484,7 @@ class PlaybackController {
                     Log.d(LC, "skip long queue offset");
                     nextEntry = getQueueEntry(controllerQueueOffset);
                     result = result.thenCompose(
-                            v -> queue.remove(Collections.singletonList(controllerQueueOffset)))
+                            v -> queue.removeEntries(Collections.singletonList(nextEntry)))
                             .thenApply(entries -> null);
                 }
                 // Queue after current and play
@@ -537,45 +537,77 @@ class PlaybackController {
         }
     }
 
-    CompletableFuture<Void> queue(List<EntryID> entries, int toPosition) {
-        synchronized (executorLock) {
-            return submitCompletableFuture(() -> _queue(entries, toPosition));
-        }
-    }
-
-    private CompletableFuture<Void> _queue(List<EntryID> entries, int toPosition) {
-        Log.d(LC, "queue(" + entries.size() + ") to " + toPosition);
-        List<PlaybackEntry> newPlaybackEntries = new ArrayList<>();
-        for (EntryID entryID: entries) {
-            newPlaybackEntries.add(new PlaybackEntry(
-                    entryID,
-                    generatePlaybackID(),
-                    PlaybackEntry.USER_TYPE_QUEUE,
-                    PlaybackEntry.PLAYLIST_POS_NONE
-            ));
-        }
-        return queuePlaybackEntries(newPlaybackEntries, toPosition);
-    }
-
     long generatePlaybackID() {
         return storage.getNextPlaybackID();
     }
 
+    private List<PlaybackEntry> generatePlaybackEntries(List<EntryID> entryIDs) {
+        return entryIDs.stream()
+                .map(e -> new PlaybackEntry(
+                        e,
+                        generatePlaybackID(),
+                        PlaybackEntry.USER_TYPE_QUEUE,
+                        PlaybackEntry.PLAYLIST_POS_NONE
+                )).collect(Collectors.toList());
+    }
+
+    CompletableFuture<Void> queueToPos(List<EntryID> entryIDs, int toPosition) {
+        long beforePlaybackID = getQueuePlaybackID(toPosition);
+        Log.d(LC, "queueToPos toPos: " + toPosition
+                + " beforePlaybackID: " + beforePlaybackID
+                + " entries: " + entryIDs);
+        return queue(entryIDs, beforePlaybackID);
+    }
+
+    CompletableFuture<Void> queue(List<EntryID> entryIDs) {
+        return queue(entryIDs, PlaybackEntry.PLAYBACK_ID_INVALID);
+    }
+
+    CompletableFuture<Void> queue(List<EntryID> entryIDs, long beforePlaybackID) {
+        synchronized (executorLock) {
+            return submitCompletableFuture(() ->
+                    queuePlaybackEntries(generatePlaybackEntries(entryIDs), beforePlaybackID)
+            );
+        }
+    }
+
+    private int getQueuePos(long playbackID) {
+        List<PlaybackEntry> queueEntries = getAllQueueEntries();
+        int pos = AudioPlayerService.QUEUE_LAST;
+        for (int i = 0; i < queueEntries.size(); i++) {
+            if (playbackID == queueEntries.get(i).playbackID) {
+                pos = i;
+                break;
+            }
+        }
+        return pos;
+    }
+
+    private long getQueuePlaybackID(int pos) {
+        List<PlaybackEntry> queueEntries = getAllQueueEntries();
+        if (pos < 0 || pos > queueEntries.size()) {
+            return PlaybackEntry.PLAYBACK_ID_INVALID;
+        }
+        return queueEntries.get(pos).playbackID;
+    }
+
     private CompletableFuture<Void> queuePlaybackEntries(List<PlaybackEntry> entries,
-                                                         int toPosition) {
+                                                         long beforePlaybackID) {
         if (entries == null || entries.isEmpty()) {
             return Util.futureResult(null);
         }
+        int toPosition = getQueuePos(beforePlaybackID);
         Log.d(LC, "queuePlaybackEntries() to " + toPosition + " : " + entries.toString());
-        List<PlaybackEntry> playerPlaylist = getPlayerPlaylistEntries();
         List<PlaybackEntry> playerQueue = getPlayerQueueEntries();
-        int numPlayerPlaylist = playerPlaylist.size();
+        List<PlaybackEntry> playerPlaylist = getPlayerPlaylistEntries();
         int numPlayerQueue = playerQueue.size();
+        int numPlayerPlaylist = playerPlaylist.size();
         int numControllerQueue = queue.size();
+        int numTotalQueue = numPlayerQueue + numControllerQueue;
         int numNew = entries.size();
         int maxToPreload = audioPlayer.getMaxToPreload();
-        if (toPosition == AudioPlayerService.QUEUE_LAST) {
-            toPosition = numPlayerQueue + numControllerQueue;
+        if (toPosition < 0 || toPosition > numTotalQueue) {
+            toPosition = numTotalQueue;
         }
 
         int numNewEntriesToPreload = getNumNewEntriesToPreload(
@@ -714,16 +746,14 @@ class PlaybackController {
         return thenUpdateState ? result.thenCompose(aVoid -> updateState()) : result;
     }
 
-    CompletableFuture<Void> moveQueueItems(List<PlaybackEntry> playbackEntries, int toPosition) {
-        if (playbackEntries.size() <= 0 || toPosition < 0) {
-            return Util.futureResult(null);
-        }
+    CompletableFuture<Void> moveQueueItems(List<PlaybackEntry> playbackEntries,
+                                           long beforePlaybackID) {
         synchronized (executorLock) {
             return submitCompletableFuture(() -> {
                 Log.d(LC, "moveQueueItems("
-                        + playbackEntries + ", " + toPosition + ")");
+                        + playbackEntries + ", beforePlaybackID: " + beforePlaybackID + ")");
                 return _deQueue(playbackEntries, false)
-                        .thenCompose(v -> queuePlaybackEntries(playbackEntries, toPosition));
+                        .thenCompose(v -> queuePlaybackEntries(playbackEntries, beforePlaybackID));
             });
         }
     }
@@ -736,12 +766,15 @@ class PlaybackController {
         }
     }
 
-    CompletableFuture<Void> playNow(EntryID entryID) {
+    CompletableFuture<Void> playNow(List<EntryID> entryIDs) {
         synchronized (executorLock) {
-            return submitCompletableFuture(() ->
-                    _queue(Collections.singletonList(entryID), 0)
-                            .thenCompose(r -> getNumTotalQueueEntries() > 1 ? audioPlayer.next() : Util.futureResult(null))
-                            .thenCompose(r -> audioPlayer.play()));
+            return submitCompletableFuture(
+                    () -> queuePlaybackEntries(
+                            generatePlaybackEntries(entryIDs),
+                            getQueuePlaybackID(0)
+                    ).thenCompose(r -> getNumTotalQueueEntries() > 1 ?
+                            audioPlayer.next() : Util.futureResult(null)
+                    ).thenCompose(r -> audioPlayer.play()));
         }
     }
 
@@ -989,7 +1022,7 @@ class PlaybackController {
     }
 
     private Observer<List<PlaylistEntry>> playlistEntriesObserver = playlistEntries -> {
-        Log.e(LC, "playlistEntries changed for: " + currentPlaylistIDLiveData.getValue());
+        Log.d(LC, "playlistEntries changed for: " + currentPlaylistIDLiveData.getValue());
         submitCompletableFuture(this::updateState);
     };
 }

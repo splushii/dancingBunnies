@@ -66,14 +66,16 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.getTransportControls().playFromMediaId(entryID.id, entryID.toBundle());
     }
 
-    public CompletableFuture<Void> play(List<EntryID> selectionList) {
-        return queue(selectionList, 0)
-                .thenAccept(success -> {
-                    if (success) {
-                        next();
-                        play();
-                    }
-                });
+    public CompletableFuture<Boolean> play(List<EntryID> entryIDs) {
+        return AudioPlayerService.play(
+                mediaController,
+                entryIDs
+        ).thenApply(success -> {
+            if (!success) {
+                Log.e(LC, "play entryIDs failed");
+            }
+            return success;
+        });
     }
 
     public List<PlaybackEntry> getQueue() {
@@ -92,11 +94,10 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.addQueueItem(entryID.toMediaDescriptionCompat());
     }
 
-    public CompletableFuture<Boolean> queue(List<EntryID> entryIDs, int toPosition) {
+    public CompletableFuture<Boolean> queue(List<EntryID> entryIDs) {
         return AudioPlayerService.queue(
                 mediaController,
-                entryIDs,
-                toPosition
+                entryIDs
         ).thenApply(success -> {
             if (!success) {
                 Log.e(LC, "queue entryIDs failed");
@@ -124,11 +125,11 @@ public abstract class AudioBrowserFragment extends Fragment {
     }
 
     public CompletableFuture<Boolean> moveQueueItems(List<PlaybackEntry> playbackEntries,
-                                                     int toPosition) {
+                                                     long beforePlaybackID) {
         return AudioPlayerService.moveQueueItems(
                 mediaController,
                 playbackEntries,
-                toPosition
+                beforePlaybackID
         ).thenApply(success -> {
             if (!success) {
                 Log.e(LC, "moveQueueItems failed");

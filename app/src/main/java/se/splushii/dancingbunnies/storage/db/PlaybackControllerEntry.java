@@ -46,7 +46,7 @@ public class PlaybackControllerEntry {
     int queueID;
     @NonNull
     @ColumnInfo(name = COLUMN_POS)
-    long pos;
+    int pos;
     @NonNull
     @ColumnInfo(name = COLUMN_API)
     public String api;

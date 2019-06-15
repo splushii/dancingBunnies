@@ -3,9 +3,7 @@ package se.splushii.dancingbunnies.storage;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
-import android.util.Log;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -120,18 +118,7 @@ public class PlaybackControllerStorage {
             return Util.futureResult(null);
         }
         return CompletableFuture.supplyAsync(() -> {
-            List<PlaybackControllerEntry> roomEntries = new ArrayList<>();
-            int entryPosition = toPosition;
-            for (PlaybackEntry playbackEntry: entries) {
-                roomEntries.add(PlaybackControllerEntry.from(queueID, playbackEntry, entryPosition++));
-            }
-            Log.d(LC, Util.getPlaybackEntriesChangedStatus(
-                    "insert to " + getQueueName(queueID) + "[" + entryPosition + "]:",
-                    "\n+ ",
-                    "",
-                    entries
-            ));
-            entryModel.insert(queueID, toPosition, roomEntries);
+            entryModel.insert(queueID, toPosition, entries);
             return null;
         });
     }
@@ -139,13 +126,6 @@ public class PlaybackControllerStorage {
     public CompletableFuture<Void> removeEntries(int queueID, List<PlaybackEntry> playbackEntries) {
         return CompletableFuture.supplyAsync(() -> {
             entryModel.removeEntries(queueID, playbackEntries);
-            return null;
-        });
-    }
-
-    public CompletableFuture<Void> remove(int queueID, List<Integer> positions) {
-        return CompletableFuture.supplyAsync(() -> {
-            entryModel.remove(queueID, positions);
             return null;
         });
     }

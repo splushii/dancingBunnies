@@ -4,12 +4,10 @@ import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
@@ -89,47 +87,11 @@ class PlaybackQueue {
 
     CompletableFuture<List<PlaybackEntry>> poll(int num) {
         Log.d(LC, "poll(" + num + ")");
-        List<Integer> positionsToRemove = IntStream.range(0, num)
-                .boxed().collect(Collectors.toList());
-        return remove(positionsToRemove);
-    }
-
-    public CompletableFuture<List<PlaybackEntry>> remove(List<Integer> queuePositions) {
-        String statusTitle = "remove(" + queuePositions.toString() + ") from \""
-                + PlaybackControllerStorage.getQueueName(queueID) + "\" entries:";
-        if (queuePositions.isEmpty()) {
-            Log.d(LC, statusTitle);
-            return Util.futureResult(null, Collections.emptyList());
-        }
-        List<PlaybackEntry> entries = new ArrayList<>();
-        List<Integer> positionsToRemove = new ArrayList<>();
-        for (int pos: queuePositions) {
-            if (pos >= 0 && pos < queue.size()) {
-                PlaybackEntry entry = queue.get(pos);
-                if (entry != null) {
-                    entries.add(entry);
-                    positionsToRemove.add(pos);
-                }
-            }
-        }
-        Log.d(LC, Util.getPlaybackEntriesChangedStatus(
-                statusTitle,
-                "\n- ",
-                "",
-                entries
-        ));
-        // Optimistic update of in-memory queue
-        int previousSize = queue.size();
-        for (int i = queuePositions.size() - 1; i >= 0; i--) {
-            int indexToRemove = queuePositions.get(i);
-            if (indexToRemove < queue.size()) {
-                queue.remove(indexToRemove);
-            }
-        }
-        onChanged(previousSize);
-        // Actual update of queue source data
-        return storage.remove(queueID, positionsToRemove)
-                .thenApply(v -> entries);
+        List<PlaybackEntry> entries = queue.stream()
+                .limit(num)
+                .collect(Collectors.toList());
+        return removeEntries(entries)
+                .thenApply(aVoid -> entries);
     }
 
     CompletableFuture<Void> removeEntries(List<PlaybackEntry> playbackEntries) {
@@ -169,14 +131,6 @@ class PlaybackQueue {
 
     public int size() {
         return queue.size();
-    }
-
-    boolean isEmpty() {
-        return queue.isEmpty();
-    }
-
-    Collection<? extends PlaybackEntry> getEntries(int max) {
-        return queue.stream().limit(max).collect(Collectors.toList());
     }
 
     PlaybackEntry get(int queuePosition) {

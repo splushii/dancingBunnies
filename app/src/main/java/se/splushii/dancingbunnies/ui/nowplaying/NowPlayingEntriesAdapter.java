@@ -18,7 +18,6 @@ import androidx.lifecycle.LiveData;
 import androidx.recyclerview.selection.Selection;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
@@ -77,6 +76,9 @@ public class NowPlayingEntriesAdapter extends
 
     @Override
     protected PlaybackEntry getKey(int pos) {
+        if (pos < 0 || pos >= queueEntries.size()) {
+            return null;
+        }
         return queueEntries.get(pos);
     }
 
@@ -87,11 +89,12 @@ public class NowPlayingEntriesAdapter extends
     }
 
     @Override
-    public void onSelectionDrop(Collection<PlaybackEntry> selection, int lastDragPos) {
-        fragment.moveQueueItems(
-                new ArrayList<>(selection),
-                lastDragPos
-        );
+    public void onSelectionDrop(Collection<PlaybackEntry> selection,
+                                int targetPos,
+                                PlaybackEntry idAfterTargetPos) {
+        long beforePlaybackID = idAfterTargetPos == null ?
+                PlaybackEntry.PLAYBACK_ID_INVALID : idAfterTargetPos.playbackID;
+        fragment.moveQueueItems(new ArrayList<>(selection), beforePlaybackID);
     }
 
     @Override
@@ -109,11 +112,9 @@ public class NowPlayingEntriesAdapter extends
     public boolean onActionItemClicked(int menuItemID, List<PlaybackEntry> selectionList) {
         switch (menuItemID) {
             case R.id.nowplaying_actionmode_action_queue:
-                fragment.queue(
-                        selectionList.stream()
-                                .map(playbackEntry -> playbackEntry.entryID)
-                                .collect(Collectors.toList()),
-                        AudioPlayerService.QUEUE_LAST
+                fragment.queue(selectionList.stream()
+                        .map(playbackEntry -> playbackEntry.entryID)
+                        .collect(Collectors.toList())
                 );
                 return true;
             case R.id.nowplaying_actionmode_action_dequeue:

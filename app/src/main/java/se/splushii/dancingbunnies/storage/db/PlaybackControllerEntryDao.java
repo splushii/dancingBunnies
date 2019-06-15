@@ -1,7 +1,6 @@
 package se.splushii.dancingbunnies.storage.db;
 
-import java.util.Collections;
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
 
 import androidx.lifecycle.LiveData;
@@ -31,9 +30,10 @@ public abstract class PlaybackControllerEntryDao {
             + " LIMIT 1")
     abstract long getPos(long playbackID);
     @Query("SELECT * FROM " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
-            + " WHERE " + PlaybackControllerEntry.COLUMN_PLAYBACK_ID + " = :playbackID"
+            + " WHERE "  + PlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID"
+            + " AND " + PlaybackControllerEntry.COLUMN_PLAYBACK_ID + " = :playbackID"
             + " LIMIT 1")
-    abstract PlaybackControllerEntry getEntry(long playbackID);
+    abstract PlaybackControllerEntry getEntry(int queueID, long playbackID);
 
     // Delete
     @Delete
@@ -49,18 +49,9 @@ public abstract class PlaybackControllerEntryDao {
             + " AND " + PlaybackControllerEntry.COLUMN_POS + " > :position")
     abstract void _update_pos_after_delete(int queueID, long position);
     @Transaction
-    public void remove(int queueID, List<Integer> positions) {
-        // Start to remove highest pos (otherwise items at highest positions change position)
-        Collections.sort(positions, Comparator.reverseOrder());
-        for (int pos: positions) {
-            _delete(queueID, pos);
-            _update_pos_after_delete(queueID, pos);
-        }
-    }
-    @Transaction
     public void removeEntries(int queueID, List<PlaybackEntry> playbackEntries) {
         for (PlaybackEntry playbackEntry: playbackEntries) {
-            PlaybackControllerEntry entry = getEntry(playbackEntry.playbackID);
+            PlaybackControllerEntry entry = getEntry(queueID, playbackEntry.playbackID);
             if (entry == null) {
                 continue;
             }
@@ -82,8 +73,24 @@ public abstract class PlaybackControllerEntryDao {
     @Insert(onConflict = REPLACE)
     public abstract void _insert(List<PlaybackControllerEntry> entries);
     @Transaction
-    public void insert(int queueID, int toPosition, List<PlaybackControllerEntry> entries) {
+    public void insert(int queueID, int toPosition, List<PlaybackEntry> entries) {
+        List<PlaybackControllerEntry> roomEntries = new ArrayList<>();
+        int entryPosition = toPosition;
+        for (PlaybackEntry playbackEntry: entries) {
+            roomEntries.add(PlaybackControllerEntry.from(queueID, playbackEntry, entryPosition++));
+        }
+        int numNewEntries = roomEntries.size();
+        _update_pos_before_insert(queueID, toPosition, numNewEntries);
+        _insert(roomEntries);
+    }
+    // TODO: Use insertBeforeID() instead of insert()
+    @Transaction
+    public void insertBeforeID(int queueID,
+                               long beforePlaybackID,
+                               List<PlaybackControllerEntry> entries) {
         int numNewEntries = entries.size();
+        PlaybackControllerEntry entry = getEntry(queueID, beforePlaybackID);
+        int toPosition = entry == null ? getEntriesSync(queueID).size() : entry.pos;
         _update_pos_before_insert(queueID, toPosition, numNewEntries);
         _insert(entries);
     }

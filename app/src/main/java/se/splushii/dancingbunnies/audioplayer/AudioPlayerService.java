@@ -72,10 +72,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static final String COMMAND_SET_CURRENT_PLAYLIST = "SET_CURRENT_PLAYLIST";
     private static final String COMMAND_GET_CURRENT_PLAYLIST = "GET_CURRENT_PLAYLIST";
     private static final String COMMAND_GET_CURRENT_PLAYLIST_ENTRY = "GET_CURRENT_PLAYLIST_ENTRY";
+    private static final String COMMAND_PLAY_ENTRYIDS = "PLAY_ENTRYIDS";
     private static final String COMMAND_QUEUE_ENTRYIDS = "QUEUE_ENTRYIDS";
     private static final String COMMAND_DEQUEUE = "DEQUEUE";
     private static final String COMMAND_MOVE_QUEUE_ITEMS = "MOVE_QUEUE_ITEMS";
-
 
     public static final String BUNDLE_KEY_PLAYBACK_ENTRY =
             "dancingbunnies.bundle.key.audioplayerservice.playback_entry";
@@ -541,7 +541,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         public void onPlayFromMediaId(String mediaId, Bundle extras) {
             Log.d(LC, "onPlayFromMediaId");
             EntryID entryID = EntryID.from(extras);
-            playbackController.playNow(entryID)
+            playbackController.playNow(Collections.singletonList(entryID))
                     .thenRun(() -> setToast(
                             entryID,
                             "Playing %s \"%s\" now!")
@@ -559,7 +559,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             Log.d(LC, "onAddQueueItem(" +
                     (index == AudioPlayerService.QUEUE_LAST ? "last" : index) + ")");
             EntryID entryID = EntryID.from(description);
-            playbackController.queue(Collections.singletonList(entryID), index)
+            playbackController.queueToPos(Collections.singletonList(entryID), index)
                     .thenRunAsync(() -> setToast(
                             entryID,
                             "Adding %s \"%s\" to queue!"),
@@ -678,6 +678,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 case COMMAND_GET_CURRENT_PLAYLIST_ENTRY:
                     getPlaylistEntry(cb, extras);
                     break;
+                case COMMAND_PLAY_ENTRYIDS:
+                    play(cb, extras);
+                    break;
                 case COMMAND_QUEUE_ENTRYIDS:
                     queue(cb, extras);
                     break;
@@ -694,14 +697,48 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         }
     }
 
-    public static CompletableFuture<Boolean> queue(
-            MediaControllerCompat mediaController,
-            List<EntryID> entryIDs,
-            int toPosition
-    ) {
+
+    public static CompletableFuture<Boolean> play(MediaControllerCompat mediaController,
+                                                  List<EntryID> entryIDs) {
         Bundle params = new Bundle();
         params.putParcelableArrayList("entryids", new ArrayList<>(entryIDs));
-        params.putInt("toPosition", toPosition);
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        mediaController.sendCommand(
+                AudioPlayerService.COMMAND_PLAY_ENTRYIDS,
+                params,
+                new ResultReceiver(null) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        future.complete(resultCode == 0);
+                    }
+                }
+        );
+        return future;
+    }
+
+    private void play(ResultReceiver cb, Bundle b) {
+        ArrayList<EntryID> entryIDs = b.getParcelableArrayList("entryids");
+        if (entryIDs == null || entryIDs.isEmpty()) {
+            cb.send(-1, null);
+            return;
+        }
+        Log.d(LC, "play() " + entryIDs.size() + " entryIDs");
+        musicLibraryService.getSongEntries(entryIDs)
+                .thenComposeAsync(songEntryIDs -> {
+                    Log.d(LC, "play() total song entries: " + songEntryIDs.size());
+                    return playbackController.playNow(songEntryIDs);
+                }, Util.getMainThreadExecutor())
+                .handle((r, t) -> {
+                    handleControllerResult(r, t);
+                    cb.send(t == null ? 0 : 1, null);
+                    return r;
+                });
+    }
+
+    public static CompletableFuture<Boolean> queue(MediaControllerCompat mediaController,
+                                                   List<EntryID> entryIDs) {
+        Bundle params = new Bundle();
+        params.putParcelableArrayList("entryids", new ArrayList<>(entryIDs));
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
                 AudioPlayerService.COMMAND_QUEUE_ENTRYIDS,
@@ -718,7 +755,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void queue(ResultReceiver cb, Bundle b) {
         ArrayList<EntryID> entryIDs = b.getParcelableArrayList("entryids");
-        int toPosition = b.getInt("toPosition");
         if (entryIDs == null || entryIDs.isEmpty()) {
             cb.send(-1, null);
             return;
@@ -727,7 +763,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         musicLibraryService.getSongEntries(entryIDs)
                 .thenComposeAsync(songEntryIDs -> {
                     Log.d(LC, "queue() total song entries: " + songEntryIDs.size());
-                    return playbackController.queue(songEntryIDs, toPosition);
+                    return playbackController.queue(songEntryIDs);
                 }, Util.getMainThreadExecutor())
                 .handle((r, t) -> {
                     handleControllerResult(r, t);
@@ -765,10 +801,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     public static CompletableFuture<Boolean> moveQueueItems(MediaControllerCompat mediaController,
                                                             List<PlaybackEntry> playbackEntries,
-                                                            int toPosition) {
+                                                            long beforePlaybackID) {
         Bundle params = new Bundle();
         params.putParcelableArrayList("playbackEntries", new ArrayList<>(playbackEntries));
-        params.putInt("toPosition", toPosition);
+        params.putLong("beforePlaybackID", beforePlaybackID);
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
                 AudioPlayerService.COMMAND_MOVE_QUEUE_ITEMS,
@@ -785,8 +821,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void moveQueueItems(ResultReceiver cb, Bundle extras) {
         List<PlaybackEntry> playbackEntries = extras.getParcelableArrayList("playbackEntries");
-        int toPosition = extras.getInt("toPosition");
-        playbackController.moveQueueItems(playbackEntries, toPosition).handle((r, t) -> {
+        long beforePlaybackID = extras.getLong("beforePlaybackID");
+        playbackController.moveQueueItems(playbackEntries, beforePlaybackID).handle((r, t) -> {
             cb.send(t == null ? 0 : 1, null);
             return handleControllerResult(r, t);
         });
@@ -1012,7 +1048,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             List<MediaSessionCompat.QueueItem> queueItems = new ArrayList<>();
             for (int i = 0; i < queue.size(); i++) {
                 PlaybackEntry playbackEntry = queue.get(i);
-                if (playbackEntry.playbackID == PlaybackEntry.PLAYBACK_ID_UNKNOWN) {
+                if (playbackEntry.playbackID == PlaybackEntry.PLAYBACK_ID_INVALID) {
                     playbackEntry = new PlaybackEntry(
                             playbackEntry.entryID,
                             playbackController.generatePlaybackID(),

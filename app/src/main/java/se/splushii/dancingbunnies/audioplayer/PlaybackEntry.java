@@ -21,7 +21,7 @@ public class PlaybackEntry implements Parcelable {
     private static final String BUNDLE_KEY_PLAYBACKTYPE = "dancingbunnies.bundle.key.playbackentry.playbackType";
     private static final String BUNDLE_KEY_PRELOADED = "dancingbunnies.bundle.key.playbackentry.preloaded";
     private static final String BUNDLE_KEY_PLAYLIST_POS = "dancingbunnies.bundle.key.playbackentry.playlistPos";
-    static final long PLAYBACK_ID_UNKNOWN = -1;
+    public static final long PLAYBACK_ID_INVALID = -1;
     static final long PLAYLIST_POS_NONE = -1;
 
     public final EntryID entryID;
@@ -74,7 +74,7 @@ public class PlaybackEntry implements Parcelable {
 
     @Override
     public String toString() {
-        return playbackID + " " + entryID.toString();
+        return playbackID + "[" + playlistPos + "] " + entryID.toString() + " " + playbackType;
     }
 
     @Override

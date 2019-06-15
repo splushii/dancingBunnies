@@ -83,7 +83,9 @@ public abstract class SelectionRecyclerViewAdapter<
     };
     protected abstract ID getKey(int pos);
     protected abstract int getPosition(@NonNull ID key);
-    public abstract void onSelectionDrop(Collection<ID> selection, int lastDragPos);
+    public abstract void onSelectionDrop(Collection<ID> selection,
+                                         int targetPos,
+                                         ID idAfterTargetPos);
     public abstract void onUseViewHolderForDrag(ViewHolder dragViewHolder, Collection<ID> selection);
     public abstract void onResetDragViewHolder(ViewHolder dragViewHolder);
     public abstract boolean onActionItemClicked(int menuItemID, List<ID> selectionList);
