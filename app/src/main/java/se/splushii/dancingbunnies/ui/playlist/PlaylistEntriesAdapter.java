@@ -48,6 +48,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
     private TrackItemActionsView selectedActionView;
     private LiveData<HashSet<EntryID>> cachedEntriesLiveData;
     private LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> fetchStateLiveData;
+    private LiveData<PlaylistEntry> currentPlaylistEntryLiveData;
 
     PlaylistEntriesAdapter(PlaylistFragment playlistFragment) {
         fragment = playlistFragment;
@@ -183,6 +184,13 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
                 fragment.getViewLifecycleOwner(),
                 holder.itemContent::setFetchState
         );
+        currentPlaylistEntryLiveData.observe(
+                fragment.getViewLifecycleOwner(),
+                playlistEntry -> holder.itemContent.setHighlight(
+                        holder.playlistEntry != null
+                                && holder.playlistEntry.equals(playlistEntry)
+                )
+        );
         holder.initMetaObserver(fragment.requireContext());
         holder.observeMeta(fragment.getViewLifecycleOwner(), holder::setMeta);
         return holder;
@@ -193,11 +201,16 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         holder.actionsView.initialize();
         holder.position = position;
         PlaylistEntry playlistEntry = playlistEntriesDataset.get(position);
+        holder.playlistEntry = playlistEntry;
         EntryID entryID = EntryID.from(playlistEntry);
         holder.itemContent.setEntryID(entryID);
         holder.entry.setActivated(isSelected(holder.getKey()));
         holder.itemContent.setCached(cachedEntriesLiveData.getValue());
         holder.itemContent.setFetchState(fetchStateLiveData.getValue());
+        holder.itemContent.setHighlight(
+                holder.playlistEntry != null
+                        && holder.playlistEntry.equals(currentPlaylistEntryLiveData.getValue())
+        );
         holder.itemContent.setPos(playlistEntry.pos);
         holder.setEntryID(entryID);
         if (MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_DELETE)
@@ -213,6 +226,10 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         }
         holder.actionsView.setOnPlayListener(() -> fragment.play(entryID));
         holder.actionsView.setOnQueueListener(() -> fragment.queue(entryID));
+        holder.actionsView.setOnPlayPlaylistListener(() -> fragment.setCurrentPlaylist(
+                playlistID,
+                playlistEntry.pos
+        ));
     }
 
     @Override
@@ -249,6 +266,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         });
         cachedEntriesLiveData = model.getCachedEntries(fragment.getContext());
         fetchStateLiveData = model.getFetchState(fragment.getContext());
+        currentPlaylistEntryLiveData = model.getCurrentPlaylistEntry();
     }
 
     @Override
@@ -261,6 +279,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         private final TrackItemView itemContent;
         private final TrackItemActionsView actionsView;
         public int position;
+        public PlaylistEntry playlistEntry;
 
         PlaylistEntryHolder(View v) {
             super(v);

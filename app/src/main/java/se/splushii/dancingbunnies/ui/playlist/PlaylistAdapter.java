@@ -1,6 +1,7 @@
 package se.splushii.dancingbunnies.ui.playlist;
 
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,12 +14,15 @@ import java.util.LinkedList;
 import java.util.List;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.core.util.Consumer;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.LiveData;
 import androidx.recyclerview.selection.Selection;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
+import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
@@ -35,6 +39,7 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
 
     private List<Playlist> playlistDataset;
     private Consumer<Playlist> onItemClickListener = p -> {};
+    private LiveData<PlaylistID> currentPlaylistEntryLiveData;
 
     public PlaylistAdapter(Fragment fragment) {
         this.fragment = fragment;
@@ -165,20 +170,24 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
                         ((PlaylistFragment)fragment).scrollPlaylistsTo(pos, pad);
                     }
                 });
+        currentPlaylistEntryLiveData = model.getCurrentPlaylistID();
     }
 
     class PlaylistHolder extends ItemDetailsViewHolder<Playlist> {
         private final View entry;
+        final View highlightView;
         private String name = "";
         final TextView nameTextView;
         private int srcResourceID = 0;
         final ImageView srcImageView;
+        public Playlist playlist;
 
         PlaylistHolder(View v) {
             super(v);
             entry = v.findViewById(R.id.playlist);
             nameTextView = v.findViewById(R.id.playlist_name);
             srcImageView = v.findViewById(R.id.playlist_src);
+            highlightView = v.findViewById(R.id.playlist_highlight);
         }
 
         @Override
@@ -200,13 +209,39 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
             this.name = name;
             nameTextView.setText(name);
         }
+
+        void updateHighlight(PlaylistID currentPlaylistEntry) {
+            boolean highlighted = playlist != null
+                    && new PlaylistID(playlist).equals(currentPlaylistEntry);
+            if (highlighted) {
+                highlightView.setBackgroundColor(ContextCompat.getColor(
+                        fragment.requireContext(),
+                        R.color.colorAccentLight
+                ));
+            } else {
+                TypedValue value = new TypedValue();
+                fragment.requireContext().getTheme().resolveAttribute(
+                        android.R.color.transparent,
+                        value,
+                        true
+                );
+                highlightView.setBackgroundResource(value.resourceId);
+            }
+        }
     }
 
     @NonNull
     @Override
     public PlaylistHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
-        return new PlaylistHolder(layoutInflater.inflate(R.layout.playlist_item, parent, false));
+        PlaylistHolder holder = new PlaylistHolder(
+                layoutInflater.inflate(R.layout.playlist_item, parent, false)
+        );
+        currentPlaylistEntryLiveData.observe(
+                fragment.getViewLifecycleOwner(),
+                holder::updateHighlight
+        );
+        return holder;
     }
 
     public void setOnItemClickListener(Consumer<Playlist> listener) {
@@ -215,13 +250,11 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
 
     @Override
     public void onBindViewHolder(@NonNull PlaylistHolder holder, int position) {
-        holder.entry.setOnClickListener(view -> {
-            onItemClickListener.accept(playlistDataset.get(position));
-        });
-        String name = playlistDataset.get(position).name;
-        String src = playlistDataset.get(position).api;
-        holder.setName(name);
-        holder.setSourceResourceID(MusicLibraryService.getAPIIconResource(src));
+        holder.playlist = playlistDataset.get(position);
+        holder.entry.setOnClickListener(view -> onItemClickListener.accept(holder.playlist));
+        holder.setName(holder.playlist.name);
+        holder.setSourceResourceID(MusicLibraryService.getAPIIconResource(holder.playlist.api));
+        holder.updateHighlight(currentPlaylistEntryLiveData.getValue());
         holder.entry.setActivated(isSelected(holder.getKey()));
     }
 }

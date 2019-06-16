@@ -39,6 +39,7 @@
     <string name="item_action_play">Play</string>
     <string name="item_action_queue">Queue</string>
     <string name="item_action_add_to_playlist">Add to playlist</string>
+    <string name="item_action_play_playlist">Play playlist from this position</string>
     <string name="item_action_info">Info</string>
     <string name="item_action_delete">Delete</string>
     <string name="song_info" />

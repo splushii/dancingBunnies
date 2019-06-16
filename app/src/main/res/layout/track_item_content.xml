@@ -3,14 +3,15 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingStart="8dp"
     android:background="?android:selectableItemBackground">
     <TextView
         android:id="@+id/track_item_pos"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="@color/colorSecondaryText"
-        android:layout_gravity="center_vertical"/>
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:textColor="@color/secondary_text_color"/>
     <LinearLayout
         android:orientation="vertical"
         android:layout_width="0dp"

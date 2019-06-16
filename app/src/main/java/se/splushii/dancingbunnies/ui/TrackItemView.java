@@ -3,6 +3,7 @@ package se.splushii.dancingbunnies.ui;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.util.AttributeSet;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -13,6 +14,7 @@ import java.util.HashSet;
 import java.util.Locale;
 
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
@@ -163,5 +165,24 @@ public class TrackItemView extends LinearLayout {
 
     public void resetPos() {
         posView.setText("");
+    }
+
+    public void setHighlight(boolean highlighted) {
+        if (highlighted) {
+            posView.setBackgroundColor(ContextCompat.getColor(
+                    getContext(),
+                    R.color.colorAccentLight
+            ));
+            posView.setTextColor(ContextCompat.getColor(getContext(), R.color.white));
+        } else {
+            TypedValue value = new TypedValue();
+            getContext().getTheme().resolveAttribute(
+                    android.R.color.transparent,
+                    value,
+                    true
+            );
+            posView.setBackgroundResource(value.resourceId);
+            posView.setTextColor(ContextCompat.getColorStateList(getContext(), R.color.secondary_text_color));
+        }
     }
 }

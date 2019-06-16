@@ -42,9 +42,7 @@ import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
-import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
-import se.splushii.dancingbunnies.ui.TrackItemView;
 import se.splushii.dancingbunnies.ui.selection.RecyclerViewActionModeSelectionTracker;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -77,9 +75,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
 
     private NowPlayingFragmentModel model;
     private MutableLiveData<PlaylistID> currentPlaylistIDLiveData = new MutableLiveData<>();
-    private MutableLiveData<PlaylistEntry> currentPlaylistEntryLiveData = new MutableLiveData<>();
     private View currentPlaylistView;
-    private TrackItemView currentPlaylistTrackItemView;
     private long currentPos;
 
     public NowPlayingFragment() {
@@ -159,12 +155,10 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 rootView.findViewById(R.id.nowplaying_current_playlist_info_layout);
         currentPlaylistNameLayout.setOnClickListener(v -> goToPlaylistEntry());
         currentPlaylistName = rootView.findViewById(R.id.nowplaying_current_playlist_name);
-        currentPlaylistTrackItemView =
-                rootView.findViewById(R.id.nowplaying_current_playlist_next_trackitem);
 
         ImageButton currentPlaylistDeselectBtn =
                 rootView.findViewById(R.id.nowplaying_current_playlist_deselect);
-        currentPlaylistDeselectBtn.setOnClickListener(v -> setCurrentPlaylist(null));
+        currentPlaylistDeselectBtn.setOnClickListener(v -> setCurrentPlaylist(null, 0));
         return rootView;
     }
 
@@ -213,23 +207,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 currentPlaylistView.setVisibility(VISIBLE);
             }
         });
-        Transformations.switchMap(currentPlaylistEntryLiveData, playlistEntry -> {
-            if (playlistEntry == null) {
-                MutableLiveData<Meta> ret = new MutableLiveData<>();
-                ret.setValue(null);
-                return ret;
-            }
-            return MetaStorage.getInstance(requireContext()).getMeta(EntryID.from(playlistEntry));
-        }).observe(getViewLifecycleOwner(), meta -> {
-            if (meta == null) {
-                currentPlaylistTrackItemView.setVisibility(GONE);
-                return;
-            }
-            currentPlaylistTrackItemView.setEntryID(meta.entryID);
-            currentPlaylistTrackItemView.setTitle(meta.getAsString(Meta.FIELD_TITLE));
-            currentPlaylistTrackItemView.setArtist(meta.getAsString(Meta.FIELD_ARTIST));
-            currentPlaylistTrackItemView.setVisibility(VISIBLE);
-        });
         model.getState().observe(getViewLifecycleOwner(), this::refreshView);
     }
 
@@ -255,8 +232,14 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     @Override
     protected void onSessionReady() {
         super.onSessionReady();
-        getCurrentPlaylist().thenAccept(playlistID -> model.setCurrentPlaylist(playlistID));
-        getCurrentPlaylistEntry().thenAccept(playlistEntry -> model.setCurrentPlaylistEntry(playlistEntry));
+        getCurrentPlaylist().thenAcceptAsync(
+                playlistID -> model.setCurrentPlaylist(playlistID),
+                Util.getMainThreadExecutor()
+        );
+        getCurrentPlaylistEntry().thenAcceptAsync(
+                playlistEntry -> model.setCurrentPlaylistEntry(playlistEntry),
+                Util.getMainThreadExecutor()
+        );
         model.setQueue(getQueue());
         refreshView(model.getState().getValue());
     }
@@ -270,7 +253,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             return;
         }
         currentPlaylistIDLiveData.setValue(state.currentPlaylistID);
-        currentPlaylistEntryLiveData.setValue(state.currentPlaylistEntry);
         // TODO: Implement playbackhistory in AudioPlayerService/PlaybackController, then in UI.
         //getPlaybackHistory().thenAccept(opt -> opt.ifPresent(recViewAdapter::setPlaybackHistory));
         Log.d(LC, "refreshView: queue(" + state.queue.size() + ")");
@@ -478,7 +460,10 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     @Override
     protected void onPlaylistPositionChanged(long pos) {
         currentPos = pos;
-        getCurrentPlaylistEntry().thenAccept(playlistEntry -> model.setCurrentPlaylistEntry(playlistEntry));
+        getCurrentPlaylistEntry().thenAcceptAsync(
+                playlistEntry -> model.setCurrentPlaylistEntry(playlistEntry),
+                Util.getMainThreadExecutor()
+        );
     }
 
     @Override

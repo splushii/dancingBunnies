@@ -19,6 +19,7 @@ public class TrackItemActionsView extends LinearLayout {
     private View removeAction;
     private View addToPlaylistAction;
     private View infoAction;
+    private View playPlaylistAction;
 
     public TrackItemActionsView(Context context) {
         super(context);
@@ -49,6 +50,7 @@ public class TrackItemActionsView extends LinearLayout {
         queueAction = findViewById(R.id.item_action_queue);
         removeAction = findViewById(R.id.item_action_remove);
         addToPlaylistAction = findViewById(R.id.item_action_add_to_playlist);
+        playPlaylistAction = findViewById(R.id.item_action_play_playlist);
         infoAction = findViewById(R.id.item_action_info);
     }
 
@@ -112,6 +114,10 @@ public class TrackItemActionsView extends LinearLayout {
 
     public void setOnAddToPlaylistListener(Runnable r) {
         setListener(addToPlaylistAction, r, true);
+    }
+
+    public void setOnPlayPlaylistListener(Runnable r) {
+        setListener(playPlaylistAction, r, true);
     }
 
     public void setOnRemoveListener(Runnable r) {

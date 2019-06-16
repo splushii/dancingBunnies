@@ -829,9 +829,11 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     public static CompletableFuture<Boolean> setCurrentPlaylist(MediaControllerCompat mediaController,
-                                                                PlaylistID playlistID) {
+                                                                PlaylistID playlistID,
+                                                                long pos) {
         Bundle params = new Bundle();
         params.putParcelable("playlistID", playlistID);
+        params.putLong("playlistPos", pos);
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
                 AudioPlayerService.COMMAND_SET_CURRENT_PLAYLIST,
@@ -848,7 +850,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void setPlaylist(ResultReceiver cb, Bundle extras) {
         PlaylistID playlistID = extras.getParcelable("playlistID");
-        playbackController.setPlaylist(playlistID)
+        long pos = extras.getLong("playlistPos");
+        playbackController.setPlaylist(playlistID, pos)
                 .thenRunAsync(() -> cb.send(0, null), Util.getMainThreadExecutor());
     }
 

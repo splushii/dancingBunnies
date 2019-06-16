@@ -138,10 +138,11 @@ public abstract class AudioBrowserFragment extends Fragment {
         });
     }
 
-    protected CompletableFuture<Boolean> setCurrentPlaylist(PlaylistID playlistID) {
+    public CompletableFuture<Boolean> setCurrentPlaylist(PlaylistID playlistID, long pos) {
         return AudioPlayerService.setCurrentPlaylist(
                 mediaController,
-                playlistID
+                playlistID,
+                pos
         ).thenApply(success -> {
             if (!success) {
                 Log.e(LC, "setCurrentPlaylist (" + playlistID + ") failed");

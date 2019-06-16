@@ -42,6 +42,7 @@ public class NowPlayingEntriesAdapter extends
     private TrackItemActionsView selectedActionView;
     private LiveData<HashSet<EntryID>> cachedEntriesLiveData;
     private LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> fetchStateLiveData;
+    private LiveData<NowPlayingState> nowPlayingStateLiveData;
 
     NowPlayingEntriesAdapter(NowPlayingFragment fragment) {
         this.fragment = fragment;
@@ -52,6 +53,7 @@ public class NowPlayingEntriesAdapter extends
     void setModel(NowPlayingFragmentModel model) {
         cachedEntriesLiveData = model.getCachedEntries(fragment.getContext());
         fetchStateLiveData = model.getFetchState(fragment.getContext());
+        nowPlayingStateLiveData = model.getState();
     }
 
     void setQueueEntries(List<PlaybackEntry> queueEntries) {
@@ -246,6 +248,18 @@ public class NowPlayingEntriesAdapter extends
             String src = meta.entryID.src;
             itemContent.setSource(src);
         }
+
+        void updateHighlight(NowPlayingState state) {
+            if (state != null
+                    && state.currentPlaylistEntry != null
+                    && playbackEntry != null
+                    && PlaybackEntry.USER_TYPE_PLAYLIST.equals(playbackEntry.playbackType)
+                    && state.currentPlaylistEntry.pos == playbackEntry.playlistPos) {
+                itemContent.setHighlight(true);
+            } else {
+                itemContent.setHighlight(false);
+            }
+        }
     }
 
     @Override
@@ -266,6 +280,10 @@ public class NowPlayingEntriesAdapter extends
                 fragment.getViewLifecycleOwner(),
                 holder.itemContent::setFetchState
         );
+        nowPlayingStateLiveData.observe(
+                fragment.getViewLifecycleOwner(),
+                holder::updateHighlight
+        );
         holder.initMetaObserver(fragment.requireContext());
         holder.observeMeta(fragment.getViewLifecycleOwner(), holder::setMeta);
         return holder;
@@ -285,6 +303,7 @@ public class NowPlayingEntriesAdapter extends
             holder.itemContent.resetPos();
             holder.actionsView.setOnRemoveListener(() -> fragment.dequeue(entry));
             holder.actionsView.setOnQueueListener(null);
+            holder.updateHighlight(null);
         } else {
             holder.item.setBackground(ContextCompat.getDrawable(
                     fragment.requireContext(),
@@ -293,6 +312,7 @@ public class NowPlayingEntriesAdapter extends
             holder.itemContent.setPos(entry.playlistPos);
             holder.actionsView.setOnRemoveListener(null);
             holder.actionsView.setOnQueueListener(() -> fragment.queue(entry.entryID));
+            holder.updateHighlight(nowPlayingStateLiveData.getValue());
         }
         holder.itemContent.setPreloaded(entry.isPreloaded());
         holder.itemContent.setEntryID(entry.entryID);

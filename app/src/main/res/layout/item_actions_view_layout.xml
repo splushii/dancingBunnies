@@ -52,6 +52,17 @@
         android:paddingEnd="16dp"
         android:contentDescription="@string/item_action_add_to_playlist" />
     <ImageButton
+        android:id="@+id/item_action_play_playlist"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        android:background="?android:selectableItemBackground"
+        android:src="@drawable/ic_playlist_play_white_24dp"
+        android:textColor="@color/colorPrimaryText"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:contentDescription="@string/item_action_play_playlist" />
+    <ImageButton
         android:id="@+id/item_action_info"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"

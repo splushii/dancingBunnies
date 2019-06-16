@@ -90,9 +90,9 @@ public class PlaylistFragment extends AudioBrowserFragment {
                     if (userState == null) {
                         return;
                     }
-                    setCurrentPlaylist(userState.browsedPlaylistID);
+                    setCurrentPlaylist(userState.browsedPlaylistID, 0);
                 } else {
-                    setCurrentPlaylist(null);
+                    setCurrentPlaylist(null, 0);
                 }
             }
         });
@@ -113,9 +113,24 @@ public class PlaylistFragment extends AudioBrowserFragment {
     @Override
     protected void onSessionReady() {
         if (model != null) {
-            getCurrentPlaylist().thenAccept(playlistID -> model.setCurrentPlaylist(playlistID));
+            getCurrentPlaylist().thenAcceptAsync(
+                    playlistID -> model.setCurrentPlaylist(playlistID),
+                    Util.getMainThreadExecutor()
+            );
+            getCurrentPlaylistEntry().thenAcceptAsync(
+                    playlistEntry -> model.setCurrentPlaylistEntry(playlistEntry),
+                    Util.getMainThreadExecutor()
+            );
             refreshView(model.getUserStateValue());
         }
+    }
+
+    @Override
+    protected void onPlaylistPositionChanged(long pos) {
+        getCurrentPlaylistEntry().thenAcceptAsync(
+                playlistEntry -> model.setCurrentPlaylistEntry(playlistEntry),
+                Util.getMainThreadExecutor()
+        );
     }
 
     @Override

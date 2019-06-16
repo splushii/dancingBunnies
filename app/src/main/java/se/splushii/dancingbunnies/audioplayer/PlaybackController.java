@@ -162,19 +162,12 @@ class PlaybackController {
         return audioPlayer.getSeekPosition();
     }
 
-    CompletableFuture<Void> setPlaylist(PlaylistID playlistID) {
+    CompletableFuture<Void> setPlaylist(PlaylistID playlistID, long pos) {
         Log.d(LC, "setCurrentPlaylist: " + playlistID);
         setCurrentPlaylistID(playlistID);
-        setCurrentPlaylistPosition(0);
+        setCurrentPlaylistPosition(pos);
         currentPlaylistIDLiveData.setValue(currentPlaylistID);
         callback.onPlaylistSelectionChanged(currentPlaylistID, currentPlaylistPosition);
-        return submitCompletableFuture(this::updateState);
-    }
-
-    CompletableFuture<Void> setPlaylistPosition(long pos) {
-        Log.d(LC, "setCurrentPlaylistPosition: " + pos);
-        setCurrentPlaylistPosition(pos);
-        callback.onPlaylistPositionChanged(currentPlaylistPosition);
         return submitCompletableFuture(this::updateState);
     }
 
