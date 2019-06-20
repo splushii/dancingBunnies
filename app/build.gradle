@@ -38,15 +38,15 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-extensions:2.0.0"
     implementation "androidx.lifecycle:lifecycle-common-java8:2.0.0"
 
-    implementation "androidx.room:room-runtime:2.0.0"
-    annotationProcessor "androidx.room:room-compiler:2.0.0"
+    implementation "androidx.room:room-runtime:2.1.0"
+    annotationProcessor "androidx.room:room-compiler:2.1.0"
 
     implementation 'com.google.android.material:material:1.0.0'
     implementation 'androidx.appcompat:appcompat:1.0.2'
     implementation 'androidx.mediarouter:mediarouter:1.0.0'
     implementation 'androidx.recyclerview:recyclerview-selection:1.0.0'
     implementation 'androidx.preference:preference:1.0.0'
-    implementation 'com.google.android.gms:play-services-cast-framework:16.1.2'
+    implementation 'com.google.android.gms:play-services-cast-framework:17.0.0'
     implementation 'com.loopj.android:android-async-http:1.4.9'
     testImplementation 'junit:junit:4.12'
     // Android is missing ClassValue. Needed to update Lucene.
