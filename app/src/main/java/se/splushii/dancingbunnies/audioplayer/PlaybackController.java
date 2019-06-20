@@ -72,8 +72,11 @@ class PlaybackController {
     private final PlaybackQueue playlistItems;
 
     // Current playlist reference
+    private long currentPlaylistSelectionID;
     private PlaylistID currentPlaylistID;
     private long currentPlaylistPosition;
+    // Current playlist entries
+    private final ArrayList<PlaylistEntry> playlistEntries = new ArrayList<>();
 
     // History of played items
     private final PlaybackQueue history;
@@ -92,8 +95,9 @@ class PlaybackController {
         this.musicLibraryService = musicLibraryService;
         this.callback = callback;
 
+        currentPlaylistSelectionID = storage.getCurrentPlaylistSelectionID();
         currentPlaylistID = storage.getCurrentPlaylist();
-        currentPlaylistPosition = storage.getPlaylistPosition();
+        currentPlaylistPosition = storage.getCurrentPlaylistPosition();
 
         LiveData<List<PlaybackEntry>> queueEntriesLiveData = storage.getQueueEntries();
         queue = new PlaybackQueue(
@@ -163,7 +167,8 @@ class PlaybackController {
     }
 
     CompletableFuture<Void> setPlaylist(PlaylistID playlistID, long pos) {
-        Log.d(LC, "setCurrentPlaylist: " + playlistID);
+        Log.d(LC, "setCurrentPlaylist: " + playlistID + " pos: " + pos);
+        setCurrentPlaylistSelectionID(storage.getNextPlaylistSelectionID());
         setCurrentPlaylistID(playlistID);
         setCurrentPlaylistPosition(pos);
         currentPlaylistIDLiveData.setValue(currentPlaylistID);
@@ -177,18 +182,27 @@ class PlaybackController {
                 .thenComposeAsync(aVoid -> playlistItems.clear());
     }
 
+    private void setCurrentPlaylistSelectionID(long id) {
+        currentPlaylistSelectionID = id;
+        storage.setCurrentPlaylistSelectionID(currentPlaylistSelectionID);
+    }
+
+    private long getCurrentPlaylistSelectionID() {
+        return currentPlaylistSelectionID;
+    }
+
     private void setCurrentPlaylistID(PlaylistID playlistID) {
         currentPlaylistID = playlistID;
         storage.setCurrentPlaylist(currentPlaylistID);
     }
 
-    private void setCurrentPlaylistPosition(long pos) {
-        currentPlaylistPosition = pos;
-        storage.setPlaylistPosition(currentPlaylistPosition);
-    }
-
     PlaylistID getCurrentPlaylistID() {
         return currentPlaylistID;
+    }
+
+    private void setCurrentPlaylistPosition(long pos) {
+        currentPlaylistPosition = pos;
+        storage.setCurrentPlaylistPosition(currentPlaylistPosition);
     }
 
     long getCurrentPlaylistPosition() {
@@ -238,23 +252,27 @@ class PlaybackController {
         }
     }
 
-    private CompletableFuture<List<PlaybackEntry>> requestPlaylistEntries(int num) {
-        Log.d(LC, "requestPlaylistEntries");
+    private List<PlaybackEntry> requestPlaylistEntries(int num) {
+        Log.d(LC, "requestPlaylistEntries(" + num + ")");
         PlaylistID playlistID = getCurrentPlaylistID();
-        long currentPlaylistPos = getCurrentPlaylistPosition();
-        int currentNumPlaylistEntries = getAllPlaylistEntries().size();
         if (playlistID == null) {
-            return Util.futureResult(null, Collections.emptyList());
+            return Collections.emptyList();
         }
-        return musicLibraryService.playlistGetNext(
-                playlistID,
-                currentPlaylistPos,
-                currentNumPlaylistEntries,
-                num,
-                getShuffleSeed()
-        ).thenApply(playlistEntries -> playlistEntries.stream()
-                .map(playlistEntry -> new PlaybackEntry(playlistEntry, generatePlaybackID()))
-                .collect(Collectors.toList()));
+        synchronized (playlistEntries) {
+            return musicLibraryService.playlistGetNext(
+                    playlistEntries,
+                    getCurrentPlaylistPosition(),
+                    getAllPlaylistEntries().size(),
+                    num,
+                    getShuffleSeed()
+            ).stream()
+                    .map(playlistEntry -> new PlaybackEntry(
+                            playlistEntry,
+                            getCurrentPlaylistSelectionID(),
+                            generatePlaybackID()
+                    ))
+                    .collect(Collectors.toList());
+        }
     }
 
     private PlaybackEntry getQueueEntry(int offset) {
@@ -350,79 +368,112 @@ class PlaybackController {
                         audioPlayer.preload(entries, audioPlayer.getNumPreloaded()));
     }
 
+    private boolean isCurrentPlaylistCorrect() {
+        List<PlaybackEntry> allEntries = getAllEntries();
+        List<PlaybackEntry> currentPlaylistEntries = getAllPlaylistEntries();
+        // Check if the current playlist entries have
+        // currentPlaylistSelectionID as playlistSelectionID
+        long currentSelectionID = getCurrentPlaylistSelectionID();
+        for (PlaybackEntry entry: currentPlaylistEntries) {
+            if (entry.playlistSelectionID != currentSelectionID) {
+                Log.d(LC, "isCurrentPlaylistCorrect: No."
+                        +" There are playlist entries with the wrong playlist selection ID.");
+                return false;
+            }
+        }
+        // Check if there are too many playlist entries
+        if (currentPlaylistEntries.size() > MAX_PLAYLIST_ENTRIES_TO_PREFETCH) {
+            Log.d(LC, "isCurrentPlaylistCorrect: No."
+                    + " Too many playlist entries (" + currentPlaylistEntries.size()  + ")."
+                    + " Exceeding max entries to prefetch: " + MAX_PLAYLIST_ENTRIES_TO_PREFETCH);
+            return false;
+        }
+        // Check if any playlist entry is before any another type of entry
+        PlaybackEntry prevEntry = null;
+        for (PlaybackEntry entry: allEntries) {
+            if (prevEntry == null) {
+                prevEntry = entry;
+                continue;
+            }
+            if (prevEntry.playbackType.equals(PlaybackEntry.USER_TYPE_PLAYLIST)
+                    && !entry.playbackType.equals(PlaybackEntry.USER_TYPE_PLAYLIST)) {
+                Log.d(LC, "isCurrentPlaylistCorrect: No."
+                        + " There are playlist entries before other entry types.");
+                return false;
+            }
+            prevEntry = entry;
+        }
+        // Check if the all entries in the current playlist equals the
+        // expected playlist entries from the selected playlist
+        List<PlaylistEntry> expectedPlaylistEntries;
+        synchronized (playlistEntries) {
+            expectedPlaylistEntries = musicLibraryService.playlistGetNext(
+                    playlistEntries,
+                    getCurrentPlaylistPosition(),
+                    0,
+                    currentPlaylistEntries.size(),
+                    getShuffleSeed()
+            );
+        }
+        if (currentPlaylistEntries.size() > expectedPlaylistEntries.size()) {
+            Log.d(LC, "isCurrentPlaylistCorrect: No."
+                    + " Too many playlist entries (" + currentPlaylistEntries.size() + ")"
+                    + " Exceeding number of expected entries: " + expectedPlaylistEntries.size());
+            return false;
+        } else if (currentPlaylistEntries.size() < expectedPlaylistEntries.size()) {
+            Log.e(LC, "isCurrentPlaylistCorrect: No."
+                    + " Got more expected entries than we asked for. This should never happen...");
+            return false;
+        }
+        for (int i = 0; i < expectedPlaylistEntries.size(); i++) {
+            PlaylistEntry actual = expectedPlaylistEntries.get(i);
+            PlaybackEntry current = currentPlaylistEntries.get(i);
+            if (actual.pos != current.playlistPos
+                    || !EntryID.from(actual).equals(current.entryID)) {
+                Log.d(LC, "isCurrentPlaylistCorrect: No."
+                        + " Current playlist entries differ from expected playlist entries.");
+                return false;
+            }
+        }
+        Log.d(LC, "isCurrentPlaylistCorrect: Yes.");
+        return true;
+    }
+
     private CompletableFuture<Void> syncPlaylistEntries() {
         Log.d(LC, "syncPlaylistEntries");
+        // Check if the current entry has the same playlistSelectionID as
+        // currentPlaylistSelectionID and compare the current entry's (expected) next pos with
+        // currentPlaylistPos to see if currentPlaylistPos needs to advance.
+        PlaybackEntry currentEntry = audioPlayer.getCurrentEntry();
+        if (currentEntry != null
+                && PlaybackEntry.USER_TYPE_PLAYLIST.equals(currentEntry.playbackType)
+                && currentEntry.playlistSelectionID == getCurrentPlaylistSelectionID()) {
+            long nextExpectedPos;
+            synchronized (playlistEntries) {
+                 nextExpectedPos = musicLibraryService.playlistPosition(
+                        currentEntry.playlistPos,
+                        1,
+                        playlistEntries.size(),
+                        getShuffleSeed()
+                );
+            }
+            long currentPlaylistPos = getCurrentPlaylistPosition();
+            if (nextExpectedPos != currentPlaylistPos) {
+                Log.d(LC, "syncPlaylistEntries: Setting current playlist pos"
+                        + " (" + currentPlaylistPos + ") to expected pos: " + nextExpectedPos);
+                setCurrentPlaylistPosition(nextExpectedPos);
+                callback.onPlaylistSelectionChanged(
+                        getCurrentPlaylistID(),
+                        getCurrentPlaylistPosition()
+                );
+            }
+        }
+
         // Update playlist entries
-        return CompletableFuture.supplyAsync(
-                () -> {
-                    // Check if there are too many playlist entries
-                    boolean tooManyPlaylistEntries =
-                            getAllPlaylistEntries().size() > MAX_PLAYLIST_ENTRIES_TO_PREFETCH;
-                    Log.d(LC, "syncPlaylistEntries:"
-                            + " Not too many playlist entries."
-                            + " Correct: " + !tooManyPlaylistEntries);
-                    if (tooManyPlaylistEntries) {
-                        return true;
-                    }
-                    // Check if any playlist entry is before any another type of entry
-                    boolean incorrect = false;
-                    List<PlaybackEntry> allEntries = getAllEntries();
-                    PlaybackEntry prevEntry = null;
-                    for (PlaybackEntry entry: allEntries) {
-                        if (prevEntry == null) {
-                            prevEntry = entry;
-                            continue;
-                        }
-                        if (prevEntry.playbackType.equals(PlaybackEntry.USER_TYPE_PLAYLIST)
-                                && !entry.playbackType.equals(PlaybackEntry.USER_TYPE_PLAYLIST)) {
-                            incorrect = true;
-                            break;
-                        }
-                        prevEntry = entry;
-                    }
-                    Log.d(LC, "syncPlaylistEntries:"
-                            + " Playlist entries not before any other type."
-                            + " Correct: " + !incorrect);
-                    return incorrect;
-                })
-                .thenCompose(playlistIsIncorrect -> {
-                    if (playlistIsIncorrect) {
-                        return Util.futureResult(null, true);
-                    }
-                    // Check if the current playlist entries is correct
-                    // i.e. equals the actual playlist entries from selected playlist
-                    List<PlaybackEntry> currentPlaylistEntries = getAllPlaylistEntries();
-                    return musicLibraryService.playlistGetNext(
-                            getCurrentPlaylistID(),
-                            getCurrentPlaylistPosition(),
-                            0,
-                            currentPlaylistEntries.size(),
-                            getShuffleSeed()
-                    ).thenCompose(actualPlaylistEntries -> {
-                        int actualSize = actualPlaylistEntries.size();
-                        int currentSize = currentPlaylistEntries.size();
-                        boolean incorrect = actualSize != currentSize;
-                        if (!incorrect) {
-                            for (int i = 0; i < actualSize; i++) {
-                                PlaylistEntry actual = actualPlaylistEntries.get(i);
-                                PlaybackEntry current = currentPlaylistEntries.get(i);
-                                if (actual.pos != current.playlistPos
-                                        || !EntryID.from(actual).equals(current.entryID)) {
-                                    incorrect = true;
-                                    break;
-                                }
-                            }
-                        }
-                        Log.d(LC, "syncPlaylistEntries: "
-                                + "Current playlist entries in correct order."
-                                + " Correct: " + !incorrect);
-                        return Util.futureResult(null, incorrect);
-                    });
-                })
-                .thenCompose(
-                        playlistIsIncorrect -> playlistIsIncorrect ?
-                                removePlaylistEntries() : Util.futureResult(null))
-                .thenCompose(aVoid -> {
+        return CompletableFuture.supplyAsync(this::isCurrentPlaylistCorrect)
+                .thenCompose(correct -> correct ? Util.futureResult(null) :
+                        removePlaylistEntries())
+                .thenApply(aVoid -> {
                     // Fill up with playlist entries
                     int numPlaylistEntriesToFetch =
                             MAX_PLAYLIST_ENTRIES_TO_PREFETCH - getAllPlaylistEntries().size();
@@ -431,7 +482,8 @@ class PlaybackController {
                     if (numPlaylistEntriesToFetch > 0) {
                         return requestPlaylistEntries(numPlaylistEntriesToFetch);
                     }
-                    return Util.futureResult(null, Collections.emptyList());
+//                    return Util.futureResult(null, Collections.emptyList());
+                    return Collections.<PlaybackEntry>emptyList();
                 })
                 .thenCompose(playbackEntries -> {
                     Log.d(LC, "syncPlaylistEntries: got " + playbackEntries.size()
@@ -534,16 +586,6 @@ class PlaybackController {
         return storage.getNextPlaybackID();
     }
 
-    private List<PlaybackEntry> generatePlaybackEntries(List<EntryID> entryIDs) {
-        return entryIDs.stream()
-                .map(e -> new PlaybackEntry(
-                        e,
-                        generatePlaybackID(),
-                        PlaybackEntry.USER_TYPE_QUEUE,
-                        PlaybackEntry.PLAYLIST_POS_NONE
-                )).collect(Collectors.toList());
-    }
-
     CompletableFuture<Void> queueToPos(List<EntryID> entryIDs, int toPosition) {
         long beforePlaybackID = getQueuePlaybackID(toPosition);
         Log.d(LC, "queueToPos toPos: " + toPosition
@@ -558,9 +600,7 @@ class PlaybackController {
 
     CompletableFuture<Void> queue(List<EntryID> entryIDs, long beforePlaybackID) {
         synchronized (executorLock) {
-            return submitCompletableFuture(() ->
-                    queuePlaybackEntries(generatePlaybackEntries(entryIDs), beforePlaybackID)
-            );
+            return submitCompletableFuture(() -> queueEntries(entryIDs, beforePlaybackID));
         }
     }
 
@@ -582,6 +622,20 @@ class PlaybackController {
             return PlaybackEntry.PLAYBACK_ID_INVALID;
         }
         return queueEntries.get(pos).playbackID;
+    }
+
+    private CompletableFuture<Void> queueEntries(List<EntryID> entries,
+                                                 long beforePlaybackID) {
+        return queuePlaybackEntries(
+                entries.stream().map(e -> new PlaybackEntry(
+                        e,
+                        generatePlaybackID(),
+                        PlaybackEntry.USER_TYPE_QUEUE,
+                        PlaybackEntry.PLAYLIST_POS_NONE,
+                        PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID
+                )).collect(Collectors.toList()),
+                beforePlaybackID
+        );
     }
 
     private CompletableFuture<Void> queuePlaybackEntries(List<PlaybackEntry> entries,
@@ -715,13 +769,6 @@ class PlaybackController {
     void onQueueChanged() {
         List<PlaybackEntry> entries = getAllQueueEntries();
         List<PlaybackEntry> playlistEntries = getAllPlaylistEntries();
-        if (!playlistEntries.isEmpty()) {
-            long actualPlaylistPos = playlistEntries.get(0).playlistPos;
-            if (actualPlaylistPos != getCurrentPlaylistPosition()) {
-                setCurrentPlaylistPosition(actualPlaylistPos);
-                callback.onPlaylistPositionChanged(actualPlaylistPos);
-            }
-        }
         entries.addAll(playlistEntries);
         callback.onQueueChanged(getAllEntries());
     }
@@ -761,13 +808,10 @@ class PlaybackController {
 
     CompletableFuture<Void> playNow(List<EntryID> entryIDs) {
         synchronized (executorLock) {
-            return submitCompletableFuture(
-                    () -> queuePlaybackEntries(
-                            generatePlaybackEntries(entryIDs),
-                            getQueuePlaybackID(0)
-                    ).thenCompose(r -> getNumTotalQueueEntries() > 1 ?
-                            audioPlayer.next() : Util.futureResult(null)
-                    ).thenCompose(r -> audioPlayer.play()));
+            return submitCompletableFuture(() -> queueEntries(entryIDs, getQueuePlaybackID(0))
+                    .thenCompose(r -> getNumTotalQueueEntries() > 1 ?
+                            audioPlayer.next() : Util.futureResult(null))
+                    .thenCompose(r -> audioPlayer.play()));
         }
     }
 
@@ -829,7 +873,6 @@ class PlaybackController {
         void onMetaChanged(EntryID entryID);
         void onQueueChanged(List<PlaybackEntry> queue);
         void onPlaylistSelectionChanged(PlaylistID playlistID, long pos);
-        void onPlaylistPositionChanged(long pos);
         void onPlayerSeekPositionChanged(long pos);
     }
 
@@ -841,7 +884,7 @@ class PlaybackController {
         }
 
         @Override
-        public void onMetaChanged(EntryID entryID) {
+        public void onCurrentEntryChanged(EntryID entryID) {
             Log.d(LC, "onMetaChanged: " + entryID.toString());
             callback.onMetaChanged(entryID);
         }
@@ -892,6 +935,7 @@ class PlaybackController {
                 .thenCompose(aVoid -> queue.add(0, queueEntries))
                 .thenCompose(aVoid -> playlistItems.add(0, playlistEntries))
                 .thenCompose(aVoid -> history.add(0, state.history))
+//                .thenRun(this::updateCurrentPlaylistPosition)
                 .thenCompose(aVoid -> updateState());
     }
 
@@ -1014,8 +1058,12 @@ class PlaybackController {
         }
     }
 
-    private Observer<List<PlaylistEntry>> playlistEntriesObserver = playlistEntries -> {
+    private Observer<List<PlaylistEntry>> playlistEntriesObserver = p -> {
         Log.d(LC, "playlistEntries changed for: " + currentPlaylistIDLiveData.getValue());
+        synchronized (playlistEntries) {
+            playlistEntries.clear();
+            playlistEntries.addAll(p);
+        }
         submitCompletableFuture(this::updateState);
     };
 }

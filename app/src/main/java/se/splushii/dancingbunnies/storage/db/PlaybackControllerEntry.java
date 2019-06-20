@@ -24,6 +24,7 @@ public class PlaybackControllerEntry {
     static final String COLUMN_PLAYBACK_ID = "playback_id";
     static final String COLUMN_PLAYBACK_TYPE = "playback_type";
     static final String COLUMN_PLAYLIST_POS = "playlist_pos";
+    static final String COLUMN_PLAYLIST_SELECTION_ID = "playlist_selection_id";
     static final String COLUMN_QUEUE_ID = "queue_id";
     static final String COLUMN_POS = "pos";
     static final String COLUMN_API = "api";
@@ -41,6 +42,8 @@ public class PlaybackControllerEntry {
     @NonNull
     @ColumnInfo(name = COLUMN_PLAYLIST_POS)
     public long playlistPos;
+    @ColumnInfo(name = COLUMN_PLAYLIST_SELECTION_ID)
+    public long playlistSelectionID;
     @NonNull
     @ColumnInfo(name = COLUMN_QUEUE_ID)
     int queueID;
@@ -59,12 +62,13 @@ public class PlaybackControllerEntry {
         return "PlaybackControllerEntry{" +
                 "rowId=" + rowId +
                 ", playbackID=" + playbackID +
-                ", playbackType=" + playbackType +
-                ", playbackPos=" + playlistPos +
+                ", playbackType='" + playbackType + "'" +
+                ", playlistPos=" + playlistPos +
+                ", playlistSelectionID=" + playlistSelectionID +
                 ", queueID=" + queueID +
                 ", pos=" + pos +
-                ", api='" + api + '\'' +
-                ", id='" + id + '\'' +
+                ", api='" + api + "'" +
+                ", id='" + id + "'" +
                 '}';
     }
 
@@ -75,6 +79,7 @@ public class PlaybackControllerEntry {
         entry.playbackID = playbackEntry.playbackID;
         entry.playbackType = playbackEntry.playbackType;
         entry.playlistPos = playbackEntry.playlistPos;
+        entry.playlistSelectionID = playbackEntry.playlistSelectionID;
         entry.pos = pos;
         entry.queueID = queueID;
         entry.api = playbackEntry.entryID.src;

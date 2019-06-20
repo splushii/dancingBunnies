@@ -13,6 +13,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
+import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.MainActivity;
@@ -24,6 +25,7 @@ import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.ui.playlist.PlaylistAdapter;
+import se.splushii.dancingbunnies.ui.playlist.PlaylistFragmentModel;
 import se.splushii.dancingbunnies.util.Util;
 
 public class AddToPlaylistDialogFragment extends DialogFragment {
@@ -33,6 +35,7 @@ public class AddToPlaylistDialogFragment extends DialogFragment {
     private static final String BUNDLE_KEY_ENTRY_IDS = "dancingbunnies.bundle.key.addtoplaylistdialog.entryids";
 
     private ArrayList<EntryID> entryIDs;
+    private PlaylistAdapter recViewAdapter;
 
     public static void showDialog(Fragment fragment, ArrayList<EntryID> entryIDs) {
         if (entryIDs == null || entryIDs.isEmpty()) {
@@ -53,6 +56,28 @@ public class AddToPlaylistDialogFragment extends DialogFragment {
     }
 
     @Override
+    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        super.onActivityCreated(savedInstanceState);
+        PlaylistFragmentModel model = ViewModelProviders.of(requireActivity()).get(PlaylistFragmentModel.class);
+        recViewAdapter.setModel(model, playlists -> {
+            List<Playlist> applicablePlaylists = new ArrayList<>();
+            for (Playlist playlist: playlists) {
+                boolean applicable = true;
+                for (EntryID entryID: entryIDs) {
+                    if (!canBeAdded(entryID, playlist)) {
+                        applicable = false;
+                        break;
+                    }
+                }
+                if (applicable) {
+                    applicablePlaylists.add(playlist);
+                }
+            }
+            return applicablePlaylists;
+        });
+    }
+
+    @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         Bundle args = getArguments();
         ArrayList<EntryID> entryIDs = args.getParcelableArrayList(BUNDLE_KEY_ENTRY_IDS);
@@ -67,7 +92,7 @@ public class AddToPlaylistDialogFragment extends DialogFragment {
         RecyclerView recyclerView = v.findViewById(R.id.add_to_playlist_dialog_recyclerview);
         LinearLayoutManager recViewLayoutManager = new LinearLayoutManager(requireContext());
         recyclerView.setLayoutManager(recViewLayoutManager);
-        PlaylistAdapter recViewAdapter = new PlaylistAdapter(this);
+        recViewAdapter = new PlaylistAdapter(this);
         recViewAdapter.setOnItemClickListener(playlist -> {
             MetaStorage.getInstance(requireContext())
                     .getSongEntries(entryIDs)
@@ -76,23 +101,6 @@ public class AddToPlaylistDialogFragment extends DialogFragment {
                                     .addToPlaylist(new PlaylistID(playlist), songEntryIDs))
                     .thenRun(this::dismiss);
         });
-        PlaylistStorage.getInstance(requireContext()).getPlaylists()
-                .observe(getViewLifecycleOwner(), playlists -> {
-                    List<Playlist> applicablePlaylists = new ArrayList<>();
-                    for (Playlist playlist: playlists) {
-                        boolean applicable = true;
-                        for (EntryID entryID: entryIDs) {
-                            if (!canBeAdded(entryID, playlist)) {
-                                applicable = false;
-                                break;
-                            }
-                        }
-                        if (applicable) {
-                            applicablePlaylists.add(playlist);
-                        }
-                    }
-                    recViewAdapter.setDataSet(applicablePlaylists);
-                });
         recyclerView.setAdapter(recViewAdapter);
         return v;
     }

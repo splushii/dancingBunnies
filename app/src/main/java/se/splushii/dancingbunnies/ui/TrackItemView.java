@@ -38,6 +38,7 @@ public class TrackItemView extends LinearLayout {
     private boolean isCached;
     private boolean isPreloaded;
     private EntryID entryID;
+    private boolean posViewHighlighted = false;
 
     public TrackItemView(Context context) {
         super(context);
@@ -161,13 +162,16 @@ public class TrackItemView extends LinearLayout {
 
     public void setPos(long pos) {
         posView.setText(String.format(Locale.getDefault(), "%01d", pos));
+        updatePosViewVisibility();
     }
 
     public void resetPos() {
         posView.setText("");
+        updatePosViewVisibility();
     }
 
-    public void setHighlight(boolean highlighted) {
+    public void setPosHighlight(boolean highlighted) {
+        posViewHighlighted = highlighted;
         if (highlighted) {
             posView.setBackgroundColor(ContextCompat.getColor(
                     getContext(),
@@ -183,6 +187,15 @@ public class TrackItemView extends LinearLayout {
             );
             posView.setBackgroundResource(value.resourceId);
             posView.setTextColor(ContextCompat.getColorStateList(getContext(), R.color.secondary_text_color));
+        }
+        updatePosViewVisibility();
+    }
+
+    private void updatePosViewVisibility() {
+        if (posView.getText().length() > 0 || posViewHighlighted) {
+            posView.setVisibility(VISIBLE);
+        } else {
+            posView.setVisibility(GONE);
         }
     }
 }

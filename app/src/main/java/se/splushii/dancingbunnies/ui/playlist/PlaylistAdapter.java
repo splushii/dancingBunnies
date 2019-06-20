@@ -12,6 +12,7 @@ import android.widget.TextView;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Function;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -154,16 +155,17 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
         return playlistDataset.size();
     }
 
-    public void setDataSet(List<Playlist> playlists) {
+    private void setDataSet(List<Playlist> playlists) {
         Log.d(LC, "playlists: " + playlists);
         playlistDataset = playlists;
         notifyDataSetChanged();
     }
 
-    void setModel(PlaylistFragmentModel model) {
+    public void setModel(PlaylistFragmentModel model,
+                         Function<List<Playlist>, List<Playlist>> playlistFilter) {
         model.getPlaylists(fragment.getContext())
                 .observe(fragment.getViewLifecycleOwner(), entries -> {
-                    setDataSet(entries);
+                    setDataSet(playlistFilter.apply(entries));
                     int pos = model.getUserStateValue().pos;
                     int pad = model.getUserStateValue().pad;
                     if (fragment instanceof PlaylistFragment) {

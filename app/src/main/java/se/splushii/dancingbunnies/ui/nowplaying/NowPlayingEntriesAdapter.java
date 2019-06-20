@@ -255,9 +255,9 @@ public class NowPlayingEntriesAdapter extends
                     && playbackEntry != null
                     && PlaybackEntry.USER_TYPE_PLAYLIST.equals(playbackEntry.playbackType)
                     && state.currentPlaylistEntry.pos == playbackEntry.playlistPos) {
-                itemContent.setHighlight(true);
+                itemContent.setPosHighlight(true);
             } else {
-                itemContent.setHighlight(false);
+                itemContent.setPosHighlight(false);
             }
         }
     }

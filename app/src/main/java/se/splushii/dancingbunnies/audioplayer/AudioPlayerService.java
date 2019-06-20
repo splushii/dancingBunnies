@@ -66,7 +66,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static final float PLAYBACK_SPEED_PLAYING = 1f;
     private static final String MEDIA_ID_ROOT = "dancingbunnies.media.id.root";
 
-    public static final String SESSION_EVENT_PLAYLIST_POSITION_CHANGED = "PLAYLIST_POSITION_CHANGED";
     public static final String SESSION_EVENT_PLAYLIST_SELECTION_CHANGED = "PLAYLIST_SELECTION_CHANGED";
 
     private static final String COMMAND_SET_CURRENT_PLAYLIST = "SET_CURRENT_PLAYLIST";
@@ -1056,7 +1055,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                             playbackEntry.entryID,
                             playbackController.generatePlaybackID(),
                             playbackEntry.playbackType,
-                            playbackEntry.playlistPos
+                            playbackEntry.playlistPos,
+                            playbackEntry.playlistSelectionID
                     );
                 }
                 queueItems.add(new MediaSessionCompat.QueueItem(
@@ -1074,16 +1074,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             b.putLong(AudioPlayerService.BUNDLE_KEY_POS, pos);
             mediaSession.sendSessionEvent(
                     AudioPlayerService.SESSION_EVENT_PLAYLIST_SELECTION_CHANGED,
-                    b
-            );
-        }
-
-        @Override
-        public void onPlaylistPositionChanged(long pos) {
-            Bundle b = new Bundle();
-            b.putLong(BUNDLE_KEY_POS, pos);
-            mediaSession.sendSessionEvent(
-                    AudioPlayerService.SESSION_EVENT_PLAYLIST_POSITION_CHANGED,
                     b
             );
         }

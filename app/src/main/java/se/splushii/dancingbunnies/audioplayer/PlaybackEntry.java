@@ -21,13 +21,16 @@ public class PlaybackEntry implements Parcelable {
     private static final String BUNDLE_KEY_PLAYBACKTYPE = "dancingbunnies.bundle.key.playbackentry.playbackType";
     private static final String BUNDLE_KEY_PRELOADED = "dancingbunnies.bundle.key.playbackentry.preloaded";
     private static final String BUNDLE_KEY_PLAYLIST_POS = "dancingbunnies.bundle.key.playbackentry.playlistPos";
+    private static final String BUNDLE_KEY_PLAYLIST_SELECTION_ID = "dancingbunnies.bundle.key.playbackentry.playlistSelectionID";
     public static final long PLAYBACK_ID_INVALID = -1;
     static final long PLAYLIST_POS_NONE = -1;
+    static final long PLAYLIST_SELECTION_ID_INVALID = -1;
 
     public final EntryID entryID;
     public final long playbackID;
     public final String playbackType;
     public final long playlistPos;
+    public final long playlistSelectionID;
     private boolean preloaded = false;
 
     public PlaybackEntry(MediaMetadata metadata) {
@@ -36,20 +39,27 @@ public class PlaybackEntry implements Parcelable {
         String playbackType = metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYBACK_TYPE);
         this.playbackType = playbackType != null ? playbackType : PlaybackEntry.USER_TYPE_EXTERNAL;
         this.playlistPos = Long.parseLong(metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYLIST_POS));
+        this.playlistSelectionID = Long.parseLong(metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYLIST_SELECTION_ID));
     }
 
-    public PlaybackEntry(PlaylistEntry playlistEntry, long playbackID) {
+    public PlaybackEntry(PlaylistEntry playlistEntry, long playlistSelectionID, long playbackID) {
         this.entryID = EntryID.from(playlistEntry);
         this.playbackID = playbackID;
         this.playbackType = USER_TYPE_PLAYLIST;
         this.playlistPos = playlistEntry.pos;
+        this.playlistSelectionID = playlistSelectionID;
     }
 
-    public PlaybackEntry(EntryID entryID, long playbackID, String playbackType, long playlistPos) {
+    public PlaybackEntry(EntryID entryID,
+                         long playbackID,
+                         String playbackType,
+                         long playlistPos,
+                         long playlistSelectionID) {
         this.entryID = entryID;
         this.playbackID = playbackID;
         this.playbackType = playbackType;
         this.playlistPos = playlistPos;
+        this.playlistSelectionID = playlistSelectionID;
     }
 
     private PlaybackEntry(Parcel in) {
@@ -58,6 +68,7 @@ public class PlaybackEntry implements Parcelable {
         playbackType = in.readString();
         preloaded = in.readByte() != 0;
         playlistPos = in.readLong();
+        playlistSelectionID = in.readLong();
     }
 
     public static final Creator<PlaybackEntry> CREATOR = new Creator<PlaybackEntry>() {
@@ -74,7 +85,10 @@ public class PlaybackEntry implements Parcelable {
 
     @Override
     public String toString() {
-        return playbackID + "[" + playlistPos + "] " + entryID.toString() + " " + playbackType;
+        return playbackID
+                + (PlaybackEntry.USER_TYPE_PLAYLIST.equals(playbackType) ?
+                "." + playlistSelectionID + "[" + playlistPos + "] " : "")
+                + entryID.toString() + " " + playbackType;
     }
 
     @Override
@@ -82,13 +96,12 @@ public class PlaybackEntry implements Parcelable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         PlaybackEntry that = (PlaybackEntry) o;
-        return playbackID == that.playbackID && // TODO: Isn't it enough to compare playbackID?
-                Objects.equals(entryID, that.entryID);
+        return playbackID == that.playbackID;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(entryID, playbackID);
+        return Objects.hash(playbackID);
     }
 
     @Override
@@ -103,6 +116,7 @@ public class PlaybackEntry implements Parcelable {
         dest.writeString(playbackType);
         dest.writeByte((byte) (preloaded ? 1 : 0));
         dest.writeLong(playlistPos);
+        dest.writeLong(playlistSelectionID);
     }
 
     void setPreloaded(boolean preloaded) {
@@ -127,6 +141,7 @@ public class PlaybackEntry implements Parcelable {
         b.putString(BUNDLE_KEY_PLAYBACKTYPE, playbackType);
         b.putBoolean(BUNDLE_KEY_PRELOADED, preloaded);
         b.putString(BUNDLE_KEY_PLAYLIST_POS, Long.toString(playlistPos));
+        b.putString(BUNDLE_KEY_PLAYLIST_SELECTION_ID, Long.toString(playlistSelectionID));
         return b;
     }
 
@@ -137,5 +152,6 @@ public class PlaybackEntry implements Parcelable {
         playbackType = b.getString(BUNDLE_KEY_PLAYBACKTYPE);
         preloaded = b.getBoolean(BUNDLE_KEY_PRELOADED);
         playlistPos = Long.parseLong(b.getString(BUNDLE_KEY_PLAYLIST_POS));
+        playlistSelectionID = Long.parseLong(b.getString(BUNDLE_KEY_PLAYLIST_SELECTION_ID));
     }
 }

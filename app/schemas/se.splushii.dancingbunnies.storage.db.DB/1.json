@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "742d29d05952bc0ad62bf99eb06e13ca",
+    "identityHash": "b11aeff8b73b4ae40ab1205c7484b616",
     "entities": [
       {
         "tableName": "entry_id",
@@ -404,7 +404,7 @@
       },
       {
         "tableName": "playback_controller_entries",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowid` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `playback_id` INTEGER NOT NULL, `playback_type` TEXT NOT NULL, `playlist_pos` INTEGER NOT NULL, `queue_id` INTEGER NOT NULL, `pos` INTEGER NOT NULL, `api` TEXT NOT NULL, `id` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowid` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `playback_id` INTEGER NOT NULL, `playback_type` TEXT NOT NULL, `playlist_pos` INTEGER NOT NULL, `playlist_selection_id` INTEGER NOT NULL, `queue_id` INTEGER NOT NULL, `pos` INTEGER NOT NULL, `api` TEXT NOT NULL, `id` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "rowId",
@@ -427,6 +427,12 @@
           {
             "fieldPath": "playlistPos",
             "columnName": "playlist_pos",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playlistSelectionID",
+            "columnName": "playlist_selection_id",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -467,7 +473,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"742d29d05952bc0ad62bf99eb06e13ca\")"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"b11aeff8b73b4ae40ab1205c7484b616\")"
     ]
   }
 }

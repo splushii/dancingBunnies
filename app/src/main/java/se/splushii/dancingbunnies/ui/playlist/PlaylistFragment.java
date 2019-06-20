@@ -73,7 +73,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         model.getCurrentPlaylistID().observe(getViewLifecycleOwner(), currentPlaylistID -> {
             refreshView(model.getUserStateValue());
         });
-        playlistRecViewAdapter.setModel(model);
+        playlistRecViewAdapter.setModel(model, playlists -> playlists);
         playlistEntriesRecViewAdapter.setModel(model);
         playlistStorage = PlaylistStorage.getInstance(getContext());
         playlistSelectSwitch.setChecked(model.isBrowsedCurrent());
@@ -126,16 +126,12 @@ public class PlaylistFragment extends AudioBrowserFragment {
     }
 
     @Override
-    protected void onPlaylistPositionChanged(long pos) {
+    protected void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {
+        model.setCurrentPlaylist(playlistID);
         getCurrentPlaylistEntry().thenAcceptAsync(
                 playlistEntry -> model.setCurrentPlaylistEntry(playlistEntry),
                 Util.getMainThreadExecutor()
         );
-    }
-
-    @Override
-    protected void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {
-        model.setCurrentPlaylist(playlistID);
     }
 
     private void refreshView(@Nullable PlaylistUserState state) {

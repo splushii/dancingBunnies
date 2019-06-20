@@ -227,11 +227,6 @@ public abstract class AudioBrowserFragment extends Fragment {
                             );
                             long pos = extras.getLong(AudioPlayerService.BUNDLE_KEY_POS);
                             AudioBrowserFragment.this.onPlaylistSelectionChanged(playlistID, pos);
-                            AudioBrowserFragment.this.onPlaylistPositionChanged(pos);
-                            break;
-                        case AudioPlayerService.SESSION_EVENT_PLAYLIST_POSITION_CHANGED:
-                            pos = extras.getLong(AudioPlayerService.BUNDLE_KEY_POS);
-                            AudioBrowserFragment.this.onPlaylistPositionChanged(pos);
                             break;
                     }
                 }
@@ -261,5 +256,4 @@ public abstract class AudioBrowserFragment extends Fragment {
     protected void onSessionReady() {}
     protected void onQueueChanged(List<PlaybackEntry> queue) {}
     protected void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {}
-    protected void onPlaylistPositionChanged(long pos) {}
 }

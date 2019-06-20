@@ -186,7 +186,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         );
         currentPlaylistEntryLiveData.observe(
                 fragment.getViewLifecycleOwner(),
-                playlistEntry -> holder.itemContent.setHighlight(
+                playlistEntry -> holder.itemContent.setPosHighlight(
                         holder.playlistEntry != null
                                 && holder.playlistEntry.equals(playlistEntry)
                 )
@@ -207,7 +207,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         holder.entry.setActivated(isSelected(holder.getKey()));
         holder.itemContent.setCached(cachedEntriesLiveData.getValue());
         holder.itemContent.setFetchState(fetchStateLiveData.getValue());
-        holder.itemContent.setHighlight(
+        holder.itemContent.setPosHighlight(
                 holder.playlistEntry != null
                         && holder.playlistEntry.equals(currentPlaylistEntryLiveData.getValue())
         );

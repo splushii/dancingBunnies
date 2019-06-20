@@ -122,25 +122,37 @@ public class MusicLibraryService extends Service {
             throw new RuntimeException("Not implemented");
         }
         return PlaylistStorage.getInstance(this).getPlaylistEntriesOnce(playlistID)
-                .thenApply(p -> {
-                    List<PlaylistEntry> chosenEntries = new ArrayList<>(maxEntries);
-                    long nextIndex = playlistPosition(index, offset, p.size(), shuffleSeed);
-                    for (int i = 0; i < maxEntries; i++) {
-                        PlaylistEntry playlistEntry = p.get((int)nextIndex);
-                        chosenEntries.add(playlistEntry);
-                        nextIndex = playlistPosition(
-                                nextIndex,
-                                1,
-                                p.size(),
-                                shuffleSeed
-                        );
-                    }
-                    return chosenEntries;
-                });
+                .thenApply(p -> playlistGetNext(p, index, offset, maxEntries, shuffleSeed));
+    }
+
+    public List<PlaylistEntry> playlistGetNext(List<PlaylistEntry> playlistEntries,
+                                               long index,
+                                               int offset,
+                                               int maxEntries,
+                                               int shuffleSeed) {
+        if (playlistEntries == null || playlistEntries.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<PlaylistEntry> chosenEntries = new ArrayList<>(maxEntries);
+        long nextIndex = playlistPosition(index, offset, playlistEntries.size(), shuffleSeed);
+        for (int i = 0; i < maxEntries; i++) {
+            PlaylistEntry playlistEntry = playlistEntries.get((int)nextIndex);
+            chosenEntries.add(playlistEntry);
+            nextIndex = playlistPosition(
+                    nextIndex,
+                    1,
+                    playlistEntries.size(),
+                    shuffleSeed
+            );
+        }
+        return chosenEntries;
     }
 
     // Set shuffleSeed = 0 to get normal offset
     public int playlistPosition(long index, int offset, int playlistSize, int shuffleSeed) {
+        if (playlistSize <= 0) {
+            return 0;
+        }
         return (int)(index + offset + (shuffleSeed * offset)) % playlistSize;
     }
 

@@ -17,7 +17,7 @@ interface AudioPlayer {
         }
 
         @Override
-        public void onMetaChanged(EntryID entryID) {
+        public void onCurrentEntryChanged(EntryID entryID) {
             Log.d(LC, "onMetaChanged");
         }
 
@@ -57,7 +57,7 @@ interface AudioPlayer {
 
     interface Callback {
         void onStateChanged(int playBackState);
-        void onMetaChanged(EntryID entryID);
+        void onCurrentEntryChanged(EntryID entryID);
         void onPreloadChanged();
         void onSongEnded();
     }

@@ -458,17 +458,13 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     @Override
-    protected void onPlaylistPositionChanged(long pos) {
+    protected void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {
+        model.setCurrentPlaylist(playlistID);
         currentPos = pos;
         getCurrentPlaylistEntry().thenAcceptAsync(
                 playlistEntry -> model.setCurrentPlaylistEntry(playlistEntry),
                 Util.getMainThreadExecutor()
         );
-    }
-
-    @Override
-    protected void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {
-        model.setCurrentPlaylist(playlistID);
     }
 
     public void clearSelection() {

@@ -37,6 +37,7 @@ public class CastAudioPlayer implements AudioPlayer {
     static final String CASTMETA_KEY_PLAYBACK_ID = "dancingbunnies.castmeta.PLAYBACK_ID";
     static final String CASTMETA_KEY_PLAYBACK_TYPE = "dancingbunnies.castmeta.PLAYBACK_TYPE";
     static final String CASTMETA_KEY_PLAYLIST_POS = "dancingbunnies.castmeta.PLAYLIST_POS";
+    static final String CASTMETA_KEY_PLAYLIST_SELECTION_ID = "dancingbunnies.castmeta.PLAYLIST_SELECTION_ID";
 
     private final MusicLibraryService musicLibraryService;
     private Callback callback;
@@ -290,7 +291,8 @@ public class CastAudioPlayer implements AudioPlayer {
                             EntryID.UNKOWN,
                             PlaybackEntry.PLAYBACK_ID_INVALID,
                             PlaybackEntry.USER_TYPE_EXTERNAL,
-                            PlaybackEntry.PLAYLIST_POS_NONE
+                            PlaybackEntry.PLAYLIST_POS_NONE,
+                            PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID
                     ) :
                     new PlaybackEntry(mediaQueueItem.getMedia().getMetadata());
             playbackEntry.setPreloaded(true);
@@ -488,31 +490,29 @@ public class CastAudioPlayer implements AudioPlayer {
                     itemId,
                     null
             );
-            String itemString = queueItem == null ? "null" :
-                    queueItem.getMedia().getMetadata().getString(MediaMetadata.KEY_TITLE);
-            String playbackID = queueItem == null ? "?" :
-                    queueItem.getMedia().getMetadata().getString(CASTMETA_KEY_PLAYBACK_ID);
-            String type = queueItem == null ? "?" :
-                    queueItem.getMedia().getMetadata().getString(CASTMETA_KEY_PLAYBACK_TYPE);
-            String playlistPos = queueItem == null ? "?" :
-                    queueItem.getMedia().getMetadata().getString(CASTMETA_KEY_PLAYLIST_POS);
             if (itemId == currentItemId) {
                 sb.append("* ");
             }
-            sb.append(type);
-            if (PlaybackEntry.USER_TYPE_PLAYLIST.equals(type)) {
-                sb.append("-").append(playlistPos);
+            sb.append("[").append(itemIndex).append("] ").append(itemId).append(": ");
+            if (queueItem == null) {
+                sb.append("?\n");
+            } else {
+                MediaMetadata castMeta = queueItem.getMedia().getMetadata();
+                String type = castMeta.getString(CASTMETA_KEY_PLAYBACK_TYPE);
+                sb.append(castMeta.getString(CASTMETA_KEY_PLAYBACK_ID));
+                sb.append(".");
+                sb.append(type);
+                if (PlaybackEntry.USER_TYPE_PLAYLIST.equals(type)) {
+                    sb.append("-");
+                    sb.append(castMeta.getString(CASTMETA_KEY_PLAYLIST_SELECTION_ID));
+                    sb.append("[");
+                    sb.append(castMeta.getString(CASTMETA_KEY_PLAYLIST_POS));
+                    sb.append("]");
+                }
+                sb.append(" ");
+                sb.append(castMeta.getString(MediaMetadata.KEY_TITLE));
+                sb.append("\n");
             }
-            sb
-                    .append(".")
-                    .append(playbackID)
-                    .append("[")
-                    .append(itemIndex)
-                    .append("] ")
-                    .append(itemId)
-                    .append(" ")
-                    .append(itemString)
-                    .append("\n");
         }
         Log.d(LC, sb.toString());
     }
@@ -602,6 +602,7 @@ public class CastAudioPlayer implements AudioPlayer {
         castMeta.putString(CASTMETA_KEY_PLAYBACK_ID, Long.toString(playbackEntry.playbackID));
         castMeta.putString(CASTMETA_KEY_PLAYBACK_TYPE, playbackEntry.playbackType);
         castMeta.putString(CASTMETA_KEY_PLAYLIST_POS, Long.toString(playbackEntry.playlistPos));
+        castMeta.putString(CASTMETA_KEY_PLAYLIST_SELECTION_ID, Long.toString(playbackEntry.playlistSelectionID));
         long duration = meta.getFirstLong(Meta.FIELD_DURATION, 0);
         String contentType = meta.getFirstString(Meta.FIELD_CONTENT_TYPE);
         return new MediaInfo.Builder(URL)
@@ -851,7 +852,7 @@ public class CastAudioPlayer implements AudioPlayer {
                     switch (idleReason) {
                         case MediaStatus.IDLE_REASON_FINISHED:
                             if (getNumPreloaded() <= 0) {
-                                callback.onMetaChanged(EntryID.UNKOWN);
+                                callback.onCurrentEntryChanged(EntryID.UNKOWN);
                                 callback.onStateChanged(PlaybackStateCompat.STATE_STOPPED);
                             }
                             callback.onSongEnded();
@@ -896,7 +897,7 @@ public class CastAudioPlayer implements AudioPlayer {
                 return;
             }
             MediaMetadata castMeta = mediaInfo.getMetadata();
-            callback.onMetaChanged(EntryID.from(castMeta));
+            callback.onCurrentEntryChanged(EntryID.from(castMeta));
         }
 
         @Override
