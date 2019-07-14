@@ -4,7 +4,7 @@
     android:id="@+id/nowplaying_item"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/nowplaying_queue_item_drawable">
+    android:background="@color/white_active_accent">
     <se.splushii.dancingbunnies.ui.TrackItemView
         android:id="@+id/nowplaying_item_content"
         android:layout_width="match_parent"

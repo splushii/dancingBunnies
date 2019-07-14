@@ -6,15 +6,18 @@ class PlaylistUserState {
     public final int pos;
     final int pad;
     final boolean showPlaylists;
+    final boolean showPlaybackEntries;
     final PlaylistID browsedPlaylistID;
 
     private PlaylistUserState(int pos,
                               int pad,
                               boolean showPlaylists,
+                              boolean showPlaybackEntries,
                               PlaylistID browsedPlaylistID) {
         this.pos = pos;
         this.pad = pad;
         this.showPlaylists = showPlaylists;
+        this.showPlaybackEntries = showPlaybackEntries;
         this.browsedPlaylistID = browsedPlaylistID;
     }
 
@@ -33,6 +36,7 @@ class PlaylistUserState {
         private int pos = 0;
         private int pad = 0;
         private boolean showPlaylists = true;
+        private boolean showPlaybackEntries = false;
         private PlaylistID browsedPlaylistID = null;
 
         Builder() {}
@@ -41,6 +45,7 @@ class PlaylistUserState {
             pos = state.pos;
             pad = state.pad;
             showPlaylists = state.showPlaylists;
+            showPlaybackEntries = state.showPlaybackEntries;
             browsedPlaylistID = state.browsedPlaylistID;
             return this;
         }
@@ -57,11 +62,17 @@ class PlaylistUserState {
             return this;
         }
 
+        Builder setShowPlaybackEntries(boolean showPlaybackEntries) {
+            this.showPlaybackEntries = showPlaybackEntries;
+            return this;
+        }
+
         PlaylistUserState build() {
             return new PlaylistUserState(
                     pos,
                     pad,
                     showPlaylists,
+                    showPlaybackEntries,
                     browsedPlaylistID
             );
         }

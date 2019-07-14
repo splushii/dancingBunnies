@@ -12,7 +12,10 @@ import com.google.android.gms.cast.framework.SessionManagerListener;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
@@ -22,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
@@ -48,18 +52,19 @@ import se.splushii.dancingbunnies.util.Util;
 //
 // It is responsible for shifting state between audio players.
 
-class PlaybackController {
+public class PlaybackController {
     private static final String LC = Util.getLogContext(PlaybackController.class);
     private static final int MAX_PLAYLIST_ENTRIES_TO_PREFETCH = 3;
+
+    public static final int PLAYBACK_ORDER_SEQUENTIAL = 0;
+    public static final int PLAYBACK_ORDER_SHUFFLE = 1;
+    public static final int PLAYBACK_ORDER_RANDOM = 2;
 
     private final MusicLibraryService musicLibraryService;
     private final Callback callback;
     private final SessionManagerListener<Session> sessionManagerListener = new SessionManagerListenerImpl();
     private final SessionManager sessionManager;
     private final PlaybackControllerStorage storage;
-
-    private final LiveData<List<PlaylistEntry>> currentPlaylistEntriesLiveData;
-    private final MutableLiveData<PlaylistID> currentPlaylistIDLiveData = new MutableLiveData<>();
 
     // Audio players
     private AudioPlayer audioPlayer;
@@ -73,16 +78,26 @@ class PlaybackController {
 
     // Current playlist reference
     private long currentPlaylistSelectionID;
+    private int currentPlaylistPlaybackOrderMode;
+    private boolean currentPlaylistPlaybackRepeatMode;
+    private final MutableLiveData<PlaylistID> currentPlaylistIDLiveData = new MutableLiveData<>();
     private PlaylistID currentPlaylistID;
-    private long currentPlaylistPosition;
     // Current playlist entries
-    private final ArrayList<PlaylistEntry> playlistEntries = new ArrayList<>();
+    private final LiveData<List<PlaylistEntry>> currentPlaylistEntriesLiveData;
+    private final Observer<List<PlaylistEntry>> currentPlaylistEntriesObserver;
+    private List<PlaylistEntry> currentPlaylistEntries;
+    // Current playlist entries in playback order.
+    // Generated from current playlist entries and possibly reordered by user.
+    private final PlaybackQueue currentPlaylistPlaybackEntries;
+    private long currentPlaylistPlaybackPosition;
+    private HashMap<Long, Long> playbackIDToRandomMap = new HashMap<>();
 
     // History of played items
     private final PlaybackQueue history;
 
     // Internal state
     private boolean isPlaying;
+    private boolean endOfPlaylistPlayback = false;
 
     private ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Object executorLock = new Object();
@@ -97,7 +112,16 @@ class PlaybackController {
 
         currentPlaylistSelectionID = storage.getCurrentPlaylistSelectionID();
         currentPlaylistID = storage.getCurrentPlaylist();
-        currentPlaylistPosition = storage.getCurrentPlaylistPosition();
+        currentPlaylistPlaybackPosition = storage.getCurrentPlaylistPlaybackPosition();
+        currentPlaylistPlaybackOrderMode = storage.getCurrentPlaylistPlaybackOrderMode();
+        currentPlaylistPlaybackRepeatMode = storage.getCurrentPlaylistPlaybackRepeatMode();
+        Log.d(LC, "Construct:"
+                + "\ncurrentPlaylistSelectionID: " + currentPlaylistSelectionID
+                + "\ncurrentPlaylistID: " + currentPlaylistID
+                + "\ncurrentPlaylistPlaybackPosition: " + currentPlaylistPlaybackPosition
+                + "\ncurrentPlaylistPlaybackOrderMode: " + currentPlaylistPlaybackOrderMode
+                + "\ncurrentPlaylistPlaybackRepeatMode: " + currentPlaylistPlaybackRepeatMode
+        );
 
         LiveData<List<PlaybackEntry>> queueEntriesLiveData = storage.getQueueEntries();
         queue = new PlaybackQueue(
@@ -120,6 +144,14 @@ class PlaybackController {
                 historyEntriesLiveData,
                 () -> {}
         );
+        LiveData<List<PlaybackEntry>> currentPlaylistPlaybackEntriesLiveData =
+                storage.getCurrentPlaylistPlaybackEntries();
+        currentPlaylistPlaybackEntries = new PlaybackQueue(
+                PlaybackControllerStorage.QUEUE_ID_CURRENT_PLAYLIST_PLAYBACK,
+                storage,
+                currentPlaylistPlaybackEntriesLiveData,
+                () -> Log.e(LC, "playlist playback entries changed")
+        );
 
         audioPlayer = new LocalAudioPlayer(
                 audioPlayerCallback,
@@ -129,6 +161,7 @@ class PlaybackController {
         );
 
         currentPlaylistIDLiveData.setValue(currentPlaylistID);
+        currentPlaylistEntries = new ArrayList<>();
         currentPlaylistEntriesLiveData = Transformations.switchMap(
                 currentPlaylistIDLiveData,
                 playlistID -> {
@@ -137,10 +170,19 @@ class PlaybackController {
                         entries.setValue(Collections.emptyList());
                         return entries;
                     }
-                    return PlaylistStorage.getInstance(context).getPlaylistEntries(playlistID);
+                    // TODO: Check playlist type here.
+                    // TODO: Stupid: Fetch from PlaylistStorage
+                    // TODO: Smart: Fetch from MetaStorage
+                    if (PlaylistID.TYPE_STUPID.equals(playlistID.type)) {
+                        return PlaylistStorage.getInstance(context).getPlaylistEntries(playlistID);
+                    } else {
+                        // TODO: Support smart entries. Fetch using MetaStorage?
+                        throw new RuntimeException("Not implemented");
+                    }
                 }
         );
-        currentPlaylistEntriesLiveData.observeForever(playlistEntriesObserver);
+        currentPlaylistEntriesObserver = this::onCurrentPlaylistEntriesChanged;
+        currentPlaylistEntriesLiveData.observeForever(currentPlaylistEntriesObserver);
 
         CastContext castContext = CastContext.getSharedInstance(context);
         sessionManager = castContext.getSessionManager();
@@ -149,12 +191,14 @@ class PlaybackController {
 
     void initialize() {
         isPlaying = false;
+        callback.onPlaybackOrderChanged(getCurrentPlaylistPlaybackOrderMode());
+        callback.onRepeatModeChanged(getCurrentPlaylistPlaybackRepeatMode());
         submitCompletableFuture(this::updateState);
     }
 
     void onDestroy() {
         Log.d(LC, "onDestroy");
-        currentPlaylistEntriesLiveData.removeObserver(playlistEntriesObserver);
+        currentPlaylistEntriesLiveData.removeObserver(currentPlaylistEntriesObserver);
         sessionManager.removeSessionManagerListener(sessionManagerListener);
         audioPlayer.stop();
         queue.onDestroy();
@@ -167,46 +211,143 @@ class PlaybackController {
     }
 
     CompletableFuture<Void> setPlaylist(PlaylistID playlistID, long pos) {
+        _setPlaylist(playlistID, pos);
+        return submitCompletableFuture(this::updateState);
+    }
+
+    private void _setPlaylist(PlaylistID playlistID, long pos) {
         Log.d(LC, "setCurrentPlaylist: " + playlistID + " pos: " + pos);
         setCurrentPlaylistSelectionID(storage.getNextPlaylistSelectionID());
-        setCurrentPlaylistID(playlistID);
-        setCurrentPlaylistPosition(pos);
-        currentPlaylistIDLiveData.setValue(currentPlaylistID);
-        callback.onPlaylistSelectionChanged(currentPlaylistID, currentPlaylistPosition);
-        return submitCompletableFuture(this::updateState);
+        if (playlistID == null || !playlistID.equals(getCurrentPlaylistID())) {
+            setCurrentPlaylistID(playlistID);
+            currentPlaylistPlaybackEntries.clear();
+            currentPlaylistIDLiveData.setValue(playlistID);
+        }
+        setCurrentPlaylistPlaybackPosition(playlistPlaybackPosFromPlaylistPos(pos));
+        callback.onPlaylistSelectionChanged(playlistID, pos);
+    }
+
+    private long playlistPlaybackPosFromPlaylistPos(long playlistPos) {
+        int index = 0;
+        for (PlaybackEntry e: currentPlaylistPlaybackEntries.getEntries()) {
+            if (e.playlistPos == playlistPos) {
+                return index;
+            }
+            index++;
+        }
+        return playlistPos;
     }
 
     private CompletableFuture<Void> removePlaylistEntries() {
         Log.d(LC, "removePlaylistEntries");
-        return audioPlayer.dePreload(getPlayerPlaylistEntries())
-                .thenComposeAsync(aVoid -> playlistItems.clear());
+        return playlistItems.clear()
+                .thenCompose(aVoid -> audioPlayer.dePreload(getPlayerPlaylistEntries()));
     }
 
     private void setCurrentPlaylistSelectionID(long id) {
+        Log.d(LC, "setCurrentPlaylistSelectionID: " + id);
         currentPlaylistSelectionID = id;
-        storage.setCurrentPlaylistSelectionID(currentPlaylistSelectionID);
+        storage.setCurrentPlaylistSelectionID(id);
     }
 
     private long getCurrentPlaylistSelectionID() {
         return currentPlaylistSelectionID;
     }
 
+    private void setCurrentPlaylistPlaybackOrderMode(int playbackOrderMode) {
+        currentPlaylistPlaybackOrderMode = playbackOrderMode;
+        storage.setCurrentPlaylistPlaybackOrderMode(playbackOrderMode);
+        callback.onPlaybackOrderChanged(playbackOrderMode);
+    }
+
+    private int getCurrentPlaylistPlaybackOrderMode() {
+        return currentPlaylistPlaybackOrderMode;
+    }
+
+    private void setCurrentPlaylistPlaybackRepeatMode(boolean repeat) {
+        currentPlaylistPlaybackRepeatMode = repeat;
+        storage.setCurrentPlaylistPlaybackRepeatMode(repeat);
+        callback.onRepeatModeChanged(repeat);
+    }
+
+    private boolean getCurrentPlaylistPlaybackRepeatMode() {
+        return currentPlaylistPlaybackRepeatMode;
+    }
+
     private void setCurrentPlaylistID(PlaylistID playlistID) {
         currentPlaylistID = playlistID;
-        storage.setCurrentPlaylist(currentPlaylistID);
+        storage.setCurrentPlaylist(playlistID);
     }
 
     PlaylistID getCurrentPlaylistID() {
         return currentPlaylistID;
     }
 
-    private void setCurrentPlaylistPosition(long pos) {
-        currentPlaylistPosition = pos;
-        storage.setCurrentPlaylistPosition(currentPlaylistPosition);
+    private void setCurrentPlaylistPlaybackPosition(long pos) {
+        Log.d(LC, "setCurrentPlaylistPlaybackPosition: " + pos);
+        currentPlaylistPlaybackPosition = pos;
+        storage.setCurrentPlaylistPlaybackPosition(pos);
     }
 
-    long getCurrentPlaylistPosition() {
-        return currentPlaylistPosition;
+    private long getCurrentPlaylistPlaybackPosition() {
+        return currentPlaylistPlaybackPosition;
+    }
+
+    CompletableFuture<Void> resetPlaybackOrder() {
+        Log.d(LC, "resetPlaybackOrder");
+        return submitCompletableFuture(() -> {
+            List<PlaybackEntry> playlistPlaybackEntries = currentPlaylistPlaybackEntries.getEntries();
+            Collections.sort(playlistPlaybackEntries, (a, b) -> Long.compare(a.playlistPos, b.playlistPos));
+            return currentPlaylistPlaybackEntries.replaceWith(playlistPlaybackEntries)
+                    .thenRun(() -> {
+                        setCurrentPlaylistPlaybackOrderMode(PLAYBACK_ORDER_SEQUENTIAL);
+                        setCurrentPlaylistSelectionID(storage.getNextPlaylistSelectionID());
+                        setCurrentPlaylistPlaybackPosition(0);
+                        PlaybackEntry entry = currentPlaylistPlaybackEntries.get(0);
+                        callback.onPlaylistSelectionChanged(
+                                getCurrentPlaylistID(),
+                                entry == null ? 0: entry.playlistPos
+                        );
+                    })
+                    .thenRun(this::updateState);
+        });
+    }
+
+    CompletableFuture<Void> shufflePlaybackOrder() {
+        Log.d(LC, "shufflePlaybackOrder");
+        return submitCompletableFuture(() -> {
+            List<PlaybackEntry> playlistPlaybackEntries = currentPlaylistPlaybackEntries.getEntries();
+            Collections.shuffle(playlistPlaybackEntries);
+            return currentPlaylistPlaybackEntries.replaceWith(playlistPlaybackEntries)
+                    .thenRun(() -> {
+                        setCurrentPlaylistPlaybackOrderMode(PLAYBACK_ORDER_SHUFFLE);
+                        setCurrentPlaylistSelectionID(storage.getNextPlaylistSelectionID());
+                        setCurrentPlaylistPlaybackPosition(0);
+                        long playlistPosition = currentPlaylistPlaybackEntries.get(0).playlistPos;
+                        callback.onPlaylistSelectionChanged(getCurrentPlaylistID(), playlistPosition);
+                    })
+                    .thenRun(this::updateState);
+        });
+    }
+
+    CompletableFuture<Void> setRandomPlayback() {
+        Log.d(LC, "setRandomPlayback");
+        return submitCompletableFuture(() -> {
+            setCurrentPlaylistPlaybackOrderMode(PLAYBACK_ORDER_RANDOM);
+            setCurrentPlaylistPlaybackRepeatMode(true);
+            return updateState();
+        });
+    }
+
+    CompletableFuture<Void> setRepeat(boolean repeat) {
+        return submitCompletableFuture(() -> {
+            setCurrentPlaylistPlaybackRepeatMode(repeat);
+            return updateState();
+        });
+    }
+
+    private long getNextRandomSeed(long seed) {
+        return new Random(seed).nextLong();
     }
 
     CompletableFuture<Void> play() {
@@ -252,27 +393,110 @@ class PlaybackController {
         }
     }
 
-    private List<PlaybackEntry> requestPlaylistEntries(int num) {
-        Log.d(LC, "requestPlaylistEntries(" + num + ")");
-        PlaylistID playlistID = getCurrentPlaylistID();
-        if (playlistID == null) {
+    private long nextRandom(PlaybackEntry entry) {
+        Long rand = playbackIDToRandomMap.get(entry.playbackID);
+        if (rand == null) {
+            Log.d(LC, "nextRandom generating new rand for entry: "
+                    + entry.playbackID + "[" + entry.playlistPos + "]");
+            rand = getNextRandomSeed(entry.playbackID);
+            playbackIDToRandomMap.put(entry.playbackID, rand);
+        }
+        return getNextRandomSeed(rand);
+    }
+
+    private void setRandom(List<PlaybackEntry> playlistPlaybackEntries) {
+        long nextRandom;
+        PlaybackEntry lastPlaylistPlaybackEntry = getLastPlaylistPlaybackEntry();
+        if (lastPlaylistPlaybackEntry != null) {
+            nextRandom = nextRandom(lastPlaylistPlaybackEntry);
+        } else {
+            Log.w(LC, "setRandom: "
+                    + "Could not get random seed from last playlist playback entry. Reseeding.");
+            nextRandom = new Random().nextLong();
+        }
+        for (PlaybackEntry entry: playlistPlaybackEntries) {
+            playbackIDToRandomMap.put(entry.playbackID, nextRandom);
+            nextRandom = getNextRandomSeed(nextRandom);
+        }
+    }
+
+    private PlaybackEntry getLastPlaylistPlaybackEntry() {
+        // TODO: A more stable way would probably be to search history for the last
+        // TODO: playback entry (with correct type and selection id), instead of only
+        // TODO: checking the current entry (because it could for example be a queue entry).
+        PlaybackEntry currentEntry = audioPlayer.getCurrentEntry();
+        if (currentEntry != null
+                && PlaybackEntry.USER_TYPE_PLAYLIST.equals(currentEntry.playbackType)
+                && currentEntry.playlistSelectionID == getCurrentPlaylistSelectionID()) {
+            return currentEntry;
+        }
+        Log.w(LC, "getLastPlaylistPlaybackEntry: Not found");
+        return null;
+    }
+
+    List<PlaybackEntry> playlistGetNext(int offset, int maxEntries) {
+        List<PlaybackEntry> entries = currentPlaylistPlaybackEntries.getEntries();
+        if (entries == null || entries.isEmpty() || endOfPlaylistPlayback) {
             return Collections.emptyList();
         }
-        synchronized (playlistEntries) {
-            return musicLibraryService.playlistGetNext(
-                    playlistEntries,
-                    getCurrentPlaylistPosition(),
-                    getAllPlaylistEntries().size(),
-                    num,
-                    getShuffleSeed()
-            ).stream()
-                    .map(playlistEntry -> new PlaybackEntry(
-                            playlistEntry,
-                            getCurrentPlaylistSelectionID(),
-                            generatePlaybackID()
-                    ))
-                    .collect(Collectors.toList());
+        List<PlaybackEntry> chosenEntries = new ArrayList<>();
+        int nextIndex = (int) getCurrentPlaylistPlaybackPosition();
+        PlaybackEntry nextEntry = entries.get(nextIndex);
+        boolean randomOrder = getCurrentPlaylistPlaybackOrderMode() == PLAYBACK_ORDER_RANDOM;
+        long nextRandom = 0L;
+        if (randomOrder) {
+            // Use the last playlist playback entry as seed for random
+            PlaybackEntry lastPlaylistPlaybackEntry = getLastPlaylistPlaybackEntry();
+            if (lastPlaylistPlaybackEntry != null) {
+                nextRandom = nextRandom(lastPlaylistPlaybackEntry);
+                nextIndex = nextPlaylistPosition(
+                        playlistPlaybackPosFromPlaylistPos(lastPlaylistPlaybackEntry.playlistPos),
+                        entries.size(),
+                        nextRandom
+                );
+                nextEntry = entries.get(nextIndex);
+            } else {
+                Log.w(LC, "playlistGetNext: "
+                        + "Could not get random seed from last playlist playback entry. Reseeding.");
+                nextRandom = getNextRandomSeed(nextEntry.playlistPos);
+            }
         }
+        nextRandom = randomOrder ? getNextRandomSeed(nextRandom) : 0L;
+        boolean repeat = getCurrentPlaylistPlaybackRepeatMode();
+        for (int i = 0; i < offset + maxEntries; i++) {
+            if (i >= offset) {
+                chosenEntries.add(new PlaybackEntry(
+                        nextEntry.entryID,
+                        // Set new ID:s, or else there may be multiple playback entries with same
+                        // playback id in the queue.
+                        generatePlaybackID(),
+                        nextEntry.playbackType,
+                        nextEntry.playlistPos,
+                        // Overwrite dummy selection id with current playlist selection id
+                        getCurrentPlaylistSelectionID()
+                ));
+            }
+            long prevIndex = nextIndex;
+            nextIndex = nextPlaylistPosition(nextIndex, entries.size(), nextRandom);
+            if (!repeat && nextIndex < prevIndex) {
+                return chosenEntries;
+            }
+            nextEntry = entries.get(nextIndex);
+            nextRandom = randomOrder ? getNextRandomSeed(nextRandom) : 0L;
+        }
+        return chosenEntries;
+    }
+
+    private int nextPlaylistPosition(long index, int playlistSize, long random) {
+        return validPlaylistPosition((int) (index + 1 + random), playlistSize);
+    }
+
+    private int validPlaylistPosition(int index, int playlistSize) {
+        if (playlistSize <= 0) {
+            return 0;
+        }
+        int nextIndex = index % playlistSize;
+        return nextIndex < 0 ? nextIndex + playlistSize : nextIndex;
     }
 
     private PlaybackEntry getQueueEntry(int offset) {
@@ -405,20 +629,14 @@ class PlaybackController {
         }
         // Check if the all entries in the current playlist equals the
         // expected playlist entries from the selected playlist
-        List<PlaylistEntry> expectedPlaylistEntries;
-        synchronized (playlistEntries) {
-            expectedPlaylistEntries = musicLibraryService.playlistGetNext(
-                    playlistEntries,
-                    getCurrentPlaylistPosition(),
-                    0,
-                    currentPlaylistEntries.size(),
-                    getShuffleSeed()
-            );
-        }
+        List<PlaybackEntry> expectedPlaylistEntries = playlistGetNext(
+                0,
+                currentPlaylistEntries.size()
+        );
         if (currentPlaylistEntries.size() > expectedPlaylistEntries.size()) {
             Log.d(LC, "isCurrentPlaylistCorrect: No."
-                    + " Too many playlist entries (" + currentPlaylistEntries.size() + ")"
-                    + " Exceeding number of expected entries: " + expectedPlaylistEntries.size());
+                    + " Number of entries (" + currentPlaylistEntries.size() + ")"
+                    + " exceeding number of expected entries: " + expectedPlaylistEntries.size());
             return false;
         } else if (currentPlaylistEntries.size() < expectedPlaylistEntries.size()) {
             Log.e(LC, "isCurrentPlaylistCorrect: No."
@@ -426,10 +644,10 @@ class PlaybackController {
             return false;
         }
         for (int i = 0; i < expectedPlaylistEntries.size(); i++) {
-            PlaylistEntry actual = expectedPlaylistEntries.get(i);
+            PlaybackEntry expected = expectedPlaylistEntries.get(i);
             PlaybackEntry current = currentPlaylistEntries.get(i);
-            if (actual.pos != current.playlistPos
-                    || !EntryID.from(actual).equals(current.entryID)) {
+            if (expected.playlistPos != current.playlistPos
+                    || !expected.entryID.equals(current.entryID)) {
                 Log.d(LC, "isCurrentPlaylistCorrect: No."
                         + " Current playlist entries differ from expected playlist entries.");
                 return false;
@@ -444,29 +662,47 @@ class PlaybackController {
         // Check if the current entry has the same playlistSelectionID as
         // currentPlaylistSelectionID and compare the current entry's (expected) next pos with
         // currentPlaylistPos to see if currentPlaylistPos needs to advance.
-        PlaybackEntry currentEntry = audioPlayer.getCurrentEntry();
-        if (currentEntry != null
-                && PlaybackEntry.USER_TYPE_PLAYLIST.equals(currentEntry.playbackType)
-                && currentEntry.playlistSelectionID == getCurrentPlaylistSelectionID()) {
-            long nextExpectedPos;
-            synchronized (playlistEntries) {
-                 nextExpectedPos = musicLibraryService.playlistPosition(
-                        currentEntry.playlistPos,
-                        1,
-                        playlistEntries.size(),
-                        getShuffleSeed()
-                );
-            }
-            long currentPlaylistPos = getCurrentPlaylistPosition();
-            if (nextExpectedPos != currentPlaylistPos) {
-                Log.d(LC, "syncPlaylistEntries: Setting current playlist pos"
-                        + " (" + currentPlaylistPos + ") to expected pos: " + nextExpectedPos);
-                setCurrentPlaylistPosition(nextExpectedPos);
+        long prevPlaylistPlaybackPos = -1L;
+        boolean repeatMode = getCurrentPlaylistPlaybackRepeatMode();
+        PlaybackEntry lastPlaylistPlaybackEntry = getLastPlaylistPlaybackEntry();
+        if (lastPlaylistPlaybackEntry != null) {
+            long prevPlaylistPos = lastPlaylistPlaybackEntry.playlistPos;
+            prevPlaylistPlaybackPos = playlistPlaybackPosFromPlaylistPos(prevPlaylistPos);
+            boolean randomPlaybackOrderMode =
+                    getCurrentPlaylistPlaybackOrderMode() == PLAYBACK_ORDER_RANDOM;
+            long currentRandomSeed = randomPlaybackOrderMode ? nextRandom(lastPlaylistPlaybackEntry) : 0L;
+            long expectedPlaylistPlaybackPosition = nextPlaylistPosition(
+                    prevPlaylistPlaybackPos,
+                    currentPlaylistPlaybackEntries.size(),
+                    currentRandomSeed
+            );
+            long currentPlaylistPlaybackPosition = getCurrentPlaylistPlaybackPosition();
+            long expectedPlaylistPosition = currentPlaylistPlaybackEntries.get((int) expectedPlaylistPlaybackPosition).playlistPos;
+            if (currentPlaylistPlaybackPosition != expectedPlaylistPlaybackPosition) {
+                if (!repeatMode
+                        && expectedPlaylistPlaybackPosition < currentPlaylistPlaybackPosition) {
+                    Log.d(LC, "syncPlaylistEntries: End of playlist playback reached.");
+                    endOfPlaylistPlayback = true;
+                }
+                Log.d(LC, "syncPlaylistEntries:"
+                        + " Setting current playlist playback pos"
+                        + " (" + currentPlaylistPlaybackPosition + ")"
+                        + " to expected playlist playback pos: "
+                        + expectedPlaylistPlaybackPosition);
+                setCurrentPlaylistPlaybackPosition(expectedPlaylistPlaybackPosition);
                 callback.onPlaylistSelectionChanged(
                         getCurrentPlaylistID(),
-                        getCurrentPlaylistPosition()
+                        expectedPlaylistPosition
                 );
             }
+        }
+        if (!repeatMode
+                && endOfPlaylistPlayback
+                && prevPlaylistPlaybackPos <= 0) {
+            Log.d(LC, "syncPlaylistEntries: End reached. Back at start. Repeat false."
+                    + " Stop and reset endOfPlaylistPlayback");
+            endOfPlaylistPlayback = false;
+            audioPlayer.stop();
         }
 
         // Update playlist entries
@@ -477,17 +713,24 @@ class PlaybackController {
                     // Fill up with playlist entries
                     int numPlaylistEntriesToFetch =
                             MAX_PLAYLIST_ENTRIES_TO_PREFETCH - getAllPlaylistEntries().size();
+                    List<PlaybackEntry> allEntries = getAllEntries();
                     Log.d(LC, "syncPlaylistEntries: request " + numPlaylistEntriesToFetch
                             + " playlist entries");
-                    if (numPlaylistEntriesToFetch > 0) {
-                        return requestPlaylistEntries(numPlaylistEntriesToFetch);
-                    }
-//                    return Util.futureResult(null, Collections.emptyList());
-                    return Collections.<PlaybackEntry>emptyList();
+                    List<PlaybackEntry> newPlaylistPlaybackEntries = numPlaylistEntriesToFetch > 0 ?
+                            playlistGetNext(
+                                    getAllPlaylistEntries().size(),
+                                    numPlaylistEntriesToFetch)
+                                    .stream()
+                                    .filter(p -> !allEntries.contains(p))
+                                    .collect(Collectors.toList())
+                            :
+                            Collections.emptyList();
+                    setRandom(newPlaylistPlaybackEntries);
+                    return newPlaylistPlaybackEntries;
                 })
                 .thenCompose(playbackEntries -> {
-                    Log.d(LC, "syncPlaylistEntries: got " + playbackEntries.size()
-                            + " playlist entries");
+                    Log.d(LC, "syncPlaylistEntries:"
+                            + " got " + playbackEntries.size() + " playlist entries");
                     return playlistItems.add(playlistItems.size(), playbackEntries);
                 });
     }
@@ -618,14 +861,17 @@ class PlaybackController {
 
     private long getQueuePlaybackID(int pos) {
         List<PlaybackEntry> queueEntries = getAllQueueEntries();
-        if (pos < 0 || pos > queueEntries.size()) {
+        if (pos < 0 || pos >= queueEntries.size()) {
             return PlaybackEntry.PLAYBACK_ID_INVALID;
         }
         return queueEntries.get(pos).playbackID;
     }
 
-    private CompletableFuture<Void> queueEntries(List<EntryID> entries,
-                                                 long beforePlaybackID) {
+    private CompletableFuture<Void> queueEntries(List<EntryID> entries, long beforePlaybackID) {
+        Log.d(LC, "queueEntries("
+                + "entries.size: " + entries.size()
+                + ", beforePlaybackID: " + beforePlaybackID
+                + ")");
         return queuePlaybackEntries(
                 entries.stream().map(e -> new PlaybackEntry(
                         e,
@@ -773,6 +1019,168 @@ class PlaybackController {
         callback.onQueueChanged(getAllEntries());
     }
 
+    private void onCurrentPlaylistEntriesChanged(List<PlaylistEntry> newPlaylistEntries) {
+        Log.d(LC, "playlistEntriesObserver. Changed for: " + currentPlaylistIDLiveData.getValue());
+        if (newPlaylistEntries.isEmpty()) {
+            Log.d(LC, "playlistEntriesObserver."
+                    + " No playlist entries. Clearing playlist playback entries.");
+            currentPlaylistPlaybackEntries.clear();
+        } else if (currentPlaylistPlaybackEntries.isEmpty()) {
+            Log.d(LC, "playlistEntriesObserver."
+                    + " No playlist playback entries. Initializing from playlist entries.");
+            List<PlaybackEntry> playlistPlaybackEntries = newPlaylistEntries.stream()
+                    .map(playlistEntry -> new PlaybackEntry(
+                            playlistEntry,
+                            PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID,
+                            // TODO: This may be too slow. If so, optimize
+                            // TODO: May be bottleneck with large playlist (e.g. 10000 entries)
+                            generatePlaybackID()
+                    ))
+                    .collect(Collectors.toList());
+            currentPlaylistPlaybackEntries.add(0, playlistPlaybackEntries);
+        } else {
+            // Check if playlistEntries have changed.
+            Log.d(LC, "playlistEntriesObserver."
+                    + " Calculating diff between current and new playlist entries.");
+            List<PlaylistEntry> currentEntries = currentPlaylistEntries;
+            HashMap<EntryID, List<Integer>> oldMap = new HashMap<>();
+            for (int i = 0; i < currentEntries.size(); i++) {
+                EntryID entryID = EntryID.from(currentEntries.get(i));
+                List<Integer> indices = oldMap.getOrDefault(entryID, new ArrayList<>());
+                indices.add(i);
+                oldMap.put(entryID, indices);
+            }
+            HashMap<EntryID, List<Integer>> newMap = new HashMap<>();
+            for (int i = 0; i < newPlaylistEntries.size(); i++) {
+                EntryID entryID = EntryID.from(newPlaylistEntries.get(i));
+                List<Integer> indices = newMap.getOrDefault(entryID, new ArrayList<>());
+                indices.add(i);
+                newMap.put(entryID, indices);
+            }
+            // Find deleted and moved
+            List<Integer> deletedPositions = new ArrayList<>();
+            List<Integer> addedPositions = new ArrayList<>();
+            List<Pair<Integer, Integer>> movedPositions = new ArrayList<>();
+            for (EntryID entryID: oldMap.keySet()) {
+                List<Integer> oldPositions = oldMap.get(entryID);
+                List<Integer> newPositions = newMap.get(entryID);
+                // Find deleted
+                for (int oldPosIndex = 0; oldPosIndex < oldPositions.size(); oldPosIndex++) {
+                    int oldPos = oldPositions.get(oldPosIndex);
+                    if (newPositions == null) {
+                        // entryID at oldPos has been deleted
+                        deletedPositions.add(oldPos);
+                        oldPositions.remove(oldPosIndex);
+                        oldPosIndex--;
+                        continue;
+                    }
+                    boolean moved = true;
+                    for (int newPosIndex = 0; newPosIndex < newPositions.size(); newPosIndex++) {
+                        int newPosition = newPositions.get(newPosIndex);
+                        if (oldPos == newPosition) {
+                            // entryID at oldPos has not moved
+                            oldPositions.remove(oldPosIndex);
+                            oldPosIndex--;
+                            newPositions.remove(newPosIndex);
+                            moved = false;
+                            break;
+                        }
+                    }
+                    if (moved && newPositions.isEmpty()) {
+                        // entryID at oldPos has been deleted
+                        deletedPositions.add(oldPos);
+                        oldPositions.remove(oldPosIndex);
+                        oldPosIndex--;
+                    }
+                }
+                // Find moved
+                while (!oldPositions.isEmpty()) {
+                    int oldPos = oldPositions.remove(oldPositions.size() - 1);
+                    int newPos = newPositions.remove(newPositions.size() - 1);
+                    movedPositions.add(new Pair<>(oldPos, newPos));
+                }
+            }
+            // Find added
+            for (EntryID entryID: newMap.keySet()) {
+                List<Integer> newPositions = newMap.get(entryID);
+                if (newPositions == null) {
+                    continue;
+                }
+                addedPositions.addAll(newPositions);
+            }
+            Collections.sort(deletedPositions);
+            Collections.sort(addedPositions);
+
+            List<PlaybackEntry> playbackEntries = currentPlaylistPlaybackEntries.getEntries();
+
+            // On deletion, remove entries with deleted playlistPos.
+            List<PlaybackEntry> deletedPlaybackEntries = new ArrayList<>();
+            HashSet<Integer> deletedPositionsSet = new HashSet<>(deletedPositions);
+            for (PlaybackEntry e: playbackEntries) {
+                if (deletedPositionsSet.contains((int) e.playlistPos)) {
+                    deletedPlaybackEntries.add(e);
+                }
+            }
+
+            // On addition, add new entries according to shuffle algorithm.
+            List<PlaybackEntry> addedPlaybackEntries = new ArrayList<>();
+            for (int addedPos: addedPositions) {
+                PlaylistEntry addedPlaylistEntry = newPlaylistEntries.get(addedPos);
+                boolean alreadyPresent = false;
+                for (PlaybackEntry entry: playbackEntries) {
+                    if (entry.playlistPos == addedPlaylistEntry.pos) {
+                        alreadyPresent = true;
+                        break;
+                    }
+                }
+                if (!alreadyPresent) {
+                    addedPlaybackEntries.add(new PlaybackEntry(
+                            addedPlaylistEntry,
+                            PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID,
+                            generatePlaybackID()
+                    ));
+                }
+            }
+
+            // On reorder, update playlistPos.
+            HashMap<Integer, Integer> movedFromToMap = new HashMap<>();
+            for (Pair<Integer, Integer> movedPos: movedPositions) {
+                movedFromToMap.put(movedPos.first, movedPos.second);
+            }
+            List<PlaybackEntry> movedPlaybackEntries = new ArrayList<>();
+            for (PlaybackEntry e: playbackEntries) {
+                Integer destPos = movedFromToMap.get((int) e.playlistPos);
+                if (destPos != null) {
+                    PlaybackEntry movedPlaybackEntry = new PlaybackEntry(
+                            e.entryID,
+                            e.playbackID,
+                            e.playbackType,
+                            destPos,
+                            e.playlistSelectionID
+                    );
+                    movedPlaybackEntries.add(movedPlaybackEntry);
+                }
+            }
+            Log.d(LC, "onCurrentPlaylistEntriesChanged diff:"
+                    + "\ndeleted: " + deletedPositions
+                    + "\nadded: " + addedPositions
+                    + "\nmoved: " + movedPositions
+                    + "\nPlaylist playback del " + deletedPlaybackEntries.size()
+                    + "\nPlaylist playback add " + addedPlaybackEntries.size()
+                    + "\nPlaylist playback mov " + movedPlaybackEntries.size()
+            );
+            currentPlaylistPlaybackEntries.removeEntries(deletedPlaybackEntries);
+            // TODO: Shuffle in new entries (if playback order is shuffle)
+            currentPlaylistPlaybackEntries.add(
+                    currentPlaylistPlaybackEntries.size(),
+                    addedPlaybackEntries
+            );
+            currentPlaylistPlaybackEntries.update(movedPlaybackEntries);
+        }
+        currentPlaylistEntries = newPlaylistEntries;
+        submitCompletableFuture(this::updateState);
+    }
+
     CompletableFuture<Void> deQueue(List<PlaybackEntry> playbackEntries) {
         synchronized (executorLock) {
             return submitCompletableFuture(() -> _deQueue(playbackEntries, true));
@@ -807,11 +1215,12 @@ class PlaybackController {
     }
 
     CompletableFuture<Void> playNow(List<EntryID> entryIDs) {
+        long beforePlaybackID = getQueuePlaybackID(0);
         synchronized (executorLock) {
-            return submitCompletableFuture(() -> queueEntries(entryIDs, getQueuePlaybackID(0))
-                    .thenCompose(r -> getNumTotalQueueEntries() > 1 ?
+            return submitCompletableFuture(() -> queueEntries(entryIDs, beforePlaybackID))
+                    .thenCompose(r -> getNumTotalQueueEntries() > 0 ?
                             audioPlayer.next() : Util.futureResult(null))
-                    .thenCompose(r -> audioPlayer.play()));
+                    .thenCompose(r -> audioPlayer.play());
         }
     }
 
@@ -822,6 +1231,7 @@ class PlaybackController {
     void updateCurrent() {
         PlaybackEntry currentEntry = audioPlayer.getCurrentEntry();
         EntryID entryID = currentEntry == null ? EntryID.UNKOWN : currentEntry.entryID;
+        callback.onCurrentEntryChanged(currentEntry);
         callback.onMetaChanged(entryID);
     }
 
@@ -862,18 +1272,16 @@ class PlaybackController {
         return playbackEntries;
     }
 
-    int getShuffleSeed() {
-        // TODO: Smart this up when implementing shuffle
-        return 0;
-    }
-
     interface Callback {
         void onPlayerChanged(AudioPlayer.Type type);
         void onStateChanged(int playBackState);
         void onMetaChanged(EntryID entryID);
+        void onCurrentEntryChanged(PlaybackEntry entry);
         void onQueueChanged(List<PlaybackEntry> queue);
         void onPlaylistSelectionChanged(PlaylistID playlistID, long pos);
         void onPlayerSeekPositionChanged(long pos);
+        void onPlaybackOrderChanged(int playbackOrder);
+        void onRepeatModeChanged(boolean repeat);
     }
 
     private class AudioPlayerCallback implements AudioPlayer.Callback {
@@ -884,9 +1292,10 @@ class PlaybackController {
         }
 
         @Override
-        public void onCurrentEntryChanged(EntryID entryID) {
-            Log.d(LC, "onMetaChanged: " + entryID.toString());
-            callback.onMetaChanged(entryID);
+        public void onCurrentEntryChanged(PlaybackEntry entry) {
+            Log.d(LC, "onCurrentEntryChanged: " + entry);
+            callback.onCurrentEntryChanged(entry);
+            callback.onMetaChanged(entry == null ? EntryID.UNKOWN : entry.entryID);
         }
 
         @Override
@@ -935,7 +1344,6 @@ class PlaybackController {
                 .thenCompose(aVoid -> queue.add(0, queueEntries))
                 .thenCompose(aVoid -> playlistItems.add(0, playlistEntries))
                 .thenCompose(aVoid -> history.add(0, state.history))
-//                .thenRun(this::updateCurrentPlaylistPosition)
                 .thenCompose(aVoid -> updateState());
     }
 
@@ -943,7 +1351,7 @@ class PlaybackController {
         executor.shutdownNow();
         try {
             if (executor.awaitTermination(5, TimeUnit.SECONDS)) {
-                Log.e(LC, "Terminated");
+                Log.d(LC, "Terminated");
             } else {
                 Log.e(LC, "Not terminated. Timeout");
             }
@@ -951,7 +1359,7 @@ class PlaybackController {
             e.printStackTrace();
         }
         AudioPlayer.AudioPlayerState lastState = audioPlayer.getLastState();
-        printState("onCastConnect", lastState);
+        printState("resetController. State:", lastState);
         audioPlayer.destroy();
         executor = Executors.newSingleThreadExecutor();
         return lastState;
@@ -1057,13 +1465,4 @@ class PlaybackController {
             Log.d(LC, "CastSession suspended");
         }
     }
-
-    private Observer<List<PlaylistEntry>> playlistEntriesObserver = p -> {
-        Log.d(LC, "playlistEntries changed for: " + currentPlaylistIDLiveData.getValue());
-        synchronized (playlistEntries) {
-            playlistEntries.clear();
-            playlistEntries.addAll(p);
-        }
-        submitCompletableFuture(this::updateState);
-    };
 }

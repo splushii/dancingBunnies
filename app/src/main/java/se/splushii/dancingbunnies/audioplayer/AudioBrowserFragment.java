@@ -18,7 +18,6 @@ import java.util.stream.Collectors;
 import androidx.fragment.app.Fragment;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
-import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 public abstract class AudioBrowserFragment extends Fragment {
@@ -151,11 +150,27 @@ public abstract class AudioBrowserFragment extends Fragment {
         });
     }
 
+    // TODO: Why not do like this with all event/fetch methods? (Put data in extras and send events)
+    protected PlaybackEntry getCurrentEntry() {
+        Bundle extras = mediaController.getExtras();
+        if (extras == null) {
+            return null;
+        }
+        Bundle playbackEntryBundle = extras.getBundle(
+                AudioPlayerService.BUNDLE_KEY_CURRENT_PLAYBACK_ENTRY_BUNDLE
+        );
+        if (playbackEntryBundle == null) {
+            return null;
+        }
+        playbackEntryBundle.setClassLoader(PlaybackEntry.class.getClassLoader());
+        return playbackEntryBundle.getParcelable(AudioPlayerService.BUNDLE_KEY_PLAYBACK_ENTRY);
+    }
+
     protected CompletableFuture<PlaylistID> getCurrentPlaylist() {
         return AudioPlayerService.getCurrentPlaylist(mediaController);
     }
 
-    protected CompletableFuture<PlaylistEntry> getCurrentPlaylistEntry() {
+    protected CompletableFuture<PlaybackEntry> getCurrentPlaylistEntry() {
         return AudioPlayerService.getCurrentPlaylistEntry(mediaController);
     }
 
@@ -177,6 +192,57 @@ public abstract class AudioBrowserFragment extends Fragment {
 
     protected void seekTo(long position) {
         mediaController.getTransportControls().seekTo(position);
+    }
+
+    protected void toggleRepeat() {
+        mediaController.getTransportControls().setRepeatMode(isRepeat() ?
+                PlaybackStateCompat.REPEAT_MODE_NONE : PlaybackStateCompat.REPEAT_MODE_ALL
+        );
+    }
+
+    protected boolean isRepeat() {
+        return isRepeat(mediaController.getRepeatMode());
+    }
+
+    private boolean isRepeat(int repeatMode) {
+        return repeatMode == PlaybackStateCompat.REPEAT_MODE_ALL;
+    }
+
+    protected void setPlaylistPlaybackOrderMode(int playbackOrderMode) {
+        int shuffleMode;
+        switch (playbackOrderMode) {
+            default:
+            case PlaybackController.PLAYBACK_ORDER_SEQUENTIAL:
+                shuffleMode = PlaybackStateCompat.SHUFFLE_MODE_NONE;
+                break;
+            case PlaybackController.PLAYBACK_ORDER_SHUFFLE:
+                shuffleMode = PlaybackStateCompat.SHUFFLE_MODE_ALL;
+                break;
+            case PlaybackController.PLAYBACK_ORDER_RANDOM:
+                shuffleMode = PlaybackStateCompat.SHUFFLE_MODE_GROUP;
+                break;
+        }
+        mediaController.getTransportControls().setShuffleMode(shuffleMode);
+    }
+
+    protected int getPlaylistPlaybackOrderMode() {
+        if (mediaController == null) {
+            return PlaybackStateCompat.SHUFFLE_MODE_NONE;
+        }
+        return getPlaylistPlaybackOrderMode(mediaController.getShuffleMode());
+    }
+
+    private int getPlaylistPlaybackOrderMode(int shuffleMode) {
+        switch (shuffleMode) {
+            default:
+            case PlaybackStateCompat.SHUFFLE_MODE_INVALID:
+            case PlaybackStateCompat.SHUFFLE_MODE_NONE:
+                return PlaybackController.PLAYBACK_ORDER_SEQUENTIAL;
+            case PlaybackStateCompat.SHUFFLE_MODE_ALL:
+                return PlaybackController.PLAYBACK_ORDER_SHUFFLE;
+            case PlaybackStateCompat.SHUFFLE_MODE_GROUP:
+                return PlaybackController.PLAYBACK_ORDER_RANDOM;
+        }
     }
 
     private final MediaBrowserCompat.ConnectionCallback mediaBrowserConnectionCallback =
@@ -209,6 +275,18 @@ public abstract class AudioBrowserFragment extends Fragment {
     private final MediaControllerCompat.Callback mediaControllerCallback =
             new MediaControllerCompat.Callback() {
                 @Override
+                public void onShuffleModeChanged(int shuffleMode) {
+                    AudioBrowserFragment.this.onPlaylistPlaybackOrderModeChanged(
+                            getPlaylistPlaybackOrderMode(shuffleMode)
+                    );
+                }
+
+                @Override
+                public void onRepeatModeChanged(int repeatMode) {
+                    AudioBrowserFragment.this.onRepeatModeChanged(isRepeat(repeatMode));
+                }
+
+                @Override
                 public void onPlaybackStateChanged(PlaybackStateCompat state) {
                     AudioBrowserFragment.this.onPlaybackStateChanged(state);
                 }
@@ -227,6 +305,12 @@ public abstract class AudioBrowserFragment extends Fragment {
                             );
                             long pos = extras.getLong(AudioPlayerService.BUNDLE_KEY_POS);
                             AudioBrowserFragment.this.onPlaylistSelectionChanged(playlistID, pos);
+                            break;
+                        case AudioPlayerService.SESSION_EVENT_CURRENT_ENTRY_CHANGED:
+                            PlaybackEntry entry = extras.getParcelable(
+                                    AudioPlayerService.BUNDLE_KEY_PLAYBACK_ENTRY
+                            );
+                            AudioBrowserFragment.this.onCurrentEntryChanged(entry);
                             break;
                     }
                 }
@@ -252,8 +336,11 @@ public abstract class AudioBrowserFragment extends Fragment {
     protected void onMediaBrowserConnected() {}
     protected void onPlaybackStateChanged(PlaybackStateCompat state) {}
     protected void onMetadataChanged(EntryID entryID) {}
+    protected void onCurrentEntryChanged(PlaybackEntry entry) {}
     private void onSessionDestroyed() {}
     protected void onSessionReady() {}
     protected void onQueueChanged(List<PlaybackEntry> queue) {}
     protected void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {}
+    protected void onPlaylistPlaybackOrderModeChanged(int playbackOrderMode) {}
+    protected void onRepeatModeChanged(boolean repeat) {}
 }

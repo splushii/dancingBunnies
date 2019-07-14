@@ -5,8 +5,6 @@ import android.util.Log;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-import se.splushii.dancingbunnies.musiclibrary.EntryID;
-
 interface AudioPlayer {
     Callback dummyCallback = new Callback() {
         private static final String LC = "AudioPlayer.dummyCallback";
@@ -17,8 +15,8 @@ interface AudioPlayer {
         }
 
         @Override
-        public void onCurrentEntryChanged(EntryID entryID) {
-            Log.d(LC, "onMetaChanged");
+        public void onCurrentEntryChanged(PlaybackEntry entry) {
+            Log.d(LC, "onCurrentEntryChanged");
         }
 
         @Override
@@ -57,7 +55,7 @@ interface AudioPlayer {
 
     interface Callback {
         void onStateChanged(int playBackState);
-        void onCurrentEntryChanged(EntryID entryID);
+        void onCurrentEntryChanged(PlaybackEntry entry);
         void onPreloadChanged();
         void onSongEnded();
     }

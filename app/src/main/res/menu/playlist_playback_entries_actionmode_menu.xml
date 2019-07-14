@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/playlist_playback_entries_actionmode_action_play_now"
+        android:title="@string/item_action_play"
+        android:icon="@drawable/ic_play_arrow_white_24dp"/>
+    <item
+        android:id="@+id/playlist_playback_entries_actionmode_action_queue"
+        android:title="@string/item_action_queue"
+        android:icon="@drawable/ic_queue_white_24dp"/>
+</menu>

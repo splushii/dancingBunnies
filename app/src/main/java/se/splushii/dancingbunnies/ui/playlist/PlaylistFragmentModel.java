@@ -12,6 +12,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
+import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
@@ -27,7 +28,8 @@ public class PlaylistFragmentModel extends ViewModel {
     private LinkedList<PlaylistUserState> backStack;
 
     private MutableLiveData<PlaylistID> currentPlaylistID;
-    private MutableLiveData<PlaylistEntry> currentPlaylistEntry;
+    private MutableLiveData<PlaybackEntry> currentPlaylistEntry;
+    private MutableLiveData<PlaybackEntry> currentEntry;
 
     private static PlaylistUserState initialUserState() {
         return new PlaylistUserState.Builder().build();
@@ -97,6 +99,7 @@ public class PlaylistFragmentModel extends ViewModel {
         getMutableUserState().setValue(new PlaylistUserState.Builder()
                 .fromState(getUserStateValue())
                 .setBrowsedPlaylist(playlistID)
+                .setShowPlaybackEntries(true)
                 .build()
         );
     }
@@ -139,18 +142,33 @@ public class PlaylistFragmentModel extends ViewModel {
         return getMutableCurrentPlaylist();
     }
 
-    private synchronized MutableLiveData<PlaylistEntry> getMutableCurrentPlaylistEntry() {
+    private synchronized MutableLiveData<PlaybackEntry> getMutableCurrentEntry() {
+        if (currentEntry == null) {
+            currentEntry = new MutableLiveData<>();
+        }
+        return currentEntry;
+    }
+
+    void setCurrentEntry(PlaybackEntry entry) {
+        getMutableCurrentEntry().setValue(entry);
+    }
+
+    LiveData<PlaybackEntry> getCurrentEntry() {
+        return getMutableCurrentEntry();
+    }
+
+    private synchronized MutableLiveData<PlaybackEntry> getMutableCurrentPlaylistEntry() {
         if (currentPlaylistEntry == null) {
             currentPlaylistEntry = new MutableLiveData<>();
         }
         return currentPlaylistEntry;
     }
 
-    void setCurrentPlaylistEntry(PlaylistEntry playlistEntry) {
+    void setCurrentPlaylistEntry(PlaybackEntry playlistEntry) {
         getMutableCurrentPlaylistEntry().setValue(playlistEntry);
     }
 
-    LiveData<PlaylistEntry> getCurrentPlaylistEntry() {
+    LiveData<PlaybackEntry> getCurrentPlaylistEntry() {
         return getMutableCurrentPlaylistEntry();
     }
 
@@ -160,11 +178,21 @@ public class PlaylistFragmentModel extends ViewModel {
         return userState != null && userState.isBrowsedCurrent(currentPlaylistID);
     }
 
-    public void goToPlaylist(PlaylistID playlistID, long pos) {
+    public void goToPlaylistPlayback(PlaylistID playlistID, long playlistPos) {
+        // TODO: Use playlistPos. Scroll to it somehow. (Can't just use setPos() in current impl)
         getMutableUserState().setValue(new PlaylistUserState.Builder()
                 .fromState(getUserStateValue())
                 .setBrowsedPlaylist(playlistID)
-                .setPos((int) pos, 0)
+                .setShowPlaybackEntries(true)
+                .setPos(0, 0)
+                .build()
+        );
+    }
+
+    void showPlaybackEntries(boolean show) {
+        getMutableUserState().setValue(new PlaylistUserState.Builder()
+                .fromState(getUserStateValue())
+                .setShowPlaybackEntries(show)
                 .build()
         );
     }

@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Transformations;
 import se.splushii.dancingbunnies.R;
+import se.splushii.dancingbunnies.audioplayer.PlaybackController;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
@@ -24,42 +25,56 @@ public class PlaybackControllerStorage {
     private static final String LC = Util.getLogContext(PlaybackControllerStorage.class);
     public static final int QUEUE_ID_QUEUE = 0;
     public static final int QUEUE_ID_PLAYLIST = 1;
+    public static final int QUEUE_ID_CURRENT_PLAYLIST_PLAYBACK = 6;
     public static final int QUEUE_ID_HISTORY = 2;
     public static final int QUEUE_ID_LOCALAUDIOPLAYER_PRELOAD = 3;
     public static final int QUEUE_ID_LOCALAUDIOPLAYER_HISTORY = 5;
 
+    private static PlaybackControllerStorage instance;
+
     private final PlaybackControllerEntryDao entryModel;
     private final SharedPreferences preferences;
-    private final String localaudioplayer_current_src_key;
-    private final String localaudioplayer_current_id_key;
-    private final String localaudioplayer_current_playback_id_key;
-    private final String localaudioplayer_current_lastPos_key;
+    private final String playback_id_counter_key;
+    private final String playlist_selection_id_counter_key;
     private final String playlist_src_key;
     private final String playlist_id_key;
     private final String playlist_type_key;
     private final String playlist_position_key;
-    private final String playback_id_counter;
-    private final String playlist_selection_id_counter;
+    private final String playlist_selection_id_key;
+    private final String playlist_playback_order_key;
+    private final String playlist_playback_repeat_key;
+    private final String localaudioplayer_current_src_key;
+    private final String localaudioplayer_current_id_key;
+    private final String localaudioplayer_current_playback_id_key;
+    private final String localaudioplayer_current_lastPos_key;
     private final String localaudioplayer_current_playlist_pos_key;
     private final String localaudioplayer_current_playlist_selection_id_key;
-    private final String playlist_selection_id;
 
-    public PlaybackControllerStorage(Context context) {
+    public static synchronized PlaybackControllerStorage getInstance(Context context) {
+        if (instance == null) {
+            instance = new PlaybackControllerStorage(context);
+        }
+        return instance;
+    }
+
+    private PlaybackControllerStorage(Context context) {
         entryModel = DB.getDB(context).playbackControllerEntryModel();
         preferences = PreferenceManager.getDefaultSharedPreferences(context);
-        localaudioplayer_current_src_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_src);
-        localaudioplayer_current_id_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_id);
-        localaudioplayer_current_playback_id_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_playback_id);
-        localaudioplayer_current_playlist_pos_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_playlist_pos);
-        localaudioplayer_current_playlist_selection_id_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_playlist_selection_id);
-        localaudioplayer_current_lastPos_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_lastpos);
+        playback_id_counter_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playback_id_counter);
+        playlist_selection_id_counter_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_selection_id_counter);
         playlist_src_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_src);
         playlist_id_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_id);
         playlist_type_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_type);
         playlist_position_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_position);
-        playlist_selection_id = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_selection_id);
-        playback_id_counter = context.getResources().getString(R.string.pref_key_playbackcontroller_playback_id_counter);
-        playlist_selection_id_counter = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_selection_id_counter);
+        playlist_selection_id_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_selection_id);
+        playlist_playback_order_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_playback_order);
+        playlist_playback_repeat_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_playback_repeat);
+        localaudioplayer_current_src_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_src);
+        localaudioplayer_current_id_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_id);
+        localaudioplayer_current_playback_id_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_playback_id);
+        localaudioplayer_current_lastPos_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_lastpos);
+        localaudioplayer_current_playlist_pos_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_playlist_pos);
+        localaudioplayer_current_playlist_selection_id_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_playlist_selection_id);
     }
 
     public static String getQueueName(int queueID) {
@@ -68,6 +83,8 @@ public class PlaybackControllerStorage {
                 return "controller_queue";
             case PlaybackControllerStorage.QUEUE_ID_PLAYLIST:
                 return "controller_playlist";
+            case PlaybackControllerStorage.QUEUE_ID_CURRENT_PLAYLIST_PLAYBACK:
+                return "controller_playlist_playback";
             case PlaybackControllerStorage.QUEUE_ID_HISTORY:
                 return "controller_history";
             case PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_PRELOAD:
@@ -89,6 +106,10 @@ public class PlaybackControllerStorage {
 
     public LiveData<List<PlaybackEntry>> getHistoryEntries() {
         return getEntries(PlaybackControllerStorage.QUEUE_ID_HISTORY);
+    }
+
+    public LiveData<List<PlaybackEntry>> getCurrentPlaylistPlaybackEntries() {
+        return getEntries(PlaybackControllerStorage.QUEUE_ID_CURRENT_PLAYLIST_PLAYBACK);
     }
 
     private LiveData<List<PlaybackEntry>> getEntries(int queueID) {
@@ -122,6 +143,26 @@ public class PlaybackControllerStorage {
         });
     }
 
+    public CompletableFuture<Void> update(int queueID, List<PlaybackEntry> entries) {
+        if (entries == null || entries.isEmpty()) {
+            return Util.futureResult(null);
+        }
+        return CompletableFuture.supplyAsync(() -> {
+            entryModel.update(queueID, entries);
+            return null;
+        });
+    }
+
+    public CompletableFuture<Void> replaceWith(int queueID, List<PlaybackEntry> entries) {
+        if (entries == null || entries.isEmpty()) {
+            return Util.futureResult(null);
+        }
+        return CompletableFuture.supplyAsync(() -> {
+            entryModel.replaceWith(queueID, entries);
+            return null;
+        });
+    }
+
     public CompletableFuture<Void> removeEntries(int queueID, List<PlaybackEntry> playbackEntries) {
         return CompletableFuture.supplyAsync(() -> {
             entryModel.removeEntries(queueID, playbackEntries);
@@ -136,12 +177,22 @@ public class PlaybackControllerStorage {
         });
     }
 
+    public CompletableFuture<Void> move(int queueID,
+                                        long beforePlaybackID,
+                                        List<PlaybackEntry> playbackEntries) {
+        return CompletableFuture.supplyAsync(() -> {
+            entryModel.move(queueID, beforePlaybackID, playbackEntries);
+            return null;
+        });
+    }
+
     public void setLocalAudioPlayerCurrent(PlaybackEntry playbackEntry, long lastPos) {
         preferences.edit()
                 .putString(localaudioplayer_current_src_key, playbackEntry.entryID.src)
                 .putString(localaudioplayer_current_id_key, playbackEntry.entryID.id)
                 .putString(localaudioplayer_current_playback_id_key, Long.toString(playbackEntry.playbackID))
-                .putLong(localaudioplayer_current_lastPos_key, lastPos)
+                .putString(localaudioplayer_current_lastPos_key, Long.toString(lastPos))
+                .putString(localaudioplayer_current_playlist_selection_id_key, Long.toString(playbackEntry.playlistSelectionID))
                 .apply();
     }
 
@@ -151,6 +202,7 @@ public class PlaybackControllerStorage {
                 .remove(localaudioplayer_current_id_key)
                 .remove(localaudioplayer_current_playback_id_key)
                 .remove(localaudioplayer_current_lastPos_key)
+                .remove(localaudioplayer_current_playlist_selection_id_key)
                 .apply();
     }
 
@@ -177,7 +229,8 @@ public class PlaybackControllerStorage {
     }
 
     public long getLocalAudioPlayerCurrentLastPos() {
-        return preferences.getLong(localaudioplayer_current_lastPos_key, 0);
+        String lastPos = preferences.getString(localaudioplayer_current_lastPos_key, null);
+        return lastPos == null ? 0 : Long.parseLong(lastPos);
     }
 
     public CompletableFuture<List<PlaybackEntry>> getLocalAudioPlayerQueueEntries() {
@@ -219,35 +272,35 @@ public class PlaybackControllerStorage {
                 .apply();
     }
 
-    public long getCurrentPlaylistPosition() {
+    public long getCurrentPlaylistPlaybackPosition() {
         return preferences.getLong(playlist_position_key, 0);
     }
 
-    public void setCurrentPlaylistPosition(long position) {
+    public void setCurrentPlaylistPlaybackPosition(long position) {
         preferences.edit()
                 .putLong(playlist_position_key, position)
                 .apply();
     }
 
     public long getCurrentPlaylistSelectionID() {
-        return preferences.getLong(playlist_selection_id, -1);
+        return preferences.getLong(playlist_selection_id_key, -1);
     }
 
     public void setCurrentPlaylistSelectionID(long id) {
         preferences.edit()
-                .putLong(playlist_selection_id, id)
+                .putLong(playlist_selection_id_key, id)
                 .apply();
     }
 
     public long getNextPlaybackID() {
-        synchronized (playback_id_counter) {
-            return getNextID(playback_id_counter);
+        synchronized (playback_id_counter_key) {
+            return getNextID(playback_id_counter_key);
         }
     }
 
     public long getNextPlaylistSelectionID() {
-        synchronized (playlist_selection_id_counter) {
-            return getNextID(playlist_selection_id_counter);
+        synchronized (playlist_selection_id_counter_key) {
+            return getNextID(playlist_selection_id_counter_key);
         }
     }
 
@@ -259,5 +312,28 @@ public class PlaybackControllerStorage {
             throw new RuntimeException("Could not update ID for: " + idCounterKey);
         }
         return id;
+    }
+
+    public int getCurrentPlaylistPlaybackOrderMode() {
+        return preferences.getInt(
+                playlist_playback_order_key,
+                PlaybackController.PLAYBACK_ORDER_SEQUENTIAL
+        );
+    }
+
+    public void setCurrentPlaylistPlaybackOrderMode(int playbackOrderMode) {
+        preferences.edit()
+                .putInt(playlist_playback_order_key, playbackOrderMode)
+                .apply();
+    }
+
+    public boolean getCurrentPlaylistPlaybackRepeatMode() {
+        return preferences.getBoolean(playlist_playback_repeat_key, true);
+    }
+
+    public void setCurrentPlaylistPlaybackRepeatMode(boolean repeat) {
+        preferences.edit()
+                .putBoolean(playlist_playback_repeat_key, repeat)
+                .apply();
     }
 }

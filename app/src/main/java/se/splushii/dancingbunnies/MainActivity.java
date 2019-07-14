@@ -47,6 +47,7 @@ public final class MainActivity extends AppCompatActivity {
     public static final String SELECTION_ID_MUSICLIBRARY = "dancingbunnies.selection_id.musiclibrary";
     public static final String SELECTION_ID_PLAYLIST = "dancingbunnies.selection_id.playlist";
     public static final String SELECTION_ID_PLAYLIST_ENTRIES = "dancingbunnies.selection_id.playlist_entries";
+    public static final String SELECTION_ID_PLAYLIST_PLAYBACK_ENTRIES = "dancingbunnies.selection_id.playlist_entries";
     public static final int REQUEST_CODE_META_DIALOG = 1337;
     public static final int REQUEST_CODE_ADD_TO_PLAYLIST_DIALOG = 1338;
 
@@ -113,7 +114,7 @@ public final class MainActivity extends AppCompatActivity {
         if (playlistID != null) {
             Log.d(LC, "mainactivity goto playlist: " + playlistID + " pos: " + pos);
             mViewPager.setCurrentItem(PAGER_PLAYLIST);
-            playlistModel.goToPlaylist(playlistID, pos);
+            playlistModel.goToPlaylistPlayback(playlistID, pos);
             return;
         }
         int page_id = intent.getIntExtra(INTENT_EXTRA_PAGER_SELECTION, -1);

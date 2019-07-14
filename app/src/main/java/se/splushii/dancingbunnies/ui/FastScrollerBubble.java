@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies.ui.musiclibrary;
+package se.splushii.dancingbunnies.ui;
 
 import android.content.Context;
 import android.util.AttributeSet;

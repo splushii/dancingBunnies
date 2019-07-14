@@ -12,6 +12,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
@@ -35,6 +36,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
+import se.splushii.dancingbunnies.audioplayer.PlaybackController;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
@@ -42,6 +44,7 @@ import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
+import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.ui.selection.RecyclerViewActionModeSelectionTracker;
 import se.splushii.dancingbunnies.util.Util;
@@ -70,8 +73,11 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private Meta currentMeta = Meta.UNKNOWN_ENTRY;
 
     private final NowPlayingEntriesAdapter recViewAdapter;
+    private FastScroller fastScroller;
     private RecyclerViewActionModeSelectionTracker<PlaybackEntry, NowPlayingEntriesAdapter, NowPlayingEntriesAdapter.ViewHolder> selectionTracker;
     private TextView currentPlaylistName;
+    private ImageView currentPlaylistOrder;
+    private ImageView currentPlaylistRepeat;
 
     private NowPlayingFragmentModel model;
     private MutableLiveData<PlaylistID> currentPlaylistIDLiveData = new MutableLiveData<>();
@@ -102,6 +108,18 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 StorageStrategy.createParcelableStorage(PlaybackEntry.class),
                 savedInstanceState
         );
+        recView.setOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    recViewAdapter.hideTrackItemActions();
+                }
+            }
+        });
+
+        fastScroller = rootView.findViewById(R.id.nowplaying_fastscroller);
+        fastScroller.setRecyclerView(recView);
 
         View nowPlayingInfo = rootView.findViewById(R.id.nowplaying_info);
         nowPlayingInfo.setOnClickListener(v -> MetaDialogFragment.showMeta(this, currentMeta));
@@ -155,6 +173,8 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 rootView.findViewById(R.id.nowplaying_current_playlist_info_layout);
         currentPlaylistNameLayout.setOnClickListener(v -> goToPlaylistEntry());
         currentPlaylistName = rootView.findViewById(R.id.nowplaying_current_playlist_name);
+        currentPlaylistOrder = rootView.findViewById(R.id.nowplaying_current_order);
+        currentPlaylistRepeat = rootView.findViewById(R.id.nowplaying_current_repeat);
 
         ImageButton currentPlaylistDeselectBtn =
                 rootView.findViewById(R.id.nowplaying_current_playlist_deselect);
@@ -223,6 +243,12 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     @Override
+    public void onDestroyView() {
+        fastScroller.onDestroy();
+        super.onDestroyView();
+    }
+
+    @Override
     public void onDestroy() {
         super.onDestroy();
         stopProgressUpdate();
@@ -241,6 +267,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 Util.getMainThreadExecutor()
         );
         model.setQueue(getQueue());
+        updatePlaylistPlaybackMode(getPlaylistPlaybackOrderMode(), isRepeat());
         refreshView(model.getState().getValue());
     }
 
@@ -467,9 +494,38 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         );
     }
 
+    @Override
+    protected void onPlaylistPlaybackOrderModeChanged(int playbackOrderMode) {
+        updatePlaylistPlaybackMode(playbackOrderMode, isRepeat());
+    }
+
+    @Override
+    protected void onRepeatModeChanged(boolean repeat) {
+        updatePlaylistPlaybackMode(getPlaylistPlaybackOrderMode(), repeat);
+    }
+
+    private void updatePlaylistPlaybackMode(int playbackOrderMode, boolean repeat) {
+        switch (playbackOrderMode) {
+            default:
+            case PlaybackController.PLAYBACK_ORDER_SEQUENTIAL:
+                currentPlaylistOrder.setImageResource(R.drawable.ic_sort_black_24dp);
+                break;
+            case PlaybackController.PLAYBACK_ORDER_SHUFFLE:
+                currentPlaylistOrder.setImageResource(R.drawable.ic_shuffle_black_24dp);
+                break;
+            case PlaybackController.PLAYBACK_ORDER_RANDOM:
+                currentPlaylistOrder.setImageResource(R.drawable.ic_gesture_black_24dp);
+                break;
+        }
+        currentPlaylistRepeat.setVisibility(repeat ? VISIBLE : INVISIBLE);
+    }
+
     public void clearSelection() {
         if (selectionTracker != null) {
             selectionTracker.clearSelection();
+        }
+        if (recViewAdapter != null) {
+            recViewAdapter.hideTrackItemActions();
         }
     }
 }

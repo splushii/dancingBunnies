@@ -26,6 +26,7 @@ import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.ui.AddToPlaylistDialogFragment;
+import se.splushii.dancingbunnies.ui.FastScrollerBubble;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.util.Util;
@@ -79,12 +80,18 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         selectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
             @Override
             public void onSelectionChanged() {
-                if (selectionTracker.hasSelection() && selectedActionView != null) {
-                    selectedActionView.animateShow(false);
-                    selectedActionView = null;
+                if (selectionTracker.hasSelection()) {
+                    hideTrackItemActions();
                 }
             }
         });
+    }
+
+    void hideTrackItemActions() {
+        if (selectedActionView != null) {
+            selectedActionView.animateShow(false);
+            selectedActionView = null;
+        }
     }
 
     public class SongViewHolder extends RecyclerView.ViewHolder {
@@ -202,9 +209,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         EntryID entryID = EntryID.from(item);
         holder.setEntryId(entryID);
         if (position % 2 == 0) {
-            holder.libraryEntry.setBackgroundResource(R.drawable.musiclibrary_item_drawable);
+            holder.libraryEntry.setBackgroundResource(R.color.white_active_accent);
         } else {
-            holder.libraryEntry.setBackgroundResource(R.drawable.musiclibrary_item_drawable_odd);
+            holder.libraryEntry.setBackgroundResource(R.color.gray50_active_accent);
         }
         boolean selected = selectionTracker != null
                 && selectionTracker.isSelected(holder.getItemDetails().getSelectionKey());
@@ -217,8 +224,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             if (browsable) {
                 fragment.browse(entryID);
             } else {
-                if (selectedActionView != null && selectedActionView != holder.actionsView) {
-                    selectedActionView.animateShow(false);
+                if (selectedActionView != holder.actionsView) {
+                    hideTrackItemActions();
                 }
                 selectedActionView = holder.actionsView;
                 boolean showActionsView = !selectionTracker.hasSelection()

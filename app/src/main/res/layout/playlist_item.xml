@@ -3,7 +3,7 @@
     android:id="@+id/playlist"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/playlist_entry_drawable">
+    android:background="@color/white_active_accent">
     <LinearLayout
         android:background="?android:selectableItemBackground"
         android:layout_width="match_parent"

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -216,24 +217,35 @@
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/musiclibrary_recyclerview"
-            android:visibility="visible"
+        <androidx.coordinatorlayout.widget.CoordinatorLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:paddingTop="8dp"
-            android:clipToPadding="false"/>
+            android:orientation="horizontal">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/musiclibrary_recyclerview"
+                    android:visibility="visible"
+                    android:layout_height="match_parent"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:paddingTop="8dp"
+                    android:clipToPadding="false"/>
+                <se.splushii.dancingbunnies.ui.FastScroller
+                    android:id="@+id/musiclibrary_fastscroller"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:background="@color/grey100"
+                    android:layout_gravity="end" />
+            </LinearLayout>
+            <se.splushii.dancingbunnies.ui.FastScrollerBubble
+                android:id="@+id/musiclibrary_fastscroller_bubble"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="30dp"
+                android:layout_gravity="end" />
+        </androidx.coordinatorlayout.widget.CoordinatorLayout>
     </LinearLayout>
-    <se.splushii.dancingbunnies.ui.musiclibrary.FastScrollerBubble
-        android:id="@+id/musiclibrary_fastscroller_bubble"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="30dp"
-        android:layout_gravity="end" />
-    <se.splushii.dancingbunnies.ui.musiclibrary.FastScroller
-        android:id="@+id/musiclibrary_fastscroller"
-        android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:layout_gravity="end" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -14,7 +14,6 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
-import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 
 class NowPlayingFragmentModel extends ViewModel {
     private MutableLiveData<NowPlayingState> state;
@@ -66,7 +65,7 @@ class NowPlayingFragmentModel extends ViewModel {
         );
     }
 
-    void setCurrentPlaylistEntry(PlaylistEntry playlistEntry) {
+    void setCurrentPlaylistEntry(PlaybackEntry playlistEntry) {
         getMutableState().setValue(new NowPlayingState.Builder()
                 .fromState(getStateValue())
                 .setCurrentPlaylistEntry(playlistEntry)

@@ -3,7 +3,6 @@ package se.splushii.dancingbunnies.audioplayer;
 import android.util.Log;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -24,29 +23,27 @@ class PlaybackQueue {
     private final Observer<List<PlaybackEntry>> observer = new Observer<List<PlaybackEntry>>() {
         @Override
         public void onChanged(List<PlaybackEntry> playbackEntries) {
-            int previousSize = queue.size();
-            boolean changed = !queue.equals(playbackEntries);
-            queue.clear();
-            queue.addAll(playbackEntries);
+            int previousSize;
+            int newSize;
+            boolean changed;
+            synchronized (queue) {
+                previousSize = queue.size();
+                changed = !queue.equals(playbackEntries);
+                if (changed) {
+                    queue.clear();
+                    queue.addAll(playbackEntries);
+                }
+                newSize = queue.size();
+            }
             if (changed) {
-                PlaybackQueue.this.onChanged(previousSize);
+                PlaybackQueue.this.onChanged(previousSize, newSize);
             }
         }
     };
 
-    private void onChanged(int previousSize) {
-        String statusTitle = PlaybackControllerStorage.getQueueName(queueID)
-                + " changed (size " + previousSize + " -> " + queue.size() + "):";
-        if (queueID != PlaybackControllerStorage.QUEUE_ID_HISTORY) {
-            Log.d(LC, Util.getPlaybackEntriesChangedStatus(
-                    statusTitle,
-                    "\n",
-                    "",
-                    queue
-            ));
-        } else {
-            Log.d(LC, statusTitle);
-        }
+    private void onChanged(int previousSize, int newSize) {
+        Log.d(LC, PlaybackControllerStorage.getQueueName(queueID)
+                + " changed (size " + previousSize + " -> " + newSize + ")");
         onQueueChanged.run();
     }
 
@@ -63,54 +60,93 @@ class PlaybackQueue {
     }
 
     CompletableFuture<Void> add(int toPosition, List<PlaybackEntry> entries) {
-        Log.d(LC, Util.getPlaybackEntriesChangedStatus(
-                "add(toPosition: " + toPosition
-                        + ", entries.size: " + entries.size() + ") to \""
-                        + PlaybackControllerStorage.getQueueName(queueID) + "\":",
-                "\n+ ",
-                "",
-                entries
-        ));
+        Log.d(LC, "add(toPosition: " + toPosition + ", entries.size: " + entries.size() + ")"
+                + "to \"" + PlaybackControllerStorage.getQueueName(queueID) + "\"");
         if (entries.isEmpty()) {
             return Util.futureResult(null);
         }
         // Optimistic update of in-memory queue
-        int previousSize = queue.size();
-        int index = toPosition;
-        for (PlaybackEntry entry: entries) {
-            queue.add(index++, entry);
+        int previousSize;
+        int newSize;
+        synchronized (queue) {
+            previousSize = queue.size();
+            int index = toPosition;
+            for (PlaybackEntry entry : entries) {
+                queue.add(index++, entry);
+            }
+            newSize = queue.size();
         }
-        onChanged(previousSize);
+        onChanged(previousSize, newSize);
         // Actual update of queue source data
         return storage.insert(queueID, toPosition, entries);
     }
 
+    CompletableFuture<Void> update(List<PlaybackEntry> movedPlaybackEntries) {
+        Log.d(LC, "update(entries.size: " + movedPlaybackEntries.size() + ")"
+                + " in \"" + PlaybackControllerStorage.getQueueName(queueID) + "\"");
+        // Optimistic update of in-memory queue
+        int previousSize;
+        int newSize;
+        synchronized (queue) {
+            previousSize = queue.size();
+            for (PlaybackEntry entry: movedPlaybackEntries) {
+                int index = queue.indexOf(entry);
+                if (index >= 0) {
+                    queue.set(index, entry);
+                }
+            }
+            newSize = queue.size();
+        }
+        onChanged(previousSize, newSize);
+        // Actual update of queue source data
+        return storage.update(queueID, movedPlaybackEntries);
+    }
+
+    CompletableFuture<Void> replaceWith(List<PlaybackEntry> entries) {
+        Log.d(LC, "replaceWith(entries.size: " + entries.size() + ")"
+                + " in \"" + PlaybackControllerStorage.getQueueName(queueID) + "\"");
+        // Optimistic update of in-memory queue
+        int previousSize;
+        int newSize;
+        synchronized (queue) {
+            previousSize = queue.size();
+            queue.clear();
+            queue.addAll(entries);
+            newSize = queue.size();
+        }
+        onChanged(previousSize, newSize);
+        return storage.replaceWith(queueID, entries);
+    }
+
     CompletableFuture<List<PlaybackEntry>> poll(int num) {
         Log.d(LC, "poll(" + num + ")");
-        List<PlaybackEntry> entries = queue.stream()
-                .limit(num)
-                .collect(Collectors.toList());
+        List<PlaybackEntry> entries;
+        synchronized (queue) {
+            entries = queue.stream()
+                    .limit(num)
+                    .collect(Collectors.toList());
+        }
         return removeEntries(entries)
                 .thenApply(aVoid -> entries);
     }
 
     CompletableFuture<Void> removeEntries(List<PlaybackEntry> playbackEntries) {
-        Log.d(LC, Util.getPlaybackEntriesChangedStatus(
-                "remove(" + playbackEntries.size() + ") from \""
-                        + PlaybackControllerStorage.getQueueName(queueID) + "\":",
-                "\n- ",
-                "",
-                playbackEntries
-        ));
+        Log.d(LC, "remove(entries.size: " + playbackEntries.size() + ")"
+                + "from \"" + PlaybackControllerStorage.getQueueName(queueID) + "\"");
         if (playbackEntries.isEmpty()) {
             return Util.futureResult(null);
         }
         // Optimistic update of in-memory queue
-        int previousSize = queue.size();
-        for (PlaybackEntry entry: playbackEntries) {
-            queue.remove(entry);
+        int previousSize;
+        int newSize;
+        synchronized (queue) {
+            previousSize = queue.size();
+            for (PlaybackEntry entry : playbackEntries) {
+                queue.remove(entry);
+            }
+            newSize = queue.size();
         }
-        onChanged(previousSize);
+        onChanged(previousSize, newSize);
         // Actual update of queue source data
         return storage.removeEntries(queueID, playbackEntries);
     }
@@ -118,26 +154,43 @@ class PlaybackQueue {
     CompletableFuture<Void> clear() {
         Log.d(LC, "clear \"" + PlaybackControllerStorage.getQueueName(queueID) + "\"");
         // Optimistic update of in-memory queue
-        int previousSize = queue.size();
-        queue.clear();
-        onChanged(previousSize);
+        int previousSize;
+        int newSize;
+        synchronized (queue) {
+            previousSize = queue.size();
+            queue.clear();
+            newSize = queue.size();
+        }
+        onChanged(previousSize, newSize);
         // Actual update of queue source data
         return storage.removeAll(queueID);
     }
 
-    public Collection<? extends PlaybackEntry> getEntries() {
-        return new ArrayList<>(queue);
+    public List<PlaybackEntry> getEntries() {
+        synchronized (queue) {
+            return new ArrayList<>(queue);
+        }
     }
 
     public int size() {
-        return queue.size();
+        synchronized (queue) {
+            return queue.size();
+        }
     }
 
     PlaybackEntry get(int queuePosition) {
-        return queuePosition < queue.size() ? queue.get(queuePosition) : null;
+        synchronized (queue) {
+            return queuePosition < queue.size() ? queue.get(queuePosition) : null;
+        }
     }
 
     void onDestroy() {
         playbackEntriesLiveData.removeObserver(observer);
+    }
+
+    boolean isEmpty() {
+        synchronized (queue) {
+            return queue.size() < 1;
+        }
     }
 }

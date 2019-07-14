@@ -53,8 +53,11 @@ import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
-import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
+
+import static se.splushii.dancingbunnies.audioplayer.PlaybackController.PLAYBACK_ORDER_RANDOM;
+import static se.splushii.dancingbunnies.audioplayer.PlaybackController.PLAYBACK_ORDER_SEQUENTIAL;
+import static se.splushii.dancingbunnies.audioplayer.PlaybackController.PLAYBACK_ORDER_SHUFFLE;
 
 // TODO: Handle incoming call. PhoneStateListener.LISTEN_CALL_STATE.
 public class AudioPlayerService extends MediaBrowserServiceCompat {
@@ -66,7 +69,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static final float PLAYBACK_SPEED_PLAYING = 1f;
     private static final String MEDIA_ID_ROOT = "dancingbunnies.media.id.root";
 
-    public static final String SESSION_EVENT_PLAYLIST_SELECTION_CHANGED = "PLAYLIST_SELECTION_CHANGED";
+    public static final String SESSION_EVENT_PLAYLIST_SELECTION_CHANGED =
+            "se.splushii.dancingbunnies.session_event.playlist_selection_changed";
+    public static final String SESSION_EVENT_CURRENT_ENTRY_CHANGED =
+            "se.splushii.dancingbunnies.session_event.current_entry_changed";
 
     private static final String COMMAND_SET_CURRENT_PLAYLIST = "SET_CURRENT_PLAYLIST";
     private static final String COMMAND_GET_CURRENT_PLAYLIST = "GET_CURRENT_PLAYLIST";
@@ -76,6 +82,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static final String COMMAND_DEQUEUE = "DEQUEUE";
     private static final String COMMAND_MOVE_QUEUE_ITEMS = "MOVE_QUEUE_ITEMS";
 
+    public static final String BUNDLE_KEY_CURRENT_PLAYBACK_ENTRY_BUNDLE =
+            "dancingbunnies.bundle.key.audioplayerservice.playback_entry_bundle";
     public static final String BUNDLE_KEY_PLAYBACK_ENTRY =
             "dancingbunnies.bundle.key.audioplayerservice.playback_entry";
     public static final String BUNDLE_KEY_POS =
@@ -281,7 +289,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public void onCreate() {
         super.onCreate();
         Log.d(LC, "onCreate");
-        playbackControllerStorage = new PlaybackControllerStorage(this);
+        playbackControllerStorage = PlaybackControllerStorage.getInstance(this);
 
         bindService(
                 new Intent(this, MusicLibraryService.class),
@@ -394,10 +402,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                         | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
                         | PlaybackStateCompat.ACTION_SKIP_TO_QUEUE_ITEM
                         | PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
+                        | PlaybackStateCompat.ACTION_SET_SHUFFLE_MODE
+                        | PlaybackStateCompat.ACTION_SET_REPEAT_MODE
 //                        TODO: Implement
 //                        | PlaybackStateCompat.ACTION_SET_RATING
-//                        | PlaybackStateCompat.ACTION_SET_SHUFFLE_MODE
-//                        | PlaybackStateCompat.ACTION_SET_REPEAT_MODE
 //                        | PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
                 )
                 .setState(PlaybackStateCompat.STATE_NONE, 0, PLAYBACK_SPEED_PAUSED);
@@ -636,13 +644,20 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         @Override
         public void onSetShuffleMode(int shuffleMode) {
-            // TODO: implement
-            Log.e(LC, "onSetShuffleMode not implemented");
+            Log.d(LC, "onSetShuffleMode");
             switch (shuffleMode) {
-                case PlaybackStateCompat.SHUFFLE_MODE_INVALID:
                 case PlaybackStateCompat.SHUFFLE_MODE_NONE:
-                case PlaybackStateCompat.SHUFFLE_MODE_ALL:
+                    playbackController.resetPlaybackOrder();
+                    break;
                 case PlaybackStateCompat.SHUFFLE_MODE_GROUP:
+                    // TODO: Use proper action and constant for enabling/disabling random playback
+                    Log.w(LC, "SHUFFLE_MODE_GROUP currently used for random playback");
+                    playbackController.setRandomPlayback();
+                    break;
+                case PlaybackStateCompat.SHUFFLE_MODE_ALL:
+                    playbackController.shufflePlaybackOrder();
+                    break;
+                case PlaybackStateCompat.SHUFFLE_MODE_INVALID:
                 default:
                     Log.e(LC, "onSetShuffleMode unhandled mode: " + shuffleMode);
                     break;
@@ -651,13 +666,16 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         @Override
         public void onSetRepeatMode(int repeatMode) {
-            // TODO: implement
-            Log.e(LC, "onSetRepeatMode not implemented");
+            Log.d(LC, "onSetRepeatMode: " + repeatMode);
             switch (repeatMode) {
                 case PlaybackStateCompat.REPEAT_MODE_INVALID:
                 case PlaybackStateCompat.REPEAT_MODE_NONE:
-                case PlaybackStateCompat.REPEAT_MODE_ONE:
+                    playbackController.setRepeat(false);
+                    break;
                 case PlaybackStateCompat.REPEAT_MODE_ALL:
+                    playbackController.setRepeat(true);
+                    break;
+                case PlaybackStateCompat.REPEAT_MODE_ONE:
                 case PlaybackStateCompat.REPEAT_MODE_GROUP:
                 default:
                     Log.e(LC, "onSetRepeatMode unhandled mode: " + repeatMode);
@@ -878,10 +896,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         cb.send(0, result);
     }
 
-    public static CompletableFuture<PlaylistEntry> getCurrentPlaylistEntry(
+    public static CompletableFuture<PlaybackEntry> getCurrentPlaylistEntry(
             MediaControllerCompat mediaController
     ) {
-        CompletableFuture<PlaylistEntry> ret = new CompletableFuture<>();
+        CompletableFuture<PlaybackEntry> ret = new CompletableFuture<>();
         mediaController.sendCommand(AudioPlayerService.COMMAND_GET_CURRENT_PLAYLIST_ENTRY, null,
                 new ResultReceiver(null) {
                     @Override
@@ -891,7 +909,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                             ret.complete(null);
                             return;
                         }
-                        PlaylistEntry playlistEntry = resultData.getParcelable("playlistEntry");
+                        PlaybackEntry playlistEntry = resultData.getParcelable("playlistEntry");
                         ret.complete(playlistEntry);
                     }
                 });
@@ -899,24 +917,18 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void getPlaylistEntry(ResultReceiver cb, Bundle extras) {
-        PlaylistID playlistID = playbackController.getCurrentPlaylistID();
-        if (playlistID == null) {
+        List<PlaybackEntry> playlistEntries = playbackController.playlistGetNext(0, 1);
+        if (playlistEntries.size() == 0) {
             cb.send(0, new Bundle());
             return;
         }
-        long pos = playbackController.getCurrentPlaylistPosition();
-        int shuffleSeed = playbackController.getShuffleSeed();
-        musicLibraryService.playlistGetNext(playlistID, pos, 0,1, shuffleSeed)
-                .thenAccept(playlistEntries -> {
-                    if (playlistEntries.size() == 0) {
-                        cb.send(0, new Bundle());
-                    } else if (playlistEntries.size() != 1) {
-                        cb.send(1, null);
-                    }
-                    Bundle result = new Bundle();
-                    result.putParcelable("playlistEntry", playlistEntries.get(0));
-                    cb.send(0, result);
-                });
+        if (playlistEntries.size() != 1) {
+            cb.send(1, null);
+            return;
+        }
+        Bundle result = new Bundle();
+        result.putParcelable("playlistEntry", playlistEntries.get(0));
+        cb.send(0, result);
     }
 
     private class PlaybackCallback implements PlaybackController.Callback {
@@ -1046,6 +1058,19 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         }
 
         @Override
+        public void onCurrentEntryChanged(PlaybackEntry entry) {
+            Bundle b = new Bundle();
+            b.putParcelable(BUNDLE_KEY_PLAYBACK_ENTRY, entry);
+            Bundle extras = mediaSession.getController().getExtras();
+            if (extras == null) {
+                extras = new Bundle();
+            }
+            extras.putBundle(BUNDLE_KEY_CURRENT_PLAYBACK_ENTRY_BUNDLE, b);
+            mediaSession.setExtras(extras);
+            mediaSession.sendSessionEvent(SESSION_EVENT_CURRENT_ENTRY_CHANGED, b);
+        }
+
+        @Override
         public void onQueueChanged(List<PlaybackEntry> queue) {
             List<MediaSessionCompat.QueueItem> queueItems = new ArrayList<>();
             for (int i = 0; i < queue.size(); i++) {
@@ -1081,6 +1106,31 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onPlayerSeekPositionChanged(long pos) {
             setPlaybackState(playbackState.getState(), pos, playbackState.getPlaybackSpeed());
+        }
+
+        @Override
+        public void onPlaybackOrderChanged(int playbackOrderMode) {
+            Log.d(LC, "onPlaybackOrderChanged: " + playbackOrderMode);
+            switch (playbackOrderMode) {
+                default:
+                case PLAYBACK_ORDER_SEQUENTIAL:
+                    mediaSession.setShuffleMode(PlaybackStateCompat.SHUFFLE_MODE_NONE);
+                    break;
+                case PLAYBACK_ORDER_SHUFFLE:
+                    mediaSession.setShuffleMode(PlaybackStateCompat.SHUFFLE_MODE_ALL);
+                    break;
+                case PLAYBACK_ORDER_RANDOM:
+                    mediaSession.setShuffleMode(PlaybackStateCompat.SHUFFLE_MODE_GROUP);
+                    break;
+            }
+        }
+
+        @Override
+        public void onRepeatModeChanged(boolean repeat) {
+            Log.d(LC, "onRepeatModeChanged: " + repeat);
+            mediaSession.setRepeatMode(repeat ?
+                    PlaybackStateCompat.REPEAT_MODE_ALL : PlaybackStateCompat.REPEAT_MODE_NONE
+            );
         }
     }
 

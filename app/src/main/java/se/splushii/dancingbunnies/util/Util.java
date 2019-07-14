@@ -12,7 +12,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -21,7 +20,6 @@ import androidx.core.util.Pair;
 import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 
 public class Util {
     private static final String LC = getLogContext(Util.class);
@@ -74,18 +72,6 @@ public class Util {
             hPos--;
         }
         return new Pair<>(hPos, hPad);
-    }
-
-    public static String getPlaybackEntriesChangedStatus(
-            String title,
-            String entryPrefix,
-            String entrySuffix,
-            List<PlaybackEntry> entries) {
-        StringBuilder sb = new StringBuilder(title);
-        for (PlaybackEntry entry: entries) {
-            sb.append(entryPrefix).append(entry).append(entrySuffix);
-        }
-        return sb.toString();
     }
 
     public static class FutureException extends Throwable {

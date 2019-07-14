@@ -44,6 +44,8 @@ import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.ui.AddToPlaylistDialogFragment;
+import se.splushii.dancingbunnies.ui.FastScroller;
+import se.splushii.dancingbunnies.ui.FastScrollerBubble;
 import se.splushii.dancingbunnies.ui.selection.EntryIDItemDetailsLookup;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -191,6 +193,15 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
 
         recyclerViewAdapter = new MusicLibraryAdapter(this, recyclerView, fastScrollerBubble);
         recyclerView.setAdapter(recyclerViewAdapter);
+        recyclerView.setOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    recyclerViewAdapter.hideTrackItemActions();
+                }
+            }
+        });
 
         selectionTracker = new SelectionTracker.Builder<>(
                 MainActivity.SELECTION_ID_MUSICLIBRARY,
@@ -498,6 +509,9 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     public void clearSelection() {
         if (selectionTracker != null) {
             selectionTracker.clearSelection();
+        }
+        if (recyclerViewAdapter != null) {
+            recyclerViewAdapter.hideTrackItemActions();
         }
     }
 

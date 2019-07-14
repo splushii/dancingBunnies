@@ -364,9 +364,10 @@ public class CastAudioPlayer implements AudioPlayer {
         List<Integer> queueItemIdsToRemove = playbackEntries.stream()
                 .map(playbackEntry -> playbackIDToCastItemIDMap.get(playbackEntry.playbackID))
                 .filter(Objects::nonNull)
+                .distinct()
                 .collect(Collectors.toList());
         logCurrentQueue();
-        Log.d(LC, "deQueue()"
+        Log.d(LC, "dePreload()"
                 + "\nqueueItemIdsToRemove: "
                 + queueItemIdsToRemove.size()
                 + ": " + queueItemIdsToRemove);
@@ -852,7 +853,7 @@ public class CastAudioPlayer implements AudioPlayer {
                     switch (idleReason) {
                         case MediaStatus.IDLE_REASON_FINISHED:
                             if (getNumPreloaded() <= 0) {
-                                callback.onCurrentEntryChanged(EntryID.UNKOWN);
+                                callback.onCurrentEntryChanged(null);
                                 callback.onStateChanged(PlaybackStateCompat.STATE_STOPPED);
                             }
                             callback.onSongEnded();
@@ -897,7 +898,7 @@ public class CastAudioPlayer implements AudioPlayer {
                 return;
             }
             MediaMetadata castMeta = mediaInfo.getMetadata();
-            callback.onCurrentEntryChanged(EntryID.from(castMeta));
+            callback.onCurrentEntryChanged(new PlaybackEntry(castMeta));
         }
 
         @Override

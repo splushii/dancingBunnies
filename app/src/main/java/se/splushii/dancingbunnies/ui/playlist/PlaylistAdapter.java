@@ -101,7 +101,7 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
     public boolean onActionItemClicked(int menuItemID, List<Playlist> selectionList) {
         switch (menuItemID) {
             // TODO: Add support in RecyclerViewActionModeSelectionTracker to specify when
-            // TODO: certain actions are supported depending on currently selected items.
+            // TODO: certain ActionMode actions are supported depending on currently selected items.
             case R.id.playlist_actionmode_action_delete:
                 playlistStorage.deletePlaylists(selectionList);
                 return true;
@@ -253,7 +253,12 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
     @Override
     public void onBindViewHolder(@NonNull PlaylistHolder holder, int position) {
         holder.playlist = playlistDataset.get(position);
-        holder.entry.setOnClickListener(view -> onItemClickListener.accept(holder.playlist));
+        holder.entry.setOnClickListener(view -> {
+            if (hasSelection()) {
+                return;
+            }
+            onItemClickListener.accept(holder.playlist);
+        });
         holder.setName(holder.playlist.name);
         holder.setSourceResourceID(MusicLibraryService.getAPIIconResource(holder.playlist.api));
         holder.updateHighlight(currentPlaylistEntryLiveData.getValue());

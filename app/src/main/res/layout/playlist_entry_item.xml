@@ -4,7 +4,7 @@
     android:id="@+id/playlist_entry"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/playlist_entry_drawable">
+    android:background="@color/white_active_accent">
     <se.splushii.dancingbunnies.ui.TrackItemView
         android:id="@+id/playlist_entry_content"
         android:layout_width="match_parent"

@@ -55,6 +55,8 @@
         <item name="colorControlHighlight">@color/colorAccentLight</item>
         <item name="android:spinnerDropDownItemStyle">@style/SpinnerDropDownItemTheme</item>
         <item name="imageButtonStyle">@style/ImageButtonStyle</item>
+        <!-- colorForeground set for switch track -->
+        <item name="android:colorForeground">@color/grey500</item>
     </style>
 
     <style name="AppTheme" parent="AppTheme.Base">

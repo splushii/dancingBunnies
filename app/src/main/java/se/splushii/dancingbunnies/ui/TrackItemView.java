@@ -170,6 +170,16 @@ public class TrackItemView extends LinearLayout {
         updatePosViewVisibility();
     }
 
+    public void setItemHighlight(boolean highlighted) {
+        if (highlighted) {
+            setBackgroundResource(R.color.primary_extra_light_active_accent);
+        } else {
+            TypedValue value = new TypedValue();
+            getContext().getTheme().resolveAttribute(android.R.color.transparent, value, true);
+            setBackgroundResource(value.resourceId);
+        }
+    }
+
     public void setPosHighlight(boolean highlighted) {
         posViewHighlighted = highlighted;
         if (highlighted) {
@@ -180,11 +190,7 @@ public class TrackItemView extends LinearLayout {
             posView.setTextColor(ContextCompat.getColor(getContext(), R.color.white));
         } else {
             TypedValue value = new TypedValue();
-            getContext().getTheme().resolveAttribute(
-                    android.R.color.transparent,
-                    value,
-                    true
-            );
+            getContext().getTheme().resolveAttribute(android.R.color.transparent, value, true);
             posView.setBackgroundResource(value.resourceId);
             posView.setTextColor(ContextCompat.getColorStateList(getContext(), R.color.secondary_text_color));
         }

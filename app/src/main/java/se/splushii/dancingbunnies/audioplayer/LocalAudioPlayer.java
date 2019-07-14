@@ -42,7 +42,7 @@ class LocalAudioPlayer implements AudioPlayer {
             if (playbackEntry != null) {
                 player = new MediaPlayerInstance(playbackEntry, mediaPlayerCallback);
                 player.seekTo(lastPos);
-                callback.onCurrentEntryChanged(playbackEntry.entryID);
+                callback.onCurrentEntryChanged(playbackEntry);
             }
             storage.getLocalAudioPlayerQueueEntries()
                     .thenApply(entries -> {
@@ -313,10 +313,10 @@ class LocalAudioPlayer implements AudioPlayer {
         player = mediaPlayerInstance;
         Log.d(LC, "setCurrentPlayer: " + (player == null ? "null" : player.title()));
         if (player == null) {
-            callback.onCurrentEntryChanged(EntryID.UNKOWN);
+            callback.onCurrentEntryChanged(null);
         } else {
             player.getReady();
-            callback.onCurrentEntryChanged(player.playbackEntry.entryID);
+            callback.onCurrentEntryChanged(player.playbackEntry);
         }
     }
 

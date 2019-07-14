@@ -85,13 +85,44 @@ public abstract class PlaybackControllerEntryDao {
     }
     // TODO: Use insertBeforeID() instead of insert()
     @Transaction
-    public void insertBeforeID(int queueID,
-                               long beforePlaybackID,
-                               List<PlaybackControllerEntry> entries) {
+    void insertBeforeID(int queueID,
+                        long beforePlaybackID,
+                        List<PlaybackEntry> entries) {
         int numNewEntries = entries.size();
         PlaybackControllerEntry entry = getEntry(queueID, beforePlaybackID);
         int toPosition = entry == null ? getEntriesSync(queueID).size() : entry.pos;
+        List<PlaybackControllerEntry> roomEntries = new ArrayList<>();
+        int entryPosition = toPosition;
+        for (PlaybackEntry playbackEntry: entries) {
+            roomEntries.add(PlaybackControllerEntry.from(queueID, playbackEntry, entryPosition++));
+        }
         _update_pos_before_insert(queueID, toPosition, numNewEntries);
-        _insert(entries);
+        _insert(roomEntries);
+    }
+
+    // Replace with
+    @Transaction
+    public void replaceWith(int queueID, List<PlaybackEntry> entries) {
+        removeAll(queueID);
+        insert(queueID, 0, entries);
+    }
+
+    @Query("UPDATE " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
+            + " SET " + PlaybackControllerEntry.COLUMN_PLAYLIST_POS + " = :playlistPos"
+            + " WHERE "  + PlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID"
+            + " AND " + PlaybackControllerEntry.COLUMN_PLAYBACK_ID + " = :playbackID")
+    abstract void _update(int queueID, long playbackID, int playlistPos);
+    @Transaction
+    public void update(int queueID, List<PlaybackEntry> entries) {
+        for (PlaybackEntry playbackEntry: entries) {
+            _update(queueID, playbackEntry.playbackID, (int) playbackEntry.playlistPos);
+        }
+    }
+
+    // Move
+    @Transaction
+    public void move(int queueID, long beforePlaybackID, List<PlaybackEntry> playbackEntries) {
+        removeEntries(queueID, playbackEntries);
+        insertBeforeID(queueID, beforePlaybackID, playbackEntries);
     }
 }

@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies.ui.nowplaying;
+package se.splushii.dancingbunnies.ui.playlist;
 
 import android.view.ActionMode;
 import android.view.LayoutInflater;
@@ -14,13 +14,16 @@ import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
 import androidx.recyclerview.selection.Selection;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
+import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
@@ -28,43 +31,47 @@ import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
-public class NowPlayingEntriesAdapter extends
-        SelectionRecyclerViewAdapter<PlaybackEntry, NowPlayingEntriesAdapter.ViewHolder> {
-    private static final String LC = Util.getLogContext(NowPlayingEntriesAdapter.class);
+public class PlaylistPlaybackEntriesAdapter extends
+        SelectionRecyclerViewAdapter<PlaybackEntry, PlaylistPlaybackEntriesAdapter.ViewHolder> {
+    private static final String LC = Util.getLogContext(PlaylistPlaybackEntriesAdapter.class);
 
-    // Use to debug. Maybe put in settings in the future.
-    private static final boolean SHOW_PLAYLIST_ENTRIES = true;
+    private final PlaylistFragment fragment;
 
-    private final NowPlayingFragment fragment;
-
-    private List<PlaybackEntry> queueEntries;
+    private List<PlaybackEntry> entries;
     private TrackItemActionsView selectedActionView;
     private LiveData<HashSet<EntryID>> cachedEntriesLiveData;
     private LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> fetchStateLiveData;
-    private LiveData<NowPlayingState> nowPlayingStateLiveData;
+    private LiveData<PlaybackEntry> currentPlaylistEntryLiveData;
+    private MutableLiveData<PlaylistID> browsedPlaylistIDLiveData;
+    private LiveData<PlaylistID> currentPlaylistIDLiveData;
+    private LiveData<PlaybackEntry> currentEntryLiveData;
 
-    NowPlayingEntriesAdapter(NowPlayingFragment fragment) {
+    PlaylistPlaybackEntriesAdapter(PlaylistFragment fragment) {
         this.fragment = fragment;
-        queueEntries = new ArrayList<>();
+        entries = new ArrayList<>();
         setHasStableIds(true);
     }
 
-    void setModel(NowPlayingFragmentModel model) {
+    void setModel(PlaylistFragmentModel model) {
         cachedEntriesLiveData = model.getCachedEntries(fragment.getContext());
         fetchStateLiveData = model.getFetchState(fragment.getContext());
-        nowPlayingStateLiveData = model.getState();
+        currentPlaylistEntryLiveData = model.getCurrentPlaylistEntry();
+        currentPlaylistIDLiveData = model.getCurrentPlaylistID();
+        currentEntryLiveData = model.getCurrentEntry();
+        PlaybackControllerStorage.getInstance(fragment.getContext())
+                .getCurrentPlaylistPlaybackEntries()
+                .observe(fragment.getViewLifecycleOwner(), this::setEntries);
+        browsedPlaylistIDLiveData = new MutableLiveData<>();
+        model.getUserState().observe(fragment.getViewLifecycleOwner(), state -> {
+            if (state != null) {
+                browsedPlaylistIDLiveData.setValue(state.browsedPlaylistID);
+            }
+        });
     }
 
-    void setQueueEntries(List<PlaybackEntry> queueEntries) {
-        List<PlaybackEntry> entries = SHOW_PLAYLIST_ENTRIES ? queueEntries :
-                queueEntries.stream()
-                        .filter(p -> !PlaybackEntry.USER_TYPE_PLAYLIST.equals(p.playbackType))
-                        .collect(Collectors.toList());
-        boolean changed = !this.queueEntries.equals(entries);
-        this.queueEntries = entries;
-        if (changed) {
-            notifyDataSetChanged();
-        }
+    void setEntries(List<PlaybackEntry> entries) {
+        this.entries = entries;
+        notifyDataSetChanged();
     }
 
     @Override
@@ -77,15 +84,15 @@ public class NowPlayingEntriesAdapter extends
 
     @Override
     protected PlaybackEntry getKey(int pos) {
-        if (pos < 0 || pos >= queueEntries.size()) {
+        if (pos < 0 || pos >= entries.size()) {
             return null;
         }
-        return queueEntries.get(pos);
+        return entries.get(pos);
     }
 
     @Override
     protected int getPosition(@NonNull PlaybackEntry key) {
-        int index = queueEntries.indexOf(key);
+        int index = entries.indexOf(key);
         return index < 0 ? RecyclerView.NO_POSITION : index;
     }
 
@@ -95,7 +102,11 @@ public class NowPlayingEntriesAdapter extends
                                 PlaybackEntry idAfterTargetPos) {
         long beforePlaybackID = idAfterTargetPos == null ?
                 PlaybackEntry.PLAYBACK_ID_INVALID : idAfterTargetPos.playbackID;
-        fragment.moveQueueItems(new ArrayList<>(selection), beforePlaybackID);
+        PlaybackControllerStorage.getInstance(fragment.getContext()).move(
+                PlaybackControllerStorage.QUEUE_ID_CURRENT_PLAYLIST_PLAYBACK,
+                beforePlaybackID,
+                new ArrayList<>(selection)
+        );
     }
 
     @Override
@@ -112,14 +123,17 @@ public class NowPlayingEntriesAdapter extends
     @Override
     public boolean onActionItemClicked(int menuItemID, List<PlaybackEntry> selectionList) {
         switch (menuItemID) {
-            case R.id.nowplaying_actionmode_action_queue:
+            case R.id.playlist_playback_entries_actionmode_action_queue:
                 fragment.queue(selectionList.stream()
                         .map(playbackEntry -> playbackEntry.entryID)
                         .collect(Collectors.toList())
                 );
                 return true;
-            case R.id.nowplaying_actionmode_action_dequeue:
-                fragment.dequeue(selectionList);
+            case R.id.playlist_playback_entries_actionmode_action_play_now:
+                fragment.play(selectionList.stream()
+                        .map(playbackEntry -> playbackEntry.entryID)
+                        .collect(Collectors.toList())
+                );
                 return true;
             default:
                 return false;
@@ -128,24 +142,6 @@ public class NowPlayingEntriesAdapter extends
 
     private void updateActionModeView(ActionMode actionMode, Selection<PlaybackEntry> selection) {
         actionMode.setTitle(selection.size() + " entries");
-        boolean showDelete = true;
-        for (PlaybackEntry entry: selection) {
-            if (PlaybackEntry.USER_TYPE_PLAYLIST.equals(entry.playbackType)) {
-                showDelete = false;
-                break;
-            }
-        }
-        actionMode.getMenu().findItem(R.id.nowplaying_actionmode_action_dequeue)
-                .setVisible(showDelete);
-        boolean showQueue = true;
-        for (PlaybackEntry entry: selection) {
-            if (!PlaybackEntry.USER_TYPE_PLAYLIST.equals(entry.playbackType)) {
-                showQueue = false;
-                break;
-            }
-        }
-        actionMode.getMenu().findItem(R.id.nowplaying_actionmode_action_queue)
-                .setVisible(showQueue);
     }
 
     @Override
@@ -163,37 +159,32 @@ public class NowPlayingEntriesAdapter extends
 
     @Override
     public boolean onDragInitiated(Selection<PlaybackEntry> selection) {
-        for (PlaybackEntry entry: selection) {
-            if (!PlaybackEntry.USER_TYPE_QUEUE.equals(entry.playbackType)) {
-                return false;
-            }
-        }
         return true;
     }
 
     @Override
     public boolean validMove(ViewHolder current, ViewHolder target) {
-        return PlaybackEntry.USER_TYPE_QUEUE.equals(target.playbackEntry.playbackType);
+        return true;
     }
 
     @Override
     public boolean validDrag(ViewHolder viewHolder) {
-        return PlaybackEntry.USER_TYPE_QUEUE.equals(viewHolder.playbackEntry.playbackType);
+        return true;
     }
 
     @Override
     protected void moveItemInDataset(int from, int to) {
-        queueEntries.add(to, queueEntries.remove(from));
+        entries.add(to, entries.remove(from));
     }
 
     @Override
     protected void addItemToDataset(int pos, PlaybackEntry item) {
-        queueEntries.add(pos, item);
+        entries.add(pos, item);
     }
 
     @Override
     protected void removeItemFromDataset(int pos) {
-        queueEntries.remove(pos);
+        entries.remove(pos);
     }
 
     void hideTrackItemActions() {
@@ -211,9 +202,9 @@ public class NowPlayingEntriesAdapter extends
 
         ViewHolder(View v) {
             super(v);
-            item = v.findViewById(R.id.nowplaying_item);
-            itemContent = v.findViewById(R.id.nowplaying_item_content);
-            actionsView = v.findViewById(R.id.nowplaying_item_actions);
+            item = v.findViewById(R.id.playlist_entry);
+            itemContent = v.findViewById(R.id.playlist_entry_content);
+            actionsView = v.findViewById(R.id.playlist_entry_actions);
             item.setOnClickListener(view -> {
                 if (hasSelection()) {
                     return;
@@ -235,7 +226,7 @@ public class NowPlayingEntriesAdapter extends
 
         @Override
         protected PlaybackEntry getSelectionKeyOf() {
-            return queueEntries.get(getPositionOf());
+            return entries.get(getPositionOf());
         }
 
         public void setMeta(Meta meta) {
@@ -255,26 +246,37 @@ public class NowPlayingEntriesAdapter extends
             itemContent.setSource(src);
         }
 
-        void updateHighlight(NowPlayingState state) {
-            itemContent.setPosHighlight(state != null
-                    && isFirstPlaylistEntry(getPositionOf())
-                    && state.currentPlaylistEntry != null
-                    && playbackEntry != null
-                    && PlaybackEntry.USER_TYPE_PLAYLIST.equals(playbackEntry.playbackType)
-                    && state.currentPlaylistEntry.playlistPos == playbackEntry.playlistPos);
+        void updateHighlight(PlaylistID browsedPlaylistID,
+                             PlaylistID currentPlaylistID,
+                             PlaybackEntry currentEntry,
+                             PlaybackEntry currentPlaylistEntry) {
+            boolean isCurrentPlaylist = browsedPlaylistID != null
+                    && browsedPlaylistID.equals(currentPlaylistID);
+            boolean isCurrentEntry = playbackEntry != null
+                    && currentEntry != null
+                    && playbackEntry.entryID.equals(currentEntry.entryID);
+            boolean isCurrentPlaylistEntry = playbackEntry != null
+                    && currentPlaylistEntry != null
+                    && playbackEntry.playlistPos == currentPlaylistEntry.playlistPos;
+            itemContent.setPosHighlight(isCurrentPlaylist && isCurrentPlaylistEntry);
+            itemContent.setItemHighlight(isCurrentEntry);
         }
     }
 
     @Override
     public long getItemId(int position) {
-        return queueEntries.get(position).playbackID;
+        return entries.get(position).playbackID;
     }
 
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
-        ViewHolder holder = new ViewHolder(layoutInflater.inflate(R.layout.nowplaying_queue_item, parent, false));
+        ViewHolder holder = new ViewHolder(layoutInflater.inflate(
+                R.layout.playlist_entry_item,
+                parent,
+                false
+        ));
         cachedEntriesLiveData.observe(
                 fragment.getViewLifecycleOwner(),
                 holder.itemContent::setCached
@@ -283,10 +285,43 @@ public class NowPlayingEntriesAdapter extends
                 fragment.getViewLifecycleOwner(),
                 holder.itemContent::setFetchState
         );
-        nowPlayingStateLiveData.observe(
+        currentPlaylistEntryLiveData.observe(
                 fragment.getViewLifecycleOwner(),
-                holder::updateHighlight
+                currentPlaylistEntry -> holder.updateHighlight(
+                        browsedPlaylistIDLiveData.getValue(),
+                        currentPlaylistIDLiveData.getValue(),
+                        currentEntryLiveData.getValue(),
+                        currentPlaylistEntry
+                )
         );
+        currentEntryLiveData.observe(
+                fragment.getViewLifecycleOwner(),
+                currentEntry -> holder.updateHighlight(
+                        browsedPlaylistIDLiveData.getValue(),
+                        currentPlaylistIDLiveData.getValue(),
+                        currentEntry,
+                        currentPlaylistEntryLiveData.getValue()
+                )
+        );
+        currentPlaylistIDLiveData.observe(
+                fragment.getViewLifecycleOwner(),
+                currentPlaylistID -> holder.updateHighlight(
+                        browsedPlaylistIDLiveData.getValue(),
+                        currentPlaylistID,
+                        currentEntryLiveData.getValue(),
+                        currentPlaylistEntryLiveData.getValue()
+                )
+        );
+        browsedPlaylistIDLiveData.observe(
+                fragment.getViewLifecycleOwner(),
+                browsedPlaylistID -> holder.updateHighlight(
+                        browsedPlaylistID,
+                        currentPlaylistIDLiveData.getValue(),
+                        currentEntryLiveData.getValue(),
+                        currentPlaylistEntryLiveData.getValue()
+                )
+        );
+
         holder.initMetaObserver(fragment.requireContext());
         holder.observeMeta(fragment.getViewLifecycleOwner(), holder::setMeta);
         return holder;
@@ -295,48 +330,31 @@ public class NowPlayingEntriesAdapter extends
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, int position) {
         holder.actionsView.initialize();
-        PlaybackEntry entry = queueEntries.get(position);
+        PlaybackEntry entry = entries.get(position);
         holder.playbackEntry = entry;
-        boolean isQueueEntry = PlaybackEntry.USER_TYPE_QUEUE.equals(entry.playbackType);
-        if (isQueueEntry) {
-            holder.itemContent.resetPos();
-            holder.actionsView.setOnRemoveListener(() -> fragment.dequeue(entry));
-            holder.actionsView.setOnQueueListener(null);
-            holder.updateHighlight(null);
-        } else {
-            holder.itemContent.setPos(entry.playlistPos);
-            holder.actionsView.setOnRemoveListener(null);
-            holder.actionsView.setOnQueueListener(() -> fragment.queue(entry.entryID));
-            holder.updateHighlight(nowPlayingStateLiveData.getValue());
-        }
+        holder.itemContent.setPos(entry.playlistPos);
+        holder.actionsView.setOnPlayListener(() -> fragment.play(entry.entryID));
+        holder.actionsView.setOnQueueListener(() -> fragment.queue(entry.entryID));
+        holder.actionsView.setOnPlayPlaylistListener(() -> fragment.setCurrentPlaylist(
+                currentPlaylistIDLiveData.getValue(),
+                entry.playlistPos
+        ));
+        holder.updateHighlight(
+                browsedPlaylistIDLiveData.getValue(),
+                currentPlaylistIDLiveData.getValue(),
+                currentEntryLiveData.getValue(),
+                currentPlaylistEntryLiveData.getValue()
+        );
         holder.itemContent.setPreloaded(entry.isPreloaded());
         holder.itemContent.setEntryID(entry.entryID);
         holder.item.setActivated(isSelected(holder.getKey()));
-        holder.actionsView.setOnPlayListener(() -> {
-            fragment.skipItems(position + 1);
-            fragment.play();
-        });
         holder.itemContent.setFetchState(fetchStateLiveData.getValue());
         holder.itemContent.setCached(cachedEntriesLiveData.getValue());
         holder.setEntryID(entry.entryID);
     }
 
-    private boolean isFirstPlaylistEntry(int position) {
-        for (int i = 0; i < queueEntries.size() && i <= position; i++) {
-            PlaybackEntry entry = queueEntries.get(i);
-            if (PlaybackEntry.USER_TYPE_PLAYLIST.equals(entry.playbackType)) {
-                if (i == position) {
-                    return true;
-                } else {
-                    break;
-                }
-            }
-        }
-        return false;
-    }
-
     @Override
     public int getItemCount() {
-        return queueEntries.size();
+        return entries.size();
     }
 }
