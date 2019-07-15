@@ -9,25 +9,27 @@ import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 class NowPlayingState {
     final List<PlaybackEntry> queue;
     final PlaylistID currentPlaylistID;
-    final PlaybackEntry currentPlaylistEntry;
+    final long currentPlaylistPos;
 
-    private NowPlayingState(List<PlaybackEntry> queue, PlaylistID currentPlaylistID, PlaybackEntry currentPlaylistEntry) {
+    private NowPlayingState(List<PlaybackEntry> queue,
+                            PlaylistID currentPlaylistID,
+                            long currentPlaylistPos) {
         this.queue = queue;
         this.currentPlaylistID = currentPlaylistID;
-        this.currentPlaylistEntry = currentPlaylistEntry;
+        this.currentPlaylistPos = currentPlaylistPos;
     }
 
     static class Builder {
         private List<PlaybackEntry> queue = new ArrayList<>();
         private PlaylistID currentPlaylistID;
-        private PlaybackEntry currentPlaylistEntry;
+        private long currentPlaylistPos;
 
         Builder() {}
 
         Builder fromState(NowPlayingState state) {
             queue = state.queue;
             currentPlaylistID = state.currentPlaylistID;
-            currentPlaylistEntry = state.currentPlaylistEntry;
+            currentPlaylistPos = state.currentPlaylistPos;
             return this;
         }
 
@@ -41,8 +43,8 @@ class NowPlayingState {
             return this;
         }
 
-        Builder setCurrentPlaylistEntry(PlaybackEntry playlistEntry) {
-            this.currentPlaylistEntry = playlistEntry;
+        Builder setCurrentPlaylistPos(long playlistPos) {
+            this.currentPlaylistPos = playlistPos;
             return this;
         }
 
@@ -50,7 +52,7 @@ class NowPlayingState {
             return new NowPlayingState(
                     queue,
                     currentPlaylistID,
-                    currentPlaylistEntry
+                    currentPlaylistPos
             );
         }
     }

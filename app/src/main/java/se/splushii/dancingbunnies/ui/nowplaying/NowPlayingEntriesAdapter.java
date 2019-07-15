@@ -258,10 +258,9 @@ public class NowPlayingEntriesAdapter extends
         void updateHighlight(NowPlayingState state) {
             itemContent.setPosHighlight(state != null
                     && isFirstPlaylistEntry(getPositionOf())
-                    && state.currentPlaylistEntry != null
                     && playbackEntry != null
                     && PlaybackEntry.USER_TYPE_PLAYLIST.equals(playbackEntry.playbackType)
-                    && state.currentPlaylistEntry.playlistPos == playbackEntry.playlistPos);
+                    && state.currentPlaylistPos == playbackEntry.playlistPos);
         }
     }
 
@@ -305,6 +304,10 @@ public class NowPlayingEntriesAdapter extends
             holder.updateHighlight(null);
         } else {
             holder.itemContent.setPos(entry.playlistPos);
+            holder.actionsView.setOnPlayPlaylistListener(() -> fragment.setCurrentPlaylist(
+                    fragment.getCurrentPlaylist(),
+                    entry.playlistPos
+            ));
             holder.actionsView.setOnRemoveListener(null);
             holder.actionsView.setOnQueueListener(() -> fragment.queue(entry.entryID));
             holder.updateHighlight(nowPlayingStateLiveData.getValue());

@@ -166,12 +166,27 @@ public abstract class AudioBrowserFragment extends Fragment {
         return playbackEntryBundle.getParcelable(AudioPlayerService.BUNDLE_KEY_PLAYBACK_ENTRY);
     }
 
-    protected CompletableFuture<PlaylistID> getCurrentPlaylist() {
-        return AudioPlayerService.getCurrentPlaylist(mediaController);
+    public PlaylistID getCurrentPlaylist() {
+        Bundle extras = mediaController.getExtras();
+        if (extras == null) {
+            return null;
+        }
+        Bundle playlistIDBundle = extras.getBundle(
+                AudioPlayerService.BUNDLE_KEY_CURRENT_PLAYLIST_ID_BUNDLE
+        );
+        if (playlistIDBundle == null) {
+            return null;
+        }
+        playlistIDBundle.setClassLoader(PlaylistID.class.getClassLoader());
+        return playlistIDBundle.getParcelable(AudioPlayerService.BUNDLE_KEY_PLAYLIST_ID);
     }
 
-    protected CompletableFuture<PlaybackEntry> getCurrentPlaylistEntry() {
-        return AudioPlayerService.getCurrentPlaylistEntry(mediaController);
+    protected long getCurrentPlaylistPos() {
+        Bundle extras = mediaController.getExtras();
+        if (extras == null) {
+            return PlaybackEntry.PLAYLIST_POS_NONE;
+        }
+        return extras.getLong(AudioPlayerService.BUNDLE_KEY_CURRENT_PLAYLIST_POS);
     }
 
     protected void pause() {
@@ -303,7 +318,7 @@ public abstract class AudioBrowserFragment extends Fragment {
                             PlaylistID playlistID = extras.getParcelable(
                                     AudioPlayerService.BUNDLE_KEY_PLAYLIST_ID
                             );
-                            long pos = extras.getLong(AudioPlayerService.BUNDLE_KEY_POS);
+                            long pos = extras.getLong(AudioPlayerService.BUNDLE_KEY_CURRENT_PLAYLIST_POS);
                             AudioBrowserFragment.this.onPlaylistSelectionChanged(playlistID, pos);
                             break;
                         case AudioPlayerService.SESSION_EVENT_CURRENT_ENTRY_CHANGED:

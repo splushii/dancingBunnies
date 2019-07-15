@@ -49,7 +49,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
     private TrackItemActionsView selectedActionView;
     private LiveData<HashSet<EntryID>> cachedEntriesLiveData;
     private LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> fetchStateLiveData;
-    private LiveData<PlaybackEntry> currentPlaylistEntryLiveData;
+    private LiveData<Long> currentPlaylistPosLiveData;
     private LiveData<PlaylistID> currentPlaylistIDLiveData;
     private LiveData<PlaybackEntry> currentEntryLiveData;
 
@@ -190,11 +190,11 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
                 fragment.getViewLifecycleOwner(),
                 holder.itemContent::setFetchState
         );
-        currentPlaylistEntryLiveData.observe(
+        currentPlaylistPosLiveData.observe(
                 fragment.getViewLifecycleOwner(),
-                currentPlaylistEntry -> holder.updateHighlight(
+                currentPlaylistPos -> holder.updateHighlight(
                         currentEntryLiveData.getValue(),
-                        currentPlaylistEntry,
+                        currentPlaylistPos,
                         currentPlaylistIDLiveData.getValue()
                 )
         );
@@ -202,7 +202,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
                 fragment.getViewLifecycleOwner(),
                 currentPlaylistID -> holder.updateHighlight(
                         currentEntryLiveData.getValue(),
-                        currentPlaylistEntryLiveData.getValue(),
+                        currentPlaylistPosLiveData.getValue(),
                         currentPlaylistID
                 )
         );
@@ -210,7 +210,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
                 fragment.getViewLifecycleOwner(),
                 currentEntry -> holder.updateHighlight(
                         currentEntry,
-                        currentPlaylistEntryLiveData.getValue(),
+                        currentPlaylistPosLiveData.getValue(),
                         currentPlaylistIDLiveData.getValue()
                 )
         );
@@ -232,7 +232,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         holder.itemContent.setFetchState(fetchStateLiveData.getValue());
         holder.updateHighlight(
                 currentEntryLiveData.getValue(),
-                currentPlaylistEntryLiveData.getValue(),
+                currentPlaylistPosLiveData.getValue(),
                 currentPlaylistIDLiveData.getValue()
         );
         holder.itemContent.setPos(playlistEntry.pos);
@@ -290,7 +290,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         });
         cachedEntriesLiveData = model.getCachedEntries(fragment.getContext());
         fetchStateLiveData = model.getFetchState(fragment.getContext());
-        currentPlaylistEntryLiveData = model.getCurrentPlaylistEntry();
+        currentPlaylistPosLiveData = model.getCurrentPlaylistPos();
         currentPlaylistIDLiveData = model.getCurrentPlaylistID();
         currentEntryLiveData = model.getCurrentEntry();
     }
@@ -354,7 +354,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         }
 
         void updateHighlight(PlaybackEntry currentEntry,
-                             PlaybackEntry currentPlaylistEntry,
+                             Long currentPlaylistPos,
                              PlaylistID currentPlaylistID) {
             boolean isCurrentPlaylist = playlistID != null
                     && playlistID.equals(currentPlaylistID);
@@ -362,8 +362,8 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
                     && currentEntry != null
                     && EntryID.from(playlistEntry).equals(currentEntry.entryID);
             boolean isCurrentPlaylistEntry = playlistEntry != null
-                    && currentPlaylistEntry != null
-                    && playlistEntry.pos == currentPlaylistEntry.playlistPos;
+                    && currentPlaylistPos != null
+                    && playlistEntry.pos == currentPlaylistPos;
             itemContent.setPosHighlight(isCurrentPlaylist && isCurrentPlaylistEntry);
             itemContent.setItemHighlight(isCurrentEntry);
         }

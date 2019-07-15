@@ -172,14 +172,8 @@ public class PlaylistFragment extends AudioBrowserFragment {
     protected void onSessionReady() {
         updatePlaylistPlaybackButtons(getPlaylistPlaybackOrderMode(), isRepeat());
         if (model != null) {
-            getCurrentPlaylist().thenAcceptAsync(
-                    playlistID -> model.setCurrentPlaylist(playlistID),
-                    Util.getMainThreadExecutor()
-            );
-            getCurrentPlaylistEntry().thenAcceptAsync(
-                    playlistEntry -> model.setCurrentPlaylistEntry(playlistEntry),
-                    Util.getMainThreadExecutor()
-            );
+            model.setCurrentPlaylist(getCurrentPlaylist());
+            model.setCurrentPlaylistPos(getCurrentPlaylistPos());
             model.setCurrentEntry(getCurrentEntry());
             refreshView(model.getUserStateValue());
         }
@@ -188,10 +182,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
     @Override
     protected void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {
         model.setCurrentPlaylist(playlistID);
-        getCurrentPlaylistEntry().thenAcceptAsync(
-                playlistEntry -> model.setCurrentPlaylistEntry(playlistEntry),
-                Util.getMainThreadExecutor()
-        );
+        model.setCurrentPlaylistPos(pos);
     }
 
     @Override

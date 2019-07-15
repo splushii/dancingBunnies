@@ -65,10 +65,10 @@ class NowPlayingFragmentModel extends ViewModel {
         );
     }
 
-    void setCurrentPlaylistEntry(PlaybackEntry playlistEntry) {
+    void setCurrentPlaylistPos(long playlistPos) {
         getMutableState().setValue(new NowPlayingState.Builder()
                 .fromState(getStateValue())
-                .setCurrentPlaylistEntry(playlistEntry)
+                .setCurrentPlaylistPos(playlistPos)
                 .build()
         );
     }

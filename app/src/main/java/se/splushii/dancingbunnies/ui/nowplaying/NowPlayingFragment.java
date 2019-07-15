@@ -82,7 +82,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private NowPlayingFragmentModel model;
     private MutableLiveData<PlaylistID> currentPlaylistIDLiveData = new MutableLiveData<>();
     private View currentPlaylistView;
-    private long currentPos;
 
     public NowPlayingFragment() {
         recViewAdapter = new NowPlayingEntriesAdapter(this);
@@ -188,7 +187,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             return;
         }
         PlaylistID playlistID = state.currentPlaylistID;
-        long pos = currentPos;
+        long pos = getCurrentPlaylistPos();
         Intent intent = new Intent(requireContext(), MainActivity.class);
         intent.putExtra(MainActivity.INTENT_EXTRA_PLAYLIST_ID, playlistID);
         intent.putExtra(MainActivity.INTENT_EXTRA_PLAYLIST_POS, pos);
@@ -258,14 +257,8 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     @Override
     protected void onSessionReady() {
         super.onSessionReady();
-        getCurrentPlaylist().thenAcceptAsync(
-                playlistID -> model.setCurrentPlaylist(playlistID),
-                Util.getMainThreadExecutor()
-        );
-        getCurrentPlaylistEntry().thenAcceptAsync(
-                playlistEntry -> model.setCurrentPlaylistEntry(playlistEntry),
-                Util.getMainThreadExecutor()
-        );
+        model.setCurrentPlaylist(getCurrentPlaylist());
+        model.setCurrentPlaylistPos(getCurrentPlaylistPos());
         model.setQueue(getQueue());
         updatePlaylistPlaybackMode(getPlaylistPlaybackOrderMode(), isRepeat());
         refreshView(model.getState().getValue());
@@ -487,11 +480,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     @Override
     protected void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {
         model.setCurrentPlaylist(playlistID);
-        currentPos = pos;
-        getCurrentPlaylistEntry().thenAcceptAsync(
-                playlistEntry -> model.setCurrentPlaylistEntry(playlistEntry),
-                Util.getMainThreadExecutor()
-        );
+        model.setCurrentPlaylistPos(pos);
     }
 
     @Override

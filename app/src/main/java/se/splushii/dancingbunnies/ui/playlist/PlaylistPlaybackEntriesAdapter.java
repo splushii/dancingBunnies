@@ -41,7 +41,7 @@ public class PlaylistPlaybackEntriesAdapter extends
     private TrackItemActionsView selectedActionView;
     private LiveData<HashSet<EntryID>> cachedEntriesLiveData;
     private LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> fetchStateLiveData;
-    private LiveData<PlaybackEntry> currentPlaylistEntryLiveData;
+    private LiveData<Long> currentPlaylistPosLiveData;
     private MutableLiveData<PlaylistID> browsedPlaylistIDLiveData;
     private LiveData<PlaylistID> currentPlaylistIDLiveData;
     private LiveData<PlaybackEntry> currentEntryLiveData;
@@ -55,7 +55,7 @@ public class PlaylistPlaybackEntriesAdapter extends
     void setModel(PlaylistFragmentModel model) {
         cachedEntriesLiveData = model.getCachedEntries(fragment.getContext());
         fetchStateLiveData = model.getFetchState(fragment.getContext());
-        currentPlaylistEntryLiveData = model.getCurrentPlaylistEntry();
+        currentPlaylistPosLiveData = model.getCurrentPlaylistPos();
         currentPlaylistIDLiveData = model.getCurrentPlaylistID();
         currentEntryLiveData = model.getCurrentEntry();
         PlaybackControllerStorage.getInstance(fragment.getContext())
@@ -249,15 +249,15 @@ public class PlaylistPlaybackEntriesAdapter extends
         void updateHighlight(PlaylistID browsedPlaylistID,
                              PlaylistID currentPlaylistID,
                              PlaybackEntry currentEntry,
-                             PlaybackEntry currentPlaylistEntry) {
+                             Long currentPlaylistPos) {
             boolean isCurrentPlaylist = browsedPlaylistID != null
                     && browsedPlaylistID.equals(currentPlaylistID);
             boolean isCurrentEntry = playbackEntry != null
                     && currentEntry != null
                     && playbackEntry.entryID.equals(currentEntry.entryID);
             boolean isCurrentPlaylistEntry = playbackEntry != null
-                    && currentPlaylistEntry != null
-                    && playbackEntry.playlistPos == currentPlaylistEntry.playlistPos;
+                    && currentPlaylistPos != null
+                    && playbackEntry.playlistPos == currentPlaylistPos;
             itemContent.setPosHighlight(isCurrentPlaylist && isCurrentPlaylistEntry);
             itemContent.setItemHighlight(isCurrentEntry);
         }
@@ -285,13 +285,13 @@ public class PlaylistPlaybackEntriesAdapter extends
                 fragment.getViewLifecycleOwner(),
                 holder.itemContent::setFetchState
         );
-        currentPlaylistEntryLiveData.observe(
+        currentPlaylistPosLiveData.observe(
                 fragment.getViewLifecycleOwner(),
-                currentPlaylistEntry -> holder.updateHighlight(
+                currentPlaylistPos -> holder.updateHighlight(
                         browsedPlaylistIDLiveData.getValue(),
                         currentPlaylistIDLiveData.getValue(),
                         currentEntryLiveData.getValue(),
-                        currentPlaylistEntry
+                        currentPlaylistPos
                 )
         );
         currentEntryLiveData.observe(
@@ -300,7 +300,7 @@ public class PlaylistPlaybackEntriesAdapter extends
                         browsedPlaylistIDLiveData.getValue(),
                         currentPlaylistIDLiveData.getValue(),
                         currentEntry,
-                        currentPlaylistEntryLiveData.getValue()
+                        currentPlaylistPosLiveData.getValue()
                 )
         );
         currentPlaylistIDLiveData.observe(
@@ -309,7 +309,7 @@ public class PlaylistPlaybackEntriesAdapter extends
                         browsedPlaylistIDLiveData.getValue(),
                         currentPlaylistID,
                         currentEntryLiveData.getValue(),
-                        currentPlaylistEntryLiveData.getValue()
+                        currentPlaylistPosLiveData.getValue()
                 )
         );
         browsedPlaylistIDLiveData.observe(
@@ -318,7 +318,7 @@ public class PlaylistPlaybackEntriesAdapter extends
                         browsedPlaylistID,
                         currentPlaylistIDLiveData.getValue(),
                         currentEntryLiveData.getValue(),
-                        currentPlaylistEntryLiveData.getValue()
+                        currentPlaylistPosLiveData.getValue()
                 )
         );
 
@@ -343,7 +343,7 @@ public class PlaylistPlaybackEntriesAdapter extends
                 browsedPlaylistIDLiveData.getValue(),
                 currentPlaylistIDLiveData.getValue(),
                 currentEntryLiveData.getValue(),
-                currentPlaylistEntryLiveData.getValue()
+                currentPlaylistPosLiveData.getValue()
         );
         holder.itemContent.setPreloaded(entry.isPreloaded());
         holder.itemContent.setEntryID(entry.entryID);

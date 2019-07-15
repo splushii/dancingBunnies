@@ -28,8 +28,8 @@ public class PlaylistFragmentModel extends ViewModel {
     private LinkedList<PlaylistUserState> backStack;
 
     private MutableLiveData<PlaylistID> currentPlaylistID;
-    private MutableLiveData<PlaybackEntry> currentPlaylistEntry;
     private MutableLiveData<PlaybackEntry> currentEntry;
+    private MutableLiveData<Long> currentPlaylistPos;
 
     private static PlaylistUserState initialUserState() {
         return new PlaylistUserState.Builder().build();
@@ -157,19 +157,19 @@ public class PlaylistFragmentModel extends ViewModel {
         return getMutableCurrentEntry();
     }
 
-    private synchronized MutableLiveData<PlaybackEntry> getMutableCurrentPlaylistEntry() {
-        if (currentPlaylistEntry == null) {
-            currentPlaylistEntry = new MutableLiveData<>();
+    private synchronized MutableLiveData<Long> getMutableCurrentPlaylistPos() {
+        if (currentPlaylistPos == null) {
+            currentPlaylistPos = new MutableLiveData<>();
         }
-        return currentPlaylistEntry;
+        return currentPlaylistPos;
     }
 
-    void setCurrentPlaylistEntry(PlaybackEntry playlistEntry) {
-        getMutableCurrentPlaylistEntry().setValue(playlistEntry);
+    void setCurrentPlaylistPos(long playlistPos) {
+        getMutableCurrentPlaylistPos().setValue(playlistPos);
     }
 
-    LiveData<PlaybackEntry> getCurrentPlaylistEntry() {
-        return getMutableCurrentPlaylistEntry();
+    LiveData<Long> getCurrentPlaylistPos() {
+        return getMutableCurrentPlaylistPos();
     }
 
     boolean isBrowsedCurrent() {
