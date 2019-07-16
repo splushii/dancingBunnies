@@ -89,6 +89,7 @@ public class PlaybackController {
     // Current playlist entries in playback order.
     // Generated from current playlist entries and possibly reordered by user.
     private final PlaybackQueue currentPlaylistPlaybackEntries;
+    private long currentPlaylistPosition;
     private long currentPlaylistPlaybackPosition;
     private HashMap<Long, Long> playbackIDToRandomMap = new HashMap<>();
 
@@ -112,6 +113,7 @@ public class PlaybackController {
 
         currentPlaylistSelectionID = storage.getCurrentPlaylistSelectionID();
         currentPlaylistID = storage.getCurrentPlaylist();
+        currentPlaylistPosition = storage.getCurrentPlaylistPosition();
         currentPlaylistPlaybackPosition = storage.getCurrentPlaylistPlaybackPosition();
         currentPlaylistPlaybackOrderMode = storage.getCurrentPlaylistPlaybackOrderMode();
         currentPlaylistPlaybackRepeatMode = storage.getCurrentPlaylistPlaybackRepeatMode();
@@ -193,6 +195,10 @@ public class PlaybackController {
         isPlaying = false;
         callback.onPlaybackOrderChanged(getCurrentPlaylistPlaybackOrderMode());
         callback.onRepeatModeChanged(getCurrentPlaylistPlaybackRepeatMode());
+        callback.onPlaylistSelectionChanged(
+                getCurrentPlaylistID(),
+                getCurrentPlaylistPosition()
+        );
         submitCompletableFuture(this::updateState);
     }
 
@@ -223,7 +229,7 @@ public class PlaybackController {
             currentPlaylistPlaybackEntries.clear();
             currentPlaylistIDLiveData.setValue(playlistID);
         }
-        setCurrentPlaylistPlaybackPosition(playlistPlaybackPosFromPlaylistPos(pos));
+        setCurrentPlaylistPosition(pos, playlistPlaybackPosFromPlaylistPos(pos));
         callback.onPlaylistSelectionChanged(playlistID, pos);
     }
 
@@ -283,14 +289,20 @@ public class PlaybackController {
         return currentPlaylistID;
     }
 
-    private void setCurrentPlaylistPlaybackPosition(long pos) {
-        Log.d(LC, "setCurrentPlaylistPlaybackPosition: " + pos);
-        currentPlaylistPlaybackPosition = pos;
-        storage.setCurrentPlaylistPlaybackPosition(pos);
+    private void setCurrentPlaylistPosition(long playlistPos, long playlistPlaybackPos) {
+        Log.d(LC, "setCurrentPlaylistPosition"
+                + " playlist: " + playlistPos + " playback: " + playlistPlaybackPos);
+        currentPlaylistPosition = playlistPos;
+        currentPlaylistPlaybackPosition = playlistPlaybackPos;
+        storage.setCurrentPlaylistPosition(playlistPos, playlistPlaybackPos);
     }
 
     private long getCurrentPlaylistPlaybackPosition() {
         return currentPlaylistPlaybackPosition;
+    }
+
+    private long getCurrentPlaylistPosition() {
+        return currentPlaylistPosition;
     }
 
     CompletableFuture<Void> resetPlaybackOrder() {
@@ -302,12 +314,10 @@ public class PlaybackController {
                     .thenRun(() -> {
                         setCurrentPlaylistPlaybackOrderMode(PLAYBACK_ORDER_SEQUENTIAL);
                         setCurrentPlaylistSelectionID(storage.getNextPlaylistSelectionID());
-                        setCurrentPlaylistPlaybackPosition(0);
                         PlaybackEntry entry = currentPlaylistPlaybackEntries.get(0);
-                        callback.onPlaylistSelectionChanged(
-                                getCurrentPlaylistID(),
-                                entry == null ? 0: entry.playlistPos
-                        );
+                        long playlistPos = entry == null ? 0: entry.playlistPos;
+                        setCurrentPlaylistPosition(playlistPos, 0);
+                        callback.onPlaylistSelectionChanged(getCurrentPlaylistID(), playlistPos);
                     })
                     .thenRun(this::updateState);
         });
@@ -322,9 +332,10 @@ public class PlaybackController {
                     .thenRun(() -> {
                         setCurrentPlaylistPlaybackOrderMode(PLAYBACK_ORDER_SHUFFLE);
                         setCurrentPlaylistSelectionID(storage.getNextPlaylistSelectionID());
-                        setCurrentPlaylistPlaybackPosition(0);
-                        long playlistPosition = currentPlaylistPlaybackEntries.get(0).playlistPos;
-                        callback.onPlaylistSelectionChanged(getCurrentPlaylistID(), playlistPosition);
+                        PlaybackEntry entry = currentPlaylistPlaybackEntries.get(0);
+                        long playlistPos = entry == null ? 0: entry.playlistPos;
+                        setCurrentPlaylistPosition(playlistPos, 0);
+                        callback.onPlaylistSelectionChanged(getCurrentPlaylistID(), playlistPos);
                     })
                     .thenRun(this::updateState);
         });
@@ -689,7 +700,10 @@ public class PlaybackController {
                         + " (" + currentPlaylistPlaybackPosition + ")"
                         + " to expected playlist playback pos: "
                         + expectedPlaylistPlaybackPosition);
-                setCurrentPlaylistPlaybackPosition(expectedPlaylistPlaybackPosition);
+                setCurrentPlaylistPosition(
+                        expectedPlaylistPosition,
+                        expectedPlaylistPlaybackPosition
+                );
                 callback.onPlaylistSelectionChanged(
                         getCurrentPlaylistID(),
                         expectedPlaylistPosition

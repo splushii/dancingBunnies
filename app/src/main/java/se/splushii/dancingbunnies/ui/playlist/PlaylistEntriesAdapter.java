@@ -1,6 +1,5 @@
 package se.splushii.dancingbunnies.ui.playlist;
 
-import android.util.Log;
 import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -52,6 +51,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
     private LiveData<Long> currentPlaylistPosLiveData;
     private LiveData<PlaylistID> currentPlaylistIDLiveData;
     private LiveData<PlaybackEntry> currentEntryLiveData;
+    private boolean initialScrolled;
 
     PlaylistEntriesAdapter(PlaylistFragment playlistFragment) {
         fragment = playlistFragment;
@@ -261,38 +261,44 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         return playlistEntriesDataset.size();
     }
 
-    private void setPlaylistID(PlaylistID id) {
-        playlistEntriesDataset = Collections.emptyList();
-        playlistID = id;
-        notifyDataSetChanged();
-    }
-
-    private void setDataSet(List<PlaylistEntry> entries) {
+    private void setDataSet(PlaylistID playlistID, List<PlaylistEntry> entries) {
+        this.playlistID = playlistID;
         playlistEntriesDataset = entries;
         notifyDataSetChanged();
     }
 
     void setModel(PlaylistFragmentModel model) {
-        Transformations.switchMap(model.getUserState(), playlistUserState -> {
-            if (playlistUserState.showPlaylists) {
-                setPlaylistID(null);
+        initialScrolled = false;
+        Transformations.switchMap(model.getUserState(), userState -> {
+            if (userState.showPlaylists
+                    || userState.browsedPlaylistID == null) {
+                setDataSet(null, Collections.emptyList());
                 return new MutableLiveData<>();
             }
-            PlaylistID playlistID = playlistUserState.browsedPlaylistID;
-            Log.d(LC, "New playlistID: " + playlistID);
-            setPlaylistID(playlistID);
-            return model.getPlaylistEntries(playlistID, fragment.getContext());
+            return model.getPlaylistEntries(
+                    userState.browsedPlaylistID,
+                    fragment.getContext()
+            );
         }).observe(fragment.getViewLifecycleOwner(), entries -> {
-            setDataSet(entries);
-            int pos = model.getUserStateValue().pos;
-            int pad = model.getUserStateValue().pad;
-            fragment.scrollPlaylistEntriesTo(pos, pad);
+            PlaylistUserState userState = model.getUserStateValue();
+            setDataSet(userState.browsedPlaylistID, entries);
+            updateScrollPos(userState, entries);
         });
         cachedEntriesLiveData = model.getCachedEntries(fragment.getContext());
         fetchStateLiveData = model.getFetchState(fragment.getContext());
         currentPlaylistPosLiveData = model.getCurrentPlaylistPos();
         currentPlaylistIDLiveData = model.getCurrentPlaylistID();
         currentEntryLiveData = model.getCurrentEntry();
+    }
+
+    private void updateScrollPos(PlaylistUserState userState, List<PlaylistEntry> entries) {
+        if (!initialScrolled && !entries.isEmpty()) {
+            initialScrolled = true;
+            fragment.scrollPlaylistEntriesTo(
+                    userState.playlistEntriesPos,
+                    userState.playlistEntriesPad
+            );
+        }
     }
 
     @Override
@@ -312,7 +318,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         private final TrackItemView itemContent;
         private final TrackItemActionsView actionsView;
         public int position;
-        public PlaylistEntry playlistEntry;
+        PlaylistEntry playlistEntry;
 
         PlaylistEntryHolder(View v) {
             super(v);

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Transformations;
 import se.splushii.dancingbunnies.R;
@@ -40,11 +41,13 @@ public class PlaybackControllerStorage {
     private final String playlist_id_key;
     private final String playlist_type_key;
     private final String playlist_position_key;
+    private final String playlist_playback_position_key;
     private final String playlist_selection_id_key;
     private final String playlist_playback_order_key;
     private final String playlist_playback_repeat_key;
     private final String localaudioplayer_current_src_key;
     private final String localaudioplayer_current_id_key;
+    private final String localaudioplayer_current_playback_type_key;
     private final String localaudioplayer_current_playback_id_key;
     private final String localaudioplayer_current_lastPos_key;
     private final String localaudioplayer_current_playlist_pos_key;
@@ -66,11 +69,13 @@ public class PlaybackControllerStorage {
         playlist_id_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_id);
         playlist_type_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_type);
         playlist_position_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_position);
+        playlist_playback_position_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_playback_position);
         playlist_selection_id_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_selection_id);
         playlist_playback_order_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_playback_order);
         playlist_playback_repeat_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_playback_repeat);
         localaudioplayer_current_src_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_src);
         localaudioplayer_current_id_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_id);
+        localaudioplayer_current_playback_type_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_playback_type);
         localaudioplayer_current_playback_id_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_playback_id);
         localaudioplayer_current_lastPos_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_lastpos);
         localaudioplayer_current_playlist_pos_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_playlist_pos);
@@ -190,8 +195,10 @@ public class PlaybackControllerStorage {
         preferences.edit()
                 .putString(localaudioplayer_current_src_key, playbackEntry.entryID.src)
                 .putString(localaudioplayer_current_id_key, playbackEntry.entryID.id)
+                .putString(localaudioplayer_current_playback_type_key, playbackEntry.playbackType)
                 .putString(localaudioplayer_current_playback_id_key, Long.toString(playbackEntry.playbackID))
                 .putString(localaudioplayer_current_lastPos_key, Long.toString(lastPos))
+                .putString(localaudioplayer_current_playlist_pos_key, Long.toString(playbackEntry.playlistPos))
                 .putString(localaudioplayer_current_playlist_selection_id_key, Long.toString(playbackEntry.playlistSelectionID))
                 .apply();
     }
@@ -200,37 +207,41 @@ public class PlaybackControllerStorage {
         preferences.edit()
                 .remove(localaudioplayer_current_src_key)
                 .remove(localaudioplayer_current_id_key)
+                .remove(localaudioplayer_current_playback_type_key)
                 .remove(localaudioplayer_current_playback_id_key)
                 .remove(localaudioplayer_current_lastPos_key)
+                .remove(localaudioplayer_current_playlist_pos_key)
                 .remove(localaudioplayer_current_playlist_selection_id_key)
                 .apply();
     }
 
-    public PlaybackEntry getLocalAudioPlayerCurrentEntry() {
+    public Pair<PlaybackEntry, Long> getLocalAudioPlayerCurrentEntry() {
         String src = preferences.getString(localaudioplayer_current_src_key, null);
         String id = preferences.getString(localaudioplayer_current_id_key, null);
+        String playbackType = preferences.getString(localaudioplayer_current_playback_type_key, null);
         String playbackID = preferences.getString(localaudioplayer_current_playback_id_key, null);
+        String lastPos = preferences.getString(localaudioplayer_current_lastPos_key, null);
         String playlistPos = preferences.getString(localaudioplayer_current_playlist_pos_key, null);
         String playlistSelectionID = preferences.getString(localaudioplayer_current_playlist_selection_id_key, null);
         if (src == null
                 || id == null
+                || playbackType == null
                 || playbackID == null
+                || lastPos == null
                 || playlistPos == null
                 || playlistSelectionID == null) {
             return null;
         }
-        return new PlaybackEntry(
-                new EntryID(src, id, Meta.FIELD_SPECIAL_MEDIA_ID),
-                Long.parseLong(playbackID),
-                PlaybackEntry.USER_TYPE_QUEUE,
-                Long.parseLong(playlistPos),
-                Long.parseLong(playlistSelectionID)
+        return new Pair<>(
+                new PlaybackEntry(
+                        new EntryID(src, id, Meta.FIELD_SPECIAL_MEDIA_ID),
+                        Long.parseLong(playbackID),
+                        PlaybackEntry.USER_TYPE_QUEUE,
+                        Long.parseLong(playlistPos),
+                        Long.parseLong(playlistSelectionID)
+                ),
+                Long.parseLong(lastPos)
         );
-    }
-
-    public long getLocalAudioPlayerCurrentLastPos() {
-        String lastPos = preferences.getString(localaudioplayer_current_lastPos_key, null);
-        return lastPos == null ? 0 : Long.parseLong(lastPos);
     }
 
     public CompletableFuture<List<PlaybackEntry>> getLocalAudioPlayerQueueEntries() {
@@ -272,14 +283,19 @@ public class PlaybackControllerStorage {
                 .apply();
     }
 
-    public long getCurrentPlaylistPlaybackPosition() {
+    public void setCurrentPlaylistPosition(long playlistPos, long playlistPlaybackPos) {
+        preferences.edit()
+                .putLong(playlist_position_key, playlistPos)
+                .putLong(playlist_playback_position_key, playlistPlaybackPos)
+                .apply();
+    }
+
+    public long getCurrentPlaylistPosition() {
         return preferences.getLong(playlist_position_key, 0);
     }
 
-    public void setCurrentPlaylistPlaybackPosition(long position) {
-        preferences.edit()
-                .putLong(playlist_position_key, position)
-                .apply();
+    public long getCurrentPlaylistPlaybackPosition() {
+        return preferences.getLong(playlist_playback_position_key, 0);
     }
 
     public long getCurrentPlaylistSelectionID() {

@@ -46,6 +46,8 @@ public class PlaylistPlaybackEntriesAdapter extends
     private LiveData<PlaylistID> currentPlaylistIDLiveData;
     private LiveData<PlaybackEntry> currentEntryLiveData;
 
+    private boolean initialScrolled;
+
     PlaylistPlaybackEntriesAdapter(PlaylistFragment fragment) {
         this.fragment = fragment;
         entries = new ArrayList<>();
@@ -58,20 +60,43 @@ public class PlaylistPlaybackEntriesAdapter extends
         currentPlaylistPosLiveData = model.getCurrentPlaylistPos();
         currentPlaylistIDLiveData = model.getCurrentPlaylistID();
         currentEntryLiveData = model.getCurrentEntry();
+        initialScrolled = false;
         PlaybackControllerStorage.getInstance(fragment.getContext())
                 .getCurrentPlaylistPlaybackEntries()
-                .observe(fragment.getViewLifecycleOwner(), this::setEntries);
+                .observe(fragment.getViewLifecycleOwner(), entries -> {
+                    setEntries(entries);
+                    updateScrollPos(model);
+                });
         browsedPlaylistIDLiveData = new MutableLiveData<>();
         model.getUserState().observe(fragment.getViewLifecycleOwner(), state -> {
-            if (state != null) {
-                browsedPlaylistIDLiveData.setValue(state.browsedPlaylistID);
-            }
+            browsedPlaylistIDLiveData.setValue(state.browsedPlaylistID);
+            updateScrollPos(model);
         });
     }
 
     void setEntries(List<PlaybackEntry> entries) {
         this.entries = entries;
         notifyDataSetChanged();
+    }
+
+    private void updateScrollPos(PlaylistFragmentModel model) {
+        PlaylistUserState userState = model.getUserStateValue();
+        if (userState.scrollPlaylistPlaybackToPlaylistPos) {
+            model.unsetScrollPlaylistPlaybackToPlaylistPos();
+            for (int i = 0; i < entries.size(); i++) {
+                PlaybackEntry entry = entries.get(i);
+                if (entry.playlistPos == userState.playlistPlaybackEntriesPos) {
+                    fragment.scrollPlaylistPlaybackEntriesTo(i, 0);
+                    break;
+                }
+            }
+        } else if (!initialScrolled && !entries.isEmpty()) {
+            initialScrolled = true;
+            fragment.scrollPlaylistPlaybackEntriesTo(
+                    userState.playlistPlaybackEntriesPos,
+                    userState.playlistPlaybackEntriesPad
+            );
+        }
     }
 
     @Override

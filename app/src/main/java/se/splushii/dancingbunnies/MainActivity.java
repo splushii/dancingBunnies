@@ -114,7 +114,7 @@ public final class MainActivity extends AppCompatActivity {
         if (playlistID != null) {
             Log.d(LC, "mainactivity goto playlist: " + playlistID + " pos: " + pos);
             mViewPager.setCurrentItem(PAGER_PLAYLIST);
-            playlistModel.goToPlaylistPlayback(playlistID, pos);
+            playlistModel.goToPlaylistPlaybackAtPlaylistPos(playlistID, pos);
             return;
         }
         int page_id = intent.getIntExtra(INTENT_EXTRA_PAGER_SELECTION, -1);

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import androidx.core.util.Pair;
 import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
@@ -37,9 +38,10 @@ class LocalAudioPlayer implements AudioPlayer {
         preloadPlayers = new LinkedList<>();
         historyPlayers = new LinkedList<>();
         if (initFromStorage) {
-            PlaybackEntry playbackEntry = storage.getLocalAudioPlayerCurrentEntry();
-            long lastPos = storage.getLocalAudioPlayerCurrentLastPos();
-            if (playbackEntry != null) {
+            Pair<PlaybackEntry, Long> currentEntryInfo = storage.getLocalAudioPlayerCurrentEntry();
+            if (currentEntryInfo != null) {
+                PlaybackEntry playbackEntry = currentEntryInfo.first;
+                long lastPos = currentEntryInfo.second == null ? 0L : currentEntryInfo.second;
                 player = new MediaPlayerInstance(playbackEntry, mediaPlayerCallback);
                 player.seekTo(lastPos);
                 callback.onCurrentEntryChanged(playbackEntry);
@@ -195,31 +197,26 @@ class LocalAudioPlayer implements AudioPlayer {
     }
 
     private CompletableFuture<Void> persistState() {
-        return clearState()
-                .thenCompose(aVoid -> storage.insert(
-                        PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_PRELOAD,
-                        0,
-                        preloadPlayers.stream()
-                                .map(p -> p.playbackEntry)
-                                .collect(Collectors.toList())
-                ))
-                .thenCompose(aVoid -> storage.insert(
-                        PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_HISTORY,
-                        0,
-                        historyPlayers.stream()
-                                .map(p -> p.playbackEntry)
-                                .collect(Collectors.toList())
-                ))
-                .thenRun(() -> {
-                    if (player == null) {
-                        storage.removeLocalAudioPlayerCurrent();
-                    } else {
-                        storage.setLocalAudioPlayerCurrent(
-                                player.playbackEntry,
-                                player.getCurrentPosition()
-                        );
-                    }
-                });
+        return storage.replaceWith(
+                PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_PRELOAD,
+                preloadPlayers.stream()
+                        .map(p -> p.playbackEntry)
+                        .collect(Collectors.toList())
+        ).thenCompose(aVoid -> storage.replaceWith(
+                PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_HISTORY,
+                historyPlayers.stream()
+                        .map(p -> p.playbackEntry)
+                        .collect(Collectors.toList())
+        )).thenRun(() -> {
+            if (player == null) {
+                storage.removeLocalAudioPlayerCurrent();
+            } else {
+                storage.setLocalAudioPlayerCurrent(
+                        player.playbackEntry,
+                        player.getCurrentPosition()
+                );
+            }
+        });
     }
 
     @Override

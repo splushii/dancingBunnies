@@ -112,7 +112,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
             if (userSelectedPlaylist.get()) {
                 userSelectedPlaylist.set(false);
                 setPlaylistPlaybackOrderMode(PlaybackController.PLAYBACK_ORDER_SEQUENTIAL);
-                model.showPlaybackEntries(checked);
+                model.showPlaylistPlaybackEntries(checked);
                 if (checked) {
                     PlaylistUserState userState = model.getUserStateValue();
                     if (userState == null) {
@@ -132,7 +132,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         playlistShowPlaybackOrderSwitch.setOnCheckedChangeListener((view, checked) -> {
             if (userSelectedShowPlaylistOrder.get()) {
                 userSelectedShowPlaylistOrder.set(false);
-                model.showPlaybackEntries(checked);
+                model.showPlaylistPlaybackEntries(checked);
             }
         });
     }
@@ -148,16 +148,9 @@ public class PlaylistFragment extends AudioBrowserFragment {
     @Override
     public void onStop() {
         Log.d(LC, "onStop");
-        PlaylistUserState state = model.getUserStateValue();
-        if (state != null && state.showPlaylists) {
-            model.updateUserState(Util.getRecyclerViewPosition(playlistRecView));
-        } else {
-            if (state.showPlaybackEntries) {
-                model.updateUserState(Util.getRecyclerViewPosition(playlistPlaybackEntriesRecView));
-            } else {
-                model.updateUserState(Util.getRecyclerViewPosition(playlistEntriesRecView));
-            }
-        }
+        model.savePlaylistScroll(Util.getRecyclerViewPosition(playlistRecView));
+        model.savePlaylistEntriesScroll(Util.getRecyclerViewPosition(playlistEntriesRecView));
+        model.savePlaylistPlaybackEntriesScroll(Util.getRecyclerViewPosition(playlistPlaybackEntriesRecView));
         super.onStop();
     }
 
@@ -262,6 +255,10 @@ public class PlaylistFragment extends AudioBrowserFragment {
         playlistEntriesRecViewLayoutManager.scrollToPositionWithOffset(pos, pad);
     }
 
+    void scrollPlaylistPlaybackEntriesTo(int pos, int pad) {
+        playlistPlaybackEntriesRecViewLayoutManager.scrollToPositionWithOffset(pos, pad);
+    }
+
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -274,7 +271,6 @@ public class PlaylistFragment extends AudioBrowserFragment {
         playlistRecViewAdapter.setOnItemClickListener(playlist -> {
             PlaylistID playlistID = new PlaylistID(playlist);
             Log.d(LC, "browse playlist: " + playlistID);
-            model.addBackStackHistory(Util.getRecyclerViewPosition(playlistRecView));
             model.browsePlaylist(playlistID);
         });
         playlistRecView.setAdapter(playlistRecViewAdapter);
@@ -434,12 +430,8 @@ public class PlaylistFragment extends AudioBrowserFragment {
             newPlaylistName.clearFocus();
             return true;
         }
-        if (model.popBackStack()) {
-            return true;
-        }
-        if (!model.isUserStateInitial()) {
-            model.resetUserState();
-            return true;
+        if (!model.getUserStateValue().showPlaylists) {
+            model.browsePlaylists();
         }
         return false;
     }

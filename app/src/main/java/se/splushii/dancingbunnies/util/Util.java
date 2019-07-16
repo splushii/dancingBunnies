@@ -65,13 +65,10 @@ public class Util {
 
     public static Pair<Integer, Integer> getRecyclerViewPosition(RecyclerView recView) {
         LinearLayoutManager llm = (LinearLayoutManager) recView.getLayoutManager();
-        int hPos = llm.findFirstCompletelyVisibleItemPosition();
-        View v = llm.getChildAt(0);
-        int hPad = v == null ? 0 : v.getTop() - llm.getPaddingTop();
-        if (hPad < 0 && hPos > 0) {
-            hPos--;
-        }
-        return new Pair<>(hPos, hPad);
+        int hPos = llm.findFirstVisibleItemPosition();
+        View firstVisibleView = llm.findViewByPosition(hPos);
+        int hPad = firstVisibleView == null ? 0 : firstVisibleView.getTop();
+        return new Pair<>(hPos, hPad - llm.getPaddingTop());
     }
 
     public static class FutureException extends Throwable {

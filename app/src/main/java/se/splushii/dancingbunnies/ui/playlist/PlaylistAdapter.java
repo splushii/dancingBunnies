@@ -161,18 +161,28 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
         notifyDataSetChanged();
     }
 
+    private boolean initialScrolled;
     public void setModel(PlaylistFragmentModel model,
                          Function<List<Playlist>, List<Playlist>> playlistFilter) {
+        initialScrolled = false;
         model.getPlaylists(fragment.getContext())
                 .observe(fragment.getViewLifecycleOwner(), entries -> {
                     setDataSet(playlistFilter.apply(entries));
-                    int pos = model.getUserStateValue().pos;
-                    int pad = model.getUserStateValue().pad;
-                    if (fragment instanceof PlaylistFragment) {
-                        ((PlaylistFragment)fragment).scrollPlaylistsTo(pos, pad);
-                    }
+                    updateScrollPos(model.getUserStateValue(), entries);
                 });
+        model.getUserState().observe(fragment.getViewLifecycleOwner(), userState -> {
+            updateScrollPos(userState, playlistDataset);
+        });
         currentPlaylistEntryLiveData = model.getCurrentPlaylistID();
+    }
+
+    private void updateScrollPos(PlaylistUserState userState, List<Playlist> entries) {
+        if (!initialScrolled && !entries.isEmpty() && fragment instanceof PlaylistFragment) {
+            ((PlaylistFragment) fragment).scrollPlaylistsTo(
+                    userState.playlistPos,
+                    userState.playlistPad
+            );
+        }
     }
 
     class PlaylistHolder extends ItemDetailsViewHolder<Playlist> {

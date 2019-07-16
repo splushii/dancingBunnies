@@ -4,7 +4,6 @@ import android.content.Context;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 
 import androidx.core.util.Pair;
@@ -25,7 +24,6 @@ public class PlaylistFragmentModel extends ViewModel {
     private static final String LC = Util.getLogContext(PlaylistFragmentModel.class);
 
     private MutableLiveData<PlaylistUserState> userState;
-    private LinkedList<PlaylistUserState> backStack;
 
     private MutableLiveData<PlaylistID> currentPlaylistID;
     private MutableLiveData<PlaybackEntry> currentEntry;
@@ -33,14 +31,6 @@ public class PlaylistFragmentModel extends ViewModel {
 
     private static PlaylistUserState initialUserState() {
         return new PlaylistUserState.Builder().build();
-    }
-
-    boolean isUserStateInitial() {
-        return getUserStateValue().isInitial();
-    }
-
-    synchronized void resetUserState() {
-        userState.setValue(initialUserState());
     }
 
     private synchronized MutableLiveData<PlaylistUserState> getMutableUserState() {
@@ -59,47 +49,25 @@ public class PlaylistFragmentModel extends ViewModel {
         return getUserState().getValue();
     }
 
-    private void updateUserState(int pos, int pad) {
+    void savePlaylistScroll(Pair<Integer, Integer> recyclerViewPosition) {
         getMutableUserState().setValue(new PlaylistUserState.Builder()
                 .fromState(getUserStateValue())
-                .setPos(pos, pad)
+                .setPlaylistScroll(recyclerViewPosition.first, recyclerViewPosition.second)
                 .build()
         );
     }
 
-    void updateUserState(Pair<Integer,Integer> currentPosition) {
-        updateUserState(currentPosition.first, currentPosition.second);
-    }
-
-    private LinkedList<PlaylistUserState> getBackStack() {
-        if (backStack == null) {
-            backStack = new LinkedList<>();
-            backStack.push(initialUserState());
-        }
-        return backStack;
-    }
-
-    void addBackStackHistory(Pair<Integer, Integer> currentPosition) {
-        getBackStack().push(new PlaylistUserState.Builder()
+    void savePlaylistEntriesScroll(Pair<Integer, Integer> recyclerViewPosition) {
+        getMutableUserState().setValue(new PlaylistUserState.Builder()
                 .fromState(getUserStateValue())
-                .setPos(currentPosition.first, currentPosition.second)
+                .setPlaylistEntriesScroll(recyclerViewPosition.first, recyclerViewPosition.second)
                 .build()
         );
     }
-
-    boolean popBackStack() {
-        if (getBackStack().size() > 0) {
-            getMutableUserState().setValue(getBackStack().pop());
-            return true;
-        }
-        return false;
-    }
-
-    void browsePlaylist(PlaylistID playlistID) {
+    void savePlaylistPlaybackEntriesScroll(Pair<Integer, Integer> recyclerViewPosition) {
         getMutableUserState().setValue(new PlaylistUserState.Builder()
                 .fromState(getUserStateValue())
-                .setBrowsedPlaylist(playlistID)
-                .setShowPlaybackEntries(true)
+                .setPlaylistPlaybackEntriesScroll(recyclerViewPosition.first, recyclerViewPosition.second)
                 .build()
         );
     }
@@ -178,21 +146,46 @@ public class PlaylistFragmentModel extends ViewModel {
         return userState != null && userState.isBrowsedCurrent(currentPlaylistID);
     }
 
-    public void goToPlaylistPlayback(PlaylistID playlistID, long playlistPos) {
-        // TODO: Use playlistPos. Scroll to it somehow. (Can't just use setPos() in current impl)
+    public void goToPlaylistPlaybackAtPlaylistPos(PlaylistID playlistID, long playlistPos) {
         getMutableUserState().setValue(new PlaylistUserState.Builder()
                 .fromState(getUserStateValue())
                 .setBrowsedPlaylist(playlistID)
-                .setShowPlaybackEntries(true)
-                .setPos(0, 0)
+                .setShowPlaylistPlaybackEntries(true)
+                .setScrollPlaylistPlaybackToPlaylistPos(true)
+                .setPlaylistPlaybackEntriesScroll((int) playlistPos, 0)
                 .build()
         );
     }
 
-    void showPlaybackEntries(boolean show) {
+    void unsetScrollPlaylistPlaybackToPlaylistPos() {
+        getMutableUserState().setValue(new PlaylistUserState.Builder()
+                        .fromState(getUserStateValue())
+                        .setScrollPlaylistPlaybackToPlaylistPos(false)
+                        .build()
+        );
+    }
+
+    void browsePlaylists() {
         getMutableUserState().setValue(new PlaylistUserState.Builder()
                 .fromState(getUserStateValue())
-                .setShowPlaybackEntries(show)
+                .setShowPlaylists(true)
+                .build()
+        );
+    }
+
+    void browsePlaylist(PlaylistID playlistID) {
+        getMutableUserState().setValue(new PlaylistUserState.Builder()
+                .fromState(getUserStateValue())
+                .setBrowsedPlaylist(playlistID)
+                .setShowPlaylistPlaybackEntries(isBrowsedCurrent())
+                .build()
+        );
+    }
+
+    void showPlaylistPlaybackEntries(boolean show) {
+        getMutableUserState().setValue(new PlaylistUserState.Builder()
+                .fromState(getUserStateValue())
+                .setShowPlaylistPlaybackEntries(show)
                 .build()
         );
     }

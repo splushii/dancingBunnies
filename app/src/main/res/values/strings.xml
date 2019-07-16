@@ -24,11 +24,13 @@
     <string name="pref_key_playbackcontroller_playlist_id">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_id</string>
     <string name="pref_key_playbackcontroller_playlist_type">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_type</string>
     <string name="pref_key_playbackcontroller_playlist_position">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_position</string>
+    <string name="pref_key_playbackcontroller_playlist_playback_position">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_playback_position</string>
     <string name="pref_key_playbackcontroller_playlist_selection_id">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_selection_id</string>
     <string name="pref_key_playbackcontroller_playlist_playback_order">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_playback_order</string>
     <string name="pref_key_playbackcontroller_playlist_playback_repeat">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_playback_repeat</string>
     <string name="pref_key_localaudioplayer_current_src">se.splushii.dancingbunnies.pref_localaudioplayer_current_src</string>
     <string name="pref_key_localaudioplayer_current_id">se.splushii.dancingbunnies.pref_localaudioplayer_current_id</string>
+    <string name="pref_key_localaudioplayer_current_playback_type">se.splushii.dancingbunnies.pref_localaudioplayer_current_playback_type</string>
     <string name="pref_key_localaudioplayer_current_playback_id">se.splushii.dancingbunnies.pref_localaudioplayer_current_playback_id</string>
     <string name="pref_key_localaudioplayer_current_lastpos">se.splushii.dancingbunnies.pref_localaudioplayer_current_lastpost</string>
     <string name="pref_key_localaudioplayer_current_playlist_pos">se.splushii.dancingbunnies.pref_localaudioplayer_current_playlist_pos</string>
