@@ -20,7 +20,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
@@ -254,23 +253,6 @@ public class PlaylistPlaybackEntriesAdapter extends
             return entries.get(getPositionOf());
         }
 
-        public void setMeta(Meta meta) {
-            if (meta == null) {
-                actionsView.setOnInfoListener(null);
-                itemContent.setTitle("");
-                itemContent.setArtist("");
-                itemContent.setSource("");
-                return;
-            }
-            actionsView.setOnInfoListener(() -> MetaDialogFragment.showMeta(fragment, meta));
-            String title = meta.getAsString(Meta.FIELD_TITLE);
-            itemContent.setTitle(title);
-            String artist = meta.getAsString(Meta.FIELD_ARTIST);
-            itemContent.setArtist(artist);
-            String src = meta.entryID.src;
-            itemContent.setSource(src);
-        }
-
         void updateHighlight(PlaylistID browsedPlaylistID,
                              PlaylistID currentPlaylistID,
                              PlaybackEntry currentEntry,
@@ -302,14 +284,6 @@ public class PlaylistPlaybackEntriesAdapter extends
                 parent,
                 false
         ));
-        cachedEntriesLiveData.observe(
-                fragment.getViewLifecycleOwner(),
-                holder.itemContent::setCached
-        );
-        fetchStateLiveData.observe(
-                fragment.getViewLifecycleOwner(),
-                holder.itemContent::setFetchState
-        );
         currentPlaylistPosLiveData.observe(
                 fragment.getViewLifecycleOwner(),
                 currentPlaylistPos -> holder.updateHighlight(
@@ -346,36 +320,40 @@ public class PlaylistPlaybackEntriesAdapter extends
                         currentPlaylistPosLiveData.getValue()
                 )
         );
-
-        holder.initMetaObserver(fragment.requireContext());
-        holder.observeMeta(fragment.getViewLifecycleOwner(), holder::setMeta);
+        holder.itemContent.initMetaObserver(fragment.requireContext());
+        holder.itemContent.observeMeta(fragment.getViewLifecycleOwner());
+        holder.itemContent.observeCachedLiveData(cachedEntriesLiveData, fragment.getViewLifecycleOwner());
+        holder.itemContent.observeFetchStateLiveData(fetchStateLiveData, fragment.getViewLifecycleOwner());
+        holder.actionsView.setOnInfoListener(() ->
+                MetaDialogFragment.showMeta(fragment, holder.itemContent.getMeta())
+        );
         return holder;
     }
 
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, int position) {
         holder.actionsView.initialize();
+        holder.item.setBackgroundResource(position % 2 == 0 ?
+                R.color.white_active_accent : R.color.gray50_active_accent
+        );
         PlaybackEntry entry = entries.get(position);
         holder.playbackEntry = entry;
+        holder.itemContent.setEntryID(entry.entryID);
         holder.itemContent.setPos(entry.playlistPos);
-        holder.actionsView.setOnPlayListener(() -> fragment.play(entry.entryID));
-        holder.actionsView.setOnQueueListener(() -> fragment.queue(entry.entryID));
-        holder.actionsView.setOnPlayPlaylistListener(() -> fragment.setCurrentPlaylist(
-                currentPlaylistIDLiveData.getValue(),
-                entry.playlistPos
-        ));
+        holder.itemContent.setPreloaded(entry.isPreloaded());
         holder.updateHighlight(
                 browsedPlaylistIDLiveData.getValue(),
                 currentPlaylistIDLiveData.getValue(),
                 currentEntryLiveData.getValue(),
                 currentPlaylistPosLiveData.getValue()
         );
-        holder.itemContent.setPreloaded(entry.isPreloaded());
-        holder.itemContent.setEntryID(entry.entryID);
+        holder.actionsView.setOnPlayListener(() -> fragment.play(entry.entryID));
+        holder.actionsView.setOnQueueListener(() -> fragment.queue(entry.entryID));
+        holder.actionsView.setOnPlayPlaylistListener(() -> fragment.setCurrentPlaylist(
+                currentPlaylistIDLiveData.getValue(),
+                entry.playlistPos
+        ));
         holder.item.setActivated(isSelected(holder.getKey()));
-        holder.itemContent.setFetchState(fetchStateLiveData.getValue());
-        holder.itemContent.setCached(cachedEntriesLiveData.getValue());
-        holder.setEntryID(entry.entryID);
     }
 
     @Override

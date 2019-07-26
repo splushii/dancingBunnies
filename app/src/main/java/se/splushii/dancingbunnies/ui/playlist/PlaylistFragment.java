@@ -419,9 +419,15 @@ public class PlaylistFragment extends AudioBrowserFragment {
         }
         if (playlistEntriesSelectionTracker != null) {
             playlistEntriesSelectionTracker.clearSelection();
-            if (playlistEntriesRecViewAdapter != null) {
-                playlistEntriesRecViewAdapter.hideTrackItemActions();
-            }
+        }
+        if (playlistEntriesRecViewAdapter != null) {
+            playlistEntriesRecViewAdapter.hideTrackItemActions();
+        }
+        if (playlistPlaybackEntriesSelectionTracker != null) {
+            playlistPlaybackEntriesSelectionTracker.clearSelection();
+        }
+        if (playlistPlaybackEntriesRecViewAdapter != null) {
+            playlistPlaybackEntriesRecViewAdapter.hideTrackItemActions();
         }
     }
 

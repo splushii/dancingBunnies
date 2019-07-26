@@ -34,6 +34,9 @@ public class MetaDialogFragment extends DialogFragment {
     private Meta meta = Meta.UNKNOWN_ENTRY;
 
     public static void showMeta(Fragment fragment, Meta meta) {
+        if (meta == null) {
+            return;
+        }
         FragmentTransaction ft = fragment.getFragmentManager().beginTransaction();
         Fragment prev = fragment.getFragmentManager().findFragmentByTag(MetaDialogFragment.TAG);
         if (prev != null) {
@@ -42,9 +45,7 @@ public class MetaDialogFragment extends DialogFragment {
         ft.addToBackStack(null);
         DialogFragment dialogFragment = new MetaDialogFragment();
         dialogFragment.setTargetFragment(fragment, MainActivity.REQUEST_CODE_META_DIALOG);
-        if (meta != null) {
-            dialogFragment.setArguments(meta.toBundle());
-        }
+        dialogFragment.setArguments(meta.toBundle());
         dialogFragment.show(ft, MetaDialogFragment.TAG);
     }
 

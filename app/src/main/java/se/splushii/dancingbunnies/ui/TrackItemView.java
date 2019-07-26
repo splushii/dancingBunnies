@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.util.AttributeSet;
 import android.util.TypedValue;
-import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -15,24 +14,39 @@ import java.util.Locale;
 
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Transformations;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.storage.AudioStorage;
+import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.util.Util;
 
 public class TrackItemView extends LinearLayout {
     private static final String LC = Util.getLogContext(TrackItemView.class);
     private TextView titleView;
+    private TextView durationView;
     private TextView artistView;
+    private TextView trackNumView;
+    private TextView albumView;
     private ImageView sourceView;
     private ImageView preloadedView;
     private TextView cacheStatusView;
     private ImageView cachedView;
     private TextView posView;
 
+    private MutableLiveData<EntryID> entryIDLiveData;
+    private LiveData<Meta> metaLiveData;
+
     private String title;
+    private String duration;
     private String artist;
+    private String trackNum;
+    private String album;
     private String src;
     private String cacheStatus;
     private boolean isCached;
@@ -66,51 +80,56 @@ public class TrackItemView extends LinearLayout {
                 attrs, R.styleable.TrackItemView, defStyleAttr, defStyleRes);
         a.recycle();
         titleView = findViewById(R.id.track_item_title);
+        durationView = findViewById(R.id.track_item_duration);
         artistView = findViewById(R.id.track_item_artist);
+        trackNumView = findViewById(R.id.track_item_track_num);
+        albumView = findViewById(R.id.track_item_album);
         sourceView = findViewById(R.id.track_item_source);
         preloadedView = findViewById(R.id.track_item_preload_status);
         cachedView = findViewById(R.id.track_item_cached);
         cacheStatusView = findViewById(R.id.track_item_cache_status);
         posView = findViewById(R.id.track_item_pos);
+        entryIDLiveData = new MutableLiveData<>();
         title = "";
+        duration = "";
         artist = "";
+        trackNum = "";
+        album = "";
         cacheStatus = "";
         src = "";
         isCached = false;
         isPreloaded = false;
     }
 
-    public void setFetchState(HashMap<EntryID, AudioStorage.AudioDataFetchState> fetchStateMap) {
-        if (fetchStateMap != null && fetchStateMap.containsKey(entryID)) {
-            setFetchState(fetchStateMap.get(entryID));
+    private void setFetchState(HashMap<EntryID, AudioStorage.AudioDataFetchState> fetchStateMap,
+                              EntryID currentEntryID) {
+        if (fetchStateMap != null && fetchStateMap.containsKey(currentEntryID)) {
+            AudioStorage.AudioDataFetchState fetchstate = fetchStateMap.get(currentEntryID);
+            if (fetchstate == null) {
+                return;
+            }
+            cacheStatus = fetchstate.getStatusMsg();
+            setCacheStatus();
         }
-    }
-
-    private void setFetchState(AudioStorage.AudioDataFetchState state) {
-        if (state == null) {
-            return;
-        }
-        cacheStatus = state.getStatusMsg();
-        setCacheStatus();
     }
 
     private void setCacheStatus() {
         if (isCached) {
-            cacheStatusView.setVisibility(View.GONE);
+            cacheStatusView.setVisibility(GONE);
             cacheStatusView.setText("");
-            cachedView.setVisibility(View.VISIBLE);
+            cachedView.setVisibility(VISIBLE);
         } else {
-            cachedView.setVisibility(View.GONE);
+            cachedView.setVisibility(GONE);
             cacheStatusView.setText(cacheStatus);
-            cacheStatusView.setVisibility(View.VISIBLE);
+            cacheStatusView.setVisibility(cacheStatus.isEmpty() ? GONE : VISIBLE);
         }
     }
 
-    public void setCached(HashSet<EntryID> cachedEntries) {
+    private void setCached(HashSet<EntryID> cachedEntries, EntryID currentEntryID) {
         if (cachedEntries == null) {
             return;
         }
-        setIsCached(cachedEntries.contains(entryID));
+        setIsCached(cachedEntries.contains(currentEntryID));
     }
 
     private void setIsCached(Boolean isCached) {
@@ -123,9 +142,24 @@ public class TrackItemView extends LinearLayout {
         titleView.setText(title);
     }
 
+    public void setDuration(String duration) {
+        this.duration = duration;
+        durationView.setText(duration);
+    }
+
     public void setArtist(String artist) {
         this.artist = artist;
         artistView.setText(artist);
+    }
+
+    public void setTrackNum(String trackNum) {
+        this.trackNum = trackNum;
+        trackNumView.setText("#" + trackNum);
+    }
+
+    public void setAlbum(String album) {
+        this.album = album;
+        albumView.setText(album);
     }
 
     public void setSource(String src) {
@@ -136,12 +170,15 @@ public class TrackItemView extends LinearLayout {
 
     public void setPreloaded(boolean preloaded) {
         isPreloaded = preloaded;
-        preloadedView.setVisibility(preloaded ? View.VISIBLE : View.GONE);
+        preloadedView.setVisibility(preloaded ? VISIBLE : GONE);
     }
 
     public void setDragTitle(String txt) {
         titleView.setText(txt);
+        durationView.setText("");
         artistView.setText("");
+        trackNumView.setText("");
+        albumView.setText("");
         sourceView.setVisibility(GONE);
         preloadedView.setVisibility(GONE);
         cacheStatusView.setVisibility(GONE);
@@ -149,7 +186,10 @@ public class TrackItemView extends LinearLayout {
 
     public void reset() {
         setTitle(title);
+        setDuration(duration);
         setArtist(artist);
+        setTrackNum(trackNum);
+        setAlbum(album);
         setSource(src);
         setCacheStatus();
         setPreloaded(isPreloaded);
@@ -157,6 +197,7 @@ public class TrackItemView extends LinearLayout {
 
     public void setEntryID(EntryID entryID) {
         this.entryID = entryID;
+        entryIDLiveData.setValue(entryID);
         setSource(entryID.src);
     }
 
@@ -203,5 +244,76 @@ public class TrackItemView extends LinearLayout {
         } else {
             posView.setVisibility(GONE);
         }
+    }
+
+    private void clearInfo() {
+        setTitle("");
+        setArtist("");
+        setTrackNum("");
+        setAlbum("");
+    }
+
+    public void initMetaObserver(Context context) {
+        metaLiveData = Transformations.switchMap(entryIDLiveData, entryID -> {
+            if (!Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
+                MutableLiveData<Meta> nullMeta = new MutableLiveData<>();
+                nullMeta.setValue(null);
+                return nullMeta;
+            }
+            return MetaStorage.getInstance(context).getMeta(entryID);
+        });
+    }
+
+    public void observeMeta(LifecycleOwner lifecycleOwner) {
+        metaLiveData.observe(lifecycleOwner, this::setMeta);
+    }
+
+    public void observeCachedLiveData(LiveData<HashSet<EntryID>> cachedEntriesLiveData,
+                                      LifecycleOwner lifecycleOwner) {
+        cachedEntriesLiveData.observe(
+                lifecycleOwner,
+                cachedEntries -> setCached(cachedEntries, entryIDLiveData.getValue())
+        );
+        entryIDLiveData.observe(
+                lifecycleOwner,
+                e -> setCached(cachedEntriesLiveData.getValue(), e)
+        );
+    }
+
+    public void observeFetchStateLiveData(
+            LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> fetchStateLiveData,
+            LifecycleOwner lifecycleOwner
+    ) {
+        fetchStateLiveData.observe(
+                lifecycleOwner,
+                fetchState -> setFetchState(fetchState, entryIDLiveData.getValue())
+        );
+        entryIDLiveData.observe(
+                lifecycleOwner,
+                e -> setFetchState(fetchStateLiveData.getValue(), e)
+        );
+    }
+
+    private void setMeta(Meta meta) {
+        if (meta == null) {
+            clearInfo();
+            return;
+        }
+        String title = meta.getAsString(Meta.FIELD_TITLE);
+        setTitle(title);
+        String duration = Util.getDurationString(Long.parseLong(meta.getAsString(Meta.FIELD_DURATION)));
+        setDuration(duration);
+        String artist = meta.getAsString(Meta.FIELD_ARTIST);
+        setArtist(artist);
+        String trackNum = meta.getAsString(Meta.FIELD_TRACKNUMBER);
+        setTrackNum(trackNum);
+        String album = meta.getAsString(Meta.FIELD_ALBUM);
+        setAlbum(album);
+        String src = meta.entryID.src;
+        setSource(src);
+    }
+
+    public Meta getMeta() {
+        return metaLiveData.getValue();
     }
 }

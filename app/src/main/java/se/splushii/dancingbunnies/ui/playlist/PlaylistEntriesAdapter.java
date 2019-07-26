@@ -22,7 +22,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
@@ -182,14 +181,6 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         PlaylistEntryHolder holder = new PlaylistEntryHolder(
                 layoutInflater.inflate(R.layout.playlist_entry_item, parent, false)
         );
-        cachedEntriesLiveData.observe(
-                fragment.getViewLifecycleOwner(),
-                holder.itemContent::setCached
-        );
-        fetchStateLiveData.observe(
-                fragment.getViewLifecycleOwner(),
-                holder.itemContent::setFetchState
-        );
         currentPlaylistPosLiveData.observe(
                 fragment.getViewLifecycleOwner(),
                 currentPlaylistPos -> holder.updateHighlight(
@@ -214,8 +205,13 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
                         currentPlaylistIDLiveData.getValue()
                 )
         );
-        holder.initMetaObserver(fragment.requireContext());
-        holder.observeMeta(fragment.getViewLifecycleOwner(), holder::setMeta);
+        holder.itemContent.initMetaObserver(fragment.requireContext());
+        holder.itemContent.observeMeta(fragment.getViewLifecycleOwner());
+        holder.itemContent.observeCachedLiveData(cachedEntriesLiveData, fragment.getViewLifecycleOwner());
+        holder.itemContent.observeFetchStateLiveData(fetchStateLiveData, fragment.getViewLifecycleOwner());
+        holder.actionsView.setOnInfoListener(() ->
+                MetaDialogFragment.showMeta(fragment, holder.itemContent.getMeta())
+        );
         return holder;
     }
 
@@ -223,20 +219,21 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
     public void onBindViewHolder(@NonNull PlaylistEntryHolder holder, int position) {
         holder.actionsView.initialize();
         holder.position = position;
+
+        holder.entry.setBackgroundResource(position % 2 == 0 ?
+                R.color.white_active_accent : R.color.gray50_active_accent
+        );
         PlaylistEntry playlistEntry = playlistEntriesDataset.get(position);
         holder.playlistEntry = playlistEntry;
         EntryID entryID = EntryID.from(playlistEntry);
         holder.itemContent.setEntryID(entryID);
-        holder.entry.setActivated(isSelected(holder.getKey()));
-        holder.itemContent.setCached(cachedEntriesLiveData.getValue());
-        holder.itemContent.setFetchState(fetchStateLiveData.getValue());
+        holder.itemContent.setPos(playlistEntry.pos);
         holder.updateHighlight(
                 currentEntryLiveData.getValue(),
                 currentPlaylistPosLiveData.getValue(),
                 currentPlaylistIDLiveData.getValue()
         );
-        holder.itemContent.setPos(playlistEntry.pos);
-        holder.setEntryID(entryID);
+        holder.entry.setActivated(isSelected(holder.getKey()));
         if (MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_DELETE)
                 && PlaylistID.TYPE_STUPID.equals(playlistID.type)) {
             holder.actionsView.setOnRemoveListener(() ->
@@ -347,16 +344,6 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         @Override
         protected PlaylistEntry getSelectionKeyOf() {
             return playlistEntriesDataset.get(getPositionOf());
-        }
-
-        public void setMeta(Meta meta) {
-            actionsView.setOnInfoListener(() -> MetaDialogFragment.showMeta(fragment, meta));
-            String title = meta.getAsString(Meta.FIELD_TITLE);
-            itemContent.setTitle(title);
-            String artist = meta.getAsString(Meta.FIELD_ARTIST);
-            itemContent.setArtist(artist);
-            String src = meta.entryID.src;
-            itemContent.setSource(src);
         }
 
         void updateHighlight(PlaybackEntry currentEntry,
