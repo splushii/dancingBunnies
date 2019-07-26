@@ -37,6 +37,7 @@ public class FastScroller extends LinearLayout {
     private boolean touching = false;
     private float handleOffset = 0f;
     private boolean bubbleEnabled = true;
+    private boolean recyclerViewReversed = false;
 
     public FastScroller(Context context) {
         super(context);
@@ -80,6 +81,10 @@ public class FastScroller extends LinearLayout {
         if (!enabled) {
             animateHide(bubbleHider, VIEW_HIDE_DELAY);
         }
+    }
+
+    public void setReversed(boolean reversed) {
+        recyclerViewReversed = reversed;
     }
 
     private enum AnimationType {
@@ -283,17 +288,21 @@ public class FastScroller extends LinearLayout {
             handleOffset = newHandleOffset;
             int handleRange = getHeight() - handle.getHeight();
             int numItems = recyclerView.getAdapter().getItemCount();
-            if (newHandleOffset >= handleRange) {
-                recyclerView.scrollToPosition(numItems - 1);
-                return;
+            int position;
+            if (newHandleOffset <= 0) {
+                position = recyclerViewReversed ? numItems - 1 : 0;
+            } else if (newHandleOffset >= handleRange) {
+                position = recyclerViewReversed ? 0 : numItems - 1;
+            } else {
+                float offsetProportion = newHandleOffset / handleRange;
+                int visibleItems = recyclerView.getChildCount();
+                position = getValueInRange(
+                        0,
+                        numItems - 1,
+                        (int) (offsetProportion * (numItems - visibleItems + 1))
+                );
+                position = recyclerViewReversed ? numItems - position : position;
             }
-            float offsetProportion = newHandleOffset / handleRange;
-            int visibleItems = recyclerView.getChildCount();
-            int position = getValueInRange(
-                    0,
-                    numItems - 1,
-                    (int)(offsetProportion * (numItems - visibleItems + 1))
-            );
             LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
             linearLayoutManager.scrollToPositionWithOffset(position, 0);
         }

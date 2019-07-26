@@ -119,6 +119,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
 
         fastScroller = rootView.findViewById(R.id.nowplaying_fastscroller);
         fastScroller.setRecyclerView(recView);
+        fastScroller.setReversed(true);
 
         View nowPlayingInfo = rootView.findViewById(R.id.nowplaying_info);
         nowPlayingInfo.setOnClickListener(v -> MetaDialogFragment.showMeta(this, currentMeta));
