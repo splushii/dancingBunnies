@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "b11aeff8b73b4ae40ab1205c7484b616",
+    "identityHash": "49f0dbec21bc9ccf85a435dfe190b296",
     "entities": [
       {
         "tableName": "entry_id",
@@ -90,6 +90,14 @@
               "value"
             ],
             "createSql": "CREATE UNIQUE INDEX `index_meta_string_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+          },
+          {
+            "name": "index_meta_string_value",
+            "unique": false,
+            "columnNames": [
+              "value"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_string_value` ON `${TABLE_NAME}` (`value`)"
           }
         ],
         "foreignKeys": [
@@ -157,6 +165,14 @@
               "value"
             ],
             "createSql": "CREATE UNIQUE INDEX `index_meta_long_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+          },
+          {
+            "name": "index_meta_long_value",
+            "unique": false,
+            "columnNames": [
+              "value"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_long_value` ON `${TABLE_NAME}` (`value`)"
           }
         ],
         "foreignKeys": [
@@ -224,6 +240,14 @@
               "value"
             ],
             "createSql": "CREATE UNIQUE INDEX `index_meta_double_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+          },
+          {
+            "name": "index_meta_double_value",
+            "unique": false,
+            "columnNames": [
+              "value"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_double_value` ON `${TABLE_NAME}` (`value`)"
           }
         ],
         "foreignKeys": [
@@ -281,7 +305,7 @@
       },
       {
         "tableName": "playlists",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `name` TEXT NOT NULL, `pos` INTEGER NOT NULL, PRIMARY KEY(`api`, `id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `type` INTEGER NOT NULL, `name` TEXT NOT NULL, `query` TEXT, `pos` INTEGER NOT NULL, PRIMARY KEY(`api`, `id`))",
         "fields": [
           {
             "fieldPath": "api",
@@ -296,10 +320,22 @@
             "notNull": true
           },
           {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
             "fieldPath": "name",
             "columnName": "name",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "query",
+            "columnName": "query",
+            "affinity": "TEXT",
+            "notNull": false
           },
           {
             "fieldPath": "pos",
@@ -471,9 +507,10 @@
         "foreignKeys": []
       }
     ],
+    "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"b11aeff8b73b4ae40ab1205c7484b616\")"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '49f0dbec21bc9ccf85a435dfe190b296')"
     ]
   }
 }

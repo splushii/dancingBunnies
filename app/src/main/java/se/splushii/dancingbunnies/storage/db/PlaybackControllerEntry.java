@@ -9,7 +9,7 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 @Entity(tableName = DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
 // The constraints below makes inserts impossible, because incrementing COLUMN_POS
 // needs to be done in a TEMP table, something not supported in Room as far as I know.
-// See: https://stackoverflow.com/questions/22494148/incrementing-value-in-table-with-unique-key-causes-constraint-error?noredirect=1&lq=1
+// See: https://stackoverflow.com/questions/22494148/incrementing-value-in-table-with-unique-key-causes-constraint-error
 //        indices = @Index(value = {
 //                PlaybackControllerEntry.COLUMN_QUEUE_ID,
 //                PlaybackControllerEntry.COLUMN_POS

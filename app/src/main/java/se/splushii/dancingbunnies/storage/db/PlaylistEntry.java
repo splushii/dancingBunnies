@@ -35,7 +35,7 @@ import static androidx.room.ForeignKey.CASCADE;
         })
 // Not possible to constrain the pos because of inserts, because incrementing COLUMN_POS
 // needs to be done in a TEMP table, something not supported in Room as far as I know.
-// See: https://stackoverflow.com/questions/22494148/incrementing-value-in-table-with-unique-key-causes-constraint-error?noredirect=1&lq=1
+// See: https://stackoverflow.com/questions/22494148/incrementing-value-in-table-with-unique-key-causes-constraint-error
 //        indices = @Index(value = {
 //                PlaylistEntry.COLUMN_PLAYLIST_API,
 //                PlaylistEntry.COLUMN_PLAYLIST_ID,

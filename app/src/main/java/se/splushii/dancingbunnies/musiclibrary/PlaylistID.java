@@ -7,17 +7,17 @@ import android.os.Parcelable;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 
 public class PlaylistID implements Parcelable {
-    public static final String defaultPlaylistName = "Default";
-    public static final String TYPE_STUPID = "stupid";
-    public static final String TYPE_SMART = "smart";
+    public static final int TYPE_INVALID = -1;
+    public static final int TYPE_STUPID = 0;
+    public static final int TYPE_SMART = 1;
     private static final String BUNDLE_KEY_SRC = "dancingbunnies.bundle.key.playlistid.src";
     private static final String BUNDLE_KEY_ID = "dancingbunnies.bundle.key.playlistid.id";
     private static final String BUNDLE_KEY_TYPE = "dancingbunnies.bundle.key.playlistid.type";
     public final String src;
     public final String id;
-    public final String type;
+    public final int type;
 
-    public PlaylistID(String src, String id, String type) {
+    public PlaylistID(String src, String id, int type) {
         this.src = src;
         this.id = id;
         this.type = type;
@@ -26,13 +26,13 @@ public class PlaylistID implements Parcelable {
     public PlaylistID(Parcel in) {
         src = in.readString();
         id = in.readString();
-        type = in.readString();
+        type = in.readInt();
     }
 
     public PlaylistID(Playlist playlist) {
         src = playlist.api;
         id = playlist.id;
-        type = TYPE_STUPID;
+        type = playlist.type;
     }
 
     public static final Creator<PlaylistID> CREATOR = new Creator<PlaylistID>() {
@@ -47,9 +47,21 @@ public class PlaylistID implements Parcelable {
         }
     };
 
+    private String typeToString() {
+        switch (type) {
+            default:
+            case TYPE_INVALID:
+                return "invalid";
+            case TYPE_STUPID:
+                return "stupid";
+            case TYPE_SMART:
+                return "smart";
+        }
+    }
+
     @Override
     public String toString() {
-        return "{src: " + src + ", id: " + id + ", type: " + type + "}";
+        return "{src: " + src + ", id: " + id + ", type: " + typeToString() + "}";
     }
 
     @Override
@@ -69,7 +81,7 @@ public class PlaylistID implements Parcelable {
             return false;
         }
         PlaylistID e = (PlaylistID) obj;
-        return src.equals(e.src) && id.equals(e.id) && type.equals(e.type);
+        return src.equals(e.src) && id.equals(e.id) && type == e.type;
     }
 
     private String key() {
@@ -79,7 +91,7 @@ public class PlaylistID implements Parcelable {
     public static PlaylistID from(Bundle extras) {
         String src = extras.getString(BUNDLE_KEY_SRC);
         String id = extras.getString(BUNDLE_KEY_ID);
-        String type = extras.getString(BUNDLE_KEY_TYPE);
+        int type = extras.getInt(BUNDLE_KEY_TYPE);
         return new PlaylistID(src, id, type);
     }
 
@@ -87,7 +99,7 @@ public class PlaylistID implements Parcelable {
         Bundle b = new Bundle();
         b.putString(BUNDLE_KEY_SRC, src);
         b.putString(BUNDLE_KEY_ID, id);
-        b.putString(BUNDLE_KEY_TYPE, type);
+        b.putInt(BUNDLE_KEY_TYPE, type);
         return b;
     }
 
@@ -100,6 +112,6 @@ public class PlaylistID implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(src);
         dest.writeString(id);
-        dest.writeString(type);
+        dest.writeInt(type);
     }
 }

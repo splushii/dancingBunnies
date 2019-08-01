@@ -114,7 +114,8 @@ public class NowPlayingEntriesAdapter extends
             case R.id.nowplaying_actionmode_action_queue:
                 fragment.queue(selectionList.stream()
                         .map(playbackEntry -> playbackEntry.entryID)
-                        .collect(Collectors.toList())
+                        .collect(Collectors.toList()),
+                        null
                 );
                 return true;
             case R.id.nowplaying_actionmode_action_dequeue:

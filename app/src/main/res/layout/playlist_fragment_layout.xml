@@ -58,6 +58,7 @@
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:paddingTop="8dp"
+                    android:paddingBottom="96dp"
                     android:clipToPadding="false"/>
                 <se.splushii.dancingbunnies.ui.FastScroller
                     android:id="@+id/playlist_fastscroller"
@@ -90,6 +91,13 @@
                 android:background="?android:selectableItemBackground"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
+                <ImageButton
+                    android:id="@+id/playlist_content_info_back_btn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_arrow_back_black_24dp"
+                    android:contentDescription="@string/go_back_to_playlists" />
                 <TextView
                     android:id="@+id/playlist_content_info_name"
                     android:layout_width="0dp"

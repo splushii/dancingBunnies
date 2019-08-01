@@ -108,12 +108,15 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
             case R.id.playlist_entries_actionmode_action_play_now:
                 fragment.play(selectionList.stream()
                         .map(EntryID::from)
-                        .collect(Collectors.toList()));
+                        .collect(Collectors.toList()),
+                        null
+                );
                 return true;
             case R.id.playlist_entries_actionmode_action_queue:
                 fragment.queue(selectionList.stream()
                         .map(EntryID::from)
-                        .collect(Collectors.toList())
+                        .collect(Collectors.toList()),
+                        null
                 );
                 return true;
             default:
@@ -123,10 +126,8 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
 
     private void updateActionModeView(ActionMode actionMode, Selection<PlaylistEntry> selection) {
         actionMode.setTitle(selection.size() + " entries");
-        boolean showDelete = MusicLibraryService.checkAPISupport(
-                playlistID.src,
-                PLAYLIST_ENTRY_DELETE
-        );
+        boolean showDelete = playlistID.type == PlaylistID.TYPE_STUPID
+                && MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_DELETE);
         actionMode.getMenu().findItem(R.id.playlist_entries_actionmode_action_delete)
                 .setVisible(showDelete);
     }
@@ -146,7 +147,8 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
 
     @Override
     public boolean onDragInitiated(Selection<PlaylistEntry> selection) {
-        return MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_MOVE);
+        return playlistID.type == PlaylistID.TYPE_STUPID
+                && MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_MOVE);
     }
 
     @Override
@@ -235,7 +237,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         );
         holder.entry.setActivated(isSelected(holder.getKey()));
         if (MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_DELETE)
-                && PlaylistID.TYPE_STUPID.equals(playlistID.type)) {
+                && playlistID.type == PlaylistID.TYPE_STUPID) {
             holder.actionsView.setOnRemoveListener(() ->
                     playlistStorage.removeFromPlaylist(
                             playlistID,
@@ -267,14 +269,13 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
     void setModel(PlaylistFragmentModel model) {
         initialScrolled = false;
         Transformations.switchMap(model.getUserState(), userState -> {
-            if (userState.showPlaylists
-                    || userState.browsedPlaylistID == null) {
+            if (userState.showPlaylists || userState.browsedPlaylistID == null) {
                 setDataSet(null, Collections.emptyList());
                 return new MutableLiveData<>();
             }
-            return model.getPlaylistEntries(
-                    userState.browsedPlaylistID,
-                    fragment.getContext()
+            return MusicLibraryService.getPlaylistEntries(
+                    fragment.requireContext(),
+                    userState.browsedPlaylistID
             );
         }).observe(fragment.getViewLifecycleOwner(), entries -> {
             PlaylistUserState userState = model.getUserStateValue();

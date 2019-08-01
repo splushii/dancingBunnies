@@ -6,10 +6,12 @@ import androidx.room.Entity;
 import androidx.room.Index;
 
 @Entity(tableName = DB.TABLE_ENTRY_ID,
-        indices = @Index(value = {
-                DB.COLUMN_API,
-                DB.COLUMN_ID
-        }, unique = true),
+        indices = {
+                @Index(value = {
+                        DB.COLUMN_API,
+                        DB.COLUMN_ID
+                }, unique = true)
+        },
         primaryKeys = {
                 DB.COLUMN_API,
                 DB.COLUMN_ID

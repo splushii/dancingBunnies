@@ -34,7 +34,6 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
-import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -166,22 +165,7 @@ public class PlaybackController {
         currentPlaylistEntries = new ArrayList<>();
         currentPlaylistEntriesLiveData = Transformations.switchMap(
                 currentPlaylistIDLiveData,
-                playlistID -> {
-                    if (playlistID == null) {
-                        MutableLiveData<List<PlaylistEntry>> entries = new MutableLiveData<>();
-                        entries.setValue(Collections.emptyList());
-                        return entries;
-                    }
-                    // TODO: Check playlist type here.
-                    // TODO: Stupid: Fetch from PlaylistStorage
-                    // TODO: Smart: Fetch from MetaStorage
-                    if (PlaylistID.TYPE_STUPID.equals(playlistID.type)) {
-                        return PlaylistStorage.getInstance(context).getPlaylistEntries(playlistID);
-                    } else {
-                        // TODO: Support smart entries. Fetch using MetaStorage?
-                        throw new RuntimeException("Not implemented");
-                    }
-                }
+                playlistID -> MusicLibraryService.getPlaylistEntries(context, playlistID)
         );
         currentPlaylistEntriesObserver = this::onCurrentPlaylistEntriesChanged;
         currentPlaylistEntriesLiveData.observeForever(currentPlaylistEntriesObserver);

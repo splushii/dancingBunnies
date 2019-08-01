@@ -65,10 +65,11 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.getTransportControls().playFromMediaId(entryID.id, entryID.toBundle());
     }
 
-    public CompletableFuture<Boolean> play(List<EntryID> entryIDs) {
+    public CompletableFuture<Boolean> play(List<EntryID> entryIDs, Bundle query) {
         return AudioPlayerService.play(
                 mediaController,
-                entryIDs
+                entryIDs,
+                query
         ).thenApply(success -> {
             if (!success) {
                 Log.e(LC, "play entryIDs failed");
@@ -93,10 +94,11 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.addQueueItem(entryID.toMediaDescriptionCompat());
     }
 
-    public CompletableFuture<Boolean> queue(List<EntryID> entryIDs) {
+    public CompletableFuture<Boolean> queue(List<EntryID> entryIDs, Bundle query) {
         return AudioPlayerService.queue(
                 mediaController,
-                entryIDs
+                entryIDs,
+                query
         ).thenApply(success -> {
             if (!success) {
                 Log.e(LC, "queue entryIDs failed");

@@ -9,12 +9,15 @@ import androidx.room.Index;
 import static androidx.room.ForeignKey.CASCADE;
 
 @Entity(tableName = DB.TABLE_META_LONG,
-        indices = @Index(value = {
-                DB.COLUMN_API,
-                DB.COLUMN_ID,
-                DB.COLUMN_KEY,
-                DB.COLUMN_VALUE
-        }, unique = true),
+        indices = {
+                @Index(value = {
+                        DB.COLUMN_API,
+                        DB.COLUMN_ID,
+                        DB.COLUMN_KEY,
+                        DB.COLUMN_VALUE
+                }, unique = true),
+                @Index(DB.COLUMN_VALUE)
+        },
         primaryKeys = {
                 DB.COLUMN_API,
                 DB.COLUMN_ID,

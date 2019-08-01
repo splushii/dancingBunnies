@@ -150,13 +150,15 @@ public class PlaylistPlaybackEntriesAdapter extends
             case R.id.playlist_playback_entries_actionmode_action_queue:
                 fragment.queue(selectionList.stream()
                         .map(playbackEntry -> playbackEntry.entryID)
-                        .collect(Collectors.toList())
+                        .collect(Collectors.toList()),
+                        null
                 );
                 return true;
             case R.id.playlist_playback_entries_actionmode_action_play_now:
                 fragment.play(selectionList.stream()
                         .map(playbackEntry -> playbackEntry.entryID)
-                        .collect(Collectors.toList())
+                        .collect(Collectors.toList()),
+                        null
                 );
                 return true;
             default:

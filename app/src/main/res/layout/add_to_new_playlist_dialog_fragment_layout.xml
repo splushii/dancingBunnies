@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white">
+    <TextView
+        android:id="@+id/add_to_new_playlist_dialog_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:padding="16dp"
+        android:background="@android:color/black"
+        android:textColor="@color/grey"
+        android:fontFamily="sans-serif"
+        android:textSize="16sp"
+        android:text="@string/add_to_new_playlist"/>
+    <EditText
+        android:id="@+id/add_to_new_playlist_dialog_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+    <ImageButton
+        android:id="@+id/add_to_new_playlist_dialog_btn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:src="@drawable/ic_add_black_24dp"/>
+</LinearLayout>

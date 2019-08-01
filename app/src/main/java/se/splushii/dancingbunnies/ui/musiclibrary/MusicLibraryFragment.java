@@ -14,6 +14,7 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -43,6 +44,7 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.storage.MetaStorage;
+import se.splushii.dancingbunnies.ui.AddToNewPlaylistDialogFragment;
 import se.splushii.dancingbunnies.ui.AddToPlaylistDialogFragment;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.FastScrollerBubble;
@@ -69,6 +71,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
 
     private View filterView;
 
+    private ImageButton saveQueryBtn;
     private ChipGroup filterChips;
 
     private Spinner entryTypeSelectSpinner;
@@ -244,7 +247,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         searchInfoView = rootView.findViewById(R.id.musiclibrary_search_info);
         searchInfoView.setOnClickListener(v -> model.searchQueryClicked(searchInfoText.getText()));
 
-        View filterHomeBtn = rootView.findViewById(R.id.musiclibrary_home_filter);
+        View filterHomeBtn = rootView.findViewById(R.id.musiclibrary_filter_home);
         View searchHomeBtn = rootView.findViewById(R.id.musiclibrary_search_home);
         filterHomeBtn.setOnClickListener(v -> {
             model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
@@ -353,6 +356,10 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                     });
                 });
 
+        saveQueryBtn = rootView.findViewById(R.id.musiclibrary_filter_save);
+        saveQueryBtn.setOnClickListener(v ->
+                AddToNewPlaylistDialogFragment.showDialog(this, getCurrentQuery())
+        );
         filterChips = rootView.findViewById(R.id.musiclibrary_filter_chips);
 
         filterEdit = rootView.findViewById(R.id.musiclibrary_filter_edit);
@@ -480,15 +487,16 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             selection.forEach(selectionList::add);
             switch (item.getItemId()) {
                 case R.id.musiclibrary_actionmode_action_play_now:
-                    play(selectionList);
+                    play(selectionList, getCurrentQuery());
                     break;
                 case R.id.musiclibrary_actionmode_action_queue:
-                    queue(selectionList);
+                    queue(selectionList, getCurrentQuery());
                     break;
                 case R.id.musiclibrary_actionmode_action_add_to_playlist:
                     AddToPlaylistDialogFragment.showDialog(
                             MusicLibraryFragment.this,
-                            new ArrayList<>(selectionList)
+                            new ArrayList<>(selectionList),
+                            getCurrentQuery()
                     );
                     break;
                 default:
@@ -505,6 +513,18 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             actionMode = null;
         }
     };
+
+    Bundle getCurrentQuery() {
+        MusicLibraryUserState state = model.getUserState().getValue();
+        if (state == null) {
+            return new Bundle();
+        }
+        MusicLibraryQuery query = state.query;
+        if (query == null) {
+            return new Bundle();
+        }
+        return query.getQueryBundle();
+    }
 
     public void clearSelection() {
         if (selectionTracker != null) {

@@ -1,6 +1,7 @@
 package se.splushii.dancingbunnies.musiclibrary;
 
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Binder;
@@ -17,12 +18,15 @@ import org.apache.lucene.search.TopDocs;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Transformations;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.backend.APIClientRequestHandler;
@@ -34,6 +38,7 @@ import se.splushii.dancingbunnies.search.Searcher;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryService extends Service {
@@ -105,6 +110,51 @@ public class MusicLibraryService extends Service {
 
     private final IBinder binder = new MusicLibraryBinder();
     private List<Runnable> metaChangedListeners;
+
+    public static LiveData<List<PlaylistEntry>> getSmartPlaylistEntries(Context context,
+                                                                        PlaylistID playlistID) {
+        return Transformations.map(
+                Transformations.switchMap(
+                        PlaylistStorage.getInstance(context).getPlaylist(playlistID),
+                        playlist -> MetaStorage.getInstance(context).getEntries(
+                                Meta.FIELD_SPECIAL_MEDIA_ID,
+                                Meta.FIELD_TITLE,
+                                SmartPlaylist.jsonQueryToBundle(playlist.query)
+                        )
+                ),
+                libraryEntries -> {
+                    List<PlaylistEntry> playlistEntries = new ArrayList<>();
+                    for (int i = 0; i < libraryEntries.size(); i++) {
+                        LibraryEntry libraryEntry = libraryEntries.get(i);
+                        PlaylistEntry playlistEntry = PlaylistEntry.from(
+                                playlistID,
+                                libraryEntry.entryID,
+                                i
+                        );
+                        playlistEntry.rowId = i;
+                        playlistEntries.add(playlistEntry);
+                    }
+                    return playlistEntries;
+                }
+        );
+    }
+
+    public static LiveData<List<PlaylistEntry>> getPlaylistEntries(Context context,
+                                                                   PlaylistID playlistID) {
+        if (playlistID == null) {
+            MutableLiveData<List<PlaylistEntry>> entries = new MutableLiveData<>();
+            entries.setValue(Collections.emptyList());
+            return entries;
+        }
+        if (playlistID.type == PlaylistID.TYPE_STUPID) {
+            return PlaylistStorage.getInstance(context).getPlaylistEntries(playlistID);
+        } else if (playlistID.type == PlaylistID.TYPE_SMART){
+            return MusicLibraryService.getSmartPlaylistEntries(context, playlistID);
+        }
+        MutableLiveData<List<PlaylistEntry>> ret = new MutableLiveData<>();
+        ret.setValue(Collections.emptyList());
+        return ret;
+    }
 
     public int addMetaChangedListener(Runnable runnable) {
         int position = metaChangedListeners.size();
@@ -256,8 +306,8 @@ public class MusicLibraryService extends Service {
         return metaStorage.getEntries(showField, sortField, query);
     }
 
-    public CompletableFuture<List<EntryID>> getSongEntries(List<EntryID> entryIDs) {
-        return metaStorage.getSongEntries(entryIDs);
+    public CompletableFuture<List<EntryID>> getSongEntriesOnce(List<EntryID> entryIDs, Bundle query) {
+        return metaStorage.getSongEntriesOnce(entryIDs, query);
     }
 
     public List<EntryID> getSearchEntries(String query) {

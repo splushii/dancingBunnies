@@ -17,7 +17,6 @@ import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
-import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 public class PlaylistFragmentModel extends ViewModel {
@@ -78,10 +77,6 @@ public class PlaylistFragmentModel extends ViewModel {
 
     LiveData<Playlist> getPlaylist(Context context, PlaylistID playlistID) {
         return PlaylistStorage.getInstance(context).getPlaylist(playlistID);
-    }
-
-    LiveData<List<PlaylistEntry>> getPlaylistEntries(PlaylistID playlistID, Context context) {
-        return PlaylistStorage.getInstance(context).getPlaylistEntries(playlistID);
     }
 
     LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> getFetchState(Context context) {

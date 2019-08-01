@@ -6,6 +6,7 @@
     android:background="@color/white_active_accent">
     <LinearLayout
         android:background="?android:selectableItemBackground"
+        android:gravity="center_vertical"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
         <TextView
@@ -39,7 +40,6 @@
             android:layout_marginStart="4dp"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp"
-            android:layout_marginEnd="8dp"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -47,6 +47,14 @@
             android:maxLines="1"
             android:textColor="@color/secondary_text_color"
             android:gravity="center_vertical" />
+        <TextView
+            android:id="@+id/library_entry_num"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="8dp"
+            android:textColor="@color/secondary_text_color"/>
     </LinearLayout>
     <se.splushii.dancingbunnies.ui.TrackItemActionsView
         android:id="@+id/library_entry_actions"

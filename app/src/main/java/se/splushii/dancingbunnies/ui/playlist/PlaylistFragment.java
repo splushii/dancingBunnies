@@ -8,12 +8,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -29,7 +28,6 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.PlaybackController;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
@@ -55,6 +53,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
     private RecyclerViewActionModeSelectionTracker<Playlist, PlaylistAdapter, PlaylistAdapter.PlaylistHolder> playlistSelectionTracker;
 
     private View playlistContentRootView;
+    private ImageButton playlistContentBackBtn;
     private View playlistContentInfo;
     private View playlistContentInfoExtra;
     private TextView playlistContentInfoName;
@@ -288,6 +287,11 @@ public class PlaylistFragment extends AudioBrowserFragment {
         playlistFastScroller.setRecyclerView(playlistRecView);
 
         playlistContentRootView = rootView.findViewById(R.id.playlist_content_rootview);
+        playlistContentBackBtn = rootView.findViewById(R.id.playlist_content_info_back_btn);
+        playlistContentBackBtn.setOnClickListener(v -> {
+            clearSelection();
+            onBackPressed();
+        });
         playlistContentInfo = rootView.findViewById(R.id.playlist_content_info);
         playlistContentInfoExtra = rootView.findViewById(R.id.playlist_content_info_extra);
         playlistSortActionView = rootView.findViewById(R.id.playlist_playback_sort);
@@ -382,16 +386,10 @@ public class PlaylistFragment extends AudioBrowserFragment {
         newPlaylistName.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 String name = newPlaylistName.getText().toString();
-                String id = DateTimeFormatter.ISO_DATE_TIME.format(OffsetDateTime.now());
-                PlaylistID playlistID = new PlaylistID(
-                        MusicLibraryService.API_ID_DANCINGBUNNIES,
-                        id,
-                        PlaylistID.TYPE_STUPID
-                );
                 playlistStorage.insertPlaylists(
                         0,
                         Collections.singletonList(new StupidPlaylist(
-                                playlistID,
+                                PlaylistStorage.generatePlaylistID(PlaylistID.TYPE_STUPID),
                                 name,
                                 Collections.emptyList())
                         )
@@ -438,6 +436,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         }
         if (!model.getUserStateValue().showPlaylists) {
             model.browsePlaylists();
+            return true;
         }
         return false;
     }

@@ -19,6 +19,8 @@ import androidx.core.content.ContextCompat;
 import androidx.core.util.Consumer;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Transformations;
 import androidx.recyclerview.selection.Selection;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
@@ -26,6 +28,7 @@ import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
@@ -93,8 +96,7 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
 
     @Override
     public void onResetDragViewHolder(PlaylistHolder dragViewHolder) {
-        dragViewHolder.nameTextView.setText(dragViewHolder.name);
-        dragViewHolder.srcImageView.setBackgroundResource(dragViewHolder.srcResourceID);
+        dragViewHolder.update();
     }
 
     @Override
@@ -186,20 +188,27 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
     }
 
     class PlaylistHolder extends ItemDetailsViewHolder<Playlist> {
-        private final View entry;
-        final View highlightView;
-        private String name = "";
-        final TextView nameTextView;
+        private Playlist playlist;
         private int srcResourceID = 0;
-        final ImageView srcImageView;
-        public Playlist playlist;
+        MutableLiveData<PlaylistID> playlistIDLiveData;
+        LiveData<List<PlaylistEntry>> playlistEntriesLiveData;
+
+        private final View entry;
+        private final View highlightView;
+        private final TextView nameTextView;
+        private final ImageView srcImageView;
+        private final TextView typeTextView;
+        private final TextView numEntriesTextView;
 
         PlaylistHolder(View v) {
             super(v);
+            playlistIDLiveData = new MutableLiveData<>();
             entry = v.findViewById(R.id.playlist);
             nameTextView = v.findViewById(R.id.playlist_name);
             srcImageView = v.findViewById(R.id.playlist_src);
             highlightView = v.findViewById(R.id.playlist_highlight);
+            typeTextView = v.findViewById(R.id.playlist_type);
+            numEntriesTextView = v.findViewById(R.id.playlist_num_entries);
         }
 
         @Override
@@ -215,11 +224,6 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
         void setSourceResourceID(int srcResourceID) {
             this.srcResourceID = srcResourceID;
             srcImageView.setBackgroundResource(srcResourceID);
-        }
-
-        public void setName(String name) {
-            this.name = name;
-            nameTextView.setText(name);
         }
 
         void updateHighlight(PlaylistID currentPlaylistEntry) {
@@ -240,6 +244,35 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
                 highlightView.setBackgroundResource(value.resourceId);
             }
         }
+
+        public void setPlaylist(Playlist playlist) {
+            this.playlist = playlist;
+            playlistIDLiveData.setValue(new PlaylistID(
+                    playlist.api,
+                    playlist.id,
+                    playlist.type
+            ));
+            nameTextView.setText(playlist.name);
+            String type;
+            switch (playlist.type) {
+                case PlaylistID.TYPE_STUPID:
+                    type = "Static";
+                    break;
+                case PlaylistID.TYPE_SMART:
+                    type = "Dynamic";
+                    break;
+                case PlaylistID.TYPE_INVALID:
+                default:
+                    type = "Unkown playlist type";
+                    break;
+            }
+            typeTextView.setText(type);
+        }
+
+        public void update() {
+            nameTextView.setText(playlist.name);
+            srcImageView.setBackgroundResource(srcResourceID);
+        }
     }
 
     @NonNull
@@ -253,6 +286,18 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
                 fragment.getViewLifecycleOwner(),
                 holder::updateHighlight
         );
+        holder.playlistEntriesLiveData = Transformations.switchMap(
+                holder.playlistIDLiveData,
+                playlistID -> MusicLibraryService.getPlaylistEntries(
+                        fragment.requireContext(),
+                        playlistID
+                )
+        );
+        holder.playlistEntriesLiveData.observe(
+                fragment.getViewLifecycleOwner(),
+                playlistEntries ->
+                        holder.numEntriesTextView.setText(String.valueOf(playlistEntries.size()))
+        );
         return holder;
     }
 
@@ -262,14 +307,13 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
 
     @Override
     public void onBindViewHolder(@NonNull PlaylistHolder holder, int position) {
-        holder.playlist = playlistDataset.get(position);
+        holder.setPlaylist(playlistDataset.get(position));
         holder.entry.setOnClickListener(view -> {
             if (hasSelection()) {
                 return;
             }
             onItemClickListener.accept(holder.playlist);
         });
-        holder.setName(holder.playlist.name);
         holder.setSourceResourceID(MusicLibraryService.getAPIIconResource(holder.playlist.api));
         holder.updateHighlight(currentPlaylistEntryLiveData.getValue());
         holder.entry.setActivated(isSelected(holder.getKey()));

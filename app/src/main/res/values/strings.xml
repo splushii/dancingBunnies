@@ -72,15 +72,17 @@
     <string name="musiclibrary_sort_select">Sort by:</string>
     <string name="musiclibrary_home">Music library home</string>
     <string name="musiclibrary_item_more_actions">Music library item more actions</string>
+    <string name="musiclibrary_query">Query:</string>
+    <string name="musiclibrary_query_save">Save query</string>
     <string name="queue_item_more_actions">Queue item more actions</string>
     <string name="search">Search:</string>
     <string name="metadata">Metadata</string>
-    <string name="musiclibrary_filter">Filters:</string>
     <string name="playlist_content_info_name">Playlist:</string>
     <string name="item_source">Item source</string>
     <string name="preload_status">Preload status</string>
     <string name="cached">Cached</string>
     <string name="add_to_playlist">Add to playlist</string>
+    <string name="add_to_new_playlist">Add to new playlist</string>
     <string name="playlist_select">Active</string>
     <string name="playlist_show_playback_order">Playback order</string>
     <string name="playlist_deselect">Deselect playlist</string>
@@ -92,4 +94,5 @@
     <string name="playlist_repeat">Repeat</string>
     <string name="playlist_sort">Sort</string>
     <string name="playlist_random">Random</string>
+    <string name="go_back_to_playlists">Go back to playlists</string>
 </resources>

@@ -114,11 +114,11 @@ public class MetaStorage {
                 continue;
             }
             query.append("\nLEFT JOIN " + typeTable + " AS " + typeTableAlias
-                    + " ON ( " + typeTableAlias + "." + DB.COLUMN_KEY + " = ?"
-                    + " AND " + typeTableAlias + "." + DB.COLUMN_API
+                    + " ON ( " + typeTableAlias + "." + DB.COLUMN_API
                     + " = " + showTypeTableAlias + "." + DB.COLUMN_API
                     + " AND " + typeTableAlias + "." + DB.COLUMN_ID
-                    + " = " + showTypeTableAlias + "." + DB.COLUMN_ID + " )");
+                    + " = " + showTypeTableAlias + "." + DB.COLUMN_ID
+                    + " AND " + typeTableAlias + "." + DB.COLUMN_KEY + " = ? )");
             queryArgs.add(key);
         }
         // Add showType filter
@@ -213,8 +213,9 @@ public class MetaStorage {
                 .map(e -> e.getKey() + ": " + e.getValue())
                 .collect(Collectors.toList()))
         );
-        return Transformations.map(metaModel.getEntries(sqlQuery), values ->
-                values.stream().map(value -> {
+        return Transformations.map(
+                metaModel.getEntries(sqlQuery),
+                values -> values.stream().map(value -> {
                     switch (showTypeKey) {
                         case Meta.FIELD_SPECIAL_MEDIA_SRC:
                             return new LibraryEntry(new EntryID(
@@ -227,7 +228,7 @@ public class MetaStorage {
                                     value.api,
                                     value.id,
                                     showTypeKey
-                            ), value.id);
+                    ), value.id);
                         default:
                             return new LibraryEntry(new EntryID(
                                     MusicLibraryService.API_ID_DANCINGBUNNIES,
@@ -238,19 +239,210 @@ public class MetaStorage {
                 }).collect(Collectors.toList())
         );
     }
+    public LiveData<Integer> getNumSongEntries(List<EntryID> entryIDs, Bundle query) {
+        if (query == null) {
+            query = new Bundle();
+        }
+        MediatorLiveData<Integer> totalEntriesMediator = new MediatorLiveData<>();
+        List<LiveData<Integer>> numSongEntryLiveDataList = new ArrayList<>();
+        for (EntryID entryID: entryIDs) {
+            numSongEntryLiveDataList.add(getNumSongEntries(entryID, query));
+        }
+        for (LiveData<Integer> numSongEntryLiveData: numSongEntryLiveDataList) {
+            totalEntriesMediator.addSource(
+                    numSongEntryLiveData,
+                    e -> totalEntriesMediator.setValue(combineNumSongEntries(numSongEntryLiveDataList))
+            );
+        }
+        return totalEntriesMediator;
+    }
 
-    public CompletableFuture<List<EntryID>> getSongEntries(List<EntryID> entryIDs) {
+    private Integer combineNumSongEntries(List<LiveData<Integer>> numSongEntryLiveDataList) {
+        int total = 0;
+        for (LiveData<Integer> numSongEntryLiveData: numSongEntryLiveDataList) {
+            if (numSongEntryLiveData != null && numSongEntryLiveData.getValue() != null) {
+                total += numSongEntryLiveData.getValue();
+            }
+        }
+        return total;
+    }
+
+    private LiveData<Integer> getNumSongEntries(EntryID entryID, Bundle bundleQuery) {
+        String baseTableKey;
+        String baseTableValue;
+        String baseTableAlias = "base_table";
+        String baseQuery = "";
+        if (entryID == null
+                || entryID.isUnknown()
+                || Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)
+                || Meta.FIELD_SPECIAL_MEDIA_SRC.equals(entryID.type)) {
+            baseTableKey = Meta.FIELD_SPECIAL_MEDIA_ID;
+            baseTableValue = "";
+        } else {
+            baseTableKey = entryID.type;
+            baseTableValue = entryID.id;
+            baseQuery = " " + baseTableAlias + "." + DB.COLUMN_KEY + " = ?"
+                    + " AND " + baseTableAlias + "." + DB.COLUMN_VALUE + " = ?";
+        }
+        String baseTable = MetaDao.getTable(baseTableKey);
+        HashMap<String, String> keyToTableAliasMap = new HashMap<>();
+        keyToTableAliasMap.put(baseTableKey, baseTableAlias);
+        // Other types (keys) which needs to be joined for the query
+        HashSet<String> uniqueQueryKeys = new HashSet<>(bundleQuery.keySet());
+        List<Object> queryArgs = new ArrayList<>();
+        StringBuilder query = new StringBuilder("SELECT");
+        query.append(" COUNT(*)");
+        query.append(" FROM ").append(baseTable).append(" AS ").append(baseTableAlias);
+        int tableAliasIndex = 1;
+        for (String key : uniqueQueryKeys) {
+            if (baseTableKey.equals(key)) {
+                // Already handled
+                continue;
+            }
+            if (Meta.FIELD_SPECIAL_MEDIA_SRC.equals(key)
+                    || Meta.FIELD_SPECIAL_MEDIA_ID.equals(key)) {
+                // These keys are present in every meta table
+                keyToTableAliasMap.put(key, baseTableAlias);
+                continue;
+            }
+            String typeTable = MetaDao.getTable(key);
+            String typeTableAlias = "meta_" + tableAliasIndex++;
+            keyToTableAliasMap.put(key, typeTableAlias);
+            if (typeTable == null) {
+                Log.e(LC, "There is no type table"
+                        + " for bundleQuery key \"" + key + "\""
+                        + " with type " + Meta.getType(key));
+                continue;
+            }
+            query.append("\nLEFT JOIN " + typeTable + " AS " + typeTableAlias
+                    + " ON ( " + typeTableAlias + "." + DB.COLUMN_API
+                    + " = " + baseTableAlias + "." + DB.COLUMN_API
+                    + " AND " + typeTableAlias + "." + DB.COLUMN_ID
+                    + " = " + baseTableAlias + "." + DB.COLUMN_ID
+                    + " AND " + typeTableAlias + "." + DB.COLUMN_KEY + " = ? )");
+            queryArgs.add(key);
+        }
+        boolean whereClauseEmpty = true;
+        // Add query for base table meta
+        if (!baseQuery.isEmpty()) {
+            query.append("\nWHERE (");
+            query.append(baseQuery);
+            queryArgs.add(baseTableKey);
+            queryArgs.add(baseTableValue);
+            whereClauseEmpty = false;
+        }
+        // Add user query
+        for (String key: bundleQuery.keySet()) {
+            String typeTableAlias = keyToTableAliasMap.get(key);
+            if (typeTableAlias == null) {
+                Log.e(LC, "There is no type table"
+                        + " for bundleQuery key \"" + key + "\""
+                        + " with type " + Meta.getType(key));
+                continue;
+            }
+            switch (Meta.getType(key)) {
+                case LONG:
+                    String longValue = bundleQuery.getString(key);
+                    if (longValue == null) {
+                        Log.e(LC, "LONG value in bundle is null for key: " + key);
+                        break;
+                    }
+                    queryArgs.add(Long.parseLong(longValue));
+                    break;
+                case STRING:
+                    queryArgs.add(bundleQuery.getString(key));
+                    break;
+                case DOUBLE:
+                    String doubleValue = bundleQuery.getString(key);
+                    if (doubleValue == null) {
+                        Log.e(LC, "DOUBLE value in bundle is null for key: " + key);
+                        break;
+                    }
+                    queryArgs.add(Double.parseDouble(doubleValue));
+                    break;
+                default:
+                    Log.e(LC, "Unsupported bundleQuery type: " + Meta.getType(key).name());
+                    continue;
+            }
+            if (whereClauseEmpty) {
+                query.append("\nWHERE (");
+                whereClauseEmpty = false;
+            } else {
+                query.append(" AND ");
+            }
+            query.append(typeTableAlias).append(".");
+            if (Meta.FIELD_SPECIAL_MEDIA_SRC.equals(key)) {
+                query.append(DB.COLUMN_API);
+            } else if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(key)) {
+                query.append(DB.COLUMN_ID);
+            } else {
+                query.append(DB.COLUMN_VALUE);
+            }
+            query.append(" = ?");
+        }
+        if (!whereClauseEmpty) {
+            query.append(" )");
+        }
+        SimpleSQLiteQuery sqlQuery = new SimpleSQLiteQuery(query.toString(), queryArgs.toArray());
+        Log.d(LC, "getNumSongEntries:"
+                + "\nquery: " + sqlQuery.getSql()
+                + "\nargs: "
+                + String.join(", ", queryArgs.stream()
+                .map(Object::toString)
+                .collect(Collectors.toList()))
+                + "\naliases: "
+                + String.join(", ", keyToTableAliasMap.entrySet().stream()
+                .map(e -> e.getKey() + ": " + e.getValue())
+                .collect(Collectors.toList()))
+        );
+        return metaModel.getNumEntries(sqlQuery);
+    }
+
+    public LiveData<List<EntryID>> getSongEntries(List<EntryID> entryIDs, Bundle query) {
+        MediatorLiveData<List<EntryID>> allEntriesMediator = new MediatorLiveData<>();
+        List<LiveData<List<EntryID>>> songEntryLiveDataList = new ArrayList<>();
+        for (EntryID entryID: entryIDs) {
+            songEntryLiveDataList.add(getSongEntries(entryID, query));
+        }
+        for (LiveData<List<EntryID>> songEntryLiveData: songEntryLiveDataList) {
+            allEntriesMediator.addSource(
+                    songEntryLiveData,
+                    e -> allEntriesMediator.setValue(combineSongEntries(songEntryLiveDataList))
+            );
+        }
+        return allEntriesMediator;
+    }
+
+    private List<EntryID> combineSongEntries(List<LiveData<List<EntryID>>> songEntryLiveDataList) {
+        List<EntryID> allEntries = new ArrayList<>();
+        for (LiveData<List<EntryID>> songEntryLiveData: songEntryLiveDataList) {
+            if (songEntryLiveData != null && songEntryLiveData.getValue() != null) {
+                allEntries.addAll(songEntryLiveData.getValue());
+            }
+        }
+        return allEntries;
+    }
+
+    private LiveData<List<EntryID>> getSongEntries(EntryID entryID, Bundle query) {
+        Bundle b = new Bundle();
+        b.putAll(query);
+        if (!entryID.isUnknown()) {
+            b.putString(entryID.type, entryID.id);
+        }
+        return Transformations.map(
+                getEntries(Meta.FIELD_SPECIAL_MEDIA_ID, Meta.FIELD_TITLE, b),
+                libraryEntries -> libraryEntries.stream()
+                        .map(libraryEntry -> libraryEntry.entryID)
+                        .collect(Collectors.toList())
+        );
+    }
+
+    public CompletableFuture<List<EntryID>> getSongEntriesOnce(List<EntryID> entryIDs, Bundle query) {
         List<CompletableFuture<List<EntryID>>> futureEntryLists = new ArrayList<>();
-        Log.d(LC, "getEntries for " + entryIDs.size() + " entryIDs");
+//        Log.d(LC, "getSongEntriesOnce for " + entryIDs.size() + " entryIDs, query: " + query);
         for (EntryID entryID : entryIDs) {
             CompletableFuture<List<EntryID>> songEntries;
-            if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
-                Log.d(LC, "getEntries single: " + entryID.toString());
-                songEntries = CompletableFuture.completedFuture(Collections.singletonList(entryID));
-            } else {
-                Log.d(LC, "getEntries all entries for: " + entryID.toString());
-                songEntries = getSongEntries(entryID);
-            }
+            songEntries = getSongEntriesOnce(entryID, query);
             futureEntryLists.add(songEntries);
         }
         return CompletableFuture.allOf(futureEntryLists.toArray(new CompletableFuture[0]))
@@ -269,14 +461,19 @@ public class MetaStorage {
                         .collect(Collectors.toList()));
     }
 
-    private CompletableFuture<List<EntryID>> getSongEntries(EntryID entryID) {
+    private CompletableFuture<List<EntryID>> getSongEntriesOnce(EntryID entryID, Bundle query) {
         CompletableFuture<List<EntryID>> ret = new CompletableFuture<>();
-        Bundle bundleQuery = new Bundle();
-        bundleQuery.putString(entryID.type, entryID.id);
+        Bundle b = new Bundle();
+        if (query != null) {
+            b.putAll(query);
+        }
+        if (!entryID.isUnknown()) {
+            b.putString(entryID.type, entryID.id);
+        }
         LiveData<List<LibraryEntry>> liveData = getEntries(
                 Meta.FIELD_SPECIAL_MEDIA_ID,
                 Meta.FIELD_TITLE,
-                bundleQuery
+                b
         );
         liveData.observeForever(new Observer<List<LibraryEntry>>() {
             @Override

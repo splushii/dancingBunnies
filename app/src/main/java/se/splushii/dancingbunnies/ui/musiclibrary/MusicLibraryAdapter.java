@@ -100,6 +100,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         private final TextView libraryEntryArtist;
         private final TextView libraryEntryAlbum;
         private final TrackItemActionsView actionsView;
+        private final TextView libraryEntryNum;
+        private LiveData<Integer> numSubEntriesLiveData;
         private MutableLiveData<EntryID> entryIDLiveData;
         String itemTitle;
         LiveData<Meta> metaLiveData;
@@ -124,6 +126,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             libraryEntryTitle = view.findViewById(R.id.library_entry_title);
             libraryEntryAlbum = view.findViewById(R.id.library_entry_album);
             libraryEntryArtist = view.findViewById(R.id.library_entry_artist);
+            libraryEntryNum = view.findViewById(R.id.library_entry_num);
             actionsView = view.findViewById(R.id.library_entry_actions);
         }
 
@@ -181,6 +184,79 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         return holder;
     }
 
+    @Override
+    public void onBindViewHolder(@NonNull final SongViewHolder holder, int position) {
+        final MediaBrowserCompat.MediaItem item = dataset.get(position);
+        final boolean browsable = item.isBrowsable();
+        EntryID entryID = EntryID.from(item);
+        holder.itemTitle = item.getDescription().getTitle() + "";
+        holder.actionsView.initialize();
+        if (holder.numSubEntriesLiveData != null) {
+            holder.numSubEntriesLiveData.removeObservers(fragment.getViewLifecycleOwner());
+            holder.numSubEntriesLiveData = null;
+        }
+        holder.libraryEntryNum.setText("");
+        holder.setEntryId(entryID);
+        if (browsable) {
+            holder.libraryEntryNum.setVisibility(View.VISIBLE);
+            holder.numSubEntriesLiveData = Transformations.switchMap(
+                    holder.entryIDLiveData, e ->
+                            MetaStorage.getInstance(fragment.requireContext()).getNumSongEntries(
+                                    Collections.singletonList(e),
+                                    fragment.getCurrentQuery()
+                            )
+            );
+            holder.numSubEntriesLiveData.observe(fragment.getViewLifecycleOwner(), numSubEntries ->
+                    holder.libraryEntryNum.setText(String.valueOf(numSubEntries))
+            );
+        } else {
+            holder.libraryEntryNum.setVisibility(View.GONE);
+        }
+        holder.libraryEntry.setBackgroundResource(position % 2 == 0 ?
+                R.color.white_active_accent : R.color.gray50_active_accent
+        );
+        boolean selected = selectionTracker != null
+                && selectionTracker.isSelected(holder.getItemDetails().getSelectionKey());
+        holder.libraryEntry.setActivated(selected);
+        holder.libraryEntry.setOnClickListener(view -> {
+            if (selectionTracker.hasSelection()) {
+                return;
+            }
+            if (browsable) {
+                fragment.browse(entryID);
+            } else {
+                if (selectedActionView != holder.actionsView) {
+                    hideTrackItemActions();
+                }
+                selectedActionView = holder.actionsView;
+                boolean showActionsView = !selectionTracker.hasSelection()
+                        && holder.actionsView.getVisibility() != View.VISIBLE;
+                holder.actionsView.animateShow(showActionsView);
+            }
+        });
+        holder.actionsView.setOnPlayListener(() -> fragment.play(entryID));
+        holder.actionsView.setOnQueueListener(() -> fragment.queue(
+                Collections.singletonList(entryID),
+                fragment.getCurrentQuery()
+        ));
+        holder.actionsView.setOnAddToPlaylistListener(() -> AddToPlaylistDialogFragment.showDialog(
+                fragment,
+                new ArrayList<>(Collections.singletonList(entryID)),
+                fragment.getCurrentQuery()
+        ));
+        holder.actionsView.setOnInfoListener(() ->
+                MetaDialogFragment.showMeta(fragment, holder.metaLiveData.getValue())
+        );
+    }
+
+    @Override
+    public void onViewRecycled(@NonNull SongViewHolder holder) {
+        if (holder.numSubEntriesLiveData != null) {
+            holder.numSubEntriesLiveData.removeObservers(fragment.getViewLifecycleOwner());
+            holder.numSubEntriesLiveData = null;
+        }
+    }
+
     private void setDataset(List<MediaBrowserCompat.MediaItem> items) {
         this.dataset = items;
         notifyDataSetChanged();
@@ -199,51 +275,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             index++;
         }
         return RecyclerView.NO_POSITION;
-    }
-
-    @Override
-    public void onBindViewHolder(@NonNull final SongViewHolder holder, int position) {
-        final MediaBrowserCompat.MediaItem item = dataset.get(position);
-        holder.itemTitle = item.getDescription().getTitle() + "";
-        holder.actionsView.initialize();
-        EntryID entryID = EntryID.from(item);
-        holder.setEntryId(entryID);
-        if (position % 2 == 0) {
-            holder.libraryEntry.setBackgroundResource(R.color.white_active_accent);
-        } else {
-            holder.libraryEntry.setBackgroundResource(R.color.gray50_active_accent);
-        }
-        boolean selected = selectionTracker != null
-                && selectionTracker.isSelected(holder.getItemDetails().getSelectionKey());
-        holder.libraryEntry.setActivated(selected);
-        final boolean browsable = item.isBrowsable();
-        holder.libraryEntry.setOnClickListener(view -> {
-            if (selectionTracker.hasSelection()) {
-                return;
-            }
-            if (browsable) {
-                fragment.browse(entryID);
-            } else {
-                if (selectedActionView != holder.actionsView) {
-                    hideTrackItemActions();
-                }
-                selectedActionView = holder.actionsView;
-                boolean showActionsView = !selectionTracker.hasSelection()
-                        && holder.actionsView.getVisibility() != View.VISIBLE;
-                holder.actionsView.animateShow(showActionsView);
-            }
-        });
-        holder.actionsView.setOnPlayListener(() -> fragment.play(entryID));
-        holder.actionsView.setOnQueueListener(() -> fragment.queue(entryID));
-        holder.actionsView.setOnAddToPlaylistListener(() ->
-                AddToPlaylistDialogFragment.showDialog(
-                        fragment,
-                        new ArrayList<>(Collections.singletonList(entryID))
-                )
-        );
-        holder.actionsView.setOnInfoListener(() ->
-                MetaDialogFragment.showMeta(fragment, holder.metaLiveData.getValue())
-        );
     }
 
     private void updateFastScrollerText(SongViewHolder holder) {

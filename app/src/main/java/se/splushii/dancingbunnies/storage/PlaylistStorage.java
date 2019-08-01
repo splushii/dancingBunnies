@@ -3,6 +3,8 @@ package se.splushii.dancingbunnies.storage;
 import android.content.Context;
 import android.util.Log;
 
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -13,7 +15,9 @@ import java.util.stream.Collectors;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.SmartPlaylist;
 import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
 import se.splushii.dancingbunnies.storage.db.DB;
 import se.splushii.dancingbunnies.storage.db.Playlist;
@@ -45,6 +49,15 @@ public class PlaylistStorage {
         playlistModel.deleteWhereSourceIs(src); // Delete cascades to playlistEntries
     }
 
+    public static PlaylistID generatePlaylistID(int playlistType) {
+        String id = DateTimeFormatter.ISO_DATE_TIME.format(OffsetDateTime.now());
+        return new PlaylistID(
+                MusicLibraryService.API_ID_DANCINGBUNNIES,
+                id,
+                playlistType
+        );
+    }
+
     public CompletableFuture<Void> deletePlaylists(List<Playlist> playlistItems) {
         return CompletableFuture.runAsync(() ->
                 playlistModel.delete(playlistItems.stream()
@@ -53,24 +66,27 @@ public class PlaylistStorage {
         );
     }
 
-    public CompletableFuture<Void> insertPlaylists(int toPosition, List<se.splushii.dancingbunnies.musiclibrary.Playlist> playlists) {
+    public CompletableFuture<Void> insertPlaylists(int toPosition, List<? extends se.splushii.dancingbunnies.musiclibrary.Playlist> playlists) {
         return CompletableFuture.runAsync(() -> {
             List<Playlist> roomPlaylists = new ArrayList<>();
             int entryPosition = toPosition;
-            StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new StringBuilder("insertPlaylists");
             HashMap<PlaylistID, List<EntryID>> playlistEntriesMap = new HashMap<>();
             for (se.splushii.dancingbunnies.musiclibrary.Playlist playlist: playlists) {
-                sb.append("insert playlist: ").append(playlist.name)
-                        .append(" pos: ").append(entryPosition)
-                        .append("\n");
+                sb.append("\ninsert playlist: ").append(playlist.name)
+                        .append(" pos: ").append(entryPosition);
                 if (playlist instanceof StupidPlaylist) {
                     StupidPlaylist p = (StupidPlaylist) playlist;
                     roomPlaylists.add(Playlist.from(p, entryPosition++));
                     playlistEntriesMap.put(p.id, p.getEntries());
+                } else if (playlist instanceof SmartPlaylist) {
+                    SmartPlaylist p = (SmartPlaylist) playlist;
+                    roomPlaylists.add(Playlist.from(p, entryPosition++));
                 } else {
                     Log.e(LC, "Unsupported playlist type: " + playlist);
                 }
             }
+            Log.d(LC, sb.toString());
             playlistModel.insert(toPosition, roomPlaylists);
             for (PlaylistID playlistID: playlistEntriesMap.keySet()) {
                 List<EntryID> entries = playlistEntriesMap.get(playlistID);

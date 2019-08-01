@@ -14,8 +14,11 @@ import androidx.lifecycle.ViewModel;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
+import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryFragmentModel extends ViewModel {
+    private static final String LC = Util.getLogContext(MusicLibraryFragmentModel.class);
+
     private MutableLiveData<MusicLibraryUserState> userState;
     private LinkedList<MusicLibraryUserState> backStack;
     private String currentSubscriptionID;
@@ -93,7 +96,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
         String sortField = Meta.FIELD_SPECIAL_MEDIA_ID.equals(showField) ?
                 Meta.FIELD_TITLE : showField;
         query.setSortByField(sortField);
-        if (entryID.id != null && !entryID.isUnknown()) {
+        if (!entryID.isUnknown()) {
             query.addToQuery(entryID.type, entryID.id);
         }
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));

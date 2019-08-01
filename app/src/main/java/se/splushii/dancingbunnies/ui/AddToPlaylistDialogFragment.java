@@ -33,11 +33,16 @@ public class AddToPlaylistDialogFragment extends DialogFragment {
 
     private static final String TAG = "dancingbunnies.splushii.se.fragment_tag.add_to_playlist_dialog";
     private static final String BUNDLE_KEY_ENTRY_IDS = "dancingbunnies.bundle.key.addtoplaylistdialog.entryids";
+    private static final String BUNDLE_KEY_QUERY = "dancingbunnies.bundle.key.addtoplaylistdialog.query";
 
     private ArrayList<EntryID> entryIDs;
+    private Bundle query;
     private PlaylistAdapter recViewAdapter;
+    private View addToNewPlaylistView;
 
-    public static void showDialog(Fragment fragment, ArrayList<EntryID> entryIDs) {
+    public static void showDialog(Fragment fragment,
+                                  ArrayList<EntryID> entryIDs,
+                                  Bundle query) {
         if (entryIDs == null || entryIDs.isEmpty()) {
             return;
         }
@@ -51,6 +56,7 @@ public class AddToPlaylistDialogFragment extends DialogFragment {
         dialogFragment.setTargetFragment(fragment, MainActivity.REQUEST_CODE_ADD_TO_PLAYLIST_DIALOG);
         Bundle args = new Bundle();
         args.putParcelableArrayList(BUNDLE_KEY_ENTRY_IDS, entryIDs);
+        args.putBundle(BUNDLE_KEY_QUERY, query);
         dialogFragment.setArguments(args);
         dialogFragment.show(ft, AddToPlaylistDialogFragment.TAG);
     }
@@ -81,31 +87,40 @@ public class AddToPlaylistDialogFragment extends DialogFragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         Bundle args = getArguments();
         ArrayList<EntryID> entryIDs = args.getParcelableArrayList(BUNDLE_KEY_ENTRY_IDS);
+        Bundle query = args.getBundle(BUNDLE_KEY_QUERY);
         this.entryIDs = entryIDs == null ? new ArrayList<>() : entryIDs;
+        this.query = query;
         super.onCreate(savedInstanceState);
     }
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View v = inflater.inflate(R.layout.add_to_playlist_dialog_fragment_layout, container, false);
-        RecyclerView recyclerView = v.findViewById(R.id.add_to_playlist_dialog_recyclerview);
+        View rootView = inflater.inflate(R.layout.add_to_playlist_dialog_fragment_layout, container, false);
+        RecyclerView recyclerView = rootView.findViewById(R.id.add_to_playlist_dialog_recyclerview);
         LinearLayoutManager recViewLayoutManager = new LinearLayoutManager(requireContext());
         recyclerView.setLayoutManager(recViewLayoutManager);
         recViewAdapter = new PlaylistAdapter(this);
-        recViewAdapter.setOnItemClickListener(playlist -> {
-            MetaStorage.getInstance(requireContext())
-                    .getSongEntries(entryIDs)
-                    .thenCompose(songEntryIDs ->
-                            PlaylistStorage.getInstance(requireContext())
-                                    .addToPlaylist(new PlaylistID(playlist), songEntryIDs))
-                    .thenRun(this::dismiss);
-        });
+        recViewAdapter.setOnItemClickListener(playlist ->
+                MetaStorage.getInstance(requireContext())
+                        .getSongEntriesOnce(entryIDs, query)
+                        .thenCompose(songEntryIDs ->
+                                PlaylistStorage.getInstance(requireContext())
+                                        .addToPlaylist(new PlaylistID(playlist), songEntryIDs))
+                        .thenRun(this::dismiss)
+        );
         recyclerView.setAdapter(recViewAdapter);
-        return v;
+        addToNewPlaylistView = rootView.findViewById(R.id.add_to_playlist_dialog_new);
+        addToNewPlaylistView.setOnClickListener(v ->
+                AddToNewPlaylistDialogFragment.showDialog(this, entryIDs, query)
+        );
+        return rootView;
     }
 
     private boolean canBeAdded(EntryID entryID, Playlist playlist) {
+        if (playlist.type != PlaylistID.TYPE_STUPID) {
+            return false;
+        }
         if (MusicLibraryService.API_ID_DANCINGBUNNIES.equals(playlist.api)) {
             return true;
         }

@@ -154,7 +154,8 @@ public class TrackItemView extends LinearLayout {
 
     public void setTrackNum(String trackNum) {
         this.trackNum = trackNum;
-        trackNumView.setText("#" + trackNum);
+        trackNumView.setVisibility(trackNum.isEmpty() ? GONE : VISIBLE);
+        trackNumView.setText(trackNum);
     }
 
     public void setAlbum(String album) {
@@ -301,12 +302,14 @@ public class TrackItemView extends LinearLayout {
         }
         String title = meta.getAsString(Meta.FIELD_TITLE);
         setTitle(title);
-        String duration = Util.getDurationString(Long.parseLong(meta.getAsString(Meta.FIELD_DURATION)));
+        String durationString = meta.getAsString(Meta.FIELD_DURATION);
+        String duration = durationString.isEmpty() ?
+                "" : Util.getDurationString(Long.parseLong(durationString));
         setDuration(duration);
         String artist = meta.getAsString(Meta.FIELD_ARTIST);
         setArtist(artist);
         String trackNum = meta.getAsString(Meta.FIELD_TRACKNUMBER);
-        setTrackNum(trackNum);
+        setTrackNum(trackNum.isEmpty() ? "" : "#" + trackNum);
         String album = meta.getAsString(Meta.FIELD_ALBUM);
         setAlbum(album);
         String src = meta.entryID.src;
