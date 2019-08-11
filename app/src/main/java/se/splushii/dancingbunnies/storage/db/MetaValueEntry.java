@@ -9,4 +9,6 @@ public class MetaValueEntry {
     public String id;
     @ColumnInfo(name = DB.COLUMN_VALUE)
     public String value;
+    @ColumnInfo(name = "sort1")
+    public String sort1;
 }

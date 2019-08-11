@@ -33,7 +33,7 @@ public class MusicLibraryQuery {
     }
 
     public MusicLibraryQuery(MusicLibraryQuery query) {
-        this.type = MusicLibraryQueryType.SUBSCRIPTION;
+        this.type = query == null ? MusicLibraryQueryType.SUBSCRIPTION : query.type;
         if (query == null) {
             init();
             return;
@@ -54,6 +54,11 @@ public class MusicLibraryQuery {
             sortByField = query.sortByField;
         }
         this.searchQuery = query.searchQuery;
+    }
+
+    public MusicLibraryQuery(String searchQuery) {
+        this.type = MusicLibraryQueryType.SEARCH;
+        this.searchQuery = searchQuery;
     }
 
     private void init() {
@@ -78,6 +83,11 @@ public class MusicLibraryQuery {
         return sortByField;
     }
 
+    public boolean querySortedByShow() {
+        return getSortByField().equals(getShowField())
+                || Meta.FIELD_SPECIAL_MEDIA_ID.equals(getShowField()) && Meta.FIELD_TITLE.equals(getSortByField());
+    }
+
     public void addToQuery(String key, String value) {
         if (type != MusicLibraryQueryType.SUBSCRIPTION) {
             Log.e(LC, "addToQuery on type: " + type.name());
@@ -98,12 +108,7 @@ public class MusicLibraryQuery {
         subQuery.remove(key);
     }
 
-    public MusicLibraryQuery(String searchQuery) {
-        this.type = MusicLibraryQueryType.SEARCH;
-        this.searchQuery = searchQuery;
-    }
-
-    public Bundle toSubscriptionBundle() {
+    private Bundle toSubscriptionBundle() {
         Bundle b = new Bundle();
         b.putString(BUNDLE_KEY_SHOW, showField);
         b.putString(BUNDLE_KEY_SORT, sortByField);

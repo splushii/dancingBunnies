@@ -3,4 +3,13 @@
     <dimen name="activity_horizontal_margin">16dp</dimen>
     <dimen name="activity_vertical_margin">16dp</dimen>
     <dimen name="fastscroller_width">16dp</dimen>
+    <dimen name="musiclibrary_column_weight_show">2</dimen>
+    <dimen name="musiclibrary_column_mstart_show">8dp</dimen>
+    <dimen name="musiclibrary_column_weight_sortedBy">1</dimen>
+    <dimen name="musiclibrary_column_mstart_sortedBy">4dp</dimen>
+    <dimen name="musiclibrary_column_weight_artist">1</dimen>
+    <dimen name="musiclibrary_column_mstart_artist">4dp</dimen>
+    <dimen name="musiclibrary_column_width_num">48dp</dimen>
+    <dimen name="musiclibrary_column_mstart_num">4dp</dimen>
+    <dimen name="musiclibrary_column_mend_num">8dp</dimen>
 </resources>

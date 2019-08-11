@@ -225,24 +225,20 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     @Override
     public void onSearch(@NonNull String query, Bundle extras, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
         result.sendResult(musicLibraryService.getSearchEntries(query).stream()
-                .map(e -> generateMediaItem(e, e.id))
+                .map(e -> generateMediaItem(new LibraryEntry(e, e.id, null)))
                 .collect(Collectors.toList())
         );
     }
 
     public static MediaBrowserCompat.MediaItem generateMediaItem(LibraryEntry entry) {
-        return generateMediaItem(entry.entryID, entry.name());
-    }
-
-    public static MediaBrowserCompat.MediaItem generateMediaItem(EntryID entryID, String title) {
-        Bundle extras = entryID.toBundle();
+        Bundle extras = entry.toBundle();
         MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
-                .setMediaId(entryID.key())
+                .setMediaId(entry.entryID.key())
                 .setExtras(extras)
-                .setTitle(title)
+                .setTitle(entry.name())
                 .build();
         int flags = MediaBrowserCompat.MediaItem.FLAG_PLAYABLE;
-        if (!Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
+        if (!Meta.FIELD_SPECIAL_MEDIA_ID.equals(entry.entryID.type)) {
             flags |= MediaBrowserCompat.MediaItem.FLAG_BROWSABLE;
         }
         return new MediaBrowserCompat.MediaItem(desc, flags);

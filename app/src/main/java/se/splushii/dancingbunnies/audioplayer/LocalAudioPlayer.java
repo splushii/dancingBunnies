@@ -26,7 +26,7 @@ class LocalAudioPlayer implements AudioPlayer {
     private boolean playWhenReady = false;
     private final MusicLibraryService musicLibraryService;
     private final LinkedList<MediaPlayerInstance> preloadPlayers;
-    private final LinkedList<MediaPlayerInstance> historyPlayers;
+    private final LinkedList<PlaybackEntry> historyPlaybackEntries;
 
     LocalAudioPlayer(Callback audioPlayerCallback,
                      MusicLibraryService musicLibraryService,
@@ -36,7 +36,7 @@ class LocalAudioPlayer implements AudioPlayer {
         this.musicLibraryService = musicLibraryService;
         this.storage = storage;
         preloadPlayers = new LinkedList<>();
-        historyPlayers = new LinkedList<>();
+        historyPlaybackEntries = new LinkedList<>();
         if (initFromStorage) {
             Pair<PlaybackEntry, Long> currentEntryInfo = storage.getLocalAudioPlayerCurrentEntry();
             if (currentEntryInfo != null) {
@@ -53,14 +53,7 @@ class LocalAudioPlayer implements AudioPlayer {
                     })
                     .thenCompose(aVoid -> storage.getLocalAudioPlayerHistoryEntries())
                     .thenApply(entries -> {
-                        historyPlayers.addAll(entries.stream().map(entry -> {
-                            MediaPlayerInstance instance = new MediaPlayerInstance(
-                                    entry,
-                                    mediaPlayerCallback
-                            );
-                            instance.release();
-                            return instance;
-                        }).collect(Collectors.toList()));
+                        historyPlaybackEntries.addAll(entries);
                         return null;
                     })
                     .join();
@@ -175,7 +168,7 @@ class LocalAudioPlayer implements AudioPlayer {
             previousPlayer.seekTo(0);
             // TODO: Also cancel the download
             previousPlayer.release();
-            historyPlayers.add(previousPlayer);
+            historyPlaybackEntries.add(previousPlayer.playbackEntry);
         }
         updatePlaybackState();
         callback.onPreloadChanged();
@@ -186,14 +179,11 @@ class LocalAudioPlayer implements AudioPlayer {
     @Override
     public AudioPlayerState getLastState() {
         long lastPos = player == null ? 0 : player.getCurrentPosition();
-        List<PlaybackEntry> history = historyPlayers.stream()
-                .map(p -> p.playbackEntry)
-                .collect(Collectors.toList());
         PlaybackEntry currentEntry = player == null ? null : player.playbackEntry;
         List<PlaybackEntry> entries = preloadPlayers.stream()
                 .map(p -> p.playbackEntry)
                 .collect(Collectors.toList());
-        return new AudioPlayerState(currentEntry, history, entries, lastPos);
+        return new AudioPlayerState(currentEntry, historyPlaybackEntries, entries, lastPos);
     }
 
     private CompletableFuture<Void> persistState() {
@@ -204,9 +194,7 @@ class LocalAudioPlayer implements AudioPlayer {
                         .collect(Collectors.toList())
         ).thenCompose(aVoid -> storage.replaceWith(
                 PlaybackControllerStorage.QUEUE_ID_LOCALAUDIOPLAYER_HISTORY,
-                historyPlayers.stream()
-                        .map(p -> p.playbackEntry)
-                        .collect(Collectors.toList())
+                historyPlaybackEntries
         )).thenRun(() -> {
             if (player == null) {
                 storage.removeLocalAudioPlayerCurrent();

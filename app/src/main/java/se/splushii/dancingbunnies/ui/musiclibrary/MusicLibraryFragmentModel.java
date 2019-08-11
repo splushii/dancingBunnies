@@ -11,7 +11,6 @@ import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
-import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.util.Util;
@@ -26,9 +25,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
     private Consumer<CharSequence> setSearchQueryListener = s -> {};
 
     private static MusicLibraryUserState initialUserState() {
-        MusicLibraryQuery query = new MusicLibraryQuery();
-        query.setShowField(MusicLibraryQuery.DEFAULT_SHOW_FIELD);
-        return new MusicLibraryUserState(query, 0, 0);
+        return new MusicLibraryUserState(new MusicLibraryQuery(), 0, 0);
     }
 
     private MutableLiveData<MusicLibraryUserState> getMutableUserState() {
@@ -55,7 +52,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
         if (state == null) {
             return new MusicLibraryQuery();
         }
-        return state.query;
+        return new MusicLibraryQuery(state.query);
     }
 
     private LinkedList<MusicLibraryUserState> getBackStack() {
@@ -67,7 +64,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
     }
 
     void addBackStackHistory(Pair<Integer, Integer> currentPosition) {
-        getBackStack().push(new MusicLibraryUserState(getMusicLibraryQuery(),currentPosition));
+        getBackStack().push(new MusicLibraryUserState(getMusicLibraryQuery(), currentPosition));
     }
 
     boolean popBackStack() {
@@ -88,18 +85,8 @@ public class MusicLibraryFragmentModel extends ViewModel {
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 
-    void browse(EntryID entryID) {
-        MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
-        String showField = Meta.FIELD_ARTIST.equals(entryID.type) ?
-                Meta.FIELD_ALBUM : Meta.FIELD_SPECIAL_MEDIA_ID;
-        query.setShowField(showField);
-        String sortField = Meta.FIELD_SPECIAL_MEDIA_ID.equals(showField) ?
-                Meta.FIELD_TITLE : showField;
-        query.setSortByField(sortField);
-        if (!entryID.isUnknown()) {
-            query.addToQuery(entryID.type, entryID.id);
-        }
-        getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
+    void setQuery(MusicLibraryQuery query) {
+        getMutableUserState().setValue(new MusicLibraryUserState(query, 0 , 0));
     }
 
     void displayType(String displayType) {
@@ -111,12 +98,6 @@ public class MusicLibraryFragmentModel extends ViewModel {
     void sortBy(String field) {
         MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
         query.setSortByField(field);
-        getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
-    }
-
-    void showOnly(String filterType, String filter) {
-        MusicLibraryQuery query = new MusicLibraryQuery();
-        query.addToQuery(filterType, filter);
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 
@@ -138,6 +119,12 @@ public class MusicLibraryFragmentModel extends ViewModel {
         addBackStackHistory(new Pair<>(0, 0));
         showOnly(filterType, filter);
         displayType(Meta.FIELD_SPECIAL_MEDIA_ID);
+    }
+
+    private void showOnly(String filterType, String filter) {
+        MusicLibraryQuery query = new MusicLibraryQuery();
+        query.addToQuery(filterType, filter);
+        getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 
     public void search(String query) {

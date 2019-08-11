@@ -59,6 +59,12 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
 
     private MusicLibraryAdapter recyclerViewAdapter;
     private LinearLayoutManager recViewLayoutManager;
+    private TextView headerShow;
+    private TextView headerSortedBy;
+    private TextView headerArtist;
+    private View headerNum;
+    private View headerFastScrollerPad;
+
     private SelectionTracker<EntryID> selectionTracker;
     private ActionMode actionMode;
 
@@ -119,14 +125,28 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         if (newUserState == null) {
             return;
         }
-        Log.d(LC, "refreshView");
+
+        String showField = getCurrentQuery().getShowField();
+        String sortField = getCurrentQuery().getSortByField();
         clearFilterView();
-        if (newUserState.query.isSearchQuery()) {
+        boolean browsable = isBrowsable(showField);
+        headerShow.setText(showField);
+        headerArtist.setVisibility(showHeaderArtist(isBrowsable(showField)) ? VISIBLE : GONE);
+        headerNum.setVisibility(showHeaderNum(browsable) ? VISIBLE : GONE);
+        if (showHeaderSortedBy()) {
+            headerSortedBy.setText(sortField);
+            headerSortedBy.setVisibility(VISIBLE);
+        } else {
+            headerSortedBy.setVisibility(GONE);
+        }
+        if (isSearchQuery()) {
+            Log.d(LC, "refreshView search");
             filterView.setVisibility(GONE);
             fastScroller.enableBubble(false);
             searchInfoText.setText(newUserState.query.getSearchQuery());
             searchView.setVisibility(VISIBLE);
         } else {
+            Log.d(LC, "refreshView query");
             searchView.setVisibility(GONE);
             fastScroller.enableBubble(true);
             Chip chip = new Chip(requireContext());
@@ -139,10 +159,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 filterNew.setVisibility(filterNew.getVisibility() == VISIBLE ? GONE : VISIBLE);
             });
             filterChips.addView(chip);
-            String showField = newUserState.query.getShowField();
             setSpinnerSelection(entryTypeSelectSpinner, showField);
             entryTypeSelectionPos = entryTypeSelectSpinner.getSelectedItemPosition();
-            String sortField = newUserState.query.getSortByField();
             setSpinnerSelection(sortSelectSpinner, sortField);
             sortSelectionPos = sortSelectSpinner.getSelectedItemPosition();
             Bundle b = newUserState.query.getQueryBundle();
@@ -157,6 +175,10 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         } else {
             filterChips.setVisibility(GONE);
         }
+    }
+
+    private boolean isBrowsable(String field) {
+        return !Meta.FIELD_SPECIAL_MEDIA_ID.equals(field);
     }
 
     @Override
@@ -205,6 +227,14 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 }
             }
         });
+        headerShow = rootView.findViewById(R.id.musiclibrary_header_show);
+        headerSortedBy = rootView.findViewById(R.id.musiclibrary_header_sortedby);
+        headerArtist = rootView.findViewById(R.id.musiclibrary_header_artist);
+        headerNum = rootView.findViewById(R.id.musiclibrary_header_num);
+        headerFastScrollerPad = rootView.findViewById(R.id.musiclibrary_header_fastscroller_padding);
+        fastScroller.setOnHidden(hidden ->
+                headerFastScrollerPad.setVisibility(hidden ? GONE : VISIBLE)
+        );
 
         selectionTracker = new SelectionTracker.Builder<>(
                 MainActivity.SELECTION_ID_MUSICLIBRARY,
@@ -265,6 +295,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         MetaStorage.getInstance(requireContext())
                 .getMetaFields()
                 .observe(getViewLifecycleOwner(), fields -> {
+                    String showField = getCurrentQuery().getShowField();
+                    String sortField = getCurrentQuery().getSortByField();
                     fields.add(Meta.FIELD_SPECIAL_MEDIA_ID);
                     fields.add(Meta.FIELD_SPECIAL_MEDIA_SRC);
                     Collections.sort(fields, (f1, f2) -> {
@@ -281,10 +313,14 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                         }
                         return f1.compareTo(f2);
                     });
-                    int initialSelectionPos = 0;
+                    int initialShowSelectionPos = 0;
+                    int initialSortSelectionPos = 0;
                     for (int i = 0; i < fields.size(); i++) {
-                        if (fields.get(i).equals(MusicLibraryQuery.DEFAULT_SHOW_FIELD)) {
-                            initialSelectionPos = i;
+                        if (fields.get(i).equals(showField)) {
+                            initialShowSelectionPos = i;
+                        }
+                        if (fields.get(i).equals(sortField)) {
+                            initialSortSelectionPos = i;
                         }
                     }
                     ArrayAdapter<String> fieldsAdapter = new ArrayAdapter<>(
@@ -293,8 +329,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                             fields
                     );
                     entryTypeSelectSpinner.setAdapter(fieldsAdapter);
-                    entryTypeSelectSpinner.setSelection(initialSelectionPos);
-                    entryTypeSelectionPos = initialSelectionPos;
+                    entryTypeSelectSpinner.setSelection(initialShowSelectionPos);
+                    entryTypeSelectionPos = initialShowSelectionPos;
                     entryTypeSelectSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                         @Override
                         public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -315,8 +351,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                         public void onNothingSelected(AdapterView<?> parent) {}
                     });
                     sortSelectSpinner.setAdapter(fieldsAdapter);
-                    sortSelectSpinner.setSelection(initialSelectionPos);
-                    sortSelectionPos = initialSelectionPos;
+                    sortSelectSpinner.setSelection(initialSortSelectionPos);
+                    sortSelectionPos = initialSortSelectionPos;
                     sortSelectSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                         @Override
                         public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -358,7 +394,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
 
         saveQueryBtn = rootView.findViewById(R.id.musiclibrary_filter_save);
         saveQueryBtn.setOnClickListener(v ->
-                AddToNewPlaylistDialogFragment.showDialog(this, getCurrentQuery())
+                AddToNewPlaylistDialogFragment.showDialog(this, getCurrentQueryBundle())
         );
         filterChips = rootView.findViewById(R.id.musiclibrary_filter_chips);
 
@@ -389,15 +425,12 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         model.filter(filterType, filter);
     }
 
-    void showOnly(String filterType, String filter) {
+    void addBackStackHistory() {
         model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
-        model.showOnly(filterType, filter);
-        model.displayType(Meta.FIELD_SPECIAL_MEDIA_ID);
     }
 
-    void browse(EntryID entryID) {
-        model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
-        model.browse(entryID);
+    void setQuery(MusicLibraryQuery query) {
+        model.setQuery(query);
     }
 
     private void setSpinnerSelection(Spinner spinner, Object obj) {
@@ -487,16 +520,16 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             selection.forEach(selectionList::add);
             switch (item.getItemId()) {
                 case R.id.musiclibrary_actionmode_action_play_now:
-                    play(selectionList, getCurrentQuery());
+                    play(selectionList, getCurrentQueryBundle());
                     break;
                 case R.id.musiclibrary_actionmode_action_queue:
-                    queue(selectionList, getCurrentQuery());
+                    queue(selectionList, getCurrentQueryBundle());
                     break;
                 case R.id.musiclibrary_actionmode_action_add_to_playlist:
                     AddToPlaylistDialogFragment.showDialog(
                             MusicLibraryFragment.this,
                             new ArrayList<>(selectionList),
-                            getCurrentQuery()
+                            getCurrentQueryBundle()
                     );
                     break;
                 default:
@@ -514,16 +547,37 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         }
     };
 
-    Bundle getCurrentQuery() {
+    MusicLibraryQuery getCurrentQuery() {
         MusicLibraryUserState state = model.getUserState().getValue();
-        if (state == null) {
-            return new Bundle();
-        }
-        MusicLibraryQuery query = state.query;
+        return state == null ? null : new MusicLibraryQuery(state.query);
+    }
+
+    Bundle getCurrentQueryBundle() {
+        MusicLibraryQuery query = getCurrentQuery();
         if (query == null) {
             return new Bundle();
         }
-        return query.getQueryBundle();
+        Bundle b = query.getQueryBundle();
+        if (b == null) {
+            return new Bundle();
+        }
+        return new Bundle(query.getQueryBundle());
+    }
+
+    boolean querySortedByShow() {
+        MusicLibraryQuery query = getCurrentQuery();
+        if (query == null) {
+            return false;
+        }
+        return query.querySortedByShow();
+    }
+
+    String querySortedByKey() {
+        MusicLibraryQuery query = getCurrentQuery();
+        if (query == null) {
+            return null;
+        }
+        return query.getSortByField();
     }
 
     public void clearSelection() {
@@ -537,5 +591,28 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
 
     void scrollTo(int pos, int pad) {
         recViewLayoutManager.scrollToPositionWithOffset(pos, pad);
+    }
+
+    boolean showAllEntriesRow() {
+        MusicLibraryQuery query = getCurrentQuery();
+        return !query.isSearchQuery() && !Meta.FIELD_SPECIAL_MEDIA_ID.equals(query.getShowField());
+    }
+
+    boolean showHeaderSortedBy() {
+        return !isSearchQuery() && !querySortedByShow();
+    }
+
+    boolean isSearchQuery() {
+        return getCurrentQuery().isSearchQuery();
+    }
+
+    boolean showHeaderArtist(boolean browsable) {
+        MusicLibraryQuery query = getCurrentQuery();
+        return query.isSearchQuery()
+                || !browsable && !Meta.FIELD_ARTIST.equals(query.getSortByField());
+    }
+
+    boolean showHeaderNum(boolean browsable) {
+        return !isSearchQuery() && browsable;
     }
 }

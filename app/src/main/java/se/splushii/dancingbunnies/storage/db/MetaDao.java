@@ -101,6 +101,8 @@ public abstract class MetaDao {
     public abstract List<MetaString> getStringMetaSync(String src, String id);
     @Query(getStringMeta)
     public abstract LiveData<List<MetaString>> getStringMeta(String src, String id);
+    @Query(getStringMeta + " AND " + DB.COLUMN_KEY + " = :key")
+    public abstract LiveData<List<MetaString>> getStringMeta(String src, String id, String key);
 
     private static final String getLongMeta = "SELECT * FROM " + DB.TABLE_META_LONG
             + " WHERE " + DB.COLUMN_API + " = :src "

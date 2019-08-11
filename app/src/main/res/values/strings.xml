@@ -95,4 +95,6 @@
     <string name="playlist_sort">Sort</string>
     <string name="playlist_random">Random</string>
     <string name="go_back_to_playlists">Go back to playlists</string>
+    <string name="artist">artist</string>
+    <string name="entries">entries</string>
 </resources>

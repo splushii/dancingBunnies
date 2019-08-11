@@ -165,7 +165,7 @@ public class Meta {
         switch (getType(key)) {
             case STRING:
                 List<String> strings = stringMap.get(key);
-                return strings == null ? "" : String.join(DELIM, strings);
+                return strings == null ? "" : getAsString(strings);
             case LONG:
                 List<Long> longs = longMap.get(key);
                 return longs == null ? "" : String.join(DELIM, longs.stream()
@@ -178,6 +178,11 @@ public class Meta {
                         .collect(Collectors.toList()));
         }
         return "";
+    }
+
+
+    public static String getAsString(List<String> strings) {
+        return String.join(DELIM, strings);
     }
 
     public Bundle toBundle() {

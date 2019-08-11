@@ -10,11 +10,11 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
         <TextView
-            android:id="@+id/library_entry_title"
+            android:id="@+id/library_entry_show"
             android:layout_width="0dp"
-            android:layout_weight="2"
+            android:layout_weight="@dimen/musiclibrary_column_weight_show"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="@dimen/musiclibrary_column_mstart_show"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp"
             android:ellipsize="end"
@@ -24,36 +24,38 @@
             android:fontFamily="sans-serif"
             android:textSize="14sp" />
         <TextView
-            android:id="@+id/library_entry_album"
-            android:layout_marginStart="4dp"
+            android:id="@+id/library_entry_sortedby"
+            android:layout_marginStart="@dimen/musiclibrary_column_mstart_sortedBy"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:layout_weight="@dimen/musiclibrary_column_weight_sortedBy"
             android:ellipsize="end"
             android:maxLines="1"
             android:textColor="@color/secondary_text_color"
             android:gravity="center_vertical" />
         <TextView
             android:id="@+id/library_entry_artist"
-            android:layout_marginStart="4dp"
+            android:layout_marginStart="@dimen/musiclibrary_column_mstart_artist"
             android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:layout_weight="@dimen/musiclibrary_column_weight_artist"
             android:ellipsize="end"
             android:maxLines="1"
             android:textColor="@color/secondary_text_color"
             android:gravity="center_vertical" />
         <TextView
             android:id="@+id/library_entry_num"
-            android:layout_width="wrap_content"
+            android:layout_width="@dimen/musiclibrary_column_width_num"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:layout_marginStart="4dp"
-            android:layout_marginEnd="8dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:gravity="end|center_vertical"
+            android:layout_marginStart="@dimen/musiclibrary_column_mstart_num"
+            android:layout_marginEnd="@dimen/musiclibrary_column_mend_num"
             android:textColor="@color/secondary_text_color"/>
     </LinearLayout>
     <se.splushii.dancingbunnies.ui.TrackItemActionsView

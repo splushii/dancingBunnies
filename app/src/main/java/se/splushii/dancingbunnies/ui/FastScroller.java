@@ -14,6 +14,7 @@ import android.widget.LinearLayout;
 
 import java.util.ArrayList;
 
+import androidx.core.util.Consumer;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
@@ -38,6 +39,7 @@ public class FastScroller extends LinearLayout {
     private float handleOffset = 0f;
     private boolean bubbleEnabled = true;
     private boolean recyclerViewReversed = false;
+    private Consumer<Boolean> onHiddenAction;
 
     public FastScroller(Context context) {
         super(context);
@@ -50,6 +52,7 @@ public class FastScroller extends LinearLayout {
     }
 
     private void init(Context context) {
+        onHiddenAction = hidden -> {};
         setOrientation(HORIZONTAL);
         setClipChildren(false);
         LayoutInflater inflater = LayoutInflater.from(context);
@@ -85,6 +88,10 @@ public class FastScroller extends LinearLayout {
 
     public void setReversed(boolean reversed) {
         recyclerViewReversed = reversed;
+    }
+
+    public void setOnHidden(Consumer<Boolean> consumer) {
+        onHiddenAction = consumer;
     }
 
     private enum AnimationType {
@@ -176,7 +183,9 @@ public class FastScroller extends LinearLayout {
         }
         int scrollRange = recyclerView.computeVerticalScrollRange();
         int visibleScrollRange = recyclerView.getHeight();
-        return scrollRange <= 2 * visibleScrollRange;
+        boolean needed = scrollRange > 2 * visibleScrollRange;
+        onHiddenAction.accept(!needed);
+        return !needed;
     }
 
     /**
