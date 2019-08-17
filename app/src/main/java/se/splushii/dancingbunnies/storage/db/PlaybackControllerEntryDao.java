@@ -104,7 +104,9 @@ public abstract class PlaybackControllerEntryDao {
     @Transaction
     public void replaceWith(int queueID, List<PlaybackEntry> entries) {
         removeAll(queueID);
-        insert(queueID, 0, entries);
+        if (entries != null && !entries.isEmpty()) {
+            insert(queueID, 0, entries);
+        }
     }
 
     @Query("UPDATE " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES

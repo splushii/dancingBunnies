@@ -49,7 +49,7 @@ class NowPlayingFragmentModel extends ViewModel {
         return getState().getValue();
     }
 
-    public void setQueue(List<PlaybackEntry> queue) {
+    void setQueue(List<PlaybackEntry> queue) {
         getMutableState().setValue(new NowPlayingState.Builder()
                 .fromState(getStateValue())
                 .setQueue(queue)

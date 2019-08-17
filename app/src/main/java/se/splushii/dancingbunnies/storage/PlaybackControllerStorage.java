@@ -159,9 +159,6 @@ public class PlaybackControllerStorage {
     }
 
     public CompletableFuture<Void> replaceWith(int queueID, List<PlaybackEntry> entries) {
-        if (entries == null || entries.isEmpty()) {
-            return Util.futureResult(null);
-        }
         return CompletableFuture.supplyAsync(() -> {
             entryModel.replaceWith(queueID, entries);
             return null;

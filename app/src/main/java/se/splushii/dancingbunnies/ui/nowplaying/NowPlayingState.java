@@ -1,12 +1,14 @@
 package se.splushii.dancingbunnies.ui.nowplaying;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.util.Util;
 
 class NowPlayingState {
+    private static final String LC = Util.getLogContext(NowPlayingState.class);
     final List<PlaybackEntry> queue;
     final PlaylistID currentPlaylistID;
     final long currentPlaylistPos;
@@ -20,7 +22,7 @@ class NowPlayingState {
     }
 
     static class Builder {
-        private List<PlaybackEntry> queue = new ArrayList<>();
+        private List<PlaybackEntry> queue = Collections.emptyList();
         private PlaylistID currentPlaylistID;
         private long currentPlaylistPos;
 
@@ -33,8 +35,8 @@ class NowPlayingState {
             return this;
         }
 
-        public Builder setQueue(List<PlaybackEntry> queue) {
-            this.queue = queue;
+        Builder setQueue(List<PlaybackEntry> queue) {
+            this.queue = queue == null ? Collections.emptyList() : queue;
             return this;
         }
 

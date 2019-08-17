@@ -78,6 +78,9 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private TextView currentPlaylistName;
     private ImageView currentPlaylistOrder;
     private ImageView currentPlaylistRepeat;
+    private final NowPlayingHistoryEntriesAdapter historyRecViewAdapter;
+    private FastScroller historyFastScroller;
+    private RecyclerViewActionModeSelectionTracker<PlaybackEntry, NowPlayingHistoryEntriesAdapter, NowPlayingHistoryEntriesAdapter.ViewHolder> historySelectionTracker;
 
     private NowPlayingFragmentModel model;
     private MutableLiveData<PlaylistID> currentPlaylistIDLiveData = new MutableLiveData<>();
@@ -85,6 +88,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
 
     public NowPlayingFragment() {
         recViewAdapter = new NowPlayingEntriesAdapter(this);
+        historyRecViewAdapter = new NowPlayingHistoryEntriesAdapter(this);
     }
 
     @Override
@@ -116,7 +120,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 }
             }
         });
-
         fastScroller = rootView.findViewById(R.id.nowplaying_fastscroller);
         fastScroller.setRecyclerView(recView);
         fastScroller.setReversed(true);
@@ -126,8 +129,14 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         nowPlayingTitle = rootView.findViewById(R.id.nowplaying_title);
         nowPlayingArtist = rootView.findViewById(R.id.nowplaying_artist);
         nowPlayingAlbum = rootView.findViewById(R.id.nowplaying_album);
-        ImageButton previousBtn = rootView.findViewById(R.id.nowplaying_previous);
-        previousBtn.setOnClickListener(view -> previous());
+        ImageButton historyBtn = rootView.findViewById(R.id.nowplaying_history_btn);
+        View historyRoot = rootView.findViewById(R.id.nowplaying_history_root);
+        historyBtn.setActivated(historyRoot.getVisibility() == VISIBLE);
+        historyBtn.setOnClickListener(view -> {
+            boolean showHistory = historyRoot.getVisibility() != VISIBLE;
+            historyRoot.setVisibility(showHistory ? VISIBLE: GONE);
+            historyBtn.setActivated(showHistory);
+        });
         isPlaying = false;
         playPauseBtn = rootView.findViewById(R.id.nowplaying_play_pause);
         playPauseBtn.setOnClickListener(view -> {
@@ -179,6 +188,33 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         ImageButton currentPlaylistDeselectBtn =
                 rootView.findViewById(R.id.nowplaying_current_playlist_deselect);
         currentPlaylistDeselectBtn.setOnClickListener(v -> setCurrentPlaylist(null, 0));
+
+        RecyclerView historyRecView = rootView.findViewById(R.id.nowplaying_history_recyclerview);
+        LinearLayoutManager historyRecViewLayoutManager = new LinearLayoutManager(this.getContext());
+        historyRecView.setLayoutManager(historyRecViewLayoutManager);
+        historyRecView.setAdapter(historyRecViewAdapter);
+        historySelectionTracker = new RecyclerViewActionModeSelectionTracker<>(
+                getActivity(),
+                R.menu.nowplaying_history_actionmode_menu,
+                MainActivity.SELECTION_ID_NOWPLAYING_HISTORY,
+                historyRecView,
+                historyRecViewAdapter,
+                StorageStrategy.createParcelableStorage(PlaybackEntry.class),
+                savedInstanceState
+        );
+        historyRecView.setOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    historyRecViewAdapter.hideTrackItemActions();
+                }
+            }
+        });
+
+        historyFastScroller = rootView.findViewById(R.id.nowplaying_history_fastscroller);
+        historyFastScroller.setRecyclerView(historyRecView);
+
         return rootView;
     }
 
@@ -217,6 +253,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             sizeText.setVisibility(showSize ? VISIBLE : INVISIBLE);
         });
         recViewAdapter.setModel(model);
+        historyRecViewAdapter.setModel(model);
         Transformations.switchMap(currentPlaylistIDLiveData, playlistID ->
                 PlaylistStorage.getInstance(requireContext()).getPlaylist(playlistID)
         ).observe(getViewLifecycleOwner(), playlist -> {
@@ -245,6 +282,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     @Override
     public void onDestroyView() {
         fastScroller.onDestroy();
+        historyFastScroller.onDestroy();
         super.onDestroyView();
     }
 
@@ -274,8 +312,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             return;
         }
         currentPlaylistIDLiveData.setValue(state.currentPlaylistID);
-        // TODO: Implement playbackhistory in AudioPlayerService/PlaybackController, then in UI.
-        //getPlaybackHistory().thenAccept(opt -> opt.ifPresent(recViewAdapter::setPlaybackHistory));
         Log.d(LC, "refreshView: queue(" + state.queue.size() + ")");
         recViewAdapter.setQueueEntries(state.queue);
     }
@@ -471,6 +507,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         selectionTracker.onSaveInstanceState(outState);
+        historySelectionTracker.onSaveInstanceState(outState);
     }
 
     @Override
@@ -514,8 +551,14 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         if (selectionTracker != null) {
             selectionTracker.clearSelection();
         }
+        if (historySelectionTracker != null) {
+            historySelectionTracker.clearSelection();
+        }
         if (recViewAdapter != null) {
             recViewAdapter.hideTrackItemActions();
+        }
+        if (historyRecViewAdapter!= null) {
+            historyRecViewAdapter.hideTrackItemActions();
         }
     }
 }

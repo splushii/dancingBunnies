@@ -61,7 +61,7 @@ class PlaybackQueue {
 
     CompletableFuture<Void> add(int toPosition, List<PlaybackEntry> entries) {
         Log.d(LC, "add(toPosition: " + toPosition + ", entries.size: " + entries.size() + ")"
-                + "to \"" + PlaybackControllerStorage.getQueueName(queueID) + "\"");
+                + " to \"" + PlaybackControllerStorage.getQueueName(queueID) + "\"");
         if (entries.isEmpty()) {
             return Util.futureResult(null);
         }

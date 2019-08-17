@@ -2,7 +2,6 @@ package se.splushii.dancingbunnies.ui;
 
 import android.content.Context;
 import android.util.AttributeSet;
-import android.view.LayoutInflater;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -28,9 +27,7 @@ public class FastScrollerBubble extends LinearLayout {
     private void init(Context context) {
         setOrientation(HORIZONTAL);
         setClipChildren(false);
-        LayoutInflater inflater = LayoutInflater.from(context);
-        inflater.inflate(R.layout.fastscroller_bubble, this);
-
+        inflate(context, R.layout.fastscroller_bubble, this);
         text = findViewById(R.id.fastscroller_bubble_text);
         setVisibility(INVISIBLE);
     }

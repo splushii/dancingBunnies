@@ -100,8 +100,8 @@ class LocalAudioPlayer implements AudioPlayer {
         if (player == null) {
             return next();
         }
-        callback.onPreloadChanged();
-        return persistState();
+        return persistState()
+                .thenRun(() -> callback.onPreloadChanged());
     }
 
     private void addEntries(List<PlaybackEntry> entries, int offset) {
@@ -168,12 +168,16 @@ class LocalAudioPlayer implements AudioPlayer {
             previousPlayer.seekTo(0);
             // TODO: Also cancel the download
             previousPlayer.release();
-            historyPlaybackEntries.add(previousPlayer.playbackEntry);
+            historyPlaybackEntries.addFirst(previousPlayer.playbackEntry);
         }
-        updatePlaybackState();
-        callback.onPreloadChanged();
-        CompletableFuture<Void> persist = persistState();
-        return player != null && playWhenReady ? persist.thenCompose(aVoid -> play()) : persist;
+        CompletableFuture<Void> ret = persistState();
+        if (player != null && playWhenReady) {
+            ret = ret.thenCompose(aVoid -> play());
+        }
+        return ret.thenRun(() -> {
+            updatePlaybackState();
+            callback.onPreloadChanged();
+        });
     }
 
     @Override
@@ -225,18 +229,6 @@ class LocalAudioPlayer implements AudioPlayer {
         return player.getCurrentPosition();
     }
 
-    private List<PlaybackEntry> getPreloadedEntries(int maxNum, List<MediaPlayerInstance> players) {
-        List<PlaybackEntry> entries = new LinkedList<>();
-        for (MediaPlayerInstance p: players) {
-            if (entries.size() >= maxNum) {
-                return entries;
-            }
-            p.playbackEntry.setPreloaded(true);
-            entries.add(p.playbackEntry);
-        }
-        return entries;
-    }
-
     @Override
     public PlaybackEntry getCurrentEntry() {
         return player == null ? null : player.playbackEntry;
@@ -258,6 +250,11 @@ class LocalAudioPlayer implements AudioPlayer {
     }
 
     @Override
+    public List<PlaybackEntry> getHistory() {
+        return new ArrayList<>(historyPlaybackEntries);
+    }
+
+    @Override
     public CompletableFuture<Void> dePreload(List<PlaybackEntry> playbackEntries) {
         if (playbackEntries.isEmpty()) {
             return Util.futureResult(null);
@@ -272,15 +269,17 @@ class LocalAudioPlayer implements AudioPlayer {
         for (MediaPlayerInstance mp: mediaPlayersToRemove) {
             preloadPlayers.remove(mp);
         }
-        callback.onPreloadChanged();
-        return persistState();
-    }
-
-    @Override
-    public CompletableFuture<Void> previous() {
-        // TODO: implement
-        Log.e(LC, "previous not implemented");
-        return Util.futureResult("Not implemented");
+        List<PlaybackEntry> playbackEntriesToRemove = new ArrayList<>();
+        for (PlaybackEntry p: historyPlaybackEntries) {
+            if (entries.contains(p)) {
+                playbackEntriesToRemove.add(p);
+            }
+        }
+        for (PlaybackEntry p: playbackEntriesToRemove) {
+            historyPlaybackEntries.remove(p);
+        }
+        return persistState()
+                .thenRun(() -> callback.onPreloadChanged());
     }
 
     private void updatePlaybackState() {
@@ -321,9 +320,9 @@ class LocalAudioPlayer implements AudioPlayer {
         public void onPrepared(MediaPlayerInstance instance) {
             if (isCurrentPlayer(instance)) {
                 Log.d(LC, "onPrepared: " + instance.title());
-                updatePlaybackState();
                 if (playWhenReady) {
                     play();
+                } else {
                     updatePlaybackState();
                 }
             }

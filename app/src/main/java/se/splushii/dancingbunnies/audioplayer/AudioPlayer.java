@@ -42,12 +42,12 @@ interface AudioPlayer {
     PlaybackEntry getCurrentEntry();
     PlaybackEntry getPreloadEntry(int position);
     List<PlaybackEntry> getPreloadEntries();
+    List<PlaybackEntry> getHistory();
     CompletableFuture<Void> play();
     CompletableFuture<Void> pause();
     CompletableFuture<Void> stop();
     CompletableFuture<Void> seekTo(long pos);
     CompletableFuture<Void> next();
-    CompletableFuture<Void> previous();
     CompletableFuture<Void> preload(List<PlaybackEntry> entries, int offset);
     CompletableFuture<Void> dePreload(List<PlaybackEntry> playbackEntries);
     CompletableFuture<Void> initialize();

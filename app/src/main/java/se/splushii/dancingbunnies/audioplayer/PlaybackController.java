@@ -143,7 +143,7 @@ public class PlaybackController {
                 PlaybackControllerStorage.QUEUE_ID_HISTORY,
                 storage,
                 historyEntriesLiveData,
-                () -> {}
+                () -> Log.d(LC, "playback history entries changed")
         );
         LiveData<List<PlaybackEntry>> currentPlaylistPlaybackEntriesLiveData =
                 storage.getCurrentPlaylistPlaybackEntries();
@@ -381,13 +381,6 @@ public class PlaybackController {
         }
     }
 
-    CompletableFuture<Void> skipToPrevious() {
-        Log.e(LC, "skipToPrevious not implemented");
-        synchronized (executorLock) {
-            return submitCompletableFuture(() -> audioPlayer.previous());
-        }
-    }
-
     private long nextRandom(PlaybackEntry entry) {
         Long rand = playbackIDToRandomMap.get(entry.playbackID);
         if (rand == null) {
@@ -555,7 +548,15 @@ public class PlaybackController {
         Log.d(LC, "updateState");
         return CompletableFuture.completedFuture(null)
                 .thenCompose(aVoid -> syncPlaylistEntries())
+                .thenCompose(aVoid -> updateHistory())
                 .thenCompose(aVoid -> updatePreload());
+    }
+
+    private CompletionStage<Void> updateHistory() {
+        List<PlaybackEntry> historyEntries = audioPlayer.getHistory();
+        Log.d(LC, "updateHistory getting " + historyEntries.size());
+        return audioPlayer.dePreload(historyEntries)
+                .thenCompose(aVoid -> history.add(0, historyEntries));
     }
 
     private CompletionStage<Void> updatePreload() {
@@ -1011,9 +1012,6 @@ public class PlaybackController {
     }
 
     void onQueueChanged() {
-        List<PlaybackEntry> entries = getAllQueueEntries();
-        List<PlaybackEntry> playlistEntries = getAllPlaylistEntries();
-        entries.addAll(playlistEntries);
         callback.onQueueChanged(getAllEntries());
     }
 

@@ -27,8 +27,7 @@ public class CastMediaIntentReceiver extends MediaIntentReceiver {
 
     @Override
     protected void onReceiveActionSkipPrev(Session session) {
-        Log.d(LC, "onReceiveActionSkipPrev");
-        sendAudioPlayerCommand(AudioPlayerService.CAST_ACTION_PREVIOUS);
+        Log.e(LC, "onReceiveActionSkipPrev not supported");
     }
 
     @Override

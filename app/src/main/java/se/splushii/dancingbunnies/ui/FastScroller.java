@@ -7,7 +7,6 @@ import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.util.AttributeSet;
-import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -55,8 +54,7 @@ public class FastScroller extends LinearLayout {
         onHiddenAction = hidden -> {};
         setOrientation(HORIZONTAL);
         setClipChildren(false);
-        LayoutInflater inflater = LayoutInflater.from(context);
-        inflater.inflate(R.layout.fastscroller, this);
+        inflate(context, R.layout.fastscroller, this);
         handle = findViewById(R.id.fastscroller_handle);
         handleHider = new ViewHider(handle, AnimationType.FADE);
         hideView(handle, AnimationType.FADE);
@@ -122,7 +120,7 @@ public class FastScroller extends LinearLayout {
     }
 
     private void hideView(View v, AnimationType animationType) {
-        int visibility = fastScrollerNotNeeded() ? GONE : INVISIBLE;
+        int visibility = fastscrollerNeeded() ? INVISIBLE : GONE;
         AnimatorSet animatorSet = new AnimatorSet();
         v.setPivotX(v.getWidth());
         v.setPivotY(v.getHeight());
@@ -177,15 +175,16 @@ public class FastScroller extends LinearLayout {
         return Math.min(minimum, max);
     }
 
-    private boolean fastScrollerNotNeeded() {
-        if (recyclerView == null) {
-            return false;
+    private boolean fastscrollerNeeded() {
+        boolean needed = false;
+        if (recyclerView != null) {
+            RecyclerView.Adapter adapter = recyclerView.getAdapter();
+            if (adapter != null && adapter.getItemCount() > 50) {
+                needed = true;
+            }
         }
-        int scrollRange = recyclerView.computeVerticalScrollRange();
-        int visibleScrollRange = recyclerView.getHeight();
-        boolean needed = scrollRange > 2 * visibleScrollRange;
         onHiddenAction.accept(!needed);
-        return !needed;
+        return needed;
     }
 
     /**
@@ -195,7 +194,7 @@ public class FastScroller extends LinearLayout {
         int lastPos = 0;
         @Override
         public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-            if (fastScrollerNotNeeded()) {
+            if (!fastscrollerNeeded()) {
                 hideView(handle, AnimationType.FADE);
                 if (bubble != null) {
                     hideView(bubble, AnimationType.SCALE);
@@ -233,7 +232,7 @@ public class FastScroller extends LinearLayout {
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (fastScrollerNotNeeded()) {
+        if (!fastscrollerNeeded()) {
             hideView(handle, AnimationType.FADE);
             if (bubble != null) {
                 hideView(bubble, AnimationType.SCALE);
@@ -261,9 +260,8 @@ public class FastScroller extends LinearLayout {
         return super.onTouchEvent(event);
     }
 
-
-    private void animateHide(ViewHider viewHider, int handleHideDelay) {
-        getHandler().postDelayed(viewHider, handleHideDelay);
+    private void animateHide(ViewHider viewHider, int hideDelay) {
+        getHandler().postDelayed(viewHider, hideDelay);
     }
 
     private void animateShow(View v, ViewHider viewHider, AnimationType animationType) {
@@ -316,5 +314,4 @@ public class FastScroller extends LinearLayout {
             linearLayoutManager.scrollToPositionWithOffset(position, 0);
         }
     }
-
 }

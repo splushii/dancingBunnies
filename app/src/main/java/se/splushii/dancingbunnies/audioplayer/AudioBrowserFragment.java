@@ -195,10 +195,6 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.getTransportControls().pause();
     }
 
-    protected void previous() {
-        mediaController.getTransportControls().skipToPrevious();
-    }
-
     protected void next() {
         mediaController.getTransportControls().skipToNext();
     }

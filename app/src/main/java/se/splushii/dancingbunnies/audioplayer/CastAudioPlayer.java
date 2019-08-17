@@ -306,6 +306,28 @@ public class CastAudioPlayer implements AudioPlayer {
         return getEntries(true);
     }
 
+    @Override
+    public List<PlaybackEntry> getHistory() {
+        LinkedList<PlaybackEntry> entries = new LinkedList<>();
+        int currentItemIndex = getCurrentIndex();
+        for (int i = 0; i < lastItemIds.length && i < currentItemIndex; i++) {
+            int itemId = lastItemIds[i];
+            MediaQueueItem mediaQueueItem = queueItemMap.get(itemId);
+            PlaybackEntry playbackEntry = mediaQueueItem == null ?
+                    new PlaybackEntry(
+                            EntryID.UNKOWN,
+                            PlaybackEntry.PLAYBACK_ID_INVALID,
+                            PlaybackEntry.USER_TYPE_EXTERNAL,
+                            PlaybackEntry.PLAYLIST_POS_NONE,
+                            PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID
+                    ) :
+                    new PlaybackEntry(mediaQueueItem.getMedia().getMetadata());
+            playbackEntry.setPreloaded(true);
+            entries.add(playbackEntry);
+        }
+        return entries;
+    }
+
     private int getItemId(int mediaQueueItemIndex) {
         return mediaQueueItemIndex < 0 || mediaQueueItemIndex >= lastItemIds.length ?
                 MediaQueueItem.INVALID_ITEM_ID : lastItemIds[mediaQueueItemIndex];
@@ -627,14 +649,6 @@ public class CastAudioPlayer implements AudioPlayer {
                         "Could not go to next",
                         remoteMediaClient.queueNext(null)
                 ), Util.getMainThreadExecutor());
-    }
-
-    @Override
-    public CompletableFuture<Void> previous() {
-        Log.d(LC, "previous()");
-        // TODO: Implement
-        Log.e(LC, "previous not implemented");
-        return Util.futureResult("Not implemented");
     }
 
     private void logResult(String action, RemoteMediaClient.MediaChannelResult result) {

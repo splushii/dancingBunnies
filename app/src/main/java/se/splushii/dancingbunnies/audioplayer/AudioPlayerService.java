@@ -90,9 +90,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             "dancingbunnies.bundle.key.audioplayerservice.playback_entry";
     static final String BUNDLE_KEY_PLAYLIST_ID =
             "dancingbunnies.bundle.key.audioplayerservice.playlist_id";
-    private static final String BUNDLE_KEY_QUERY =
-            "dancingbunnies.bundle.key.audioplayerservice.query";
-
 
     private final Object mediaSessionExtrasLock = new Object();
 
@@ -102,7 +99,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     public static final String CAST_ACTION_TOGGLE_PLAYBACK = "TOGGLE_PLAYBACK";
     public static final String CAST_ACTION_NEXT = "NEXT";
-    public static final String CAST_ACTION_PREVIOUS = "PREVIOUS";
 
     private PlaybackControllerStorage playbackControllerStorage;
     private PlaybackController playbackController;
@@ -273,13 +269,11 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             case CAST_ACTION_TOGGLE_PLAYBACK:
                 result = playbackController.playPause();
                 break;
-            case CAST_ACTION_PREVIOUS:
-                result = playbackController.skipToPrevious();
-                break;
             case CAST_ACTION_NEXT:
                 result = playbackController.skipToNext();
                 break;
             default:
+                Log.e(LC, "Cast action " + action + " not supported");
                 result = CompletableFuture.completedFuture(null);
                 break;
         }
@@ -400,7 +394,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                         | PlaybackStateCompat.ACTION_STOP
                         | PlaybackStateCompat.ACTION_SEEK_TO
                         | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                        | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+//                      | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS is intentionally not supported
                         | PlaybackStateCompat.ACTION_SKIP_TO_QUEUE_ITEM
                         | PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
                         | PlaybackStateCompat.ACTION_SET_SHUFFLE_MODE
@@ -483,17 +477,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                         PlaybackStateCompat.ACTION_SKIP_TO_NEXT
                 )
         ).build();
-        NotificationCompat.Action action_previous = new NotificationCompat.Action.Builder(
-                R.drawable.ic_prev,
-                getString(R.string.previous),
-                MediaButtonReceiver.buildMediaButtonPendingIntent(
-                        this,
-                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
-                )
-        ).build();
         MediaStyle style = new MediaStyle()
                 .setMediaSession(mediaSession.getSessionToken())
-                .setShowActionsInCompactView(1, 3);
+                .setShowActionsInCompactView(0, 2);
         MediaControllerCompat controller = mediaSession.getController();
         String description = Meta.getLongDescription(controller.getMetadata());
         Notification notification =
@@ -504,7 +490,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                         .setSmallIcon(R.drawable.ic_play)
                         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                         .setContentIntent(controller.getSessionActivity())
-                        .addAction(action_previous)
                         .addAction(action_play_pause)
                         .addAction(action_next)
                         .addAction(action_stop)
@@ -608,9 +593,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         @Override
         public void onSkipToPrevious() {
-            Log.d(LC, "onSkipToPrevious");
-            playbackController.skipToPrevious()
-                    .handle(AudioPlayerService.this::handleControllerResult);
+            Log.e(LC, "onSkipToPrevious not supported");
         }
 
         @Override
