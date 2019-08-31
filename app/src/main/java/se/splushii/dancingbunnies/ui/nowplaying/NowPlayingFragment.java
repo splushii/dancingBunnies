@@ -46,6 +46,7 @@ import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
+import se.splushii.dancingbunnies.ui.WaveformSeekBar;
 import se.splushii.dancingbunnies.ui.selection.RecyclerViewActionModeSelectionTracker;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -56,20 +57,20 @@ import static android.view.View.VISIBLE;
 public class NowPlayingFragment extends AudioBrowserFragment {
     private static final String LC = Util.getLogContext(NowPlayingFragment.class);
     private static final long PROGRESS_UPDATE_INITIAL_INTERVAL = 100;
-    private static final long PROGRESS_UPDATE_INTERNAL = 1000;
+    private static final long PROGRESS_UPDATE_INTERNAL = 50;
 
     private TextView nowPlayingTitle;
     private TextView nowPlayingArtist;
     private TextView nowPlayingAlbum;
     private ImageButton playPauseBtn;
     private boolean isPlaying = false;
-    private SeekBar seekBar;
     private PlaybackStateCompat playbackState;
     private TextView positionText;
     private TextView durationText;
     private TextView mediaInfoText;
     private TextView bufferingText;
     private TextView sizeText;
+    private MutableLiveData<EntryID> entryIDLiveData;
     private Meta currentMeta = Meta.UNKNOWN_ENTRY;
 
     private final NowPlayingEntriesAdapter recViewAdapter;
@@ -85,8 +86,10 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private NowPlayingFragmentModel model;
     private MutableLiveData<PlaylistID> currentPlaylistIDLiveData = new MutableLiveData<>();
     private View currentPlaylistView;
+    private WaveformSeekBar waveformSeekBar;
 
     public NowPlayingFragment() {
+        entryIDLiveData = new MutableLiveData<>();
         recViewAdapter = new NowPlayingEntriesAdapter(this);
         historyRecViewAdapter = new NowPlayingHistoryEntriesAdapter(this);
     }
@@ -150,8 +153,9 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         });
         ImageButton nextBtn = rootView.findViewById(R.id.nowplaying_next);
         nextBtn.setOnClickListener(view -> next());
-        seekBar = rootView.findViewById(R.id.nowplaying_seekbar);
-        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+
+        waveformSeekBar = rootView.findViewById(R.id.waveformSeekBar);
+        waveformSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
@@ -171,6 +175,27 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 seekTo(seekBar.getProgress());
             }
         });
+        AudioStorage.getInstance(requireContext()).getWaveform(entryIDLiveData).observe(
+                getViewLifecycleOwner(),
+                waveformEntry -> {
+                    if (waveformEntry == null) {
+                        waveformSeekBar.resetData();
+                    } else {
+                        waveformSeekBar.setData(
+                                waveformEntry.getRMSPositive(),
+                                waveformEntry.getRMSNegative(),
+                                waveformEntry.getPeakPositive(),
+                                waveformEntry.getPeakNegative()
+                        );
+                    }
+                }
+        );
+        MetaStorage.getInstance(requireContext()).getMeta(entryIDLiveData)
+                .observe(getViewLifecycleOwner(), meta -> {
+                    currentMeta = meta;
+                    updateMeta(meta);
+                });
+
         positionText = rootView.findViewById(R.id.nowplaying_position);
         durationText = rootView.findViewById(R.id.nowplaying_duration);
         mediaInfoText = rootView.findViewById(R.id.nowplaying_media_info);
@@ -267,8 +292,8 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         model.getState().observe(getViewLifecycleOwner(), this::refreshView);
     }
 
-    private String getFormattedFileSize(Meta currentMeta) {
-        long size = currentMeta.getFirstLong(Meta.FIELD_FILE_SIZE, -1);
+    private String getFormattedFileSize(Meta meta) {
+        long size = meta.getFirstLong(Meta.FIELD_FILE_SIZE, -1);
         return size < 0 ?
                 null : String.format(Locale.getDefault(),"%d MB", size / 1_000_000L);
     }
@@ -333,7 +358,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             case PlaybackStateCompat.STATE_FAST_FORWARDING:
             case PlaybackStateCompat.STATE_REWINDING:
                 Log.d(LC, "state: playing");
-                seekBar.setEnabled(true);
+                waveformSeekBar.setEnabled(true);
                 playPauseBtn.setImageDrawable(pauseDrawable);
                 bufferingText.setVisibility(INVISIBLE);
                 isPlaying = true;
@@ -343,7 +368,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             case PlaybackStateCompat.STATE_SKIPPING_TO_PREVIOUS:
             case PlaybackStateCompat.STATE_SKIPPING_TO_QUEUE_ITEM:
             case PlaybackStateCompat.STATE_PAUSED:
-                seekBar.setEnabled(true);
+                waveformSeekBar.setEnabled(true);
                 playPauseBtn.setImageDrawable(playDrawable);
                 bufferingText.setVisibility(INVISIBLE);
                 isPlaying = false;
@@ -352,7 +377,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 break;
             case PlaybackStateCompat.STATE_CONNECTING:
             case PlaybackStateCompat.STATE_BUFFERING:
-                seekBar.setEnabled(true);
+                waveformSeekBar.setEnabled(true);
                 playPauseBtn.setImageDrawable(playDrawable);
                 bufferingText.setVisibility(VISIBLE);
                 isPlaying = false;
@@ -366,7 +391,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             case PlaybackStateCompat.STATE_NONE:
             case PlaybackStateCompat.STATE_STOPPED:
             case PlaybackStateCompat.STATE_ERROR:
-                seekBar.setEnabled(false);
+                waveformSeekBar.setEnabled(false);
                 playPauseBtn.setImageDrawable(playDrawable);
                 bufferingText.setVisibility(INVISIBLE);
                 isPlaying = false;
@@ -377,12 +402,14 @@ public class NowPlayingFragment extends AudioBrowserFragment {
 
     @Override
     protected void onMetadataChanged(EntryID entryID) {
-        MetaStorage.getInstance(requireContext()).getMetaOnce(entryID)
-                .thenAcceptAsync(meta -> {
-                    currentMeta = meta;
-                    updateMeta(meta);
-                    updateProgress();
-                }, Util.getMainThreadExecutor());
+        setEntryID(entryID);
+    }
+
+    private void setEntryID(EntryID entryID) {
+        if (!entryID.equals(entryIDLiveData.getValue())) {
+            waveformSeekBar.resetData();
+        }
+        entryIDLiveData.setValue(entryID);
     }
 
     private void updateMeta(Meta meta) {
@@ -444,11 +471,8 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         updatePlaybackState(state);
         MediaMetadataCompat mediaMetadataCompat = mediaController.getMetadata();
         if (mediaMetadataCompat != null) {
-            MetaStorage.getInstance(requireContext()).getMetaOnce(EntryID.from(mediaMetadataCompat))
-                    .thenAcceptAsync(meta -> {
-                        currentMeta = meta;
-                        updateMeta(meta);
-                    }, Util.getMainThreadExecutor());
+            EntryID entryID = EntryID.from(mediaMetadataCompat);
+            setEntryID(entryID);
         }
         updateProgress();
         if (playbackState.getState() == PlaybackStateCompat.STATE_PLAYING) {
@@ -463,18 +487,19 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                     playbackState.getLastPositionUpdateTime();
             pos += elapsed * playbackState.getPlaybackSpeed();
         }
-        if (pos > seekBar.getMax()) {
-            seekBar.setProgress(seekBar.getMax());
-            positionText.setText(Util.getDurationString(seekBar.getMax()));
+        if (pos > waveformSeekBar.getMax()) {
+            waveformSeekBar.setProgress(waveformSeekBar.getMax());
+            positionText.setText(Util.getDurationString(waveformSeekBar.getMax()));
             stopProgressUpdate();
+        } else {
+            waveformSeekBar.setProgress((int) pos);
+            positionText.setText(Util.getDurationString(pos));
         }
-        seekBar.setProgress((int) pos);
-        positionText.setText(Util.getDurationString(pos));
     }
 
     private void updateDuration(Meta metadata) {
         int duration = (int) metadata.getFirstLong(Meta.FIELD_DURATION, 0);
-        seekBar.setMax(duration);
+        waveformSeekBar.setMax(duration);
         durationText.setText(Util.getDurationString(duration));
     }
 

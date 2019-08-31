@@ -1,23 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="colorPrimary">#4CAF50</color>
-    <!--<color name="colorPrimaryDark">#388E3C</color>-->
     <color name="colorPrimaryDark">#087f23</color>
-    <!--<color name="colorPrimaryLight">#C8E6C9</color>-->
     <color name="colorPrimaryLight">#80e27e</color>
     <color name="colorPrimaryExtraLight">#dbffd8</color>
+    <!--<color name="colorPrimary">#7cb342</color>-->
+    <!--<color name="colorPrimaryDark">#4b830d</color>-->
+    <!--<color name="colorPrimaryLight">#aee571</color>-->
+    <!--<color name="colorPrimaryExtraLight">#e7f7d4</color>-->
     <color name="colorPrimaryText">@color/bluegrey900</color>
     <color name="colorPrimaryTextSelected">@color/white</color>
     <color name="colorAccent">#03A9F4</color>
     <color name="colorAccentDark">#007ac1</color>
     <color name="colorAccentLight">#67daff</color>
+    <color name="colorAccentExtraLight">#ccf2ff</color>
+    <!--<color name="colorAccent">#00bcd4</color>-->
+    <!--<color name="colorAccentDark">#008ba3</color>-->
+    <!--<color name="colorAccentLight">#62efff</color>-->
+    <!--<color name="colorAccentExtraLight">#ccfaff</color>-->
     <color name="colorSecondaryText">@color/grey500</color>
     <color name="colorSecondaryTextSelected">@color/colorAccentLight</color>
     <color name="white">@android:color/white</color>
     <color name="overlayBackground">@color/grey100</color>
-    <color name="grey100">#F5F5F5</color>
-    <color name="grey50">#FAFAFA</color>
     <color name="grey">#EEEEEE</color>
+    <color name="grey50">#FAFAFA</color>
+    <color name="grey100">#F5F5F5</color>
+    <color name="grey300">#E0E0E0</color>
     <color name="grey500">#9E9E9E</color>
+    <color name="grey600">#757575</color>
+    <color name="grey700">#616161</color>
     <color name="bluegrey900">#263238</color>
 </resources>

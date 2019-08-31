@@ -601,6 +601,10 @@ public class MetaStorage {
         return ret;
     }
 
+    public LiveData<Meta> getMeta(LiveData<EntryID> entryIDLiveData) {
+        return Transformations.switchMap(entryIDLiveData, this::getMeta);
+    }
+
     public LiveData<Meta> getMeta(EntryID entryID) {
         LiveData<List<MetaString>> metaStrings = metaModel.getStringMeta(entryID.src, entryID.id);
         LiveData<List<MetaLong>> metaLongs = metaModel.getLongMeta(entryID.src, entryID.id);

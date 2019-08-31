@@ -141,10 +141,10 @@
                     android:gravity="center_horizontal"
                     android:paddingTop="2dp"/>
             </LinearLayout>
-            <SeekBar
-                android:id="@+id/nowplaying_seekbar"
+            <se.splushii.dancingbunnies.ui.WaveformSeekBar
+                android:id="@+id/waveformSeekBar"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="64dp"
                 android:paddingTop="8dp"
                 android:paddingBottom="8dp"/>
             <LinearLayout

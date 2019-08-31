@@ -244,8 +244,8 @@ public class MusicLibraryService extends Service {
         return audioDataSource == null ? null : audioDataSource.getURL();
     }
 
-    public void downloadAudioData(EntryID entryID) {
-        getAudioData(entryID, new AudioDataDownloadHandler() {
+    public static void downloadAudioData(Context context, EntryID entryID) {
+        getAudioData(context, entryID, new AudioDataDownloadHandler() {
             @Override
             public void onDownloading() {
                 Log.d(LC, "Downloading: " + entryID);
@@ -263,23 +263,35 @@ public class MusicLibraryService extends Service {
         });
     }
 
-    public void getAudioData(EntryID entryID, AudioDataDownloadHandler handler) {
-        AudioDataSource audioDataSource = audioStorage.get(entryID);
+    public static synchronized void getAudioData(Context context,
+                                                 EntryID entryID,
+                                                 AudioDataDownloadHandler handler) {
+        AudioStorage storage = AudioStorage.getInstance(context);
+        AudioDataSource audioDataSource = storage.get(entryID);
         if (audioDataSource == null) {
-            audioDataSource = getAudioDataSource(entryID);
+            HashMap<String, APIClient> apis = new HashMap<>();
+            SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
+            if (settings.getBoolean(context.getResources().getString(R.string.pref_key_subsonic), false)) {
+                apis.put(API_ID_SUBSONIC, new SubsonicAPIClient(context));
+            }
+            for (String key: apis.keySet()) {
+                apis.get(key).loadSettings(context);
+            }
+            APIClient apiClient = apis.get(entryID.src);
+            audioDataSource = apiClient == null ? null : apiClient.getAudioData(entryID);
             if (audioDataSource == null) {
                 handler.onFailure("Could not get AudioDataSource for song with src: "
                         + entryID.src + ", id: " + entryID.id);
                 return;
             }
-            audioStorage.put(entryID, audioDataSource);
+            storage.put(entryID, audioDataSource);
         }
-        if (audioDataSource.isFinished()) {
+        if (audioDataSource.isDataReady()) {
             handler.onSuccess(audioDataSource);
             return;
         }
         // TODO: JobSchedule this with AudioDataDownloadJob
-        audioStorage.fetch(entryID, handler);
+        storage.fetch(entryID, handler);
     }
 
     public CompletableFuture<Meta> getSongMeta(EntryID entryID) {

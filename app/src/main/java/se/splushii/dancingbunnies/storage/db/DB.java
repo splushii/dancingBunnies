@@ -13,6 +13,7 @@ import androidx.room.RoomDatabase;
                 MetaLong.class,
                 MetaDouble.class,
                 CacheEntry.class,
+                WaveformEntry.class,
                 Playlist.class,
                 PlaylistEntry.class,
                 PlaybackControllerEntry.class
@@ -30,6 +31,7 @@ public abstract class DB extends RoomDatabase {
     public static final String COLUMN_KEY = "key";
     public static final String COLUMN_VALUE = "value";
     static final String TABLE_CACHE = "cache";
+    static final String TABLE_WAVEFORM = "waveform";
     static final String TABLE_PLAYLISTS = "playlists";
     static final String TABLE_PLAYLIST_ENTRIES = "playlist_entries";
     static final String TABLE_PLAYBACK_CONTROLLER_ENTRIES = "playback_controller_entries";
@@ -44,6 +46,7 @@ public abstract class DB extends RoomDatabase {
 
     public abstract MetaDao metaModel();
     public abstract CacheDao cacheModel();
+    public abstract WaveformDao waveformModel();
     public abstract PlaylistDao playlistModel();
     public abstract PlaylistEntryDao playlistEntryModel();
     public abstract PlaybackControllerEntryDao playbackControllerEntryModel();

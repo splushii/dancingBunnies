@@ -1,5 +1,6 @@
 package se.splushii.dancingbunnies.audioplayer;
 
+import android.content.Context;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
@@ -24,16 +25,16 @@ class LocalAudioPlayer implements AudioPlayer {
 
     private MediaPlayerInstance player;
     private boolean playWhenReady = false;
-    private final MusicLibraryService musicLibraryService;
+    private final Context context;
     private final LinkedList<MediaPlayerInstance> preloadPlayers;
     private final LinkedList<PlaybackEntry> historyPlaybackEntries;
 
     LocalAudioPlayer(Callback audioPlayerCallback,
-                     MusicLibraryService musicLibraryService,
+                     Context context,
                      PlaybackControllerStorage storage,
                      boolean initFromStorage) {
         this.callback = audioPlayerCallback;
-        this.musicLibraryService = musicLibraryService;
+        this.context = context;
         this.storage = storage;
         preloadPlayers = new LinkedList<>();
         historyPlaybackEntries = new LinkedList<>();
@@ -112,7 +113,7 @@ class LocalAudioPlayer implements AudioPlayer {
                     entry,
                     mediaPlayerCallback
             );
-            musicLibraryService.downloadAudioData(playerInstance.playbackEntry.entryID);
+            MusicLibraryService.downloadAudioData(context, playerInstance.playbackEntry.entryID);
             playersToQueue.add(playerInstance);
         }
         preloadPlayers.addAll(offset, playersToQueue);
@@ -341,7 +342,7 @@ class LocalAudioPlayer implements AudioPlayer {
         @Override
         public void getAudioData(EntryID entryID,
                                  AudioDataDownloadHandler audioDataDownloadHandler) {
-            musicLibraryService.getAudioData(entryID, audioDataDownloadHandler);
+            MusicLibraryService.getAudioData(context, entryID, audioDataDownloadHandler);
         }
     };
 
@@ -349,7 +350,6 @@ class LocalAudioPlayer implements AudioPlayer {
         void onBuffering(MediaPlayerInstance instance);
         void onPrepared(MediaPlayerInstance instance);
         void onPlaybackCompleted(MediaPlayerInstance instance);
-        void getAudioData(EntryID entryID,
-                          AudioDataDownloadHandler audioDataDownloadHandler);
+        void getAudioData(EntryID entryID, AudioDataDownloadHandler audioDataDownloadHandler);
     }
 }

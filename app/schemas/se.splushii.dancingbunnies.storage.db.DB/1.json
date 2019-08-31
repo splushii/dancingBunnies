@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "49f0dbec21bc9ccf85a435dfe190b296",
+    "identityHash": "1122c083ed4b9f6de937c578586872f2",
     "entities": [
       {
         "tableName": "entry_id",
@@ -304,6 +304,67 @@
         "foreignKeys": []
       },
       {
+        "tableName": "waveform",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `peak_positive` BLOB NOT NULL, `peak_negative` BLOB NOT NULL, `rms_positive` BLOB NOT NULL, `rms_negative` BLOB NOT NULL, PRIMARY KEY(`api`, `id`))",
+        "fields": [
+          {
+            "fieldPath": "api",
+            "columnName": "api",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peakPositive",
+            "columnName": "peak_positive",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "peakNegative",
+            "columnName": "peak_negative",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rmsPositive",
+            "columnName": "rms_positive",
+            "affinity": "BLOB",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rmsNegative",
+            "columnName": "rms_negative",
+            "affinity": "BLOB",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "api",
+            "id"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_waveform_api_id",
+            "unique": true,
+            "columnNames": [
+              "api",
+              "id"
+            ],
+            "createSql": "CREATE UNIQUE INDEX `index_waveform_api_id` ON `${TABLE_NAME}` (`api`, `id`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
         "tableName": "playlists",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `type` INTEGER NOT NULL, `name` TEXT NOT NULL, `query` TEXT, `pos` INTEGER NOT NULL, PRIMARY KEY(`api`, `id`))",
         "fields": [
@@ -510,7 +571,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '49f0dbec21bc9ccf85a435dfe190b296')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1122c083ed4b9f6de937c578586872f2')"
     ]
   }
 }

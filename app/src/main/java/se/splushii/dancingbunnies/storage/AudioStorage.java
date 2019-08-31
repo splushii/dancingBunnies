@@ -3,6 +3,9 @@ package se.splushii.dancingbunnies.storage;
 import android.content.Context;
 import android.util.Log;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+
 import java.io.File;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -19,8 +22,9 @@ import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.storage.db.CacheDao;
-import se.splushii.dancingbunnies.storage.db.CacheEntry;
 import se.splushii.dancingbunnies.storage.db.DB;
+import se.splushii.dancingbunnies.storage.db.WaveformDao;
+import se.splushii.dancingbunnies.storage.db.WaveformEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 public class AudioStorage {
@@ -31,6 +35,7 @@ public class AudioStorage {
     private final MutableLiveData<HashMap<EntryID,AudioDataFetchState>> fetchStateMapLiveData;
     private final HashMap<EntryID, AudioDataFetchState> fetchStateMap;
     private final CacheDao cacheModel;
+    private final WaveformDao waveformModel;
 
     public static synchronized AudioStorage getInstance(Context context) {
         if (instance == null) {
@@ -45,6 +50,7 @@ public class AudioStorage {
         fetchStateMap = new HashMap<>();
         fetchStateMapLiveData = new MutableLiveData<>();
         cacheModel = DB.getDB(context).cacheModel();
+        waveformModel = DB.getDB(context).waveformModel();
     }
 
     public static File getCacheFile(Context context, EntryID entryID) {
@@ -85,30 +91,69 @@ public class AudioStorage {
             List<AudioDataDownloadHandler> handlers = handlerMap.computeIfAbsent(entryID, k -> new LinkedList<>());
             handlers.add(handler);
             // TODO: Change to audioDataSource.buffer, and use a callback to play when buffered enough
-            audioDataSource.fetch(new AudioDataSource.Handler() {
+            audioDataSource.fetch(new AudioDataSource.FetchDataHandler() {
                 @Override
                 public void onDownloading() {
                     onDownloadStartEvent(entryID);
                 }
 
                 @Override
+                public void onDownloadProgress(long i, long max) {
+                    onDownloadProgressEvent(entryID, i, max);
+                }
+
+                @Override
                 public void onDownloadFinished() {
-                    cacheModel.insert(CacheEntry.from(entryID));
-                }
-
-                @Override
-                public void onFailure(String message) {
-                    onDownloadFailureEvent(entryID, message);
-                }
-
-                @Override
-                public void onSuccess() {
                     onDownloadSuccessEvent(entryID);
                 }
 
                 @Override
-                public void onProgress(long i, long max) {
-                    onDownloadProgressEvent(entryID, i, max);
+                public void onDownloadFailed(String err) {
+                    Log.e(LC, "onDownloadFailed: " + entryID);
+                    onDownloadFailureEvent(entryID, err);
+                }
+
+                @Override
+                public void onSampling() {
+                    Log.d(LC, "onSampling: " + entryID);
+                }
+
+                @Override
+                public void onSamplingFinished(double[] peakSamplesPositive,
+                                               double[] peakSamplesNegative,
+                                               double[] rmsSamplesPositive,
+                                               double[] rmsSamplesNegative) {
+                    try {
+                        JSONArray peakSamplesPositiveJSON = new JSONArray(peakSamplesPositive);
+                        JSONArray peakSamplesNegativeJSON = new JSONArray(peakSamplesNegative);
+                        JSONArray rmsSamplesPositiveJSON = new JSONArray(rmsSamplesPositive);
+                        JSONArray rmsSamplesNegativeJSON = new JSONArray(rmsSamplesNegative);
+                        waveformModel.insert(WaveformEntry.from(
+                                entryID,
+                                peakSamplesPositiveJSON.toString().getBytes(),
+                                peakSamplesNegativeJSON.toString().getBytes(),
+                                rmsSamplesPositiveJSON.toString().getBytes(),
+                                rmsSamplesNegativeJSON.toString().getBytes()
+                        ));
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                        Log.e(LC, "Could not convert samples to JSON");
+                    }
+                }
+
+                @Override
+                public void onSamplingFailed(String err) {
+                    Log.e(LC, "onSamplingFailed: " + entryID);
+                }
+
+                @Override
+                public void onFailure(String message) {
+                    onFailureEvent(entryID, message);
+                }
+
+                @Override
+                public void onSuccess() {
+                    onSuccessEvent(entryID);
                 }
             });
         }
@@ -148,13 +193,27 @@ public class AudioStorage {
                     handlers.forEach(handler -> handler.onSuccess(audioDataSource));
                 }
             }
+        }
+    }
+
+    private synchronized void onDownloadFailureEvent(EntryID entryID, String message) {
+        setFetchState(entryID, AudioDataFetchState.FAILURE);
+        synchronized (handlerMap) {
+            List<AudioDataDownloadHandler> handlers = handlerMap.get(entryID);
+            if (handlers != null) {
+                handlers.forEach(handler -> handler.onFailure(message));
+            }
+        }
+    }
+
+    private synchronized void onSuccessEvent(EntryID entryID) {
+        synchronized (handlerMap) {
             handlerMap.remove(entryID);
         }
         release(entryID);
     }
 
-    private synchronized void onDownloadFailureEvent(EntryID entryID, String message) {
-        setFetchState(entryID, AudioDataFetchState.FAILURE);
+    private synchronized void onFailureEvent(EntryID entryID, String message) {
         synchronized (handlerMap) {
             List<AudioDataDownloadHandler> handlers = handlerMap.get(entryID);
             if (handlers != null) {
@@ -176,6 +235,22 @@ public class AudioStorage {
                         roomCacheEntry.id,
                         Meta.FIELD_SPECIAL_MEDIA_ID
                 )).collect(Collectors.toList()));
+    }
+
+    public LiveData<WaveformEntry> getWaveform(LiveData<EntryID> entryIDLiveData) {
+        return Transformations.switchMap(entryIDLiveData, entryID -> {
+            if (!Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
+                return null;
+            }
+            return waveformModel.get(entryID.src, entryID.id);
+        });
+    }
+
+    public WaveformEntry getWaveformSync(EntryID entryID) {
+        if (entryID == null || !Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
+            return null;
+        }
+        return waveformModel.getSync(entryID.src, entryID.id);
     }
 
     public class AudioDataFetchState {
