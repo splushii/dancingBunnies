@@ -31,6 +31,8 @@ class MediaPlayerInstance {
     private boolean buffering = false;
     private long lastSeek = -1;
 
+    private MediaPlayerInstance nextPlayer;
+
     MediaPlayerInstance(PlaybackEntry playbackEntry,
                         LocalAudioPlayer.MediaPlayerCallback callback) {
         reconstruct();
@@ -117,6 +119,9 @@ class MediaPlayerInstance {
         Log.d(LC, "MediaPlayer(" + title() + ") initializing");
         mediaPlayer.setDataSource(audioDataSource);
         state = MediaPlayerState.INITIALIZED;
+        if (nextPlayer != null && nextPlayer.isPrepared()) {
+            mediaPlayer.setNextMediaPlayer(nextPlayer.mediaPlayer);
+        }
         prepare();
     }
 
@@ -232,6 +237,36 @@ class MediaPlayerInstance {
         }
     }
 
+    void setNext(MediaPlayerInstance nextPlayer) {
+        this.nextPlayer = nextPlayer;
+        switch (state) {
+            case INITIALIZED:
+            case PREPARING:
+            case PREPARED:
+            case STARTED:
+            case PAUSED:
+            case STOPPED:
+            case PLAYBACK_COMPLETED:
+                break;
+            case NULL:
+            case IDLE:
+                Log.d(LC, "setNext in state " + state + ". Setting when initialized");
+                return;
+            default:
+                Log.w(LC, "setNext in wrong state: " + state);
+                return;
+        }
+        if (nextPlayer == null) {
+            mediaPlayer.setNextMediaPlayer(null);
+            return;
+        }
+        if (!nextPlayer.isPrepared()) {
+            Log.d(LC, "setNext to non-prepared player. nextMediaPlayer not set");
+            return;
+        }
+        mediaPlayer.setNextMediaPlayer(nextPlayer.mediaPlayer);
+    }
+
     long getCurrentPosition() {
         long pos = 0L;
         switch (state) {
@@ -260,6 +295,25 @@ class MediaPlayerInstance {
 
     private boolean isIdle() {
         return MediaPlayerState.IDLE.equals(state) && !buffering;
+    }
+
+    private boolean isPrepared() {
+        switch (state) {
+            case NULL:
+            case IDLE:
+            case INITIALIZED:
+            case PREPARING:
+                return false;
+            case PREPARED:
+            case STARTED:
+            case PAUSED:
+            case STOPPED:
+            case PLAYBACK_COMPLETED:
+                return true;
+            default:
+                Log.w(LC, "isPrepared in unknown state: " + state);
+                return false;
+        }
     }
 
     int getPlaybackState() {

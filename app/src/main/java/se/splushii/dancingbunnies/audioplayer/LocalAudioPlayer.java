@@ -117,6 +117,7 @@ class LocalAudioPlayer implements AudioPlayer {
             playersToQueue.add(playerInstance);
         }
         preloadPlayers.addAll(offset, playersToQueue);
+        setNextPlayer();
     }
 
     public int getNumPreloaded() {
@@ -164,6 +165,7 @@ class LocalAudioPlayer implements AudioPlayer {
         MediaPlayerInstance previousPlayer = player;
         MediaPlayerInstance nextPlayer = preloadPlayers.poll();
         setCurrentPlayer(nextPlayer);
+        setNextPlayer();
         if (previousPlayer != null) {
             previousPlayer.pause();
             previousPlayer.seekTo(0);
@@ -270,6 +272,7 @@ class LocalAudioPlayer implements AudioPlayer {
         for (MediaPlayerInstance mp: mediaPlayersToRemove) {
             preloadPlayers.remove(mp);
         }
+        setNextPlayer();
         List<PlaybackEntry> playbackEntriesToRemove = new ArrayList<>();
         for (PlaybackEntry p: historyPlaybackEntries) {
             if (entries.contains(p)) {
@@ -305,8 +308,26 @@ class LocalAudioPlayer implements AudioPlayer {
         }
     }
 
+    private void setNextPlayer() {
+        if (player == null) {
+            return;
+        }
+        MediaPlayerInstance nextPlayer = preloadPlayers.peek();
+        if (nextPlayer == null) {
+            player.setNext(null);
+            return;
+        }
+        nextPlayer.getReady();
+        player.setNext(nextPlayer);
+    }
+
     private boolean isCurrentPlayer(MediaPlayerInstance mediaPlayerInstance) {
         return mediaPlayerInstance.equals(player);
+    }
+
+    private boolean isNextPlayer(MediaPlayerInstance mediaPlayerInstance) {
+        MediaPlayerInstance nextPlayer = preloadPlayers.peek();
+        return mediaPlayerInstance.equals(nextPlayer);
     }
 
     private MediaPlayerCallback mediaPlayerCallback = new MediaPlayerCallback() {
@@ -325,6 +346,13 @@ class LocalAudioPlayer implements AudioPlayer {
                     play();
                 } else {
                     updatePlaybackState();
+                }
+            }
+            if (isNextPlayer(instance)) {
+                if (player != null) {
+                    Log.d(LC, "Setting " + instance.playbackEntry.entryID + ")"
+                            + " after current " + player.playbackEntry.entryID);
+                    player.setNext(instance);
                 }
             }
         }
