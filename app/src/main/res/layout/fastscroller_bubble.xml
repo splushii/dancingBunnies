@@ -12,9 +12,9 @@
         android:src="@drawable/fastscroller_bubble" />
     <TextView
         android:id="@+id/fastscroller_bubble_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:gravity="center"
         android:fontFamily="monospace"
         android:textStyle="bold"
         android:textSize="24sp"

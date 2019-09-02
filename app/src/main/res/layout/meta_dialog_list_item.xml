@@ -12,8 +12,7 @@
         android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp"
         android:layout_gravity="center_vertical"
-        android:ellipsize="end"
-        android:maxLines="1"
+        android:singleLine="true"
         android:textColor="@color/colorSecondaryText"
         android:fontFamily="sans-serif"
         android:textSize="14sp" />
