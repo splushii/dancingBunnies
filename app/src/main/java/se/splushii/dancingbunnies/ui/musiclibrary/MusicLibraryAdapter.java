@@ -1,6 +1,5 @@
 package se.splushii.dancingbunnies.ui.musiclibrary;
 
-import android.support.v4.media.MediaBrowserCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,7 +19,6 @@ import androidx.recyclerview.selection.ItemDetailsLookup;
 import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.audioplayer.AudioPlayerService;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
@@ -36,9 +34,10 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     private static final String LC = Util.getLogContext(MusicLibraryAdapter.class);
     private final MusicLibraryFragment fragment;
     private SongViewHolder currentFastScrollerHolder;
-    private List<MediaBrowserCompat.MediaItem> dataset;
+    private List<LibraryEntry> dataset;
     private TrackItemActionsView selectedActionView;
     private SelectionTracker<EntryID> selectionTracker;
+    private boolean initialScrolled;
 
     MusicLibraryAdapter(MusicLibraryFragment fragment,
                         RecyclerView recyclerView,
@@ -64,16 +63,25 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     }
 
     void setModel(MusicLibraryFragmentModel model) {
+        initialScrolled = false;
         model.getDataSet().observe(fragment.getViewLifecycleOwner(), dataset -> {
             MusicLibraryUserState state = model.getUserState().getValue();
             if(fragment.showAllEntriesRow()) {
-                dataset.add(0, AudioPlayerService.generateMediaItem(
+                dataset.add(
+                        0,
                         new LibraryEntry(EntryID.UNKOWN, "All entries...", null)
-                ));
+                );
             }
             setDataset(dataset);
-            fragment.scrollTo(state.pos, state.pad);
+            updateScrollPos(state, dataset);
         });
+    }
+
+    private void updateScrollPos(MusicLibraryUserState userState, List<LibraryEntry> entries) {
+        if (!initialScrolled && !entries.isEmpty()) {
+            initialScrolled = true;
+            fragment.scrollTo(userState.pos, userState.pad);
+        }
     }
 
     void setSelectionTracker(SelectionTracker<EntryID> selectionTracker) {
@@ -257,9 +265,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         holder.libraryEntry.setBackgroundResource(position % 2 == 0 ?
                 R.color.white_active_accent : R.color.gray50_active_accent
         );
-        final MediaBrowserCompat.MediaItem item = dataset.get(position);
-        final boolean browsable = item.isBrowsable();
-        LibraryEntry libraryEntry = LibraryEntry.from(item);
+        LibraryEntry libraryEntry = dataset.get(position);
+        final boolean browsable = libraryEntry.isBrowsable();
         holder.actionsView.initialize();
         holder.libraryEntryNum.setText("");
         holder.update(libraryEntry, browsable);
@@ -297,19 +304,22 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         });
     }
 
-    private void setDataset(List<MediaBrowserCompat.MediaItem> items) {
-        this.dataset = items;
-        notifyDataSetChanged();
+    private void setDataset(List<LibraryEntry> items) {
+        boolean changed = !dataset.equals(items);
+        if (changed) {
+            this.dataset = items;
+            notifyDataSetChanged();
+        }
     }
 
     EntryID getEntryId(int position) {
-        return LibraryEntry.from(dataset.get(position)).entryID;
+        return dataset.get(position).entryID;
     }
 
     int getEntryIdPosition(@NonNull EntryID entryID) {
         int index = 0;
-        for (MediaBrowserCompat.MediaItem item: dataset) {
-            if (entryID.equals(LibraryEntry.from(item).entryID)) {
+        for (LibraryEntry libraryEntry: dataset) {
+            if (entryID.equals(libraryEntry.entryID)) {
                 return index;
             }
             index++;

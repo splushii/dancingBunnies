@@ -12,7 +12,9 @@ import androidx.room.RoomDatabase;
                 MetaString.class,
                 MetaLong.class,
                 MetaDouble.class,
-                CacheEntry.class,
+                MetaLocalString.class,
+                MetaLocalLong.class,
+                MetaLocalDouble.class,
                 WaveformEntry.class,
                 Playlist.class,
                 PlaylistEntry.class,
@@ -22,15 +24,17 @@ import androidx.room.RoomDatabase;
 )
 public abstract class DB extends RoomDatabase {
     private static final String DB_NAME = "dB";
-    public static final String TABLE_ENTRY_ID = "entry_id";
-    public static final String TABLE_META_STRING = "meta_string";
-    public static final String TABLE_META_LONG = "meta_long";
-    public static final String TABLE_META_DOUBLE = "meta_double";
+    static final String TABLE_ENTRY_ID = "entry_id";
+    static final String TABLE_META_STRING = "meta_string";
+    static final String TABLE_META_LONG = "meta_long";
+    static final String TABLE_META_DOUBLE = "meta_double";
+    static final String TABLE_META_LOCAL_STRING = "meta_local_string";
+    static final String TABLE_META_LOCAL_LONG = "meta_local_long";
+    static final String TABLE_META_LOCAL_DOUBLE = "meta_local_double";
     public static final String COLUMN_API = "api";
     public static final String COLUMN_ID = "id";
     public static final String COLUMN_KEY = "key";
     public static final String COLUMN_VALUE = "value";
-    static final String TABLE_CACHE = "cache";
     static final String TABLE_WAVEFORM = "waveform";
     static final String TABLE_PLAYLISTS = "playlists";
     static final String TABLE_PLAYLIST_ENTRIES = "playlist_entries";
@@ -45,7 +49,6 @@ public abstract class DB extends RoomDatabase {
     }
 
     public abstract MetaDao metaModel();
-    public abstract CacheDao cacheModel();
     public abstract WaveformDao waveformModel();
     public abstract PlaylistDao playlistModel();
     public abstract PlaylistEntryDao playlistEntryModel();

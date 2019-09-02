@@ -113,4 +113,8 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
         dest.writeString(name);
         dest.writeString(sortedBy);
     }
+
+    public boolean isBrowsable() {
+        return !Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type);
+    }
 }

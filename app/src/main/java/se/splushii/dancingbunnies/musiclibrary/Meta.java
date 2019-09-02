@@ -26,12 +26,17 @@ public class Meta {
 
     public static final Meta UNKNOWN_ENTRY = new Meta(EntryID.UNKOWN);
     private static final HashMap<String, Type> typeMap = new HashMap<>();
+    private static final HashSet<String> localOriginSet = new HashSet<>();
 
     public static Type getType(String key) {
         return typeMap.getOrDefault(key, STRING);
     }
-    public static final String FIELD_SPECIAL_MEDIA_ID = "dancingbunnies.meta.field.media.id";
-    public static final String FIELD_SPECIAL_MEDIA_SRC = "dancingbunnies.meta.field.media.src";
+
+    public static final String FIELD_SPECIAL_MEDIA_ID = "se.splushii.dancingbunnies.meta.field.media.id";
+    public static final String FIELD_SPECIAL_MEDIA_SRC = "se.splushii.dancingbunnies.meta.field.media.src";
+
+    public static final String FIELD_LOCAL_CACHED = "se.splushii.dancingbunnies.meta.field.cached"; static{localOriginSet.add(FIELD_LOCAL_CACHED);}
+
     public static final String FIELD_DURATION = "duration"; static{typeMap.put(FIELD_DURATION, LONG);}
     public static final String FIELD_CONTENT_TYPE = "content type";
     public static final String FIELD_FILE_SUFFIX = "suffix";
@@ -59,7 +64,9 @@ public class Meta {
     public static final String FIELD_DATE_STARRED = "date starred";
     public static final String FIELD_ARTIST_ID = "artist id";
     public static final String FIELD_ALBUM_ID = "album id";
+
     private static final String DELIM = "; ";
+
     private static final String BUNDLE_KEY_STRINGS = "dancingbunnies.bundle.key.meta.strings";
     private static final String BUNDLE_KEY_LONGS = "dancingbunnies.bundle.key.meta.longs";
     private static final String BUNDLE_KEY_DOUBLES = "dancingbunnies.bundle.key.meta.doubles";
@@ -80,9 +87,16 @@ public class Meta {
             Meta.FIELD_SPECIAL_MEDIA_ID
     );
 
-    public enum Type {
-        STRING, LONG, DOUBLE
+    public static boolean isLocal(String key) {
+        return localOriginSet.contains(key);
     }
+
+    public enum Type {
+        STRING,
+        LONG,
+        DOUBLE
+    }
+
     public final EntryID entryID;
     private final HashMap<String, List<String>> stringMap;
     private final HashMap<String, List<Long>> longMap;

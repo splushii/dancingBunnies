@@ -29,9 +29,9 @@ import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 
 import se.splushii.dancingbunnies.storage.AudioStorage;
-import se.splushii.dancingbunnies.storage.db.CacheDao;
-import se.splushii.dancingbunnies.storage.db.CacheEntry;
 import se.splushii.dancingbunnies.storage.db.DB;
+import se.splushii.dancingbunnies.storage.db.MetaDao;
+import se.splushii.dancingbunnies.storage.db.MetaLocalString;
 import se.splushii.dancingbunnies.storage.db.WaveformEntry;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -44,7 +44,7 @@ public class AudioDataSource extends MediaDataSource {
     private final File cacheFile;
     private final File cachePartFile;
     private final AudioStorage audioStorage;
-    private final CacheDao cacheModel;
+    private final MetaDao metaModel;
     private Thread fetchThread;
     private final Object fetchLock = new Object();
     private boolean isFetching = false;
@@ -58,7 +58,7 @@ public class AudioDataSource extends MediaDataSource {
     public AudioDataSource(Context context, String url, EntryID entryID) {
         this.url = url;
         this.entryID = entryID;
-        this.cacheModel = DB.getDB(context).cacheModel();
+        this.metaModel = DB.getDB(context).metaModel();
         this.audioStorage = AudioStorage.getInstance(context);
         this.cacheFile = AudioStorage.getCacheFile(context, entryID);
         this.cachePartFile = new File(cacheFile + ".part");
@@ -190,7 +190,7 @@ public class AudioDataSource extends MediaDataSource {
                     cacheFile.toPath(),
                     StandardCopyOption.REPLACE_EXISTING
             );
-            cacheModel.insert(CacheEntry.from(entryID));
+            metaModel.insert(MetaLocalString.from(entryID.src, entryID.id, Meta.FIELD_LOCAL_CACHED, "yes"));
             Log.d(LC, "entryID " + entryID + " " + cacheFile.length()
                     + " bytes downloaded to " + cacheFile.getAbsolutePath());
             handler.onDownloadFinished();

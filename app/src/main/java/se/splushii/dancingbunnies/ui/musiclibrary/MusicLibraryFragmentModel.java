@@ -4,6 +4,7 @@ import android.support.v4.media.MediaBrowserCompat;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.core.util.Consumer;
@@ -11,6 +12,7 @@ import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
+import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.util.Util;
@@ -21,7 +23,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
     private MutableLiveData<MusicLibraryUserState> userState;
     private LinkedList<MusicLibraryUserState> backStack;
     private String currentSubscriptionID;
-    private MutableLiveData<List<MediaBrowserCompat.MediaItem>> dataset;
+    private MutableLiveData<List<LibraryEntry>> dataset;
     private Consumer<CharSequence> setSearchQueryListener = s -> {};
 
     private static MusicLibraryUserState initialUserState() {
@@ -134,7 +136,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
         ));
     }
 
-    private MutableLiveData<List<MediaBrowserCompat.MediaItem>> getMutableDataSet() {
+    private MutableLiveData<List<LibraryEntry>> getMutableDataSet() {
         if (dataset == null) {
             dataset = new MutableLiveData<>();
             dataset.setValue(new LinkedList<>());
@@ -142,7 +144,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
         return dataset;
     }
 
-    LiveData<List<MediaBrowserCompat.MediaItem>> getDataSet() {
+    LiveData<List<LibraryEntry>> getDataSet() {
         return getMutableDataSet();
     }
 
@@ -157,7 +159,9 @@ public class MusicLibraryFragmentModel extends ViewModel {
                 new MusicLibraryQuery.MusicLibraryQueryCallback() {
                     @Override
                     public void onQueryResult(@NonNull List<MediaBrowserCompat.MediaItem> items) {
-                        getMutableDataSet().setValue(items);
+                        getMutableDataSet().setValue(
+                                items.stream().map(LibraryEntry::from).collect(Collectors.toList())
+                        );
                     }
                 }
         );

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "1122c083ed4b9f6de937c578586872f2",
+    "identityHash": "c0bec087e781a83796371a193773a02c",
     "entities": [
       {
         "tableName": "entry_id",
@@ -267,8 +267,8 @@
         ]
       },
       {
-        "tableName": "cache",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, PRIMARY KEY(`api`, `id`))",
+        "tableName": "meta_local_string",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`api`, `id`, `key`, `value`))",
         "fields": [
           {
             "fieldPath": "api",
@@ -281,24 +281,170 @@
             "columnName": "id",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "TEXT",
+            "notNull": true
           }
         ],
         "primaryKey": {
           "columnNames": [
             "api",
-            "id"
+            "id",
+            "key",
+            "value"
           ],
           "autoGenerate": false
         },
         "indices": [
           {
-            "name": "index_cache_api_id",
+            "name": "index_meta_local_string_api_id_key_value",
             "unique": true,
             "columnNames": [
               "api",
-              "id"
+              "id",
+              "key",
+              "value"
             ],
-            "createSql": "CREATE UNIQUE INDEX `index_cache_api_id` ON `${TABLE_NAME}` (`api`, `id`)"
+            "createSql": "CREATE UNIQUE INDEX `index_meta_local_string_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+          },
+          {
+            "name": "index_meta_local_string_value",
+            "unique": false,
+            "columnNames": [
+              "value"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_local_string_value` ON `${TABLE_NAME}` (`value`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "meta_local_long",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY(`api`, `id`, `key`, `value`))",
+        "fields": [
+          {
+            "fieldPath": "api",
+            "columnName": "api",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "api",
+            "id",
+            "key",
+            "value"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_meta_local_long_api_id_key_value",
+            "unique": true,
+            "columnNames": [
+              "api",
+              "id",
+              "key",
+              "value"
+            ],
+            "createSql": "CREATE UNIQUE INDEX `index_meta_local_long_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+          },
+          {
+            "name": "index_meta_local_long_value",
+            "unique": false,
+            "columnNames": [
+              "value"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_local_long_value` ON `${TABLE_NAME}` (`value`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "meta_local_double",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` REAL NOT NULL, PRIMARY KEY(`api`, `id`, `key`, `value`))",
+        "fields": [
+          {
+            "fieldPath": "api",
+            "columnName": "api",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "api",
+            "id",
+            "key",
+            "value"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_meta_local_double_api_id_key_value",
+            "unique": true,
+            "columnNames": [
+              "api",
+              "id",
+              "key",
+              "value"
+            ],
+            "createSql": "CREATE UNIQUE INDEX `index_meta_local_double_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+          },
+          {
+            "name": "index_meta_local_double_value",
+            "unique": false,
+            "columnNames": [
+              "value"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_local_double_value` ON `${TABLE_NAME}` (`value`)"
           }
         ],
         "foreignKeys": []
@@ -571,7 +717,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '1122c083ed4b9f6de937c578586872f2')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c0bec087e781a83796371a193773a02c')"
     ]
   }
 }

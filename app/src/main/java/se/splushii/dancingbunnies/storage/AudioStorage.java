@@ -11,7 +11,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
-import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -21,7 +20,6 @@ import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
 import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.storage.db.CacheDao;
 import se.splushii.dancingbunnies.storage.db.DB;
 import se.splushii.dancingbunnies.storage.db.WaveformDao;
 import se.splushii.dancingbunnies.storage.db.WaveformEntry;
@@ -34,7 +32,6 @@ public class AudioStorage {
     private final HashMap<EntryID, List<AudioDataDownloadHandler>> handlerMap;
     private final MutableLiveData<HashMap<EntryID,AudioDataFetchState>> fetchStateMapLiveData;
     private final HashMap<EntryID, AudioDataFetchState> fetchStateMap;
-    private final CacheDao cacheModel;
     private final WaveformDao waveformModel;
 
     public static synchronized AudioStorage getInstance(Context context) {
@@ -49,7 +46,6 @@ public class AudioStorage {
         handlerMap = new HashMap<>();
         fetchStateMap = new HashMap<>();
         fetchStateMapLiveData = new MutableLiveData<>();
-        cacheModel = DB.getDB(context).cacheModel();
         waveformModel = DB.getDB(context).waveformModel();
     }
 
@@ -226,15 +222,6 @@ public class AudioStorage {
 
     public LiveData<HashMap<EntryID,AudioDataFetchState>> getFetchState() {
         return fetchStateMapLiveData;
-    }
-
-    public LiveData<List<EntryID>> getCachedEntries() {
-        return Transformations.map(cacheModel.getAll(), roomCacheEntryList ->
-                roomCacheEntryList.stream().map(roomCacheEntry -> new EntryID(
-                        roomCacheEntry.api,
-                        roomCacheEntry.id,
-                        Meta.FIELD_SPECIAL_MEDIA_ID
-                )).collect(Collectors.toList()));
     }
 
     public LiveData<WaveformEntry> getWaveform(LiveData<EntryID> entryIDLiveData) {
