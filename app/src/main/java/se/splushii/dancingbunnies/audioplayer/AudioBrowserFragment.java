@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 
 import androidx.fragment.app.Fragment;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -256,6 +257,10 @@ public abstract class AudioBrowserFragment extends Fragment {
             case PlaybackStateCompat.SHUFFLE_MODE_GROUP:
                 return PlaybackController.PLAYBACK_ORDER_RANDOM;
         }
+    }
+
+    public void downloadAudioData(List<EntryID> selection, Bundle queryBundle) {
+        MusicLibraryService.downloadAudioData(requireContext(), selection, queryBundle);
     }
 
     private final MediaBrowserCompat.ConnectionCallback mediaBrowserConnectionCallback =

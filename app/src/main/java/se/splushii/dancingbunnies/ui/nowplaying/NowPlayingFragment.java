@@ -8,6 +8,7 @@ import android.os.SystemClock;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
+import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,12 +18,14 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -44,6 +47,9 @@ import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
+import se.splushii.dancingbunnies.storage.db.Playlist;
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
+import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.ui.WaveformSeekBar;
@@ -106,14 +112,54 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         recView.setLayoutManager(recViewLayoutManager);
         recView.setAdapter(recViewAdapter);
         selectionTracker = new RecyclerViewActionModeSelectionTracker<>(
-                getActivity(),
-                R.menu.nowplaying_queue_actionmode_menu,
+                this,
                 MainActivity.SELECTION_ID_NOWPLAYING,
                 recView,
                 recViewAdapter,
                 StorageStrategy.createParcelableStorage(PlaybackEntry.class),
                 savedInstanceState
         );
+        selectionTracker.setActionModeCallback(new ActionModeCallback(
+                this,
+                new ActionModeCallback.Callback() {
+                    @Override
+                    public List<EntryID> getEntryIDSelection() {
+                        return selectionTracker.getSelection().stream()
+                                .map(playbackEntry -> playbackEntry.entryID)
+                                .collect(Collectors.toList());
+                    }
+
+                    public List<PlaybackEntry> getPlaybackEntrySelection() {
+                        return selectionTracker.getSelection();
+                    }
+
+                    @Override
+                    public List<PlaylistEntry> getPlaylistEntrySelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public List<Playlist> getPlaylistSelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public Bundle getQueryBundle() {
+                        return null;
+                    }
+
+                    @Override
+                    public PlaylistID getPlaylistID() {
+                        return null;
+                    }
+
+                    @Override
+                    public void onDestroyActionMode(ActionMode actionMode) {
+                        selectionTracker.clearSelection();
+                    }
+                }
+        ));
+
         recView.setOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
@@ -219,14 +265,69 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         historyRecView.setLayoutManager(historyRecViewLayoutManager);
         historyRecView.setAdapter(historyRecViewAdapter);
         historySelectionTracker = new RecyclerViewActionModeSelectionTracker<>(
-                getActivity(),
-                R.menu.nowplaying_history_actionmode_menu,
+                this,
                 MainActivity.SELECTION_ID_NOWPLAYING_HISTORY,
                 historyRecView,
                 historyRecViewAdapter,
                 StorageStrategy.createParcelableStorage(PlaybackEntry.class),
                 savedInstanceState
         );
+        ActionModeCallback historyActionModeCallback = new ActionModeCallback(
+                this,
+                new ActionModeCallback.Callback() {
+                    @Override
+                    public List<EntryID> getEntryIDSelection() {
+                        return historySelectionTracker.getSelection().stream()
+                                .map(playbackEntry -> playbackEntry.entryID)
+                                .collect(Collectors.toList());
+                    }
+
+                    public List<PlaybackEntry> getPlaybackEntrySelection() {
+                        return historySelectionTracker.getSelection();
+                    }
+
+                    @Override
+                    public List<PlaylistEntry> getPlaylistEntrySelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public List<Playlist> getPlaylistSelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public Bundle getQueryBundle() {
+                        return null;
+                    }
+
+                    @Override
+                    public PlaylistID getPlaylistID() {
+                        return null;
+                    }
+
+                    @Override
+                    public void onDestroyActionMode(ActionMode actionMode) {
+                        historySelectionTracker.clearSelection();
+                    }
+                }
+        );
+        historyActionModeCallback.setActions(
+                new int[] {
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE,
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_PLAYLIST
+                },
+                new int[] {
+                        ActionModeCallback.ACTIONMODE_ACTION_PLAY,
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE,
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_PLAYLIST,
+                        ActionModeCallback.ACTIONMODE_ACTION_HISTORY_DELETE,
+                        ActionModeCallback.ACTIONMODE_ACTION_CACHE
+                },
+                new int[0]
+        );
+        historySelectionTracker.setActionModeCallback(historyActionModeCallback);
+
         historyRecView.setOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {

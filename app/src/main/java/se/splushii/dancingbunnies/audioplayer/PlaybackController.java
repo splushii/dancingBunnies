@@ -183,6 +183,7 @@ public class PlaybackController {
                 getCurrentPlaylistID(),
                 getCurrentPlaylistPosition()
         );
+        onQueueChanged();
         submitCompletableFuture(this::updateState);
     }
 

@@ -5,9 +5,6 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.ActionMode;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
@@ -22,7 +19,6 @@ import android.widget.Toast;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -40,12 +36,16 @@ import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
+import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
+import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.MetaStorage;
+import se.splushii.dancingbunnies.storage.db.Playlist;
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
+import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.AddToNewPlaylistDialogFragment;
-import se.splushii.dancingbunnies.ui.AddToPlaylistDialogFragment;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.FastScrollerBubble;
 import se.splushii.dancingbunnies.ui.selection.EntryIDItemDetailsLookup;
@@ -236,6 +236,64 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 headerFastScrollerPad.setVisibility(hidden ? GONE : VISIBLE)
         );
 
+        ActionModeCallback actionModeCallback = new ActionModeCallback(
+                this,
+                new ActionModeCallback.Callback() {
+                    @Override
+                    public List<EntryID> getEntryIDSelection() {
+                        MutableSelection<EntryID> selection = new MutableSelection<>();
+                        selectionTracker.copySelection(selection);
+                        List<EntryID> selectionList = new LinkedList<>();
+                        selection.forEach(selectionList::add);
+                        return selectionList;
+                    }
+
+                    @Override
+                    public List<PlaybackEntry> getPlaybackEntrySelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public List<PlaylistEntry> getPlaylistEntrySelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public List<Playlist> getPlaylistSelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public Bundle getQueryBundle() {
+                        return getCurrentQueryBundle();
+                    }
+
+                    @Override
+                    public PlaylistID getPlaylistID() {
+                        return null;
+                    }
+
+                    @Override
+                    public void onDestroyActionMode(ActionMode actionMode) {
+                        selectionTracker.clearSelection();
+                        MusicLibraryFragment.this.actionMode = null;
+                    }
+                }
+        );
+        actionModeCallback.setActions(
+                new int[]{
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE,
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_PLAYLIST
+                },
+                new int[]{
+                        ActionModeCallback.ACTIONMODE_ACTION_PLAY,
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE,
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_PLAYLIST,
+                        ActionModeCallback.ACTIONMODE_ACTION_CACHE
+                },
+                new int[0]
+        );
+
         selectionTracker = new SelectionTracker.Builder<>(
                 MainActivity.SELECTION_ID_MUSICLIBRARY,
                 recyclerView,
@@ -255,7 +313,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             @Override
             public void onSelectionChanged() {
                 if (selectionTracker.hasSelection() && actionMode == null) {
-                    actionMode = getActivity().startActionMode(actionModeCallback);
+                    actionMode = requireActivity().startActionMode(actionModeCallback);
                 }
                 if (!selectionTracker.hasSelection() && actionMode != null) {
                     actionMode.finish();
@@ -494,58 +552,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         model.clearFilter(filterType);
     }
 
-    private final ActionMode.Callback actionModeCallback = new ActionMode.Callback() {
-        // Called when the action mode is created; startActionMode() was called
-        @Override
-        public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-            // Inflate a menu resource providing context menu items
-            MenuInflater inflater = mode.getMenuInflater();
-            inflater.inflate(R.menu.musiclibrary_actionmode_menu, menu);
-            return true;
-        }
 
-        // Called each time the action mode is shown. Always called after onCreateActionMode, but
-        // may be called multiple times if the mode is invalidated.
-        @Override
-        public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-            return false; // Return false if nothing is done
-        }
-
-        // Called when the user selects a contextual menu item
-        @Override
-        public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-            MutableSelection<EntryID> selection = new MutableSelection<>();
-            selectionTracker.copySelection(selection);
-            List<EntryID> selectionList = new LinkedList<>();
-            selection.forEach(selectionList::add);
-            switch (item.getItemId()) {
-                case R.id.musiclibrary_actionmode_action_play_now:
-                    play(selectionList, getCurrentQueryBundle());
-                    break;
-                case R.id.musiclibrary_actionmode_action_queue:
-                    queue(selectionList, getCurrentQueryBundle());
-                    break;
-                case R.id.musiclibrary_actionmode_action_add_to_playlist:
-                    AddToPlaylistDialogFragment.showDialog(
-                            MusicLibraryFragment.this,
-                            new ArrayList<>(selectionList),
-                            getCurrentQueryBundle()
-                    );
-                    break;
-                default:
-                    return false;
-            }
-            mode.finish();
-            return true;
-        }
-
-        // Called when the user exits the action mode
-        @Override
-        public void onDestroyActionMode(ActionMode mode) {
-            selectionTracker.clearSelection();
-            actionMode = null;
-        }
-    };
 
     MusicLibraryQuery getCurrentQuery() {
         MusicLibraryUserState state = model.getUserState().getValue();

@@ -212,6 +212,9 @@ public class FastScroller extends LinearLayout {
 
             animateShow(handle, handleHider, AnimationType.FADE);
             animateHide(handleHider, VIEW_HIDE_DELAY);
+            if (bubble != null) {
+                animateHide(bubbleHider, VIEW_HIDE_DELAY);
+            }
 
             if (!touching) {
                 int scrollOffset = recyclerView.computeVerticalScrollOffset();

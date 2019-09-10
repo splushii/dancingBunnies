@@ -1,7 +1,5 @@
 package se.splushii.dancingbunnies.ui.selection;
 
-import android.view.ActionMode;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -14,11 +12,10 @@ import androidx.recyclerview.selection.ItemKeyProvider;
 import androidx.recyclerview.selection.Selection;
 import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.widget.RecyclerView;
+import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.util.Util;
 
-public abstract class SelectionRecyclerViewAdapter<
-        ID,
-        ViewHolder extends RecyclerView.ViewHolder>
+public abstract class SelectionRecyclerViewAdapter<ID, ViewHolder extends RecyclerView.ViewHolder>
         extends RecyclerView.Adapter<ViewHolder> {
     private static final String LC = Util.getLogContext(SelectionRecyclerViewAdapter.class);
     private SelectionTracker<ID> selectionTracker;
@@ -88,10 +85,9 @@ public abstract class SelectionRecyclerViewAdapter<
                                          ID idAfterTargetPos);
     public abstract void onUseViewHolderForDrag(ViewHolder dragViewHolder, Collection<ID> selection);
     public abstract void onResetDragViewHolder(ViewHolder dragViewHolder);
-    public abstract boolean onActionItemClicked(int menuItemID, List<ID> selectionList);
-    public abstract void onActionModeStarted(ActionMode actionMode, Selection<ID> selection);
-    public abstract void onActionModeSelectionChanged(ActionMode actionMode, Selection<ID> selection);
-    public abstract void onActionModeEnding(ActionMode actionMode);
+    public abstract void onActionModeStarted(ActionModeCallback actionModeCallback, Selection<ID> selection);
+    public abstract void onActionModeSelectionChanged(ActionModeCallback actionModeCallback, Selection<ID> selection);
+    public abstract void onActionModeEnding(ActionModeCallback actionModeCallback);
     public abstract boolean onDragInitiated(Selection<ID> selection);
     public abstract boolean validMove(ViewHolder current, ViewHolder target);
     public abstract boolean validDrag(ViewHolder viewHolder);

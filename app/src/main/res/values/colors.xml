@@ -10,6 +10,7 @@
     <!--<color name="colorPrimaryExtraLight">#e7f7d4</color>-->
     <color name="colorPrimaryText">@color/bluegrey900</color>
     <color name="colorPrimaryTextSelected">@color/white</color>
+    <color name="colorPrimaryTextDisabled">@color/grey500</color>
     <color name="colorAccent">#03A9F4</color>
     <color name="colorAccentDark">#007ac1</color>
     <color name="colorAccentLight">#67daff</color>
@@ -20,6 +21,7 @@
     <!--<color name="colorAccentExtraLight">#ccfaff</color>-->
     <color name="colorSecondaryText">@color/grey500</color>
     <color name="colorSecondaryTextSelected">@color/colorAccentLight</color>
+    <color name="colorSecondaryTextDisabled">@color/colorAccentExtraLight</color>
     <color name="white">@android:color/white</color>
     <color name="overlayBackground">@color/grey100</color>
     <color name="grey">#EEEEEE</color>
@@ -30,4 +32,5 @@
     <color name="grey600">#757575</color>
     <color name="grey700">#616161</color>
     <color name="bluegrey900">#263238</color>
+    <color name="black">#000000</color>
 </resources>

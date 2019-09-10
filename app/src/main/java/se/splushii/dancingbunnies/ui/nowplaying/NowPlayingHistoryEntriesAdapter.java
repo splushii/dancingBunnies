@@ -1,7 +1,6 @@
 package se.splushii.dancingbunnies.ui.nowplaying;
 
 import android.util.Log;
-import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,7 +11,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -23,6 +21,7 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
+import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
@@ -55,7 +54,7 @@ public class NowPlayingHistoryEntriesAdapter extends
                 .observe(fragment.getViewLifecycleOwner(), this::setHistoryEntries);
     }
 
-    void setHistoryEntries(List<PlaybackEntry> entries) {
+    private void setHistoryEntries(List<PlaybackEntry> entries) {
         Log.d(LC, "setHistoryEntries: "
                 + "curSize: " + historyEntries.size()
                 + " newSize " + entries.size());
@@ -106,50 +105,24 @@ public class NowPlayingHistoryEntriesAdapter extends
         throw new RuntimeException("Not supported");
     }
 
-    @Override
-    public boolean onActionItemClicked(int menuItemID, List<PlaybackEntry> selectionList) {
-        switch (menuItemID) {
-            case R.id.nowplaying_history_actionmode_action_queue:
-                fragment.queue(selectionList.stream()
-                        .map(playbackEntry -> playbackEntry.entryID)
-                        .collect(Collectors.toList()),
-                        null
-                );
-                return true;
-            case R.id.nowplaying_history_actionmode_action_play:
-                fragment.play(selectionList.stream()
-                                .map(playbackEntry -> playbackEntry.entryID)
-                                .collect(Collectors.toList()),
-                        null
-                );
-                return true;
-            case R.id.nowplaying_history_actionmode_action_delete:
-                PlaybackControllerStorage.getInstance(fragment.getContext()).removeEntries(
-                        PlaybackControllerStorage.QUEUE_ID_HISTORY,
-                        selectionList
-                );
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private void updateActionModeView(ActionMode actionMode, Selection<PlaybackEntry> selection) {
-        actionMode.setTitle(selection.size() + " entries");
+    private void updateActionModeView(ActionModeCallback actionModeCallback,
+                                      Selection<PlaybackEntry> selection) {
+        actionModeCallback.getActionMode().setTitle(selection.size() + " entries");
     }
 
     @Override
-    public void onActionModeStarted(ActionMode actionMode, Selection<PlaybackEntry> selection) {
-        updateActionModeView(actionMode, selection);
+    public void onActionModeStarted(ActionModeCallback actionModeCallback,
+                                    Selection<PlaybackEntry> selection) {
+        updateActionModeView(actionModeCallback, selection);
     }
 
     @Override
-    public void onActionModeSelectionChanged(ActionMode actionMode, Selection<PlaybackEntry> selection) {
-        updateActionModeView(actionMode, selection);
+    public void onActionModeSelectionChanged(ActionModeCallback actionModeCallback, Selection<PlaybackEntry> selection) {
+        updateActionModeView(actionModeCallback, selection);
     }
 
     @Override
-    public void onActionModeEnding(ActionMode actionMode) {}
+    public void onActionModeEnding(ActionModeCallback actionModeCallback) {}
 
     @Override
     public boolean onDragInitiated(Selection<PlaybackEntry> selection) {

@@ -18,8 +18,10 @@ import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.MetaStorage;
+import se.splushii.dancingbunnies.util.Util;
 
 class NowPlayingFragmentModel extends ViewModel {
+    private static final String LC = Util.getLogContext(NowPlayingFragmentModel.class);
     private MutableLiveData<NowPlayingState> state;
 
     LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> getFetchState(Context context) {

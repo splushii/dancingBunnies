@@ -2,7 +2,6 @@ package se.splushii.dancingbunnies.ui.playlist;
 
 import android.util.Log;
 import android.util.TypedValue;
-import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,6 +28,7 @@ import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
+import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
@@ -99,43 +99,38 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
         dragViewHolder.update();
     }
 
-    @Override
-    public boolean onActionItemClicked(int menuItemID, List<Playlist> selectionList) {
-        switch (menuItemID) {
-            // TODO: Add support in RecyclerViewActionModeSelectionTracker to specify when
-            // TODO: certain ActionMode actions are supported depending on currently selected items.
-            case R.id.playlist_actionmode_action_delete:
-                playlistStorage.deletePlaylists(selectionList);
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private void updateActionModeView(ActionMode actionMode, Selection<Playlist> selection) {
-        actionMode.setTitle(selection.size() + " entries");
+    private void updateActionModeView(ActionModeCallback actionModeCallback,
+                                      Selection<Playlist> selection) {
+        actionModeCallback.getActionMode().setTitle(selection.size() + " entries");
         boolean showDelete = true;
         for (Playlist playlist: selection) {
             if (!MusicLibraryService.checkAPISupport(playlist.api, PLAYLIST_DELETE)) {
                 showDelete = false;
             }
         }
-        actionMode.getMenu().findItem(R.id.playlist_actionmode_action_delete)
-                .setVisible(showDelete);
+        int[] disabled = showDelete ? new int[0] :
+                new int[] { ActionModeCallback.ACTIONMODE_ACTION_PLAYLIST_DELETE };
+        actionModeCallback.setActions(
+                new int[] { ActionModeCallback.ACTIONMODE_ACTION_PLAYLIST_DELETE },
+                new int[] { ActionModeCallback.ACTIONMODE_ACTION_PLAYLIST_DELETE },
+                disabled
+        );
     }
 
     @Override
-    public void onActionModeStarted(ActionMode actionMode, Selection<Playlist> selection) {
-        updateActionModeView(actionMode, selection);
+    public void onActionModeStarted(ActionModeCallback actionModeCallback,
+                                    Selection<Playlist> selection) {
+        updateActionModeView(actionModeCallback, selection);
     }
 
     @Override
-    public void onActionModeSelectionChanged(ActionMode actionMode, Selection<Playlist> selection) {
-        updateActionModeView(actionMode, selection);
+    public void onActionModeSelectionChanged(ActionModeCallback actionModeCallback,
+                                             Selection<Playlist> selection) {
+        updateActionModeView(actionModeCallback, selection);
     }
 
     @Override
-    public void onActionModeEnding(ActionMode actionMode) {}
+    public void onActionModeEnding(ActionModeCallback actionModeCallback) {}
 
     @Override
     public boolean onDragInitiated(Selection<Playlist> selection) {

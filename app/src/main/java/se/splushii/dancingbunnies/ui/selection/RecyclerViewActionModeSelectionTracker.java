@@ -2,10 +2,6 @@ package se.splushii.dancingbunnies.ui.selection;
 
 import android.os.Bundle;
 import android.util.Log;
-import android.view.ActionMode;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 
@@ -15,13 +11,14 @@ import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.selection.ItemDetailsLookup;
 import androidx.recyclerview.selection.MutableSelection;
 import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.selection.StorageStrategy;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
+import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
+import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.util.Util;
 
 public class RecyclerViewActionModeSelectionTracker<ID,
@@ -29,11 +26,10 @@ public class RecyclerViewActionModeSelectionTracker<ID,
         ViewHolder extends ItemDetailsViewHolder<ID>> {
     private static final String LC = Util.getLogContext(RecyclerViewActionModeSelectionTracker.class);
     private SelectionTracker<ID> selectionTracker;
-    private ActionMode actionMode;
+    private ActionModeCallback actionModeCallback;
 
     public RecyclerViewActionModeSelectionTracker(
-            FragmentActivity activity,
-            int actionModeMenuResource,
+            AudioBrowserFragment audioBrowserFragment,
             String selectionID,
             RecyclerView recView,
             Adapter recViewAdapter,
@@ -51,7 +47,7 @@ public class RecyclerViewActionModeSelectionTracker<ID,
                         Log.d(LC, "ItemTouchHelper onDrop at " + targetPos
                                 + " before " + idAfterTargetPos);
                         recViewAdapter.onSelectionDrop(selection, targetPos, idAfterTargetPos);
-                        actionMode.finish();
+                        actionModeCallback.finish();
                     }
 
                     @Override
@@ -133,66 +129,50 @@ public class RecyclerViewActionModeSelectionTracker<ID,
             selectionTracker.onRestoreInstanceState(savedInstanceState);
         }
 
-        ActionMode.Callback actionModeCallback = new ActionMode.Callback() {
-            // Called when the action mode is created; startActionMode() was called
-            @Override
-            public boolean onCreateActionMode(ActionMode mode, Menu menu) {
-                // Inflate a menu resource providing context menu items
-                MenuInflater inflater = mode.getMenuInflater();
-                inflater.inflate(actionModeMenuResource, menu);
-                return true;
-            }
-
-            // Called each time the action mode is shown. Always called after onCreateActionMode, but
-            // may be called multiple times if the mode is invalidated.
-            @Override
-            public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-                return false; // Return false if nothing is done
-            }
-
-            // Called when the user selects a contextual menu item
-            @Override
-            public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-                MutableSelection<ID> selection = new MutableSelection<>();
-                selectionTracker.copySelection(selection);
-                List<ID> selectionList = new ArrayList<>();
-                selection.forEach(selectionList::add);
-                if (recViewAdapter.onActionItemClicked(item.getItemId(), selectionList)) {
-                    mode.finish();
-                    return true;
-                }
-                return false;
-            }
-
-            // Called when the user exits the action mode
-            @Override
-            public void onDestroyActionMode(ActionMode mode) {
-                clearSelection();
-                actionMode = null;
-            }
-        };
         selectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
             @Override
+            public void onItemStateChanged(@NonNull Object key, boolean selected) {
+                if (actionModeCallback == null) {
+                    Log.w(LC, "onItemStateChanged: there is no actionModeCallback set");
+                    return;
+                }
+                if (actionModeCallback.isActionMode()) {
+                    recViewAdapter.onActionModeSelectionChanged(
+                            actionModeCallback,
+                            selectionTracker.getSelection()
+                    );
+                }
+            }
+
+            @Override
             public void onSelectionChanged() {
+                if (actionModeCallback == null) {
+                    Log.w(LC, "onSelectionChanged: there is no actionModeCallback set");
+                    return;
+                }
                 if (selectionTracker.hasSelection()) {
-                    if (actionMode == null) {
-                        actionMode = activity.startActionMode(actionModeCallback);
-                        recViewAdapter.onActionModeStarted(
-                                actionMode,
+                    if (actionModeCallback.isActionMode()) {
+                        recViewAdapter.onActionModeSelectionChanged(
+                                actionModeCallback,
                                 selectionTracker.getSelection()
                         );
                     } else {
-                        recViewAdapter.onActionModeSelectionChanged(
-                                actionMode,
+                        audioBrowserFragment.requireActivity().startActionMode(actionModeCallback);
+                        recViewAdapter.onActionModeStarted(
+                                actionModeCallback,
                                 selectionTracker.getSelection()
                         );
                     }
-                } else if (actionMode != null) {
-                    recViewAdapter.onActionModeEnding(actionMode);
-                    actionMode.finish();
+                } else if (actionModeCallback.isActionMode()) {
+                    recViewAdapter.onActionModeEnding(actionModeCallback);
+                    actionModeCallback.finish();
                 }
             }
         });
+    }
+
+    public void setActionModeCallback(ActionModeCallback callback) {
+        this.actionModeCallback = callback;
     }
 
     public void clearSelection() {
@@ -203,5 +183,13 @@ public class RecyclerViewActionModeSelectionTracker<ID,
 
     public void onSaveInstanceState(Bundle outState) {
         selectionTracker.onSaveInstanceState(outState);
+    }
+
+    public List<ID> getSelection() {
+        MutableSelection<ID> selection = new MutableSelection<>();
+        selectionTracker.copySelection(selection);
+        List<ID> selectionList = new ArrayList<>();
+        selection.forEach(selectionList::add);
+        return selectionList;
     }
 }

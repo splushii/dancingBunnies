@@ -1,6 +1,5 @@
 package se.splushii.dancingbunnies.ui.playlist;
 
-import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,7 +9,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -23,6 +21,7 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
+import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
@@ -144,44 +143,25 @@ public class PlaylistPlaybackEntriesAdapter extends
         dragViewHolder.itemContent.reset();
     }
 
-    @Override
-    public boolean onActionItemClicked(int menuItemID, List<PlaybackEntry> selectionList) {
-        switch (menuItemID) {
-            case R.id.playlist_playback_entries_actionmode_action_queue:
-                fragment.queue(selectionList.stream()
-                        .map(playbackEntry -> playbackEntry.entryID)
-                        .collect(Collectors.toList()),
-                        null
-                );
-                return true;
-            case R.id.playlist_playback_entries_actionmode_action_play_now:
-                fragment.play(selectionList.stream()
-                        .map(playbackEntry -> playbackEntry.entryID)
-                        .collect(Collectors.toList()),
-                        null
-                );
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private void updateActionModeView(ActionMode actionMode, Selection<PlaybackEntry> selection) {
-        actionMode.setTitle(selection.size() + " entries");
+    private void updateActionModeView(ActionModeCallback actionModeCallback,
+                                      Selection<PlaybackEntry> selection) {
+        actionModeCallback.getActionMode().setTitle(selection.size() + " entries");
     }
 
     @Override
-    public void onActionModeStarted(ActionMode actionMode, Selection<PlaybackEntry> selection) {
-        updateActionModeView(actionMode, selection);
+    public void onActionModeStarted(ActionModeCallback actionModeCallback,
+                                    Selection<PlaybackEntry> selection) {
+        updateActionModeView(actionModeCallback, selection);
     }
 
     @Override
-    public void onActionModeSelectionChanged(ActionMode actionMode, Selection<PlaybackEntry> selection) {
-        updateActionModeView(actionMode, selection);
+    public void onActionModeSelectionChanged(ActionModeCallback actionModeCallback,
+                                             Selection<PlaybackEntry> selection) {
+        updateActionModeView(actionModeCallback, selection);
     }
 
     @Override
-    public void onActionModeEnding(ActionMode actionMode) {}
+    public void onActionModeEnding(ActionModeCallback actionModeCallback) {}
 
     @Override
     public boolean onDragInitiated(Selection<PlaybackEntry> selection) {

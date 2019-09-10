@@ -3,6 +3,7 @@ package se.splushii.dancingbunnies.ui.playlist;
 import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,7 +15,9 @@ import android.widget.TextView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -28,11 +31,13 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.PlaybackController;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
+import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.selection.RecyclerViewActionModeSelectionTracker;
 import se.splushii.dancingbunnies.util.Util;
@@ -274,13 +279,50 @@ public class PlaylistFragment extends AudioBrowserFragment {
         });
         playlistRecView.setAdapter(playlistRecViewAdapter);
         playlistSelectionTracker = new RecyclerViewActionModeSelectionTracker<>(
-                getActivity(),
-                R.menu.playlist_actionmode_menu,
+                this,
                 MainActivity.SELECTION_ID_PLAYLIST,
                 playlistRecView,
                 playlistRecViewAdapter,
                 StorageStrategy.createParcelableStorage(se.splushii.dancingbunnies.storage.db.Playlist.class),
                 savedInstanceState
+        );
+        playlistSelectionTracker.setActionModeCallback(new ActionModeCallback(
+                this,
+                new ActionModeCallback.Callback() {
+                    @Override
+                    public List<EntryID> getEntryIDSelection() {
+                        return Collections.emptyList();
+                    }
+
+                    public List<PlaybackEntry> getPlaybackEntrySelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public List<PlaylistEntry> getPlaylistEntrySelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public List<Playlist> getPlaylistSelection() {
+                        return playlistSelectionTracker.getSelection();
+                    }
+
+                    @Override
+                    public Bundle getQueryBundle() {
+                        return null;
+                    }
+
+                    @Override
+                    public PlaylistID getPlaylistID() {
+                        return getCurrentPlaylist();
+                    }
+
+                    @Override
+                    public void onDestroyActionMode(ActionMode actionMode) {
+                        playlistSelectionTracker.clearSelection();
+                    }
+                })
         );
 
         playlistFastScroller = rootView.findViewById(R.id.playlist_fastscroller);
@@ -319,13 +361,52 @@ public class PlaylistFragment extends AudioBrowserFragment {
         playlistEntriesRecViewAdapter = new PlaylistEntriesAdapter(this);
         playlistEntriesRecView.setAdapter(playlistEntriesRecViewAdapter);
         playlistEntriesSelectionTracker = new RecyclerViewActionModeSelectionTracker<>(
-                getActivity(),
-                R.menu.playlist_entries_actionmode_menu,
+                this,
                 MainActivity.SELECTION_ID_PLAYLIST_ENTRIES,
                 playlistEntriesRecView,
                 playlistEntriesRecViewAdapter,
                 StorageStrategy.createParcelableStorage(PlaylistEntry.class),
                 savedInstanceState
+        );
+        playlistEntriesSelectionTracker.setActionModeCallback(new ActionModeCallback(
+                this,
+                new ActionModeCallback.Callback() {
+                    @Override
+                    public List<EntryID> getEntryIDSelection() {
+                        return playlistEntriesSelectionTracker.getSelection().stream()
+                                .map(EntryID::from)
+                                .collect(Collectors.toList());
+                    }
+
+                    public List<PlaybackEntry> getPlaybackEntrySelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public List<PlaylistEntry> getPlaylistEntrySelection() {
+                        return playlistEntriesSelectionTracker.getSelection();
+                    }
+
+                    @Override
+                    public List<Playlist> getPlaylistSelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public Bundle getQueryBundle() {
+                        return null;
+                    }
+
+                    @Override
+                    public PlaylistID getPlaylistID() {
+                        return getCurrentPlaylist();
+                    }
+
+                    @Override
+                    public void onDestroyActionMode(ActionMode actionMode) {
+                        playlistEntriesSelectionTracker.clearSelection();
+                    }
+                })
         );
         playlistEntriesRecView.setOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -346,14 +427,68 @@ public class PlaylistFragment extends AudioBrowserFragment {
         playlistPlaybackEntriesRecViewAdapter = new PlaylistPlaybackEntriesAdapter(this);
         playlistPlaybackEntriesRecView.setAdapter(playlistPlaybackEntriesRecViewAdapter);
         playlistPlaybackEntriesSelectionTracker = new RecyclerViewActionModeSelectionTracker<>(
-                getActivity(),
-                R.menu.playlist_playback_entries_actionmode_menu,
+                this,
                 MainActivity.SELECTION_ID_PLAYLIST_PLAYBACK_ENTRIES,
                 playlistPlaybackEntriesRecView,
                 playlistPlaybackEntriesRecViewAdapter,
                 StorageStrategy.createParcelableStorage(PlaybackEntry.class),
                 savedInstanceState
         );
+        ActionModeCallback playlistPlaybackActionModeCallback = new ActionModeCallback(
+                this,
+                new ActionModeCallback.Callback() {
+                    @Override
+                    public List<EntryID> getEntryIDSelection() {
+                        return playlistPlaybackEntriesSelectionTracker.getSelection().stream()
+                                .map(playbackEntry -> playbackEntry.entryID)
+                                .collect(Collectors.toList());
+                    }
+
+                    @Override
+                    public List<PlaybackEntry> getPlaybackEntrySelection() {
+                        return playlistPlaybackEntriesSelectionTracker.getSelection();
+                    }
+
+                    @Override
+                    public List<PlaylistEntry> getPlaylistEntrySelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public List<Playlist> getPlaylistSelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public Bundle getQueryBundle() {
+                        return null;
+                    }
+
+                    @Override
+                    public PlaylistID getPlaylistID() {
+                        return getCurrentPlaylist();
+                    }
+
+                    @Override
+                    public void onDestroyActionMode(ActionMode actionMode) {
+                        playlistPlaybackEntriesSelectionTracker.clearSelection();
+                    }
+                });
+        playlistPlaybackActionModeCallback.setActions(
+                new int[] {
+                        ActionModeCallback.ACTIONMODE_ACTION_PLAY,
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE
+                },
+                new int[] {
+                        ActionModeCallback.ACTIONMODE_ACTION_PLAY,
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE,
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_PLAYLIST,
+                        ActionModeCallback.ACTIONMODE_ACTION_CACHE
+                },
+                new int[0]
+        );
+        playlistPlaybackEntriesSelectionTracker.setActionModeCallback(playlistPlaybackActionModeCallback);
+
         playlistPlaybackEntriesRecView.setOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {

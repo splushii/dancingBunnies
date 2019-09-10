@@ -29,19 +29,23 @@
     </style>
 
     <style name="SpinnerDropDownItemTheme" parent="Widget.AppCompat.Light.DropDownItem.Spinner">
-        <item name="android:textColor">@color/colorPrimaryText</item>
+        <item name="android:textColor">@color/primary_text_color</item>
         <item name="android:background">@color/grey100</item>
     </style>
 
     <style name="ImageButtonStyle" parent="Widget.AppCompat.ImageButton">
         <item name="android:background">?android:selectableItemBackground</item>
-        <item name="android:textColor">@color/colorPrimaryText</item>
+        <item name="android:textColor">@color/primary_text_color</item>
+    </style>
+
+    <style name="PopupMenuTheme" parent="Widget.AppCompat.Light.PopupMenu">
+        <item name="android:popupBackground">@color/white</item>
     </style>
 
     <style name="AppTheme.Base" parent="Theme.MaterialComponents.NoActionBar">
         <item name="android:windowBackground">@color/white</item>
-        <item name="android:textColorPrimary">@color/colorPrimaryText</item>
-        <item name="android:textColorSecondary">@color/colorSecondaryText</item>
+        <item name="android:textColorPrimary">@color/primary_text_color</item>
+        <item name="android:textColorSecondary">@color/secondary_text_color</item>
         <item name="android:textColorHint">@color/grey500</item>
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
@@ -55,6 +59,7 @@
         <item name="colorControlHighlight">@color/colorAccentLight</item>
         <item name="android:spinnerDropDownItemStyle">@style/SpinnerDropDownItemTheme</item>
         <item name="imageButtonStyle">@style/ImageButtonStyle</item>
+        <item name="popupMenuStyle">@style/PopupMenuTheme</item>
         <!-- colorForeground set for switch track -->
         <item name="android:colorForeground">@color/grey500</item>
     </style>

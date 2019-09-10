@@ -2,17 +2,27 @@ package se.splushii.dancingbunnies.ui;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.util.AttributeSet;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
-import android.widget.LinearLayout;
+
+import java.util.function.Supplier;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.view.menu.MenuBuilder;
+import androidx.appcompat.view.menu.MenuPopupHelper;
+import androidx.appcompat.widget.LinearLayoutCompat;
+import androidx.appcompat.widget.PopupMenu;
 import se.splushii.dancingbunnies.R;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.util.Util;
 
-public class TrackItemActionsView extends LinearLayout {
+public class TrackItemActionsView extends LinearLayoutCompat implements PopupMenu.OnMenuItemClickListener {
     private static final String LC = Util.getLogContext(TrackItemActionsView.class);
     private View playAction;
     private View queueAction;
@@ -20,6 +30,8 @@ public class TrackItemActionsView extends LinearLayout {
     private View addToPlaylistAction;
     private View infoAction;
     private View playPlaylistAction;
+    private View moreAction;
+    private Supplier<EntryID> entryIDSupplier;
 
     public TrackItemActionsView(Context context) {
         super(context);
@@ -36,13 +48,9 @@ public class TrackItemActionsView extends LinearLayout {
         init(attrs, defStyleAttr, 0);
     }
 
-    public TrackItemActionsView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
-        super(context, attrs, defStyleAttr, defStyleRes);
-        init(attrs, defStyleAttr, defStyleRes);
-    }
-
+    @SuppressLint("RestrictedApi")
     private void init(AttributeSet attrs, int defStyleAttr, int defStyleRes) {
-        inflate(getContext(), R.layout.item_actions_view_layout, this);
+        inflate(getContext(), R.layout.track_item_actions_view_layout, this);
         final TypedArray a = getContext().obtainStyledAttributes(
                 attrs, R.styleable.TrackItemActionsView, defStyleAttr, defStyleRes);
         a.recycle();
@@ -52,12 +60,62 @@ public class TrackItemActionsView extends LinearLayout {
         addToPlaylistAction = findViewById(R.id.item_action_add_to_playlist);
         playPlaylistAction = findViewById(R.id.item_action_play_playlist);
         infoAction = findViewById(R.id.item_action_info);
+        moreAction = findViewById(R.id.item_action_more);
+
+        PopupMenu popup = new PopupMenu(getContext(), moreAction);
+        popup.setOnMenuItemClickListener(this);
+        MenuInflater inflater = popup.getMenuInflater();
+        inflater.inflate(R.menu.track_item_actions_more_menu, popup.getMenu());
+        // TODO: This is a restricted API
+        // TODO: Use popup.setForceShowIcon(true) when API SDK 29 is live
+        MenuPopupHelper menuPopupHelper = new MenuPopupHelper(
+                getContext(),
+                (MenuBuilder) popup.getMenu(),
+                moreAction
+        );
+        menuPopupHelper.setForceShowIcon(true);
+        moreAction.setOnClickListener(view -> {
+            setMenuItemEnabled(popup, R.id.track_item_actions_more_menu_cache, entryIDSupplier != null);
+            setMenuItemEnabled(popup, R.id.track_item_actions_more_menu_play, playAction.hasOnClickListeners());
+            setMenuItemEnabled(popup, R.id.track_item_actions_more_menu_queue, queueAction.hasOnClickListeners());
+            setMenuItemEnabled(popup, R.id.track_item_actions_more_menu_add_to_playlist, addToPlaylistAction.hasOnClickListeners());
+            setMenuItemEnabled(popup, R.id.track_item_actions_more_menu_info, infoAction.hasOnClickListeners());
+            animateShow(false);
+            menuPopupHelper.show();
+        });
+    }
+
+    private void setMenuItemEnabled(PopupMenu popupMenu, int resourceId, boolean enabled) {
+        MenuItem menuItem = popupMenu.getMenu().findItem(resourceId);
+        menuItem.setEnabled(enabled);
+        menuItem.getIcon().setAlpha(enabled ? 255 : 64);
     }
 
     public void initialize() {
         setVisibility(View.INVISIBLE);
         setTranslationX(getTrans(false));
         setAlpha(0);
+    }
+
+    @Override
+    public boolean onMenuItemClick(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.track_item_actions_more_menu_cache:
+                if (entryIDSupplier == null) {
+                    return false;
+                }
+                MusicLibraryService.downloadAudioData(getContext(), entryIDSupplier.get());
+                return true;
+            case R.id.track_item_actions_more_menu_play:
+                return playAction.performClick();
+            case R.id.track_item_actions_more_menu_queue:
+                return queueAction.performClick();
+            case R.id.track_item_actions_more_menu_add_to_playlist:
+                return addToPlaylistAction.performClick();
+            case R.id.track_item_actions_more_menu_info:
+                return infoAction.performClick();
+        }
+        return false;
     }
 
     private float getTrans(boolean show) {
@@ -126,5 +184,9 @@ public class TrackItemActionsView extends LinearLayout {
 
     public void setOnInfoListener(Runnable r) {
         setListener(infoAction, r, false);
+    }
+
+    public void setEntryIDSupplier(Supplier<EntryID> entryIDSupplier) {
+        this.entryIDSupplier = entryIDSupplier;
     }
 }

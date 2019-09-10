@@ -14,7 +14,6 @@
         android:visibility="gone"
         android:background="?android:selectableItemBackground"
         android:src="@drawable/ic_delete_white_24dp"
-        android:textColor="@color/colorPrimaryText"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:contentDescription="@string/item_action_remove" />
@@ -25,7 +24,6 @@
         android:visibility="gone"
         android:background="?android:selectableItemBackground"
         android:src="@drawable/ic_play_arrow_white_24dp"
-        android:textColor="@color/colorPrimaryText"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:contentDescription="@string/item_action_play" />
@@ -36,7 +34,6 @@
         android:visibility="gone"
         android:background="?android:selectableItemBackground"
         android:src="@drawable/ic_queue_white_24dp"
-        android:textColor="@color/colorPrimaryText"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:contentDescription="@string/item_action_queue" />
@@ -47,7 +44,6 @@
         android:visibility="gone"
         android:background="?android:selectableItemBackground"
         android:src="@drawable/ic_playlist_add_white_24dp"
-        android:textColor="@color/colorPrimaryText"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:contentDescription="@string/item_action_add_to_playlist" />
@@ -58,7 +54,6 @@
         android:visibility="gone"
         android:background="?android:selectableItemBackground"
         android:src="@drawable/ic_playlist_play_white_24dp"
-        android:textColor="@color/colorPrimaryText"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:contentDescription="@string/item_action_play_playlist" />
@@ -69,8 +64,17 @@
         android:visibility="gone"
         android:background="?android:selectableItemBackground"
         android:src="@drawable/ic_info_white_24dp"
-        android:textColor="@color/colorPrimaryText"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:contentDescription="@string/item_action_info" />
+    <ImageButton
+        android:id="@+id/item_action_more"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:visibility="visible"
+        android:background="?android:selectableItemBackground"
+        android:src="@drawable/ic_more_vert_white_24dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:contentDescription="More"/>
 </LinearLayout>

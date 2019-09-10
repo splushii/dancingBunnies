@@ -721,7 +721,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             return;
         }
         Log.d(LC, "play() " + entryIDs.size() + " entryIDs, query: " + query);
-        musicLibraryService.getSongEntriesOnce(entryIDs, query)
+        MusicLibraryService.getSongEntriesOnce(musicLibraryService, entryIDs, query)
                 .thenComposeAsync(songEntryIDs -> {
                     Log.d(LC, "play() total song entries: " + songEntryIDs.size());
                     return playbackController.playNow(songEntryIDs);
@@ -761,7 +761,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             return;
         }
         Log.d(LC, "queue() adding " + entryIDs.size() + " entryIDs");
-        musicLibraryService.getSongEntriesOnce(entryIDs, query)
+        MusicLibraryService.getSongEntriesOnce(musicLibraryService, entryIDs, query)
                 .thenComposeAsync(songEntryIDs -> {
                     Log.d(LC, "queue() total song entries: " + songEntryIDs.size());
                     return playbackController.queue(songEntryIDs);

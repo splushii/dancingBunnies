@@ -1,6 +1,5 @@
 package se.splushii.dancingbunnies.ui.nowplaying;
 
-import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,6 +19,7 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
+import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
@@ -108,26 +108,8 @@ public class NowPlayingEntriesAdapter extends
         dragViewHolder.itemContent.reset();
     }
 
-    @Override
-    public boolean onActionItemClicked(int menuItemID, List<PlaybackEntry> selectionList) {
-        switch (menuItemID) {
-            case R.id.nowplaying_actionmode_action_queue:
-                fragment.queue(selectionList.stream()
-                        .map(playbackEntry -> playbackEntry.entryID)
-                        .collect(Collectors.toList()),
-                        null
-                );
-                return true;
-            case R.id.nowplaying_actionmode_action_dequeue:
-                fragment.dequeue(selectionList);
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private void updateActionModeView(ActionMode actionMode, Selection<PlaybackEntry> selection) {
-        actionMode.setTitle(selection.size() + " entries");
+    private void updateActionModeView(ActionModeCallback actionModeCallback, Selection<PlaybackEntry> selection) {
+        actionModeCallback.getActionMode().setTitle(selection.size() + " entries");
         boolean showDelete = true;
         for (PlaybackEntry entry: selection) {
             if (PlaybackEntry.USER_TYPE_PLAYLIST.equals(entry.playbackType)) {
@@ -135,31 +117,38 @@ public class NowPlayingEntriesAdapter extends
                 break;
             }
         }
-        actionMode.getMenu().findItem(R.id.nowplaying_actionmode_action_dequeue)
-                .setVisible(showDelete);
-        boolean showQueue = true;
-        for (PlaybackEntry entry: selection) {
-            if (!PlaybackEntry.USER_TYPE_PLAYLIST.equals(entry.playbackType)) {
-                showQueue = false;
-                break;
-            }
-        }
-        actionMode.getMenu().findItem(R.id.nowplaying_actionmode_action_queue)
-                .setVisible(showQueue);
+        int[] disabled = showDelete ?
+                new int[0] : new int[] { ActionModeCallback.ACTIONMODE_ACTION_REMOVE_FROM_QUEUE};
+        actionModeCallback.setActions(
+                new int[] {
+                        ActionModeCallback.ACTIONMODE_ACTION_PLAY,
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_PLAYLIST
+                },
+                new int[] {
+                        ActionModeCallback.ACTIONMODE_ACTION_PLAY,
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE,
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_PLAYLIST,
+                        ActionModeCallback.ACTIONMODE_ACTION_REMOVE_FROM_QUEUE,
+                        ActionModeCallback.ACTIONMODE_ACTION_CACHE
+                },
+                disabled
+        );
     }
 
     @Override
-    public void onActionModeStarted(ActionMode actionMode, Selection<PlaybackEntry> selection) {
-        updateActionModeView(actionMode, selection);
+    public void onActionModeStarted(ActionModeCallback actionModeCallback,
+                                    Selection<PlaybackEntry> selection) {
+        updateActionModeView(actionModeCallback, selection);
     }
 
     @Override
-    public void onActionModeSelectionChanged(ActionMode actionMode, Selection<PlaybackEntry> selection) {
-        updateActionModeView(actionMode, selection);
+    public void onActionModeSelectionChanged(ActionModeCallback actionModeCallback,
+                                             Selection<PlaybackEntry> selection) {
+        updateActionModeView(actionModeCallback, selection);
     }
 
     @Override
-    public void onActionModeEnding(ActionMode actionMode) {}
+    public void onActionModeEnding(ActionModeCallback actionModeCallback) {}
 
     @Override
     public boolean onDragInitiated(Selection<PlaybackEntry> selection) {
@@ -265,6 +254,7 @@ public class NowPlayingEntriesAdapter extends
         holder.actionsView.setOnInfoListener(() ->
                 MetaDialogFragment.showMeta(fragment, holder.itemContent.getMeta())
         );
+        holder.actionsView.setEntryIDSupplier(() -> holder.playbackEntry.entryID);
         return holder;
     }
 

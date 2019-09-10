@@ -244,6 +244,13 @@ public class MusicLibraryService extends Service {
         return audioDataSource == null ? null : audioDataSource.getURL();
     }
 
+    public static CompletableFuture<Void> downloadAudioData(Context context, List<EntryID> entryID, Bundle query) {
+        return getSongEntriesOnce(context, entryID, query)
+                .thenAccept(songEntryIDs -> songEntryIDs.forEach(songEntryID ->
+                        downloadAudioData(context, songEntryID)
+                ));
+    }
+
     public static void downloadAudioData(Context context, EntryID entryID) {
         getAudioData(context, entryID, new AudioDataDownloadHandler() {
             @Override
@@ -318,8 +325,8 @@ public class MusicLibraryService extends Service {
         return metaStorage.getEntries(showField, sortField, query);
     }
 
-    public CompletableFuture<List<EntryID>> getSongEntriesOnce(List<EntryID> entryIDs, Bundle query) {
-        return metaStorage.getSongEntriesOnce(entryIDs, query);
+    public static CompletableFuture<List<EntryID>> getSongEntriesOnce(Context context, List<EntryID> entryIDs, Bundle query) {
+        return MetaStorage.getInstance(context).getSongEntriesOnce(entryIDs, query);
     }
 
     public List<EntryID> getSearchEntries(String query) {

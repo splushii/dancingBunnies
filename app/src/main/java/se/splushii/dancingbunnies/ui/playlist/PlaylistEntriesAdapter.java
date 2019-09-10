@@ -1,6 +1,5 @@
 package se.splushii.dancingbunnies.ui.playlist;
 
-import android.view.ActionMode;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,7 +10,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -27,6 +25,7 @@ import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
+import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
@@ -99,51 +98,43 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         dragViewHolder.itemContent.reset();
     }
 
-    @Override
-    public boolean onActionItemClicked(int menuItemID, List<PlaylistEntry> selectionList) {
-        switch (menuItemID) {
-            case R.id.playlist_entries_actionmode_action_delete:
-                playlistStorage.removeFromPlaylist(playlistID, selectionList);
-                return true;
-            case R.id.playlist_entries_actionmode_action_play_now:
-                fragment.play(selectionList.stream()
-                        .map(EntryID::from)
-                        .collect(Collectors.toList()),
-                        null
-                );
-                return true;
-            case R.id.playlist_entries_actionmode_action_queue:
-                fragment.queue(selectionList.stream()
-                        .map(EntryID::from)
-                        .collect(Collectors.toList()),
-                        null
-                );
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    private void updateActionModeView(ActionMode actionMode, Selection<PlaylistEntry> selection) {
-        actionMode.setTitle(selection.size() + " entries");
+    private void updateActionModeView(ActionModeCallback actionModeCallback,
+                                      Selection<PlaylistEntry> selection) {
+        actionModeCallback.getActionMode().setTitle(selection.size() + " entries");
         boolean showDelete = playlistID.type == PlaylistID.TYPE_STUPID
                 && MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_DELETE);
-        actionMode.getMenu().findItem(R.id.playlist_entries_actionmode_action_delete)
-                .setVisible(showDelete);
+        int[] disabled = showDelete ? new int[0] :
+                new int[] { ActionModeCallback.ACTIONMODE_ACTION_REMOVE_FROM_PLAYLIST};
+        actionModeCallback.setActions(
+                new int[] {
+                        ActionModeCallback.ACTIONMODE_ACTION_PLAY,
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE
+                },
+                new int[] {
+                        ActionModeCallback.ACTIONMODE_ACTION_PLAY,
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE,
+                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_PLAYLIST,
+                        ActionModeCallback.ACTIONMODE_ACTION_REMOVE_FROM_PLAYLIST,
+                        ActionModeCallback.ACTIONMODE_ACTION_CACHE
+                },
+                disabled
+        );
     }
 
     @Override
-    public void onActionModeStarted(ActionMode actionMode, Selection<PlaylistEntry> selection) {
-        updateActionModeView(actionMode, selection);
+    public void onActionModeStarted(ActionModeCallback actionModeCallback,
+                                    Selection<PlaylistEntry> selection) {
+        updateActionModeView(actionModeCallback, selection);
     }
 
     @Override
-    public void onActionModeSelectionChanged(ActionMode actionMode, Selection<PlaylistEntry> selection) {
-        updateActionModeView(actionMode, selection);
+    public void onActionModeSelectionChanged(ActionModeCallback actionModeCallback,
+                                             Selection<PlaylistEntry> selection) {
+        updateActionModeView(actionModeCallback, selection);
     }
 
     @Override
-    public void onActionModeEnding(ActionMode actionMode) {}
+    public void onActionModeEnding(ActionModeCallback actionModeCallback) {}
 
     @Override
     public boolean onDragInitiated(Selection<PlaylistEntry> selection) {
