@@ -24,9 +24,7 @@ import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.storage.MetaStorage;
-import se.splushii.dancingbunnies.ui.AddToPlaylistDialogFragment;
 import se.splushii.dancingbunnies.ui.FastScrollerBubble;
-import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -228,22 +226,22 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         holder.numSubEntriesLiveData.observe(fragment.getViewLifecycleOwner(), numSubEntries ->
                 holder.libraryEntryNum.setText(String.valueOf(numSubEntries))
         );
-        holder.actionsView.setOnPlayListener(() -> fragment.play(
-                holder.entryIDLiveData.getValue())
-        );
-        holder.actionsView.setOnQueueListener(() -> fragment.queue(
-                Collections.singletonList(holder.entryIDLiveData.getValue()),
-                fragment.getCurrentQueryBundle()
-        ));
-        holder.actionsView.setOnAddToPlaylistListener(() -> AddToPlaylistDialogFragment.showDialog(
-                fragment,
-                new ArrayList<>(Collections.singletonList(holder.entryIDLiveData.getValue())),
-                fragment.getCurrentQueryBundle()
-        ));
-        holder.actionsView.setOnInfoListener(() ->
-                MetaStorage.getInstance(fragment.requireContext())
-                        .getMetaOnce(holder.entryIDLiveData.getValue())
-                        .thenAccept(meta -> MetaDialogFragment.showMeta(fragment, meta))
+        holder.actionsView.setAudioBrowserFragment(fragment);
+        holder.actionsView.setEntryIDSupplier(() -> holder.entry.entryID);
+        holder.actionsView.setActions(
+                new int[] {
+                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
+                        TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
+                        TrackItemActionsView.ACTION_INFO
+                },
+                new int[] {
+                        TrackItemActionsView.ACTION_PLAY,
+                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
+                        TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
+                        TrackItemActionsView.ACTION_CACHE,
+                        TrackItemActionsView.ACTION_INFO
+                },
+                new int[] {}
         );
         return holder;
     }

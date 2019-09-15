@@ -18,16 +18,18 @@ import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
-import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
+
+import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.PLAYLIST_ENTRY_DELETE;
 
 public class PlaylistPlaybackEntriesAdapter extends
         SelectionRecyclerViewAdapter<PlaybackEntry, PlaylistPlaybackEntriesAdapter.ViewHolder> {
@@ -306,9 +308,10 @@ public class PlaylistPlaybackEntriesAdapter extends
         holder.itemContent.observeMeta(fragment.getViewLifecycleOwner());
         holder.itemContent.observeCachedLiveData(cachedEntriesLiveData, fragment.getViewLifecycleOwner());
         holder.itemContent.observeFetchStateLiveData(fetchStateLiveData, fragment.getViewLifecycleOwner());
-        holder.actionsView.setOnInfoListener(() ->
-                MetaDialogFragment.showMeta(fragment, holder.itemContent.getMeta())
-        );
+        holder.actionsView.setAudioBrowserFragment(fragment);
+        holder.actionsView.setEntryIDSupplier(() -> holder.playbackEntry.entryID);
+        holder.actionsView.setPlaylistIDSupplier(() -> currentPlaylistIDLiveData.getValue());
+        holder.actionsView.setPlaylistPositionSupplier(() -> holder.playbackEntry.playlistPos);
         return holder;
     }
 
@@ -329,12 +332,32 @@ public class PlaylistPlaybackEntriesAdapter extends
                 currentEntryLiveData.getValue(),
                 currentPlaylistPosLiveData.getValue()
         );
-        holder.actionsView.setOnPlayListener(() -> fragment.play(entry.entryID));
-        holder.actionsView.setOnQueueListener(() -> fragment.queue(entry.entryID));
-        holder.actionsView.setOnPlayPlaylistListener(() -> fragment.setCurrentPlaylist(
-                currentPlaylistIDLiveData.getValue(),
-                entry.playlistPos
-        ));
+        int[] disabledActions;
+        PlaylistID playlistID = currentPlaylistIDLiveData.getValue();
+        if (playlistID != null
+                && MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_DELETE)
+                && playlistID.type == PlaylistID.TYPE_STUPID) {
+            disabledActions = new int[0];
+        } else {
+            disabledActions = new int[] { TrackItemActionsView.ACTION_REMOVE_FROM_PLAYLIST };
+        }
+        holder.actionsView.setActions(
+                new int[] {
+                        TrackItemActionsView.ACTION_SET_CURRENT_PLAYLIST,
+                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
+                        TrackItemActionsView.ACTION_INFO
+                },
+                new int[] {
+                        TrackItemActionsView.ACTION_PLAY,
+                        TrackItemActionsView.ACTION_SET_CURRENT_PLAYLIST,
+                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
+                        TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
+                        TrackItemActionsView.ACTION_REMOVE_FROM_PLAYLIST,
+                        TrackItemActionsView.ACTION_CACHE,
+                        TrackItemActionsView.ACTION_INFO
+                },
+                disabledActions
+        );
         holder.item.setActivated(isSelected(holder.getKey()));
     }
 

@@ -20,7 +20,6 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
-import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
@@ -251,10 +250,11 @@ public class NowPlayingEntriesAdapter extends
         holder.itemContent.observeMeta(fragment.getViewLifecycleOwner());
         holder.itemContent.observeCachedLiveData(cachedEntriesLiveData, fragment.getViewLifecycleOwner());
         holder.itemContent.observeFetchStateLiveData(fetchStateLiveData, fragment.getViewLifecycleOwner());
-        holder.actionsView.setOnInfoListener(() ->
-                MetaDialogFragment.showMeta(fragment, holder.itemContent.getMeta())
-        );
+        holder.actionsView.setAudioBrowserFragment(fragment);
         holder.actionsView.setEntryIDSupplier(() -> holder.playbackEntry.entryID);
+        holder.actionsView.setPlaybackEntrySupplier(() -> holder.playbackEntry);
+        holder.actionsView.setPlaylistPositionSupplier(() -> holder.playbackEntry.playlistPos);
+        holder.actionsView.setPlaylistIDSupplier(fragment::getCurrentPlaylist);
         return holder;
     }
 
@@ -267,28 +267,40 @@ public class NowPlayingEntriesAdapter extends
         holder.item.setBackgroundResource(position % 2 == 1 ?
                 R.color.white_active_accent : R.color.gray50_active_accent
         );
+        int[] disabledActions;
         if (isQueueEntry) {
             holder.itemContent.resetPos();
-            holder.actionsView.setOnRemoveListener(() -> fragment.dequeue(entry));
-            holder.actionsView.setOnQueueListener(null);
+            disabledActions = new int[] {
+                    TrackItemActionsView.ACTION_SET_CURRENT_PLAYLIST
+            };
             holder.updateHighlight(null);
         } else {
             holder.itemContent.setPos(entry.playlistPos);
-            holder.actionsView.setOnPlayPlaylistListener(() -> fragment.setCurrentPlaylist(
-                    fragment.getCurrentPlaylist(),
-                    entry.playlistPos
-            ));
-            holder.actionsView.setOnRemoveListener(null);
-            holder.actionsView.setOnQueueListener(() -> fragment.queue(entry.entryID));
+            disabledActions = new int[] {
+                    TrackItemActionsView.ACTION_REMOVE_FROM_QUEUE
+            };
             holder.updateHighlight(nowPlayingStateLiveData.getValue());
         }
         holder.itemContent.setEntryID(entry.entryID);
         holder.itemContent.setPreloaded(entry.isPreloaded());
         holder.item.setActivated(isSelected(holder.getKey()));
-        holder.actionsView.setOnPlayListener(() -> {
-            fragment.skipItems(position + 1);
-            fragment.play();
-        });
+        holder.actionsView.setActions(
+                new int[] {
+                        TrackItemActionsView.ACTION_PLAY,
+                        TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
+                        TrackItemActionsView.ACTION_INFO
+                },
+                new int[] {
+                        TrackItemActionsView.ACTION_PLAY,
+                        TrackItemActionsView.ACTION_SET_CURRENT_PLAYLIST,
+                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
+                        TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
+                        TrackItemActionsView.ACTION_REMOVE_FROM_QUEUE,
+                        TrackItemActionsView.ACTION_CACHE,
+                        TrackItemActionsView.ACTION_INFO
+                },
+                disabledActions
+        );
     }
 
     private boolean isFirstPlaylistEntry(int position) {

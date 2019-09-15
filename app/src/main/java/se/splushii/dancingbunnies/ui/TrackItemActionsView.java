@@ -2,14 +2,18 @@ package se.splushii.dancingbunnies.ui;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.util.AttributeSet;
-import android.view.MenuInflater;
-import android.view.MenuItem;
+import android.view.LayoutInflater;
+import android.view.Menu;
 import android.view.View;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.function.Supplier;
 
 import androidx.annotation.Nullable;
@@ -17,21 +21,45 @@ import androidx.appcompat.view.menu.MenuBuilder;
 import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.appcompat.widget.LinearLayoutCompat;
 import androidx.appcompat.widget.PopupMenu;
+import androidx.core.content.ContextCompat;
 import se.splushii.dancingbunnies.R;
+import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
+import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
+import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.storage.MetaStorage;
+import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
+import se.splushii.dancingbunnies.storage.PlaylistStorage;
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
 
-public class TrackItemActionsView extends LinearLayoutCompat implements PopupMenu.OnMenuItemClickListener {
+public class TrackItemActionsView extends LinearLayoutCompat {
     private static final String LC = Util.getLogContext(TrackItemActionsView.class);
-    private View playAction;
-    private View queueAction;
-    private View removeAction;
-    private View addToPlaylistAction;
-    private View infoAction;
-    private View playPlaylistAction;
-    private View moreAction;
+
+    private static final int ACTION_MORE = View.generateViewId();
+    public static final int ACTION_PLAY = View.generateViewId();
+    public static final int ACTION_ADD_TO_QUEUE = View.generateViewId();
+    public static final int ACTION_REMOVE_FROM_QUEUE = View.generateViewId();
+    public static final int ACTION_SET_CURRENT_PLAYLIST = View.generateViewId();
+    public static final int ACTION_ADD_TO_PLAYLIST = View.generateViewId();
+    public static final int ACTION_REMOVE_FROM_PLAYLIST = View.generateViewId();
+    public static final int ACTION_CACHE = View.generateViewId();
+    public static final int ACTION_REMOVE_FROM_HISTORY = View.generateViewId();
+    public static final int ACTION_INFO = View.generateViewId();
+
+    private AudioBrowserFragment audioBrowserFragment;
+
     private Supplier<EntryID> entryIDSupplier;
+    private Supplier<PlaybackEntry> playbackEntrySupplier;
+    private Supplier<PlaylistID> playlistIDSupplier;
+    private Supplier<PlaylistEntry> playlistEntrySupplier;
+    private Supplier<Long> playlistPositionSupplier;
+
+    private int[] visibleActions = {};
+    private int[] moreActions = {};
+    private HashSet<Integer> disabled = new HashSet<>();
+
+    private LinearLayout rootView;
 
     public TrackItemActionsView(Context context) {
         super(context);
@@ -48,74 +76,163 @@ public class TrackItemActionsView extends LinearLayoutCompat implements PopupMen
         init(attrs, defStyleAttr, 0);
     }
 
-    @SuppressLint("RestrictedApi")
     private void init(AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         inflate(getContext(), R.layout.track_item_actions_view_layout, this);
         final TypedArray a = getContext().obtainStyledAttributes(
                 attrs, R.styleable.TrackItemActionsView, defStyleAttr, defStyleRes);
         a.recycle();
-        playAction = findViewById(R.id.item_action_play);
-        queueAction = findViewById(R.id.item_action_queue);
-        removeAction = findViewById(R.id.item_action_remove);
-        addToPlaylistAction = findViewById(R.id.item_action_add_to_playlist);
-        playPlaylistAction = findViewById(R.id.item_action_play_playlist);
-        infoAction = findViewById(R.id.item_action_info);
-        moreAction = findViewById(R.id.item_action_more);
 
-        PopupMenu popup = new PopupMenu(getContext(), moreAction);
-        popup.setOnMenuItemClickListener(this);
-        MenuInflater inflater = popup.getMenuInflater();
-        inflater.inflate(R.menu.track_item_actions_more_menu, popup.getMenu());
-        // TODO: This is a restricted API
-        // TODO: Use popup.setForceShowIcon(true) when API SDK 29 is live
-        MenuPopupHelper menuPopupHelper = new MenuPopupHelper(
-                getContext(),
-                (MenuBuilder) popup.getMenu(),
-                moreAction
-        );
-        menuPopupHelper.setForceShowIcon(true);
-        moreAction.setOnClickListener(view -> {
-            setMenuItemEnabled(popup, R.id.track_item_actions_more_menu_cache, entryIDSupplier != null);
-            setMenuItemEnabled(popup, R.id.track_item_actions_more_menu_play, playAction.hasOnClickListeners());
-            setMenuItemEnabled(popup, R.id.track_item_actions_more_menu_queue, queueAction.hasOnClickListeners());
-            setMenuItemEnabled(popup, R.id.track_item_actions_more_menu_add_to_playlist, addToPlaylistAction.hasOnClickListeners());
-            setMenuItemEnabled(popup, R.id.track_item_actions_more_menu_info, infoAction.hasOnClickListeners());
-            animateShow(false);
-            menuPopupHelper.show();
-        });
+        rootView = findViewById(R.id.item_action_root);
+        setActions();
     }
 
-    private void setMenuItemEnabled(PopupMenu popupMenu, int resourceId, boolean enabled) {
-        MenuItem menuItem = popupMenu.getMenu().findItem(resourceId);
-        menuItem.setEnabled(enabled);
-        menuItem.getIcon().setAlpha(enabled ? 255 : 64);
+    public void setActions(int[] visible, int[] more, int[] disabled) {
+        this.visibleActions = visible;
+        this.moreActions = more;
+        this.disabled.clear();
+        for (int d: disabled) {
+            this.disabled.add(d);
+        }
+        rootView.removeAllViews();
+        setActions();
+    }
+
+    private void setActions() {
+        for (int i = 0; i < visibleActions.length; i++) {
+            addAction(null,false, i, visibleActions[i]);
+        }
+        if (moreActions.length > 0) {
+            addAction(null, false, visibleActions.length, ACTION_MORE);
+        }
+    }
+
+    private void addAction(Menu menu, boolean more, int order, int action) {
+        int stringResource;
+        int iconResource;
+        if (action == ACTION_ADD_TO_QUEUE) {
+            stringResource = R.string.item_action_queue;
+            iconResource = R.drawable.ic_queue_black_24dp;
+        } else if (action == ACTION_ADD_TO_PLAYLIST) {
+            stringResource = R.string.item_action_add_to_playlist;
+            iconResource = R.drawable.ic_playlist_add_black_24dp;
+        } else if (action == ACTION_PLAY) {
+            stringResource = R.string.item_action_play;
+            iconResource = R.drawable.ic_play_arrow_black_24dp;
+        } else if (action == ACTION_CACHE) {
+            stringResource = R.string.item_action_cache;
+            iconResource = R.drawable.ic_offline_pin_black_24dp;
+        } else if (action == ACTION_REMOVE_FROM_QUEUE) {
+            stringResource = R.string.item_action_queue_delete;
+            iconResource = R.drawable.ic_delete_black_24dp;
+        } else if (action == ACTION_REMOVE_FROM_HISTORY) {
+            stringResource = R.string.item_action_history_delete;
+            iconResource = R.drawable.ic_delete_black_24dp;
+        } else if (action == ACTION_REMOVE_FROM_PLAYLIST) {
+            stringResource = R.string.item_action_remove_from_playlist;
+            iconResource = R.drawable.ic_delete_black_24dp;
+        } else if (action == ACTION_SET_CURRENT_PLAYLIST) {
+            stringResource = R.string.item_action_play_playlist;
+            iconResource = R.drawable.ic_playlist_play_white_24dp;
+        } else if (action == ACTION_INFO) {
+            stringResource = R.string.item_action_info;
+            iconResource = R.drawable.ic_info_black_24dp;
+        } else if (action == ACTION_MORE) {
+            stringResource = R.string.item_action_more;
+            iconResource = R.drawable.ic_more_vert_black_24dp;
+        } else {
+            return;
+        }
+        if (menu != null) {
+            menu.add(Menu.NONE, action, order, stringResource)
+                    .setIcon(iconResource)
+                    .setEnabled(!disabled.contains(action))
+                    .setIconTintList(ContextCompat.getColorStateList(
+                            getContext(),
+                            more ? R.color.icon_on_white : R.color.icon_on_secondary
+                    ));
+        } else {
+            ImageButton actionBtn = (ImageButton) LayoutInflater.from(getContext())
+                    .inflate(R.layout.track_item_actions_item, rootView, false);
+            actionBtn.setContentDescription(getResources().getText(stringResource));
+            actionBtn.setEnabled(!disabled.contains(action));
+            actionBtn.setImageResource(iconResource);
+            actionBtn.setImageTintList(ContextCompat.getColorStateList(
+                    getContext(),
+                    more ? R.color.icon_on_white : R.color.icon_on_primary
+            ));
+            actionBtn.setOnClickListener(v -> {
+                onAction(v, action);
+            });
+            rootView.addView(actionBtn);
+        }
+    }
+
+    @SuppressWarnings("RestrictedAPI")
+    private boolean onAction(View v, int action) {
+        if (action == ACTION_MORE) {
+            PopupMenu popup = new PopupMenu(getContext(), v);
+            Menu menu = popup.getMenu();
+            for (int i = 0; i < moreActions.length; i++) {
+                addAction(menu, true, i, moreActions[i]);
+            }
+            // TODO: This is a restricted API
+            // TODO: Use popup.setForceShowIcon(true) when API SDK 29 is live
+            MenuPopupHelper menuPopupHelper = new MenuPopupHelper(
+                    getContext(),
+                    (MenuBuilder) popup.getMenu(),
+                    v
+            );
+            menuPopupHelper.setForceShowIcon(true);
+            popup.setOnMenuItemClickListener(popupItem -> onAction(
+                    popupItem.getActionView(),
+                    popupItem.getItemId()
+            ));
+            menuPopupHelper.show();
+            return true;
+        } else if (action == ACTION_PLAY) {
+            audioBrowserFragment.play(entryIDSupplier.get());
+        } else if (action == ACTION_ADD_TO_QUEUE) {
+            audioBrowserFragment.queue(entryIDSupplier.get());
+        } else if (action == ACTION_ADD_TO_PLAYLIST) {
+            AddToPlaylistDialogFragment.showDialog(
+                    audioBrowserFragment,
+                    new ArrayList<>(Collections.singletonList(entryIDSupplier.get())),
+                    null
+            );
+        } else if (action == ACTION_CACHE) {
+            audioBrowserFragment.downloadAudioData(
+                    Collections.singletonList(entryIDSupplier.get()),
+                    null
+            );
+        } else if (action == ACTION_REMOVE_FROM_QUEUE) {
+                audioBrowserFragment.dequeue(playbackEntrySupplier.get());
+        } else if (action == ACTION_REMOVE_FROM_HISTORY) {
+            PlaybackControllerStorage.getInstance(getContext()).removeEntries(
+                    PlaybackControllerStorage.QUEUE_ID_HISTORY,
+                    Collections.singletonList(playbackEntrySupplier.get())
+            );
+        } else if (action == ACTION_REMOVE_FROM_PLAYLIST) {
+            PlaylistStorage.getInstance(getContext()).removeFromPlaylist(
+                    playlistIDSupplier.get(),
+                    Collections.singletonList(playlistEntrySupplier.get())
+            );
+        } else if (action == ACTION_SET_CURRENT_PLAYLIST) {
+            audioBrowserFragment.setCurrentPlaylist(
+                    playlistIDSupplier.get(),
+                    playlistPositionSupplier.get()
+            );
+        } else if (action == ACTION_INFO) {
+            MetaStorage.getInstance(getContext()).getMetaOnce(entryIDSupplier.get())
+                    .thenAccept(meta -> MetaDialogFragment.showMeta(audioBrowserFragment, meta));
+        }
+        animateShow(false);
+        return true;
     }
 
     public void initialize() {
         setVisibility(View.INVISIBLE);
         setTranslationX(getTrans(false));
         setAlpha(0);
-    }
-
-    @Override
-    public boolean onMenuItemClick(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.track_item_actions_more_menu_cache:
-                if (entryIDSupplier == null) {
-                    return false;
-                }
-                MusicLibraryService.downloadAudioData(getContext(), entryIDSupplier.get());
-                return true;
-            case R.id.track_item_actions_more_menu_play:
-                return playAction.performClick();
-            case R.id.track_item_actions_more_menu_queue:
-                return queueAction.performClick();
-            case R.id.track_item_actions_more_menu_add_to_playlist:
-                return addToPlaylistAction.performClick();
-            case R.id.track_item_actions_more_menu_info:
-                return infoAction.performClick();
-        }
-        return false;
     }
 
     private float getTrans(boolean show) {
@@ -148,45 +265,27 @@ public class TrackItemActionsView extends LinearLayoutCompat implements PopupMen
                 .start();
     }
 
-    private void setListener(View view, Runnable r, boolean thenHideActions) {
-        if (r == null) {
-            view.setVisibility(GONE);
-        } else {
-            view.setOnClickListener(v -> {
-                r.run();
-                if (thenHideActions) {
-                    animateShow(false);
-                }
-            });
-            view.setVisibility(VISIBLE);
-        }
-    }
-
-    public void setOnPlayListener(Runnable r) {
-        setListener(playAction, r, true);
-    }
-
-    public void setOnQueueListener(Runnable r) {
-        setListener(queueAction, r, true);
-    }
-
-    public void setOnAddToPlaylistListener(Runnable r) {
-        setListener(addToPlaylistAction, r, true);
-    }
-
-    public void setOnPlayPlaylistListener(Runnable r) {
-        setListener(playPlaylistAction, r, true);
-    }
-
-    public void setOnRemoveListener(Runnable r) {
-        setListener(removeAction, r, true);
-    }
-
-    public void setOnInfoListener(Runnable r) {
-        setListener(infoAction, r, false);
-    }
-
     public void setEntryIDSupplier(Supplier<EntryID> entryIDSupplier) {
         this.entryIDSupplier = entryIDSupplier;
+    }
+
+    public void setPlaybackEntrySupplier(Supplier<PlaybackEntry> playbackEntrySupplier) {
+        this.playbackEntrySupplier = playbackEntrySupplier;
+    }
+
+    public void setPlaylistIDSupplier(Supplier<PlaylistID> playlistIDSupplier) {
+        this.playlistIDSupplier = playlistIDSupplier;
+    }
+
+    public void setPlaylistEntrySupplier(Supplier<PlaylistEntry> playlistEntrySupplier) {
+        this.playlistEntrySupplier = playlistEntrySupplier;
+    }
+
+    public void setPlaylistPositionSupplier(Supplier<Long> playlistPositionSupplier) {
+        this.playlistPositionSupplier = playlistPositionSupplier;
+    }
+
+    public void setAudioBrowserFragment(AudioBrowserFragment fragment) {
+        audioBrowserFragment = fragment;
     }
 }

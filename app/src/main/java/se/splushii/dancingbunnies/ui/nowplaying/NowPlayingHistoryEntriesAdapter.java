@@ -7,7 +7,6 @@ import android.view.ViewGroup;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -22,7 +21,6 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
-import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
@@ -211,16 +209,24 @@ public class NowPlayingHistoryEntriesAdapter extends
         holder.itemContent.observeMeta(fragment.getViewLifecycleOwner());
         holder.itemContent.observeCachedLiveData(cachedEntriesLiveData, fragment.getViewLifecycleOwner());
         holder.itemContent.observeFetchStateLiveData(fetchStateLiveData, fragment.getViewLifecycleOwner());
-        holder.actionsView.setOnInfoListener(() ->
-                MetaDialogFragment.showMeta(fragment, holder.itemContent.getMeta())
-        );
-        holder.actionsView.setOnQueueListener(() -> fragment.queue(holder.playbackEntry.entryID));
-        holder.actionsView.setOnPlayListener(() -> fragment.play(holder.playbackEntry.entryID));
-        holder.actionsView.setOnRemoveListener(() ->
-                PlaybackControllerStorage.getInstance(fragment.getContext()).removeEntries(
-                        PlaybackControllerStorage.QUEUE_ID_HISTORY,
-                        Collections.singletonList(holder.playbackEntry)
-                )
+        holder.actionsView.setAudioBrowserFragment(fragment);
+        holder.actionsView.setEntryIDSupplier(() -> holder.playbackEntry.entryID);
+        holder.actionsView.setPlaybackEntrySupplier(() -> holder.playbackEntry);
+        holder.actionsView.setActions(
+                new int[] {
+                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
+                        TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
+                        TrackItemActionsView.ACTION_INFO
+                },
+                new int[] {
+                        TrackItemActionsView.ACTION_PLAY,
+                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
+                        TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
+                        TrackItemActionsView.ACTION_REMOVE_FROM_HISTORY,
+                        TrackItemActionsView.ACTION_CACHE,
+                        TrackItemActionsView.ACTION_INFO
+                },
+                new int[0]
         );
         return holder;
     }

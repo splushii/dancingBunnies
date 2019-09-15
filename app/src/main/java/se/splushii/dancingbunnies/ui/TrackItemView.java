@@ -51,7 +51,6 @@ public class TrackItemView extends LinearLayout {
     private String cacheStatus;
     private boolean isCached;
     private boolean isPreloaded;
-    private EntryID entryID;
     private boolean posViewHighlighted = false;
 
     public TrackItemView(Context context) {
@@ -197,7 +196,6 @@ public class TrackItemView extends LinearLayout {
     }
 
     public void setEntryID(EntryID entryID) {
-        this.entryID = entryID;
         entryIDLiveData.setValue(entryID);
         setSource(entryID.src);
     }

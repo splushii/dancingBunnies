@@ -26,7 +26,6 @@ import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
-import se.splushii.dancingbunnies.ui.MetaDialogFragment;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
@@ -202,9 +201,11 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         holder.itemContent.observeMeta(fragment.getViewLifecycleOwner());
         holder.itemContent.observeCachedLiveData(cachedEntriesLiveData, fragment.getViewLifecycleOwner());
         holder.itemContent.observeFetchStateLiveData(fetchStateLiveData, fragment.getViewLifecycleOwner());
-        holder.actionsView.setOnInfoListener(() ->
-                MetaDialogFragment.showMeta(fragment, holder.itemContent.getMeta())
-        );
+        holder.actionsView.setAudioBrowserFragment(fragment);
+        holder.actionsView.setEntryIDSupplier(() -> EntryID.from(holder.playlistEntry));
+        holder.actionsView.setPlaylistIDSupplier(() -> playlistID);
+        holder.actionsView.setPlaylistEntrySupplier(() -> holder.playlistEntry);
+        holder.actionsView.setPlaylistPositionSupplier(() -> holder.playlistEntry.pos);
         return holder;
     }
 
@@ -227,23 +228,30 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
                 currentPlaylistIDLiveData.getValue()
         );
         holder.entry.setActivated(isSelected(holder.getKey()));
+        int[] disabledActions;
         if (MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_DELETE)
                 && playlistID.type == PlaylistID.TYPE_STUPID) {
-            holder.actionsView.setOnRemoveListener(() ->
-                    playlistStorage.removeFromPlaylist(
-                            playlistID,
-                            Collections.singletonList(playlistEntry)
-                    )
-            );
+            disabledActions = new int[0];
         } else {
-            holder.actionsView.setOnRemoveListener(null);
+            disabledActions = new int[] { TrackItemActionsView.ACTION_REMOVE_FROM_PLAYLIST };
         }
-        holder.actionsView.setOnPlayListener(() -> fragment.play(entryID));
-        holder.actionsView.setOnQueueListener(() -> fragment.queue(entryID));
-        holder.actionsView.setOnPlayPlaylistListener(() -> fragment.setCurrentPlaylist(
-                playlistID,
-                playlistEntry.pos
-        ));
+        holder.actionsView.setActions(
+                new int[] {
+                        TrackItemActionsView.ACTION_SET_CURRENT_PLAYLIST,
+                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
+                        TrackItemActionsView.ACTION_INFO
+                },
+                new int[] {
+                        TrackItemActionsView.ACTION_PLAY,
+                        TrackItemActionsView.ACTION_SET_CURRENT_PLAYLIST,
+                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
+                        TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
+                        TrackItemActionsView.ACTION_REMOVE_FROM_PLAYLIST,
+                        TrackItemActionsView.ACTION_CACHE,
+                        TrackItemActionsView.ACTION_INFO
+                },
+                disabledActions
+        );
     }
 
     @Override

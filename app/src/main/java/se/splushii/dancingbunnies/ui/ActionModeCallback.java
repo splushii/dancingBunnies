@@ -63,7 +63,7 @@ public class ActionModeCallback implements ActionMode.Callback {
     public void setActions(int[] visible, int[] more, int[] disabled) {
         this.visibleActions = visible;
         this.moreActions = more;
-        this.disabled = new HashSet<>();
+        this.disabled.clear();
         for (int d: disabled) {
             this.disabled.add(d);
         }
@@ -92,8 +92,8 @@ public class ActionModeCallback implements ActionMode.Callback {
     }
 
     private void addAction(Menu menu, boolean more, int order, int action) {
-        int stringResource = 1;
-        int iconResource = 1;
+        int stringResource;
+        int iconResource;
         if (action == ACTIONMODE_ACTION_ADD_TO_QUEUE) {
             stringResource = R.string.item_action_queue;
             iconResource = R.drawable.ic_queue_black_24dp;
