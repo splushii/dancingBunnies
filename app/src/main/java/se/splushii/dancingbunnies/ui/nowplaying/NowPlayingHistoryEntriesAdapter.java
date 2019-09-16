@@ -224,6 +224,7 @@ public class NowPlayingHistoryEntriesAdapter extends
                         TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
                         TrackItemActionsView.ACTION_REMOVE_FROM_HISTORY,
                         TrackItemActionsView.ACTION_CACHE,
+                        TrackItemActionsView.ACTION_CACHE_DELETE,
                         TrackItemActionsView.ACTION_INFO
                 },
                 new int[0]

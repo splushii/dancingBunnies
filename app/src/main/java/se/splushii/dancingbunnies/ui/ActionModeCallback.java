@@ -18,6 +18,7 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
@@ -35,6 +36,7 @@ public class ActionModeCallback implements ActionMode.Callback {
     public static final int ACTIONMODE_ACTION_ADD_TO_PLAYLIST = View.generateViewId();
     public static final int ACTIONMODE_ACTION_REMOVE_FROM_PLAYLIST = View.generateViewId();
     public static final int ACTIONMODE_ACTION_CACHE = View.generateViewId();
+    public static final int ACTIONMODE_ACTION_CACHE_DELETE = View.generateViewId();
     public static final int ACTIONMODE_ACTION_HISTORY_DELETE = View.generateViewId();
     public static final int ACTIONMODE_ACTION_PLAYLIST_DELETE = View.generateViewId();
 
@@ -106,6 +108,9 @@ public class ActionModeCallback implements ActionMode.Callback {
         } else if (action == ACTIONMODE_ACTION_CACHE) {
             stringResource = R.string.item_action_cache;
             iconResource = R.drawable.ic_offline_pin_black_24dp;
+        } else if (action == ACTIONMODE_ACTION_CACHE_DELETE) {
+            stringResource = R.string.item_action_cache_delete;
+            iconResource = R.drawable.ic_remove_circle_black_24dp;
         } else if (action == ACTIONMODE_ACTION_REMOVE_FROM_QUEUE) {
             stringResource = R.string.item_action_queue_delete;
             iconResource = R.drawable.ic_delete_black_24dp;
@@ -178,7 +183,15 @@ public class ActionModeCallback implements ActionMode.Callback {
                     callback.getQueryBundle()
             );
         } else if (itemId == ACTIONMODE_ACTION_CACHE) {
-            audioBrowserFragment.downloadAudioData(callback.getEntryIDSelection(), callback.getQueryBundle());
+            audioBrowserFragment.downloadAudioData(
+                    callback.getEntryIDSelection(),
+                    callback.getQueryBundle()
+            );
+        } else if (itemId == ACTIONMODE_ACTION_CACHE_DELETE) {
+            MusicLibraryService.deleteAudioData(
+                    audioBrowserFragment.requireContext(),
+                    callback.getEntryIDSelection()
+            );
         } else if (itemId == ACTIONMODE_ACTION_REMOVE_FROM_QUEUE) {
             audioBrowserFragment.dequeue(callback.getPlaybackEntrySelection());
         } else if (itemId == ACTIONMODE_ACTION_HISTORY_DELETE) {

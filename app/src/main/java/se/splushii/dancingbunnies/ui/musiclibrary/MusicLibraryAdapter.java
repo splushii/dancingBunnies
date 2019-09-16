@@ -239,6 +239,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                         TrackItemActionsView.ACTION_ADD_TO_QUEUE,
                         TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
                         TrackItemActionsView.ACTION_CACHE,
+                        TrackItemActionsView.ACTION_CACHE_DELETE,
                         TrackItemActionsView.ACTION_INFO
                 },
                 new int[] {}

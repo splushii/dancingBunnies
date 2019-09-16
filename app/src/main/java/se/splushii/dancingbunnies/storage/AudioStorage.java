@@ -240,6 +240,29 @@ public class AudioStorage {
         return waveformModel.getSync(entryID.src, entryID.id);
     }
 
+    public void deleteWaveform(EntryID entryID) {
+        if (entryID == null || !Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
+            return;
+        }
+        waveformModel.delete(entryID.src, entryID.id);
+    }
+
+    public static void deleteCacheFile(Context context, EntryID entryID) {
+        File cacheFile = AudioStorage.getCacheFile(context, entryID);
+        if (!cacheFile.exists()) {
+            Log.d(LC, "deleteCacheFile that not exists: " + entryID);
+            return;
+        }
+        if (!cacheFile.isFile()) {
+            Log.e(LC, "deleteCacheFile not a file: " + entryID);
+            return;
+        }
+        if (!cacheFile.delete()) {
+            Log.e(LC, "deleteCacheFile failed: " + entryID
+                    + "\ncacheFile: " + cacheFile.getAbsolutePath());
+        }
+    }
+
     public class AudioDataFetchState {
         static final String IDLE = "idle";
         static final String DOWNLOADING = "downloading";

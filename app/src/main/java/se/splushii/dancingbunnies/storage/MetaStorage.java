@@ -672,4 +672,12 @@ public class MetaStorage {
         }
         return allKeys;
     }
+
+    public void setLocalMeta(EntryID entryID, String field, String value) {
+        metaModel.insertLocalMeta(entryID, field, value);
+    }
+
+    public void deleteLocalMeta(EntryID entryID, String field) {
+        metaModel.deleteLocalMeta(entryID, field);
+    }
 }

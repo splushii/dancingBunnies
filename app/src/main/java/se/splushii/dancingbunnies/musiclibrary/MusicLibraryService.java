@@ -244,8 +244,10 @@ public class MusicLibraryService extends Service {
         return audioDataSource == null ? null : audioDataSource.getURL();
     }
 
-    public static CompletableFuture<Void> downloadAudioData(Context context, List<EntryID> entryID, Bundle query) {
-        return getSongEntriesOnce(context, entryID, query)
+    public static CompletableFuture<Void> downloadAudioData(Context context,
+                                                            List<EntryID> entryIDs,
+                                                            Bundle query) {
+        return getSongEntriesOnce(context, entryIDs, query)
                 .thenAccept(songEntryIDs -> songEntryIDs.forEach(songEntryID ->
                         downloadAudioData(context, songEntryID)
                 ));
@@ -299,6 +301,28 @@ public class MusicLibraryService extends Service {
         }
         // TODO: JobSchedule this with AudioDataDownloadJob
         storage.fetch(entryID, handler);
+    }
+
+    public static synchronized CompletableFuture<Void> deleteAudioData(Context context,
+                                                                       List<EntryID> entryIDs) {
+        return getSongEntriesOnce(context, entryIDs, null)
+                .thenAccept(songEntryIDs -> songEntryIDs.forEach(songEntryID ->
+                        deleteAudioData(context, songEntryID)
+                ));
+    }
+
+    public static synchronized CompletableFuture<Void> deleteAudioData(Context context,
+                                                                       EntryID entryID) {
+        AudioStorage storage = AudioStorage.getInstance(context);
+        AudioDataSource audioDataSource = storage.get(entryID);
+        if (audioDataSource != null) {
+            audioDataSource.close();
+        }
+        return CompletableFuture.runAsync(() -> {
+            AudioStorage.deleteCacheFile(context, entryID);
+            AudioStorage.getInstance(context).deleteWaveform(entryID);
+            MetaStorage.getInstance(context).deleteLocalMeta(entryID, Meta.FIELD_LOCAL_CACHED);
+        });
     }
 
     public CompletableFuture<Meta> getSongMeta(EntryID entryID) {

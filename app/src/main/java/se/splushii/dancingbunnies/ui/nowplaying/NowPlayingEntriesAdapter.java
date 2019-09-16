@@ -128,7 +128,8 @@ public class NowPlayingEntriesAdapter extends
                         ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE,
                         ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_PLAYLIST,
                         ActionModeCallback.ACTIONMODE_ACTION_REMOVE_FROM_QUEUE,
-                        ActionModeCallback.ACTIONMODE_ACTION_CACHE
+                        ActionModeCallback.ACTIONMODE_ACTION_CACHE,
+                        ActionModeCallback.ACTIONMODE_ACTION_CACHE_DELETE
                 },
                 disabled
         );
@@ -297,6 +298,7 @@ public class NowPlayingEntriesAdapter extends
                         TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
                         TrackItemActionsView.ACTION_REMOVE_FROM_QUEUE,
                         TrackItemActionsView.ACTION_CACHE,
+                        TrackItemActionsView.ACTION_CACHE_DELETE,
                         TrackItemActionsView.ACTION_INFO
                 },
                 disabledActions

@@ -354,6 +354,7 @@ public class PlaylistPlaybackEntriesAdapter extends
                         TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
                         TrackItemActionsView.ACTION_REMOVE_FROM_PLAYLIST,
                         TrackItemActionsView.ACTION_CACHE,
+                        TrackItemActionsView.ACTION_CACHE_DELETE,
                         TrackItemActionsView.ACTION_INFO
                 },
                 disabledActions

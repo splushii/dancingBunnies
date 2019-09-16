@@ -12,11 +12,13 @@ public
 interface WaveformDao {
     @Insert(onConflict = REPLACE)
     void insert(WaveformEntry... waveformEntries);
-    final String getQuery = "SELECT * FROM " + DB.TABLE_WAVEFORM
-            + " WHERE " + WaveformEntry.COLUMN_API + " = :src "
+    String isEntryID = WaveformEntry.COLUMN_API + " = :src "
             + " AND " + WaveformEntry.COLUMN_ID + " = :id";
+    String getQuery = "SELECT * FROM " + DB.TABLE_WAVEFORM + " WHERE " + isEntryID;
     @Query(getQuery)
     LiveData<WaveformEntry> get(String src, String id);
     @Query(getQuery)
     WaveformEntry getSync(String src, String id);
+    @Query("DELETE FROM " + DB.TABLE_WAVEFORM + " WHERE " + isEntryID)
+    void delete(String src, String id);
 }

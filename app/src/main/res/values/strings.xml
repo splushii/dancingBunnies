@@ -50,6 +50,7 @@
     <string name="item_action_queue_delete">Remove from queue</string>
     <string name="item_action_more">More</string>
     <string name="item_action_cache">Cache</string>
+    <string name="item_action_cache_delete">Delete cache</string>
     <string name="item_action_history_delete">Remove from history</string>
     <string name="item_action_play_playlist">Play playlist from this position</string>
     <string name="item_action_delete_playlist">Delete playlist</string>

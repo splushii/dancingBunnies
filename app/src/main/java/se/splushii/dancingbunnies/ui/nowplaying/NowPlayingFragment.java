@@ -322,7 +322,8 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                         ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE,
                         ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_PLAYLIST,
                         ActionModeCallback.ACTIONMODE_ACTION_HISTORY_DELETE,
-                        ActionModeCallback.ACTIONMODE_ACTION_CACHE
+                        ActionModeCallback.ACTIONMODE_ACTION_CACHE,
+                        ActionModeCallback.ACTIONMODE_ACTION_CACHE_DELETE
                 },
                 new int[0]
         );

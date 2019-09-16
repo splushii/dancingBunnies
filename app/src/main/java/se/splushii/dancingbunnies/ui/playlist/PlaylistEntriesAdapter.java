@@ -114,7 +114,8 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
                         ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE,
                         ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_PLAYLIST,
                         ActionModeCallback.ACTIONMODE_ACTION_REMOVE_FROM_PLAYLIST,
-                        ActionModeCallback.ACTIONMODE_ACTION_CACHE
+                        ActionModeCallback.ACTIONMODE_ACTION_CACHE,
+                        ActionModeCallback.ACTIONMODE_ACTION_CACHE_DELETE
                 },
                 disabled
         );
@@ -248,6 +249,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
                         TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
                         TrackItemActionsView.ACTION_REMOVE_FROM_PLAYLIST,
                         TrackItemActionsView.ACTION_CACHE,
+                        TrackItemActionsView.ACTION_CACHE_DELETE,
                         TrackItemActionsView.ACTION_INFO
                 },
                 disabledActions
