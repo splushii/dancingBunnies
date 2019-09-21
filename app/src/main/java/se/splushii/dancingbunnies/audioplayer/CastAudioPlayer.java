@@ -58,6 +58,8 @@ public class CastAudioPlayer implements AudioPlayer {
     private Semaphore queueChangeLock = new Semaphore(1);
     private StampedLock queueStateLock = new StampedLock();
 
+    private volatile boolean waitingForResume;
+
     private enum PlayerAction {
         PLAY,
         PAUSE,
@@ -66,9 +68,11 @@ public class CastAudioPlayer implements AudioPlayer {
 
     CastAudioPlayer(Callback callback,
                     MusicLibraryService musicLibraryService,
-                    CastSession castSession) {
+                    CastSession castSession,
+                    boolean waitForResume) {
         this.callback = callback;
         this.musicLibraryService = musicLibraryService;
+        this.waitingForResume = waitForResume;
         queueChangeLock.drainPermits();
         queueItemMap = new SparseArray<>();
         playbackIDToCastItemIDMap = new LongSparseArray<>();
@@ -86,19 +90,25 @@ public class CastAudioPlayer implements AudioPlayer {
 
     @Override
     public CompletableFuture<Void> initialize() {
-        Log.d(LC, "initialize");
+        Log.d(LC, "initialize. resuming: " + waitingForResume);
         return CompletableFuture.runAsync(() -> {
             try {
-                if (!queueChangeLock.tryAcquire(5, TimeUnit.SECONDS)) {
-                    Log.e(LC, "initialize: Got timeout waiting for "
-                            + "queueChangeLock");
-                } else {
-                    queueChangeLock.release();
+                for (int i = 0; i < 5; i++) {
+                    if (!queueChangeLock.tryAcquire(1, TimeUnit.SECONDS)) {
+                        Log.w(LC, "initialize: Got timeout waiting for queueChangeLock");
+                    } else {
+                        if (!waitingForResume) {
+                            Log.d(LC, "initialize: Got queueChangeLock. Not waiting for resume");
+                            queueChangeLock.release();
+                            break;
+                        } else {
+                            Log.d(LC, "initialize: Got queueChangeLock. Waiting for resume");
+                        }
+                    }
                 }
                 long stamp = queueStateLock.tryWriteLock(5, TimeUnit.SECONDS);
                 if (stamp == 0) {
-                    Log.e(LC, "initialize: Got timeout waiting for "
-                            + " queueStateLock");
+                    Log.w(LC, "initialize: Got timeout waiting for queueStateLock");
                 } else {
                     queueStateLock.unlockWrite(stamp);
                 }
@@ -815,6 +825,9 @@ public class CastAudioPlayer implements AudioPlayer {
 
             queueChangeLock.drainPermits();
             queueChangeLock.release();
+            if (waitingForResume && itemIds.length > 0) {
+                waitingForResume = false;
+            }
             Log.d(LC, "mediaQueueChanged: queueChangeLock released");
 
             // Check if the queue state is up to date

@@ -1362,7 +1362,7 @@ public class PlaybackController {
         return lastState;
     }
 
-    private void onCastConnect(CastSession session) {
+    private void onCastConnect(CastSession session, boolean resumed) {
         if (audioPlayer instanceof CastAudioPlayer) {
             // TODO: What if sessions differ? Transfer state?
             Log.w(LC, "onCastConnect: Replacing session for CastAudioPlayer");
@@ -1373,7 +1373,8 @@ public class PlaybackController {
         audioPlayer = new CastAudioPlayer(
                 audioPlayerCallback,
                 musicLibraryService,
-                session
+                session,
+                resumed
         );
         submitCompletableFuture(() -> transferAudioPlayerState(lastPlayerState));
         callback.onPlayerChanged(AudioPlayer.Type.CAST);
@@ -1419,7 +1420,7 @@ public class PlaybackController {
         @Override
         public void onSessionStarted(Session session, String s) {
             Log.d(LC, "CastSession started");
-            onCastConnect((CastSession) session);
+            onCastConnect((CastSession) session, false);
         }
 
         @Override
@@ -1448,7 +1449,7 @@ public class PlaybackController {
         @Override
         public void onSessionResumed(Session session, boolean b) {
             Log.d(LC, "CastSession resumed");
-            onCastConnect((CastSession) session);
+            onCastConnect((CastSession) session, true);
         }
 
         @Override
