@@ -34,6 +34,20 @@ import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.PLAYLIST_ENTRY_DELETE;
 import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.PLAYLIST_ENTRY_MOVE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_PLAYLIST;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_QUEUE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_PLAYLIST;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_QUEUE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_INFO;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_FROM_PLAYLIST;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_MULTIPLE_FROM_PLAYLIST;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SET_CURRENT_PLAYLIST;
 
 public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<PlaylistEntry, PlaylistEntriesAdapter.PlaylistEntryHolder> {
     private static final String LC = Util.getLogContext(PlaylistEntriesAdapter.class);
@@ -103,19 +117,19 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         boolean showDelete = playlistID.type == PlaylistID.TYPE_STUPID
                 && MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_DELETE);
         int[] disabled = showDelete ? new int[0] :
-                new int[] { ActionModeCallback.ACTIONMODE_ACTION_REMOVE_FROM_PLAYLIST};
+                new int[] { ACTION_REMOVE_MULTIPLE_FROM_PLAYLIST};
         actionModeCallback.setActions(
                 new int[] {
-                        ActionModeCallback.ACTIONMODE_ACTION_PLAY,
-                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE
+                        ACTION_PLAY_MULTIPLE,
+                        ACTION_ADD_MULTIPLE_TO_QUEUE
                 },
                 new int[] {
-                        ActionModeCallback.ACTIONMODE_ACTION_PLAY,
-                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE,
-                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_PLAYLIST,
-                        ActionModeCallback.ACTIONMODE_ACTION_REMOVE_FROM_PLAYLIST,
-                        ActionModeCallback.ACTIONMODE_ACTION_CACHE,
-                        ActionModeCallback.ACTIONMODE_ACTION_CACHE_DELETE
+                        ACTION_PLAY_MULTIPLE,
+                        ACTION_ADD_MULTIPLE_TO_QUEUE,
+                        ACTION_ADD_MULTIPLE_TO_PLAYLIST,
+                        ACTION_REMOVE_MULTIPLE_FROM_PLAYLIST,
+                        ACTION_CACHE_MULTIPLE,
+                        ACTION_CACHE_DELETE_MULTIPLE
                 },
                 disabled
         );
@@ -234,23 +248,23 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
                 && playlistID.type == PlaylistID.TYPE_STUPID) {
             disabledActions = new int[0];
         } else {
-            disabledActions = new int[] { TrackItemActionsView.ACTION_REMOVE_FROM_PLAYLIST };
+            disabledActions = new int[] { ACTION_REMOVE_FROM_PLAYLIST };
         }
         holder.actionsView.setActions(
                 new int[] {
-                        TrackItemActionsView.ACTION_SET_CURRENT_PLAYLIST,
-                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
-                        TrackItemActionsView.ACTION_INFO
+                        ACTION_SET_CURRENT_PLAYLIST,
+                        ACTION_ADD_TO_QUEUE,
+                        ACTION_INFO
                 },
                 new int[] {
-                        TrackItemActionsView.ACTION_PLAY,
-                        TrackItemActionsView.ACTION_SET_CURRENT_PLAYLIST,
-                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
-                        TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
-                        TrackItemActionsView.ACTION_REMOVE_FROM_PLAYLIST,
-                        TrackItemActionsView.ACTION_CACHE,
-                        TrackItemActionsView.ACTION_CACHE_DELETE,
-                        TrackItemActionsView.ACTION_INFO
+                        ACTION_PLAY,
+                        ACTION_SET_CURRENT_PLAYLIST,
+                        ACTION_ADD_TO_QUEUE,
+                        ACTION_ADD_TO_PLAYLIST,
+                        ACTION_REMOVE_FROM_PLAYLIST,
+                        ACTION_CACHE,
+                        ACTION_CACHE_DELETE,
+                        ACTION_INFO
                 },
                 disabledActions
         );

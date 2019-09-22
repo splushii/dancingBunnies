@@ -28,6 +28,13 @@ import se.splushii.dancingbunnies.ui.FastScrollerBubble;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.util.Util;
 
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_PLAYLIST;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_QUEUE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_INFO;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY;
+
 public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapter.SongViewHolder> {
     private static final String LC = Util.getLogContext(MusicLibraryAdapter.class);
     private final MusicLibraryFragment fragment;
@@ -230,17 +237,17 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         holder.actionsView.setEntryIDSupplier(() -> holder.entry.entryID);
         holder.actionsView.setActions(
                 new int[] {
-                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
-                        TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
-                        TrackItemActionsView.ACTION_INFO
+                        ACTION_ADD_TO_QUEUE,
+                        ACTION_ADD_TO_PLAYLIST,
+                        ACTION_INFO
                 },
                 new int[] {
-                        TrackItemActionsView.ACTION_PLAY,
-                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
-                        TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
-                        TrackItemActionsView.ACTION_CACHE,
-                        TrackItemActionsView.ACTION_CACHE_DELETE,
-                        TrackItemActionsView.ACTION_INFO
+                        ACTION_PLAY,
+                        ACTION_ADD_TO_QUEUE,
+                        ACTION_ADD_TO_PLAYLIST,
+                        ACTION_CACHE,
+                        ACTION_CACHE_DELETE,
+                        ACTION_INFO
                 },
                 new int[] {}
         );

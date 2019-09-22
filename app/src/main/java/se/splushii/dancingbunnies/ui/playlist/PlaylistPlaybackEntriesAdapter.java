@@ -30,6 +30,14 @@ import se.splushii.dancingbunnies.ui.selection.SelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.PLAYLIST_ENTRY_DELETE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_PLAYLIST;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_QUEUE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_INFO;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_FROM_PLAYLIST;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SET_CURRENT_PLAYLIST;
 
 public class PlaylistPlaybackEntriesAdapter extends
         SelectionRecyclerViewAdapter<PlaybackEntry, PlaylistPlaybackEntriesAdapter.ViewHolder> {
@@ -339,23 +347,23 @@ public class PlaylistPlaybackEntriesAdapter extends
                 && playlistID.type == PlaylistID.TYPE_STUPID) {
             disabledActions = new int[0];
         } else {
-            disabledActions = new int[] { TrackItemActionsView.ACTION_REMOVE_FROM_PLAYLIST };
+            disabledActions = new int[] { ACTION_REMOVE_FROM_PLAYLIST };
         }
         holder.actionsView.setActions(
                 new int[] {
-                        TrackItemActionsView.ACTION_SET_CURRENT_PLAYLIST,
-                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
-                        TrackItemActionsView.ACTION_INFO
+                        ACTION_SET_CURRENT_PLAYLIST,
+                        ACTION_ADD_TO_QUEUE,
+                        ACTION_INFO
                 },
                 new int[] {
-                        TrackItemActionsView.ACTION_PLAY,
-                        TrackItemActionsView.ACTION_SET_CURRENT_PLAYLIST,
-                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
-                        TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
-                        TrackItemActionsView.ACTION_REMOVE_FROM_PLAYLIST,
-                        TrackItemActionsView.ACTION_CACHE,
-                        TrackItemActionsView.ACTION_CACHE_DELETE,
-                        TrackItemActionsView.ACTION_INFO
+                        ACTION_PLAY,
+                        ACTION_SET_CURRENT_PLAYLIST,
+                        ACTION_ADD_TO_QUEUE,
+                        ACTION_ADD_TO_PLAYLIST,
+                        ACTION_REMOVE_FROM_PLAYLIST,
+                        ACTION_CACHE,
+                        ACTION_CACHE_DELETE,
+                        ACTION_INFO
                 },
                 disabledActions
         );

@@ -34,6 +34,7 @@ import se.splushii.dancingbunnies.ui.selection.SelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.PLAYLIST_DELETE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_DELETE_MULTIPLE;
 
 public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, PlaylistAdapter.PlaylistHolder> {
     private static final String LC = Util.getLogContext(PlaylistAdapter.class);
@@ -109,10 +110,10 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
             }
         }
         int[] disabled = showDelete ? new int[0] :
-                new int[] { ActionModeCallback.ACTIONMODE_ACTION_PLAYLIST_DELETE };
+                new int[] { ACTION_PLAYLIST_DELETE_MULTIPLE };
         actionModeCallback.setActions(
-                new int[] { ActionModeCallback.ACTIONMODE_ACTION_PLAYLIST_DELETE },
-                new int[] { ActionModeCallback.ACTIONMODE_ACTION_PLAYLIST_DELETE },
+                new int[] { ACTION_PLAYLIST_DELETE_MULTIPLE },
+                new int[] { ACTION_PLAYLIST_DELETE_MULTIPLE },
                 disabled
         );
     }

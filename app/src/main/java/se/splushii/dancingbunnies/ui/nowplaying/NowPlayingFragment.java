@@ -19,6 +19,7 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Executors;
@@ -51,7 +52,7 @@ import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.FastScroller;
-import se.splushii.dancingbunnies.ui.MetaDialogFragment;
+import se.splushii.dancingbunnies.ui.MenuActions;
 import se.splushii.dancingbunnies.ui.WaveformSeekBar;
 import se.splushii.dancingbunnies.ui.selection.RecyclerViewActionModeSelectionTracker;
 import se.splushii.dancingbunnies.util.Util;
@@ -59,6 +60,17 @@ import se.splushii.dancingbunnies.util.Util;
 import static android.view.View.GONE;
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_PLAYLIST;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_QUEUE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_PLAYLIST;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_QUEUE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_HISTORY_DELETE_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_INFO;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE;
 
 public class NowPlayingFragment extends AudioBrowserFragment {
     private static final String LC = Util.getLogContext(NowPlayingFragment.class);
@@ -173,8 +185,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         fastScroller.setRecyclerView(recView);
         fastScroller.setReversed(true);
 
-        View nowPlayingInfo = rootView.findViewById(R.id.nowplaying_info);
-        nowPlayingInfo.setOnClickListener(v -> MetaDialogFragment.showMeta(this, currentMeta));
         nowPlayingTitle = rootView.findViewById(R.id.nowplaying_title);
         nowPlayingArtist = rootView.findViewById(R.id.nowplaying_artist);
         nowPlayingAlbum = rootView.findViewById(R.id.nowplaying_album);
@@ -249,6 +259,29 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         sizeText = rootView.findViewById(R.id.nowplaying_size);
 
         currentPlaylistView = rootView.findViewById(R.id.nowplaying_current_playlist);
+        rootView.findViewById(R.id.nowplaying_current_more).setOnClickListener(v ->
+                MenuActions.showPopupMenu(
+                        getContext(),
+                        v,
+                        new int[]{
+                                ACTION_ADD_TO_QUEUE,
+                                ACTION_ADD_TO_PLAYLIST,
+                                ACTION_CACHE,
+                                ACTION_CACHE_DELETE,
+                                ACTION_INFO
+                        },
+                        new HashSet<>(),
+                        menuItem -> MenuActions.doAction(
+                                menuItem.getItemId(),
+                                this,
+                                () -> currentMeta.entryID,
+                                null,
+                                null,
+                                null,
+                                null
+                        )
+                )
+        );
         View currentPlaylistNameLayout =
                 rootView.findViewById(R.id.nowplaying_current_playlist_info_layout);
         currentPlaylistNameLayout.setOnClickListener(v -> goToPlaylistEntry());
@@ -314,16 +347,16 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         );
         historyActionModeCallback.setActions(
                 new int[] {
-                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE,
-                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_PLAYLIST
+                        ACTION_ADD_MULTIPLE_TO_QUEUE,
+                        ACTION_ADD_MULTIPLE_TO_PLAYLIST
                 },
                 new int[] {
-                        ActionModeCallback.ACTIONMODE_ACTION_PLAY,
-                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE,
-                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_PLAYLIST,
-                        ActionModeCallback.ACTIONMODE_ACTION_HISTORY_DELETE,
-                        ActionModeCallback.ACTIONMODE_ACTION_CACHE,
-                        ActionModeCallback.ACTIONMODE_ACTION_CACHE_DELETE
+                        ACTION_PLAY_MULTIPLE,
+                        ACTION_ADD_MULTIPLE_TO_QUEUE,
+                        ACTION_ADD_MULTIPLE_TO_PLAYLIST,
+                        ACTION_HISTORY_DELETE_MULTIPLE,
+                        ACTION_CACHE_MULTIPLE,
+                        ACTION_CACHE_DELETE_MULTIPLE
                 },
                 new int[0]
         );

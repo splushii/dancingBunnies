@@ -27,6 +27,14 @@ import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_PLAYLIST;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_QUEUE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_INFO;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_FROM_HISTORY;
+
 public class NowPlayingHistoryEntriesAdapter extends
         SelectionRecyclerViewAdapter<PlaybackEntry, NowPlayingHistoryEntriesAdapter.ViewHolder> {
     private static final String LC = Util.getLogContext(NowPlayingHistoryEntriesAdapter.class);
@@ -214,18 +222,18 @@ public class NowPlayingHistoryEntriesAdapter extends
         holder.actionsView.setPlaybackEntrySupplier(() -> holder.playbackEntry);
         holder.actionsView.setActions(
                 new int[] {
-                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
-                        TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
-                        TrackItemActionsView.ACTION_INFO
+                        ACTION_ADD_TO_QUEUE,
+                        ACTION_ADD_TO_PLAYLIST,
+                        ACTION_INFO
                 },
                 new int[] {
-                        TrackItemActionsView.ACTION_PLAY,
-                        TrackItemActionsView.ACTION_ADD_TO_QUEUE,
-                        TrackItemActionsView.ACTION_ADD_TO_PLAYLIST,
-                        TrackItemActionsView.ACTION_REMOVE_FROM_HISTORY,
-                        TrackItemActionsView.ACTION_CACHE,
-                        TrackItemActionsView.ACTION_CACHE_DELETE,
-                        TrackItemActionsView.ACTION_INFO
+                        ACTION_PLAY,
+                        ACTION_ADD_TO_QUEUE,
+                        ACTION_ADD_TO_PLAYLIST,
+                        ACTION_REMOVE_FROM_HISTORY,
+                        ACTION_CACHE,
+                        ACTION_CACHE_DELETE,
+                        ACTION_INFO
                 },
                 new int[0]
         );

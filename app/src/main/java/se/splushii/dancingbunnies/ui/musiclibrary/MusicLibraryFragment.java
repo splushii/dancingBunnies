@@ -53,6 +53,11 @@ import se.splushii.dancingbunnies.util.Util;
 
 import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_PLAYLIST;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_QUEUE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE;
 
 public class MusicLibraryFragment extends AudioBrowserFragment {
     private static final String LC = Util.getLogContext(MusicLibraryFragment.class);
@@ -282,15 +287,15 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         );
         actionModeCallback.setActions(
                 new int[]{
-                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE,
-                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_PLAYLIST
+                        ACTION_ADD_MULTIPLE_TO_QUEUE,
+                        ACTION_ADD_MULTIPLE_TO_PLAYLIST
                 },
                 new int[]{
-                        ActionModeCallback.ACTIONMODE_ACTION_PLAY,
-                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_QUEUE,
-                        ActionModeCallback.ACTIONMODE_ACTION_ADD_TO_PLAYLIST,
-                        ActionModeCallback.ACTIONMODE_ACTION_CACHE,
-                        ActionModeCallback.ACTIONMODE_ACTION_CACHE_DELETE
+                        ACTION_PLAY_MULTIPLE,
+                        ACTION_ADD_MULTIPLE_TO_QUEUE,
+                        ACTION_ADD_MULTIPLE_TO_PLAYLIST,
+                        ACTION_CACHE_MULTIPLE,
+                        ACTION_CACHE_DELETE_MULTIPLE
                 },
                 new int[0]
         );
