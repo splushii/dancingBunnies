@@ -107,7 +107,8 @@ public class TrackItemView extends LinearLayout {
             if (fetchstate == null) {
                 return;
             }
-            cacheStatus = fetchstate.getStatusMsg();
+            Meta meta = getMeta();
+            cacheStatus = fetchstate.getStatusMsg(meta == null ? "?" : meta.getFormattedFileSize());
             setCacheStatus();
         }
     }
@@ -223,10 +224,7 @@ public class TrackItemView extends LinearLayout {
     public void setPosHighlight(boolean highlighted) {
         posViewHighlighted = highlighted;
         if (highlighted) {
-            posView.setBackgroundColor(ContextCompat.getColor(
-                    getContext(),
-                    R.color.colorAccentLight
-            ));
+            posView.setBackgroundColor(ContextCompat.getColor(getContext(), R.color.colorAccent));
             posView.setTextColor(ContextCompat.getColor(getContext(), R.color.white));
         } else {
             TypedValue value = new TypedValue();
@@ -302,7 +300,7 @@ public class TrackItemView extends LinearLayout {
         setTitle(title);
         String durationString = meta.getAsString(Meta.FIELD_DURATION);
         String duration = durationString.isEmpty() ?
-                "" : Util.getDurationString(Long.parseLong(durationString));
+                "" : Meta.getDurationString(Long.parseLong(durationString));
         setDuration(duration);
         String artist = meta.getAsString(Meta.FIELD_ARTIST);
         setArtist(artist);

@@ -32,7 +32,7 @@ class NowPlayingFragmentModel extends ViewModel {
         MusicLibraryQuery query = new MusicLibraryQuery();
         query.setShowField(Meta.FIELD_SPECIAL_MEDIA_ID);
         query.setSortByField(Meta.FIELD_TITLE);
-        query.addToQuery(Meta.FIELD_LOCAL_CACHED, "yes");
+        query.addToQuery(Meta.FIELD_LOCAL_CACHED, Meta.FIELD_LOCAL_CACHED_VALUE_YES);
         return Transformations.map(
                 MetaStorage.getInstance(context).getEntries(
                         query.getShowField(),

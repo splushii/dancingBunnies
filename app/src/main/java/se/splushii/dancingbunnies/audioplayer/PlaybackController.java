@@ -151,7 +151,7 @@ public class PlaybackController {
                 PlaybackControllerStorage.QUEUE_ID_CURRENT_PLAYLIST_PLAYBACK,
                 storage,
                 currentPlaylistPlaybackEntriesLiveData,
-                () -> Log.e(LC, "playlist playback entries changed")
+                () -> Log.d(LC, "playlist playback entries changed")
         );
 
         audioPlayer = new LocalAudioPlayer(

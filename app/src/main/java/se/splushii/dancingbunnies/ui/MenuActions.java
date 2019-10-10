@@ -1,6 +1,7 @@
 package se.splushii.dancingbunnies.ui;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -19,17 +20,19 @@ import androidx.appcompat.view.menu.MenuBuilder;
 import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.core.content.ContextCompat;
+import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
-import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
+import se.splushii.dancingbunnies.ui.meta.MetaDialogFragment;
+import se.splushii.dancingbunnies.ui.meta.MetaTag;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MenuActions {
@@ -54,6 +57,9 @@ public class MenuActions {
     public static final int ACTION_CACHE = View.generateViewId();
     public static final int ACTION_CACHE_DELETE = View.generateViewId();
     public static final int ACTION_REMOVE_FROM_HISTORY = View.generateViewId();
+    public static final int ACTION_EDIT_META = View.generateViewId();
+    public static final int ACTION_DELETE_META = View.generateViewId();
+    public static final int ACTION_GOTO_META = View.generateViewId();
     public static final int ACTION_INFO = View.generateViewId();
 
     static void addAction(Context context,
@@ -127,7 +133,9 @@ public class MenuActions {
                                    Supplier<PlaybackEntry> playbackEntrySupplier,
                                    Supplier<PlaylistEntry> playlistEntrySupplier,
                                    Supplier<PlaylistID> playlistIDSupplier,
-                                   Supplier<Long> playlistPositionSupplier
+                                   Supplier<Long> playlistPositionSupplier,
+                                   MetaDialogFragment metaDialogFragment,
+                                   Supplier<MetaTag> metaTagSupplier
                                    ) {
         if (action == ACTION_PLAY) {
             audioBrowserFragment.play(entryIDSupplier.get());
@@ -169,9 +177,15 @@ public class MenuActions {
                     playlistPositionSupplier.get()
             );
         } else if (action == ACTION_INFO) {
-            MetaStorage.getInstance(audioBrowserFragment.requireContext())
-                    .getMetaOnce(entryIDSupplier.get())
-                    .thenAccept(meta -> MetaDialogFragment.showMeta(audioBrowserFragment, meta));
+            MetaDialogFragment.showMeta(audioBrowserFragment, entryIDSupplier.get());
+        } else if (action == ACTION_GOTO_META) {
+            Intent intent = new Intent(metaDialogFragment.requireContext(), MainActivity.class);
+            MetaTag metaTag = metaTagSupplier.get();
+            intent.putExtra(MainActivity.INTENT_EXTRA_FILTER_TYPE, metaTag.key);
+            intent.putExtra(MainActivity.INTENT_EXTRA_FILTER_VALUE, metaTag.value);
+            metaDialogFragment.requireActivity().startActivity(intent);
+        } else if (action == ACTION_EDIT_META) {
+        } else if (action == ACTION_DELETE_META) {
         } else {
             return false;
         }
@@ -271,6 +285,12 @@ public class MenuActions {
             return R.string.item_action_remove_from_playlist;
         } else if (action == ACTION_PLAYLIST_DELETE_MULTIPLE) {
             return R.string.item_action_delete_playlist;
+        } else if (action == ACTION_EDIT_META) {
+            return R.string.item_action_edit_meta;
+        } else if (action == ACTION_DELETE_META) {
+            return R.string.item_action_delete_meta;
+        } else if (action == ACTION_GOTO_META) {
+            return R.string.item_action_goto_meta;
         }
         return -1;
     }
@@ -316,6 +336,12 @@ public class MenuActions {
             return R.drawable.ic_delete_black_24dp;
         } else if (action == ACTION_PLAYLIST_DELETE_MULTIPLE) {
             return R.drawable.ic_delete_black_24dp;
+        } else if (action == ACTION_EDIT_META) {
+            return R.drawable.ic_edit_black_24dp;
+        } else if (action == ACTION_DELETE_META) {
+            return R.drawable.ic_delete_black_24dp;
+        } else if (action == ACTION_GOTO_META) {
+            return R.drawable.ic_open_in_new_black_24dp;
         }
         return -1;
     }

@@ -19,9 +19,11 @@ import android.widget.Toast;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -68,7 +70,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private TextView headerSortedBy;
     private TextView headerArtist;
     private View headerNum;
-    private View headerFastScrollerPad;
 
     private SelectionTracker<EntryID> selectionTracker;
     private ActionMode actionMode;
@@ -90,12 +91,16 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private Spinner sortSelectSpinner;
     private int sortSelectionPos;
 
+    private ArrayList<String> metaKeys;
+    private ArrayAdapter<String> metaKeyAdapter;
     private View filterEdit;
     private TextView filterEditType;
+    private String filterEditTypeValue = "";
     private EditText filterEditInput;
 
     private View filterNew;
     private Spinner filterNewType;
+    private EditText filterNewInput;
 
     private MusicLibraryFragmentModel model;
 
@@ -130,16 +135,17 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         if (newUserState == null) {
             return;
         }
-
         String showField = getCurrentQuery().getShowField();
+        String showDisplayField = Meta.getDisplayKey(showField);
         String sortField = getCurrentQuery().getSortByField();
+        String sortDisplayField = Meta.getDisplayKey(sortField);
         clearFilterView();
         boolean browsable = isBrowsable(showField);
-        headerShow.setText(showField);
+        headerShow.setText(showDisplayField);
         headerArtist.setVisibility(showHeaderArtist(isBrowsable(showField)) ? VISIBLE : GONE);
         headerNum.setVisibility(showHeaderNum(browsable) ? VISIBLE : GONE);
         if (showHeaderSortedBy()) {
-            headerSortedBy.setText(sortField);
+            headerSortedBy.setText(sortDisplayField);
             headerSortedBy.setVisibility(VISIBLE);
         } else {
             headerSortedBy.setVisibility(GONE);
@@ -161,7 +167,14 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             chip.setChipEndPadding(chip.getChipStartPadding());
             chip.setOnClickListener(v -> {
                 filterEdit.setVisibility(GONE);
-                filterNew.setVisibility(filterNew.getVisibility() == VISIBLE ? GONE : VISIBLE);
+                if (filterNew.getVisibility() != VISIBLE) {
+                    filterNew.setVisibility(VISIBLE);
+                    filterNewInput.requestFocus();
+                    Util.showSoftInput(requireActivity(), filterNewInput);
+                } else {
+                    filterNew.setVisibility(GONE);
+                    Util.hideSoftInput(requireActivity(), filterNewInput);
+                }
             });
             filterChips.addView(chip);
             setSpinnerSelection(entryTypeSelectSpinner, showField);
@@ -228,7 +241,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
                 if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
-                    recyclerViewAdapter.hideTrackItemActions();
+                    clearFocus();
                 }
             }
         });
@@ -236,10 +249,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         headerSortedBy = rootView.findViewById(R.id.musiclibrary_header_sortedby);
         headerArtist = rootView.findViewById(R.id.musiclibrary_header_artist);
         headerNum = rootView.findViewById(R.id.musiclibrary_header_num);
-        headerFastScrollerPad = rootView.findViewById(R.id.musiclibrary_header_fastscroller_padding);
-        fastScroller.setOnHidden(hidden ->
-                headerFastScrollerPad.setVisibility(hidden ? GONE : VISIBLE)
-        );
 
         ActionModeCallback actionModeCallback = new ActionModeCallback(
                 this,
@@ -355,15 +364,87 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         entryTypeSelectSpinner = rootView.findViewById(R.id.musiclibrary_entry_type_spinner);
         sortSelectSpinner = rootView.findViewById(R.id.musiclibrary_sort_spinner);
         filterNew = rootView.findViewById(R.id.musiclibrary_filter_new);
+        filterNewInput = rootView.findViewById(R.id.musiclibrary_filter_new_text);
         filterNewType = rootView.findViewById(R.id.musiclibrary_filter_new_type);
+        metaKeys = new ArrayList<>();
+        List<String> displayedFields = new ArrayList<>();
+        metaKeyAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_spinner_dropdown_item,
+                displayedFields
+        );
+        entryTypeSelectSpinner.setAdapter(metaKeyAdapter);
+        entryTypeSelectSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (entryTypeSelectionPos == position) {
+                    return;
+                }
+                entryTypeSelectionPos = position;
+                String field = metaKeys.get(position);
+                String displayedField = displayedFields.get(position);
+                Log.d(LC, "Showing entries of type: " + displayedField);
+                Toast.makeText(
+                        requireContext(),
+                        "Showing entries of type: " + displayedField,
+                        Toast.LENGTH_SHORT
+                ).show();
+                displayType(field);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+        sortSelectSpinner.setAdapter(metaKeyAdapter);
+        sortSelectSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (sortSelectionPos == position) {
+                    return;
+                }
+                sortSelectionPos = position;
+                String field = metaKeys.get(position);
+                String displayedField = displayedFields.get(position);
+                Log.d(LC, "Sorting by: " + displayedField);
+                Toast.makeText(
+                        requireContext(),
+                        "Sorting by: " + displayedField,
+                        Toast.LENGTH_SHORT
+                ).show();
+                sortBy(field);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+        filterNewType.setAdapter(metaKeyAdapter);
+        filterNewInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                int pos = filterNewType.getSelectedItemPosition();
+                String field = metaKeys.get(pos);
+                String displayedField = displayedFields.get(pos);
+                String filterString = filterNewInput.getText().toString();
+                Log.d(LC, "Applying filter: " + displayedField + "(" + filterString + ")");
+                Toast.makeText(
+                        this.requireContext(),
+                        "Applying filter: " + displayedField + "(" + filterString + ")",
+                        Toast.LENGTH_SHORT
+                ).show();
+                filter(field, filterString);
+                filterNew.setVisibility(GONE);
+                Util.hideSoftInput(requireActivity(), filterNewInput);
+                return true;
+            }
+            return false;
+        });
         MetaStorage.getInstance(requireContext())
                 .getMetaFields()
-                .observe(getViewLifecycleOwner(), fields -> {
+                .observe(getViewLifecycleOwner(), newFields -> {
+                    newFields.add(Meta.FIELD_SPECIAL_MEDIA_ID);
+                    newFields.add(Meta.FIELD_SPECIAL_MEDIA_SRC);
                     String showField = getCurrentQuery().getShowField();
                     String sortField = getCurrentQuery().getSortByField();
-                    fields.add(Meta.FIELD_SPECIAL_MEDIA_ID);
-                    fields.add(Meta.FIELD_SPECIAL_MEDIA_SRC);
-                    Collections.sort(fields, (f1, f2) -> {
+                    Collections.sort(newFields, (f1, f2) -> {
                         if (f1.equals(f2)) {
                             return 0;
                         }
@@ -379,81 +460,26 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                     });
                     int initialShowSelectionPos = 0;
                     int initialSortSelectionPos = 0;
-                    for (int i = 0; i < fields.size(); i++) {
-                        if (fields.get(i).equals(showField)) {
+                    for (int i = 0; i < newFields.size(); i++) {
+                        if (newFields.get(i).equals(showField)) {
                             initialShowSelectionPos = i;
                         }
-                        if (fields.get(i).equals(sortField)) {
+                        if (newFields.get(i).equals(sortField)) {
                             initialSortSelectionPos = i;
                         }
                     }
-                    ArrayAdapter<String> fieldsAdapter = new ArrayAdapter<>(
-                            requireContext(),
-                            android.R.layout.simple_spinner_dropdown_item,
-                            fields
+                    metaKeys.clear();
+                    metaKeys.addAll(newFields);
+                    displayedFields.clear();
+                    displayedFields.addAll(newFields.stream()
+                            .map(Meta::getDisplayKey)
+                            .collect(Collectors.toList())
                     );
-                    entryTypeSelectSpinner.setAdapter(fieldsAdapter);
+                    metaKeyAdapter.notifyDataSetChanged();
                     entryTypeSelectSpinner.setSelection(initialShowSelectionPos);
                     entryTypeSelectionPos = initialShowSelectionPos;
-                    entryTypeSelectSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                        @Override
-                        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                            if (entryTypeSelectionPos == position) {
-                                return;
-                            }
-                            String field = fieldsAdapter.getItem(position);
-                            Log.d(LC, "Showing entries of type: " + field);
-                            Toast.makeText(
-                                    requireContext(),
-                                    "Showing entries of type: " + field,
-                                    Toast.LENGTH_SHORT
-                            ).show();
-                            displayType(field);
-                        }
-
-                        @Override
-                        public void onNothingSelected(AdapterView<?> parent) {}
-                    });
-                    sortSelectSpinner.setAdapter(fieldsAdapter);
                     sortSelectSpinner.setSelection(initialSortSelectionPos);
                     sortSelectionPos = initialSortSelectionPos;
-                    sortSelectSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-                        @Override
-                        public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                            if (sortSelectionPos == position) {
-                                return;
-                            }
-                            String field = fieldsAdapter.getItem(position);
-                            Log.d(LC, "Sorting by: " + field);
-                            Toast.makeText(
-                                    requireContext(),
-                                    "Sorting by: " + field,
-                                    Toast.LENGTH_SHORT
-                            ).show();
-                            sortBy(field);
-                        }
-
-                        @Override
-                        public void onNothingSelected(AdapterView<?> parent) {}
-                    });
-                    filterNewType.setAdapter(fieldsAdapter);
-                    EditText filterNewInput = rootView.findViewById(R.id.musiclibrary_filter_new_text);
-                    filterNewInput.setOnEditorActionListener((v, actionId, event) -> {
-                        if (actionId == EditorInfo.IME_ACTION_DONE) {
-                            int pos = filterNewType.getSelectedItemPosition();
-                            String field = fields.get(pos);
-                            String filterString = filterNewInput.getText().toString();
-                            Log.d(LC, "Applying filter: " + field + "(" + filterString + ")");
-                            Toast.makeText(
-                                    this.requireContext(),
-                                    "Applying filter: " + field + "(" + filterString + ")",
-                                    Toast.LENGTH_SHORT
-                            ).show();
-                            filter(field, filterString);
-                            return true;
-                        }
-                        return false;
-                    });
                 });
 
         saveQueryBtn = rootView.findViewById(R.id.musiclibrary_filter_save);
@@ -470,6 +496,18 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     }
 
     public boolean onBackPressed() {
+        boolean actionPerformed = false;
+        if (filterEdit.getVisibility() == VISIBLE) {
+            filterEdit.setVisibility(GONE);
+            actionPerformed = true;
+        }
+        if (filterNew.getVisibility() == VISIBLE) {
+            filterNew.setVisibility(GONE);
+            actionPerformed = true;
+        }
+        if (actionPerformed) {
+            return true;
+        }
         return model.popBackStack();
     }
 
@@ -497,9 +535,12 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         model.setQuery(query);
     }
 
-    private void setSpinnerSelection(Spinner spinner, Object obj) {
-        for (int i = 0; i < spinner.getCount(); i++) {
-            if (obj.equals(spinner.getItemAtPosition(i))) {
+    private void setSpinnerSelection(Spinner spinner, String key) {
+        if (metaKeys == null) {
+            return;
+        }
+        for (int i = 0; i < metaKeys.size(); i++) {
+            if (key.equals(metaKeys.get(i))) {
                 spinner.setSelection(i);
                 break;
             }
@@ -511,7 +552,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     }
 
     private void addFilterToView(String metaKey, String filter) {
-        String text = String.format("%s: %s", metaKey, filter);
+        String text = String.format("%s: %s", Meta.getDisplayKey(metaKey), Meta.getDisplayValue(metaKey, filter));
         Chip newChip = new Chip(requireContext());
         newChip.setEllipsize(TextUtils.TruncateAt.END);
         newChip.setChipBackgroundColorResource(R.color.colorAccent);
@@ -519,10 +560,9 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         newChip.setText(text);
         newChip.setOnClickListener(v -> {
             filterNew.setVisibility(GONE);
-            String filterEditTypeText = metaKey + ':';
-            if (chipHasSameFilter(text, filterEditType.getText().toString(),
-                    filterEditInput.getText().toString())) {
-                filterEdit.setVisibility(filterEdit.getVisibility() == VISIBLE ? GONE : VISIBLE);
+            if (metaKey.equals(filterEditTypeValue) && filterEdit.getVisibility() == VISIBLE) {
+                filterEdit.setVisibility(GONE);
+                Util.hideSoftInput(requireActivity(), filterEditInput);
             } else {
                 filterEditInput.setText(filter);
                 filterEditInput.setOnEditorActionListener((v1, actionId, event) -> {
@@ -535,12 +575,18 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                                 Toast.LENGTH_SHORT
                         ).show();
                         filter(metaKey, filterString);
+                        filterEdit.setVisibility(GONE);
+                        Util.hideSoftInput(requireActivity(), filterEditInput);
                         return true;
                     }
                     return false;
                 });
+                filterEditTypeValue = metaKey;
+                String filterEditTypeText = Meta.getDisplayKey(metaKey) + ':';
                 filterEditType.setText(filterEditTypeText);
                 filterEdit.setVisibility(VISIBLE);
+                filterEditInput.requestFocus();
+                Util.showSoftInput(requireActivity(), filterEditInput);
             }
         });
         newChip.setOnCloseIconClickListener(v -> clearFilter(metaKey));
@@ -549,16 +595,10 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         filterChips.addView(newChip, index);
     }
 
-    private boolean chipHasSameFilter(String chipText, String filterType, String filter) {
-        return chipText.equals(filterType + " " + filter);
-    }
-
     private void clearFilter(String filterType) {
         model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
         model.clearFilter(filterType);
     }
-
-
 
     MusicLibraryQuery getCurrentQuery() {
         MusicLibraryUserState state = model.getUserState().getValue();
@@ -627,5 +667,19 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
 
     boolean showHeaderNum(boolean browsable) {
         return !isSearchQuery() && browsable;
+    }
+
+    public void clearFocus() {
+        if (recyclerViewAdapter != null) {
+            recyclerViewAdapter.hideTrackItemActions();
+        }
+        if (filterEdit != null && filterEdit.getVisibility() == VISIBLE) {
+            Util.hideSoftInput(requireActivity(), filterEditInput);
+            filterEdit.setVisibility(GONE);
+        }
+        if (filterNew != null && filterNew.getVisibility() == VISIBLE) {
+            Util.hideSoftInput(requireActivity(), filterNewInput);
+            filterNew.setVisibility(GONE);
+        }
     }
 }

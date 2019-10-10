@@ -673,11 +673,36 @@ public class MetaStorage {
         return allKeys;
     }
 
-    public void setLocalMeta(EntryID entryID, String field, String value) {
-        metaModel.insertLocalMeta(entryID, field, value);
+    public CompletableFuture<Void> insertLocalMeta(EntryID entryID, String field, String value) {
+        return CompletableFuture.runAsync(() ->
+                metaModel.insertLocalMeta(entryID, field, value, false)
+        );
     }
 
-    public void deleteLocalMeta(EntryID entryID, String field) {
-        metaModel.deleteLocalMeta(entryID, field);
+    public CompletableFuture<Void> deleteLocalMeta(EntryID entryID, String field, String value) {
+        return CompletableFuture.runAsync(() ->
+                metaModel.deleteLocalMeta(entryID, field, value, false)
+        );
+    }
+
+    public CompletableFuture<Void> insertLocalUserMeta(EntryID entryID, String field, String value) {
+        return CompletableFuture.runAsync(() ->
+                metaModel.insertLocalMeta(entryID, field, value, true)
+        );
+    }
+
+    public CompletableFuture<Void> replaceLocalUserMeta(EntryID entryID,
+                                                        String field,
+                                                        String oldValue,
+                                                        String newValue) {
+        return CompletableFuture.runAsync(() ->
+                metaModel.replaceLocalMeta(entryID, field, oldValue, newValue, true)
+        );
+    }
+
+    public CompletableFuture<Void> deleteLocalUserMeta(EntryID entryID, String field, String value) {
+        return CompletableFuture.runAsync(() ->
+                metaModel.deleteLocalMeta(entryID, field, value, true)
+        );
     }
 }

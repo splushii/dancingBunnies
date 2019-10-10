@@ -9,6 +9,7 @@ import android.view.View;
 import android.widget.LinearLayout;
 
 import java.util.HashSet;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import androidx.annotation.Nullable;
@@ -19,6 +20,8 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
+import se.splushii.dancingbunnies.ui.meta.MetaDialogFragment;
+import se.splushii.dancingbunnies.ui.meta.MetaTag;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_MORE;
@@ -27,18 +30,21 @@ public class TrackItemActionsView extends LinearLayoutCompat {
     private static final String LC = Util.getLogContext(TrackItemActionsView.class);
 
     private AudioBrowserFragment audioBrowserFragment;
+    private MetaDialogFragment metaDialogFragment;
 
     private Supplier<EntryID> entryIDSupplier;
     private Supplier<PlaybackEntry> playbackEntrySupplier;
     private Supplier<PlaylistID> playlistIDSupplier;
     private Supplier<PlaylistEntry> playlistEntrySupplier;
     private Supplier<Long> playlistPositionSupplier;
+    private Supplier<MetaTag> metaTagSupplier;
 
     private int[] visibleActions = {};
     private int[] moreActions = {};
     private HashSet<Integer> disabled = new HashSet<>();
 
     private LinearLayout rootView;
+    private Consumer<Integer> postAction = action -> {};
 
     public TrackItemActionsView(Context context) {
         super(context);
@@ -117,11 +123,14 @@ public class TrackItemActionsView extends LinearLayoutCompat {
                 playbackEntrySupplier,
                 playlistEntrySupplier,
                 playlistIDSupplier,
-                playlistPositionSupplier
+                playlistPositionSupplier,
+                metaDialogFragment,
+                metaTagSupplier
         )) {
             return false;
         }
         animateShow(false);
+        postAction.accept(action);
         return true;
     }
 
@@ -181,7 +190,19 @@ public class TrackItemActionsView extends LinearLayoutCompat {
         this.playlistPositionSupplier = playlistPositionSupplier;
     }
 
+    public void setMetaTagSupplier(Supplier<MetaTag> metaTagSupplier) {
+        this.metaTagSupplier = metaTagSupplier;
+    }
+
     public void setAudioBrowserFragment(AudioBrowserFragment fragment) {
         audioBrowserFragment = fragment;
+    }
+
+    public void setPostAction(Consumer<Integer> postAction) {
+        this.postAction = postAction;
+    }
+
+    public void setMetaDialogFragment(MetaDialogFragment metaDialogFragment) {
+        this.metaDialogFragment = metaDialogFragment;
     }
 }

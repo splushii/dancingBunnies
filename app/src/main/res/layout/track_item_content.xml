@@ -74,14 +74,15 @@
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical"
+        android:layout_gravity="end|center_vertical"
+        android:gravity="end|center_vertical"
         android:orientation="vertical">
         <ImageView
             android:id="@+id/track_item_preload_status"
             android:layout_width="12dp"
             android:layout_height="12dp"
             android:layout_marginEnd="4dp"
-            android:layout_gravity="center_vertical"
+            android:layout_gravity="end|center_vertical"
             android:background="@drawable/ic_hot_tub_black_50alpha_24dp"
             android:contentDescription="@string/preload_status"
             android:visibility="gone"/>
@@ -90,7 +91,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="4dp"
-            android:layout_gravity="center_vertical"
+            android:layout_gravity="end|center_vertical"
             android:textColor="@color/secondary_text_color"
             android:visibility="gone"/>
         <ImageView
@@ -98,7 +99,7 @@
             android:layout_width="12dp"
             android:layout_height="12dp"
             android:layout_marginEnd="4dp"
-            android:layout_gravity="center_vertical"
+            android:layout_gravity="end|center_vertical"
             android:background="@drawable/ic_offline_pin_black_50alpha_24dp"
             android:contentDescription="@string/cached"
             android:visibility="gone"/>
@@ -106,8 +107,8 @@
             android:id="@+id/track_item_source"
             android:layout_width="12dp"
             android:layout_height="12dp"
-            android:layout_marginEnd="8dp"
-            android:layout_gravity="center_vertical"
+            android:layout_marginEnd="4dp"
+            android:layout_gravity="end|center_vertical"
             android:contentDescription="@string/item_source" />
     </LinearLayout>
 </LinearLayout>

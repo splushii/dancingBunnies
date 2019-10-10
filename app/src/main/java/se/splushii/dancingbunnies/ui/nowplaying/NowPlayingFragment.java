@@ -124,7 +124,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         recView.setLayoutManager(recViewLayoutManager);
         recView.setAdapter(recViewAdapter);
         selectionTracker = new RecyclerViewActionModeSelectionTracker<>(
-                this,
+                requireActivity(),
                 MainActivity.SELECTION_ID_NOWPLAYING,
                 recView,
                 recViewAdapter,
@@ -215,7 +215,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
-                    positionText.setText(Util.getDurationString(progress));
+                    positionText.setText(Meta.getDurationString(progress));
                 }
             }
 
@@ -278,6 +278,8 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                                 null,
                                 null,
                                 null,
+                                null,
+                                null,
                                 null
                         )
                 )
@@ -298,7 +300,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         historyRecView.setLayoutManager(historyRecViewLayoutManager);
         historyRecView.setAdapter(historyRecViewAdapter);
         historySelectionTracker = new RecyclerViewActionModeSelectionTracker<>(
-                this,
+                requireActivity(),
                 MainActivity.SELECTION_ID_NOWPLAYING_HISTORY,
                 historyRecView,
                 historyRecViewAdapter,
@@ -399,16 +401,13 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         model.getFetchState(requireContext()).observe(getViewLifecycleOwner(), audioDataFetchStates -> {
             boolean showSize = false;
             AudioStorage.AudioDataFetchState state = audioDataFetchStates.get(currentMeta.entryID);
+            String formattedFileSize = currentMeta.getFormattedFileSize();
             if (state != null) {
-                sizeText.setText(state.getStatusMsg());
+                sizeText.setText(state.getStatusMsg(formattedFileSize));
                 showSize = true;
-            }
-            if (!showSize && currentMeta.has(Meta.FIELD_FILE_SIZE)) {
-                String formattedFileSize = getFormattedFileSize(currentMeta);
-                if (formattedFileSize != null) {
-                    sizeText.setText(formattedFileSize);
-                    showSize = true;
-                }
+            } else if (formattedFileSize != null) {
+                sizeText.setText(formattedFileSize);
+                showSize = true;
             }
             sizeText.setVisibility(showSize ? VISIBLE : INVISIBLE);
         });
@@ -425,12 +424,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             }
         });
         model.getState().observe(getViewLifecycleOwner(), this::refreshView);
-    }
-
-    private String getFormattedFileSize(Meta meta) {
-        long size = meta.getFirstLong(Meta.FIELD_FILE_SIZE, -1);
-        return size < 0 ?
-                null : String.format(Locale.getDefault(),"%d MB", size / 1_000_000L);
     }
 
     @Override
@@ -577,7 +570,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     private void updateMediaInfo(Meta metadata) {
-        String formattedFileSize = getFormattedFileSize(metadata);
+        String formattedFileSize = metadata.getFormattedFileSize();
         if (formattedFileSize != null) {
             sizeText.setText(formattedFileSize);
             sizeText.setVisibility(VISIBLE);
@@ -595,7 +588,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             info.add(suffix);
         }
         if (bitrate >= 0) {
-            info.add(String.format(Locale.getDefault(), "%dkbps", bitrate));
+            info.add(Meta.getDisplayValue(Meta.FIELD_BITRATE, bitrate));
         }
         mediaInfoText.setText(String.join(" ", info));
     }
@@ -624,18 +617,18 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         }
         if (pos > waveformSeekBar.getMax()) {
             waveformSeekBar.setProgress(waveformSeekBar.getMax());
-            positionText.setText(Util.getDurationString(waveformSeekBar.getMax()));
+            positionText.setText(Meta.getDurationString(waveformSeekBar.getMax()));
             stopProgressUpdate();
         } else {
             waveformSeekBar.setProgress((int) pos);
-            positionText.setText(Util.getDurationString(pos));
+            positionText.setText(Meta.getDurationString(pos));
         }
     }
 
     private void updateDuration(Meta metadata) {
         int duration = (int) metadata.getFirstLong(Meta.FIELD_DURATION, 0);
         waveformSeekBar.setMax(duration);
-        durationText.setText(Util.getDurationString(duration));
+        durationText.setText(Meta.getDurationString(duration));
     }
 
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();

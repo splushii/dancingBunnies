@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -28,14 +29,17 @@ public class Meta {
     private static final HashMap<String, Type> typeMap = new HashMap<>();
     private static final HashSet<String> localOriginSet = new HashSet<>();
 
-    public static Type getType(String key) {
-        return typeMap.getOrDefault(key, STRING);
-    }
 
-    public static final String FIELD_SPECIAL_MEDIA_ID = "se.splushii.dancingbunnies.meta.field.media.id";
-    public static final String FIELD_SPECIAL_MEDIA_SRC = "se.splushii.dancingbunnies.meta.field.media.src";
+    private static final String FIELD_DANCINGBUNNIES_PREFIX = "se.splushii.dancingbunnies.meta.field.";
+    public static final String FIELD_SPECIAL_MEDIA_ID = FIELD_DANCINGBUNNIES_PREFIX + "media.id";
+    public static final String FIELD_SPECIAL_MEDIA_SRC = FIELD_DANCINGBUNNIES_PREFIX + "media.src";
+    public static final String FIELD_LOCAL_CACHED = FIELD_DANCINGBUNNIES_PREFIX + "cached"; static{localOriginSet.add(FIELD_LOCAL_CACHED);}
+    public static final String FIELD_LOCAL_CACHED_VALUE_YES = "yes";
 
-    public static final String FIELD_LOCAL_CACHED = "se.splushii.dancingbunnies.meta.field.cached"; static{localOriginSet.add(FIELD_LOCAL_CACHED);}
+    private static final String FIELD_LOCAL_USER_PREFIX = FIELD_DANCINGBUNNIES_PREFIX + "user.";
+    private static final String FIELD_LOCAL_USER_TYPE_STRING = "string";
+    private static final String FIELD_LOCAL_USER_TYPE_LONG = "long";
+    private static final String FIELD_LOCAL_USER_TYPE_DOUBLE = "double";
 
     public static final String FIELD_DURATION = "duration"; static{typeMap.put(FIELD_DURATION, LONG);}
     public static final String FIELD_CONTENT_TYPE = "content type";
@@ -87,8 +91,102 @@ public class Meta {
             Meta.FIELD_SPECIAL_MEDIA_ID
     );
 
+    private static boolean isSpecial(String key) {
+        return FIELD_SPECIAL_MEDIA_ID.equals(key) || FIELD_SPECIAL_MEDIA_SRC.equals(key);
+    }
+
     public static boolean isLocal(String key) {
-        return localOriginSet.contains(key);
+        return isLocalUser(key) || localOriginSet.contains(key);
+    }
+
+    public static boolean isLocalUser(String key) {
+        return key.startsWith(FIELD_LOCAL_USER_PREFIX);
+    }
+
+    public static String constructLocalUserStringKey(String key) {
+        return constructLocalUserKey(key, Meta.FIELD_LOCAL_USER_TYPE_STRING);
+    }
+
+    public static String constructLocalUserLongKey(String key) {
+        return constructLocalUserKey(key, Meta.FIELD_LOCAL_USER_TYPE_LONG);
+    }
+
+    public static String constructLocalUserDoubleKey(String key) {
+        return constructLocalUserKey(key, Meta.FIELD_LOCAL_USER_TYPE_DOUBLE);
+    }
+
+    private static String constructLocalUserKey(String key, String type) {
+        return Meta.FIELD_LOCAL_USER_PREFIX + type + "." + key;
+    }
+
+    public static String getDurationString(long milliseconds) {
+        int seconds = (int) (milliseconds / 1000);
+        int hours = seconds / 3600;
+        int minutes = (seconds % 3600) / 60;
+        seconds %= 60;
+        if (hours > 0) {
+            return String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds);
+        }
+        return String.format(Locale.getDefault(), "%d:%02d", minutes, seconds);
+    }
+
+    public static String getDisplayValue(String key, String value) {
+        long longValue;
+        switch (key) {
+            case Meta.FIELD_DURATION:
+                try {
+                    return getDurationString(Long.parseLong(value));
+                } catch (NumberFormatException ignored) {}
+                break;
+            case Meta.FIELD_FILE_SIZE:
+                longValue = Long.parseLong(value);
+                if (longValue >= 1_000_000L) {
+                    return String.format(Locale.getDefault(),"%.1f MB", longValue / 1_000_000d);
+                }
+                if (longValue >= 1_000L) {
+                    return String.format(Locale.getDefault(),"%.1f KB", longValue / 1_000d);
+                }
+                return String.format(Locale.getDefault(),"%d B", longValue);
+            case Meta.FIELD_BITRATE:
+                return String.format(Locale.getDefault(), "%d kbps", Long.parseLong(value));
+            default:
+                break;
+        }
+        return value;
+    }
+
+    public static String getDisplayValue(String key, long value) {
+        return getDisplayValue(key, Long.toString(value));
+    }
+
+    public static String getDisplayKey(String key) {
+        if (isLocalUser(key)) {
+            String keySuffix = key.substring(FIELD_LOCAL_USER_PREFIX.length());
+            String tagName = keySuffix.split("\\.", 2)[1];
+            return "dB " + tagName;
+        }
+        if (isLocal(key) || isSpecial(key)) {
+            String tagName = key.substring(FIELD_DANCINGBUNNIES_PREFIX.length());
+            return "dB " + tagName;
+        }
+        return key;
+    }
+
+    public static Type getType(String key) {
+        if (isLocalUser(key)) {
+            String keySuffix = key.substring(FIELD_LOCAL_USER_PREFIX.length());
+            String type = keySuffix.split("\\.", 2)[0];
+            switch (type) {
+                default:
+                case FIELD_LOCAL_USER_TYPE_STRING:
+                    return STRING;
+                case FIELD_LOCAL_USER_TYPE_LONG:
+                    return LONG;
+                case FIELD_LOCAL_USER_TYPE_DOUBLE:
+                    return DOUBLE;
+            }
+        }
+        return typeMap.getOrDefault(key, STRING);
     }
 
     public enum Type {
@@ -264,5 +362,10 @@ public class Meta {
             }
         }
         return sb.toString();
+    }
+
+    public String getFormattedFileSize() {
+        long size = getFirstLong(Meta.FIELD_FILE_SIZE, -1);
+        return size < 0 ? null : Meta.getDisplayValue(Meta.FIELD_FILE_SIZE, size);
     }
 }

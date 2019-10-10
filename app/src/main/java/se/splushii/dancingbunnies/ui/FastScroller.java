@@ -13,7 +13,6 @@ import android.widget.LinearLayout;
 
 import java.util.ArrayList;
 
-import androidx.core.util.Consumer;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
@@ -38,7 +37,6 @@ public class FastScroller extends LinearLayout {
     private float handleOffset = 0f;
     private boolean bubbleEnabled = true;
     private boolean recyclerViewReversed = false;
-    private Consumer<Boolean> onHiddenAction;
 
     public FastScroller(Context context) {
         super(context);
@@ -51,7 +49,6 @@ public class FastScroller extends LinearLayout {
     }
 
     private void init(Context context) {
-        onHiddenAction = hidden -> {};
         setOrientation(HORIZONTAL);
         setClipChildren(false);
         inflate(context, R.layout.fastscroller, this);
@@ -88,10 +85,6 @@ public class FastScroller extends LinearLayout {
         recyclerViewReversed = reversed;
     }
 
-    public void setOnHidden(Consumer<Boolean> consumer) {
-        onHiddenAction = consumer;
-    }
-
     private enum AnimationType {
         FADE,
         SCALE
@@ -120,7 +113,7 @@ public class FastScroller extends LinearLayout {
     }
 
     private void hideView(View v, AnimationType animationType) {
-        int visibility = fastscrollerNeeded() ? INVISIBLE : GONE;
+        int visibility = fastscrollerNeeded() ? INVISIBLE : INVISIBLE;
         AnimatorSet animatorSet = new AnimatorSet();
         v.setPivotX(v.getWidth());
         v.setPivotY(v.getHeight());
@@ -183,7 +176,6 @@ public class FastScroller extends LinearLayout {
                 needed = true;
             }
         }
-        onHiddenAction.accept(!needed);
         return needed;
     }
 

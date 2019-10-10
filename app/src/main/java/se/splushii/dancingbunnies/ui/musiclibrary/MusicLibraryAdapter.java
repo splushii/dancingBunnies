@@ -285,6 +285,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             }
             if (browsable) {
                 fragment.addBackStackHistory();
+                fragment.clearFocus();
                 EntryID entryID = holder.entryIDLiveData.getValue();
                 MusicLibraryQuery query = fragment.getCurrentQuery();
                 addSortedByToQuery(query, holder);
@@ -299,6 +300,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 }
                 fragment.setQuery(query);
             } else {
+                fragment.clearFocus();
                 if (selectedActionView != holder.actionsView) {
                     hideTrackItemActions();
                 }

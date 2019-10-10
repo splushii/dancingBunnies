@@ -228,7 +228,7 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
             if (highlighted) {
                 highlightView.setBackgroundColor(ContextCompat.getColor(
                         fragment.requireContext(),
-                        R.color.colorAccentLight
+                        R.color.colorAccent
                 ));
             } else {
                 TypedValue value = new TypedValue();
@@ -307,6 +307,9 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
         holder.entry.setOnClickListener(view -> {
             if (hasSelection()) {
                 return;
+            }
+            if (fragment instanceof PlaylistFragment) {
+                ((PlaylistFragment) fragment).clearFocus();
             }
             onItemClickListener.accept(holder.playlist);
         });

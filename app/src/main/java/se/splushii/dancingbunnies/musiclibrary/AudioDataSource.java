@@ -188,7 +188,10 @@ public class AudioDataSource extends MediaDataSource {
                     cacheFile.toPath(),
                     StandardCopyOption.REPLACE_EXISTING
             );
-            metaStorage.setLocalMeta(entryID, Meta.FIELD_LOCAL_CACHED, "yes");
+            metaStorage.insertLocalMeta(
+                    entryID, Meta.FIELD_LOCAL_CACHED,
+                    Meta.FIELD_LOCAL_CACHED_VALUE_YES
+            ).join();
             Log.d(LC, "entryID " + entryID + " " + cacheFile.length()
                     + " bytes downloaded to " + cacheFile.getAbsolutePath());
             handler.onDownloadFinished();

@@ -9,14 +9,103 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
+        android:elevation="4dp"
+        android:background="@color/colorAccentDark"
         android:padding="16dp"
-        android:background="@android:color/black"
-        android:textColor="@color/grey"
+        android:textColor="@color/icon_on_secondary"
         android:fontFamily="sans-serif"
-        android:textSize="16sp"
+        android:textSize="20sp"
         android:text="@string/metadata"/>
-    <ListView
-        android:id="@+id/meta_dialog_list"
+    <LinearLayout
+        android:id="@+id/meta_dialog_add_view"
+        android:background="@color/overlayBackground"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:elevation="4dp"
+        android:orientation="vertical"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:visibility="gone">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="16dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="@string/metadata_add_title"
+                android:textColor="@color/primary_text_color"
+                />
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/meta_dialog_add_local_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/primary_text_color"
+                android:text="@string/metadata_add_local"
+                android:layout_marginEnd="8dp"/>
+        </LinearLayout>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <EditText
+                android:id="@+id/meta_dialog_add_tag_key"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:background="@android:color/transparent"
+                android:imeOptions="actionNext"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"
+                android:textSize="14sp"
+                android:hint="@string/meta_key"
+                android:inputType="text"
+                android:autofillHints="" />
+            <EditText
+                android:id="@+id/meta_dialog_add_tag_value"
+                android:layout_width="0dp"
+                android:layout_weight="2"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:background="@android:color/transparent"
+                android:imeOptions="actionDone"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"
+                android:layout_marginEnd="24dp"
+                android:textSize="14sp"
+                android:hint="@string/meta_value"
+                android:inputType="text"
+                android:scrollHorizontally="false"
+                android:autofillHints="" />
+        </LinearLayout>
+    </LinearLayout>
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/meta_dialog_recyclerview"
+        android:paddingTop="8dp"
+        android:clipToPadding="false"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
+    <LinearLayout
+        android:background="@color/colorAccentDark"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:elevation="4dp"
+        android:gravity="end">
+        <ImageButton
+            android:id="@+id/meta_dialog_add_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:padding="8dp"
+            android:src="@drawable/ic_add_black_24dp"
+            android:tint="@color/icon_on_secondary"
+            android:contentDescription="@string/metadata_add" />
+    </LinearLayout>
 </LinearLayout>

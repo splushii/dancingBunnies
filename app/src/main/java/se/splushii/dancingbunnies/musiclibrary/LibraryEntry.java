@@ -12,9 +12,7 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
     private static final String BUNDLE_KEY_NAME = "dancingbunnies.bundle.key.libraryentry.name";
     private static final String BUNDLE_KEY_SORTED_BY = "dancingbunnies.bundle.key.libraryentry.sortedby";
 
-    // Uniquely identifies a LibraryEntry
     public final EntryID entryID;
-
     private final String name;
     private final String sortedBy;
 
@@ -80,7 +78,15 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
             return false;
         }
         LibraryEntry e = (LibraryEntry) obj;
-        return this.entryID.equals(e.entryID);
+        if (name == null && e.name != null) {
+            return false;
+        }
+        if (sortedBy == null && e.sortedBy != null) {
+            return false;
+        }
+        return this.entryID.equals(e.entryID)
+                && (name == null || name.equals(e.name))
+                && (sortedBy == null || sortedBy.equals(e.sortedBy));
     }
 
     @Override

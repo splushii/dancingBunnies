@@ -1,30 +1,60 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/meta_dialog_item"
     android:orientation="horizontal"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
-    <TextView
-        android:id="@+id/meta_dialog_list_key"
-        android:layout_width="0dp"
-        android:layout_weight="1"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
-        android:layout_gravity="center_vertical"
-        android:singleLine="true"
-        android:textColor="@color/colorSecondaryText"
-        android:fontFamily="sans-serif"
-        android:textSize="14sp" />
-    <TextView
-        android:id="@+id/meta_dialog_list_value"
-        android:layout_width="0dp"
-        android:layout_weight="2"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
-        android:layout_marginEnd="24dp"
-        android:textColor="@color/colorPrimaryText"
-        android:fontFamily="sans-serif"
-        android:textSize="14sp" />
-</LinearLayout>
+    android:layout_height="wrap_content"
+    android:background="@color/white_active_accent">
+    <LinearLayout
+        android:background="?android:selectableItemBackground"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <TextView
+            android:id="@+id/meta_dialog_list_key"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:layout_gravity="center_vertical"
+            android:singleLine="true"
+            android:textColor="@color/secondary_text_color"
+            android:fontFamily="sans-serif"
+            android:textSize="14sp" />
+        <TextView
+            android:id="@+id/meta_dialog_list_value"
+            android:layout_width="0dp"
+            android:layout_weight="2"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:layout_marginEnd="24dp"
+            android:textColor="@color/primary_text_color"
+            android:fontFamily="sans-serif"
+            android:textSize="14sp" />
+        <EditText
+            android:id="@+id/meta_dialog_list_value_edit"
+            android:layout_width="0dp"
+            android:layout_weight="2"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:layout_marginEnd="16dp"
+            android:layout_gravity="center_vertical"
+            android:visibility="gone"
+            android:background="@color/white_active_accent_extra_light"
+            android:imeOptions="actionDone"
+            android:hint="@string/meta_value"
+            android:textColor="@color/colorPrimaryText"
+            android:textSize="14sp"
+            android:inputType="text|textFilter"
+            android:autofillHints="" />
+    </LinearLayout>
+    <se.splushii.dancingbunnies.ui.TrackItemActionsView
+        android:id="@+id/meta_dialog_item_actions"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent" />
+</FrameLayout>

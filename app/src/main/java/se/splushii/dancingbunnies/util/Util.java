@@ -12,7 +12,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -96,17 +95,6 @@ public class Util {
 
     public static <T> CompletableFuture<T> futureResult(String error) {
         return futureResult(error, null);
-    }
-
-    public static String getDurationString(long milliseconds) {
-        int seconds = (int) (milliseconds / 1000);
-        int hours = seconds / 3600;
-        int minutes = (seconds % 3600) / 60;
-        seconds %= 60;
-        if (hours > 0) {
-            return String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds);
-        }
-        return String.format(Locale.getDefault(), "%d:%02d", minutes, seconds);
     }
 
     public static Executor getMainThreadExecutor() {

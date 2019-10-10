@@ -49,6 +49,7 @@ public final class MainActivity extends AppCompatActivity {
     public static final String SELECTION_ID_PLAYLIST = "dancingbunnies.selection_id.playlist";
     public static final String SELECTION_ID_PLAYLIST_ENTRIES = "dancingbunnies.selection_id.playlist_entries";
     public static final String SELECTION_ID_PLAYLIST_PLAYBACK_ENTRIES = "dancingbunnies.selection_id.playlist_entries";
+    public static final String SELECTION_ID_META_DIALOG = "dancingbunnies.selection_id.meta_dialog";
     public static final int REQUEST_CODE_META_DIALOG = 1337;
     public static final int REQUEST_CODE_ADD_TO_PLAYLIST_DIALOG = 1338;
     public static final int REQUEST_CODE_ADD_TO_NEW_PLAYLIST_DIALOG = 1338;
@@ -91,6 +92,7 @@ public final class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
         setIntent(intent);
         handleIntent(intent);
     }
@@ -174,6 +176,7 @@ public final class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
         switch (requestCode) {
             case SETTINGS_INTENT_REQUEST:
                 break;
@@ -216,9 +219,11 @@ public final class MainActivity extends AppCompatActivity {
             super(fm);
         }
 
+        @NonNull
         @Override
         public Fragment getItem(int position) {
             switch (position) {
+                default:
                 case PAGER_MUSICLIBRARY:
                     return new MusicLibraryFragment();
                 case PAGER_NOWPLAYING:
@@ -226,7 +231,6 @@ public final class MainActivity extends AppCompatActivity {
                 case PAGER_PLAYLIST:
                     return new PlaylistFragment();
             }
-            return null;
         }
 
         @NonNull
@@ -234,6 +238,7 @@ public final class MainActivity extends AppCompatActivity {
         public Object instantiateItem(@NonNull ViewGroup container, int position) {
             Object fragment = super.instantiateItem(container, position);
             switch (position) {
+                default:
                 case PAGER_MUSICLIBRARY:
                     musicLibraryFragment = (MusicLibraryFragment) fragment;
                     break;
@@ -258,12 +263,14 @@ public final class MainActivity extends AppCompatActivity {
                 lastPosition = position;
                 if (musicLibraryFragment != null) {
                     musicLibraryFragment.clearSelection();
+                    musicLibraryFragment.clearFocus();
                 }
                 if (nowPlayingFragment != null) {
                     nowPlayingFragment.clearSelection();
                 }
                 if (playlistFragment != null) {
                     playlistFragment.clearSelection();
+                    playlistFragment.clearFocus();
                 }
             }
         }
@@ -276,6 +283,7 @@ public final class MainActivity extends AppCompatActivity {
         @Override
         public CharSequence getPageTitle(int position) {
             switch (position) {
+                default:
                 case PAGER_MUSICLIBRARY:
                     return "MusicLibrary";
                 case PAGER_NOWPLAYING:
@@ -283,7 +291,6 @@ public final class MainActivity extends AppCompatActivity {
                 case PAGER_PLAYLIST:
                     return "Playlists";
             }
-            return null;
         }
 
         boolean onBackPressed() {

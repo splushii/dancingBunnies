@@ -10,7 +10,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -240,11 +240,13 @@ public class AudioStorage {
         return waveformModel.getSync(entryID.src, entryID.id);
     }
 
-    public void deleteWaveform(EntryID entryID) {
+    public CompletableFuture<Void> deleteWaveform(EntryID entryID) {
         if (entryID == null || !Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
-            return;
+            return CompletableFuture.completedFuture(null);
         }
-        waveformModel.delete(entryID.src, entryID.id);
+        return CompletableFuture.runAsync(() ->
+                waveformModel.delete(entryID.src, entryID.id)
+        );
     }
 
     public static void deleteCacheFile(Context context, EntryID entryID) {
@@ -289,14 +291,14 @@ public class AudioStorage {
             this.bytesTotal = bytesTotal;
         }
 
-        String getProgress() {
-            String fetched = String.format(Locale.getDefault(), "%.1f", bytesFetched / 1000_000d);
+        String getProgress(String fallbackFileSize) {
+            String fetched = Meta.getDisplayValue(Meta.FIELD_FILE_SIZE, bytesFetched);
             String total = bytesTotal > 0 ?
-                    String.format(Locale.getDefault(), "%.1f", bytesTotal / 1000_000d) : "?";
-            return fetched + "/" + total + "MB";
+                    Meta.getDisplayValue(Meta.FIELD_FILE_SIZE, bytesTotal) + "MB": fallbackFileSize;
+            return fetched + "/" + total;
         }
 
-        public String getStatusMsg() {
+        public String getStatusMsg(String fallbackFileSize) {
             String msg;
             switch (getState()) {
                 default:
@@ -305,7 +307,7 @@ public class AudioStorage {
                     msg = "";
                     break;
                 case AudioStorage.AudioDataFetchState.DOWNLOADING:
-                    msg = getProgress();
+                    msg = getProgress(fallbackFileSize);
                     break;
                 case AudioStorage.AudioDataFetchState.FAILURE:
                     msg = "dl failed";

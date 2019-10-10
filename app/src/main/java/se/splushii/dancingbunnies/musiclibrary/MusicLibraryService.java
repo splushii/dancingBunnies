@@ -68,6 +68,9 @@ public class MusicLibraryService extends Service {
     public static final String PLAYLIST_ENTRY_DELETE = "playlist_entry_delete";
     public static final String PLAYLIST_ENTRY_MOVE = "playlist_entry_move";
     public static final String PLAYLIST_ENTRY_ADD = "playlist_entry_add";
+    public static final String META_EDIT = "meta_edit";
+    public static final String META_ADD = "meta_add";
+    public static final String META_DELETE = "meta_delete";
     public static boolean checkAPISupport(String src, String action) {
         switch (src) {
             case API_ID_DANCINGBUNNIES:
@@ -80,6 +83,10 @@ public class MusicLibraryService extends Service {
                         return true;
                     case PLAYLIST_ENTRY_ADD:
                         return true;
+                    case META_EDIT:
+                        return false;
+                    case META_ADD:
+                        return false;
                 }
                 return false;
             case API_ID_SUBSONIC:
@@ -91,6 +98,10 @@ public class MusicLibraryService extends Service {
                     case PLAYLIST_DELETE:
                         return false;
                     case PLAYLIST_ENTRY_ADD:
+                        return false;
+                    case META_EDIT:
+                        return false;
+                    case META_ADD:
                         return false;
                 }
                 return false;
@@ -116,11 +127,14 @@ public class MusicLibraryService extends Service {
         return Transformations.map(
                 Transformations.switchMap(
                         PlaylistStorage.getInstance(context).getPlaylist(playlistID),
-                        playlist -> MetaStorage.getInstance(context).getEntries(
-                                Meta.FIELD_SPECIAL_MEDIA_ID,
-                                Meta.FIELD_TITLE,
-                                SmartPlaylist.jsonQueryToBundle(playlist.query)
-                        )
+                        playlist -> playlist == null ?
+                                new MutableLiveData<>(Collections.emptyList())
+                                :
+                                MetaStorage.getInstance(context).getEntries(
+                                        Meta.FIELD_SPECIAL_MEDIA_ID,
+                                        Meta.FIELD_TITLE,
+                                        SmartPlaylist.jsonQueryToBundle(playlist.query)
+                                )
                 ),
                 libraryEntries -> {
                     List<PlaylistEntry> playlistEntries = new ArrayList<>();
@@ -318,11 +332,13 @@ public class MusicLibraryService extends Service {
         if (audioDataSource != null) {
             audioDataSource.close();
         }
-        return CompletableFuture.runAsync(() -> {
-            AudioStorage.deleteCacheFile(context, entryID);
-            AudioStorage.getInstance(context).deleteWaveform(entryID);
-            MetaStorage.getInstance(context).deleteLocalMeta(entryID, Meta.FIELD_LOCAL_CACHED);
-        });
+        AudioStorage.deleteCacheFile(context, entryID);
+        return AudioStorage.getInstance(context).deleteWaveform(entryID)
+                .thenCompose(aVoid -> MetaStorage.getInstance(context).deleteLocalMeta(
+                        entryID,
+                        Meta.FIELD_LOCAL_CACHED,
+                        Meta.FIELD_LOCAL_CACHED_VALUE_YES
+                ));
     }
 
     public CompletableFuture<Meta> getSongMeta(EntryID entryID) {

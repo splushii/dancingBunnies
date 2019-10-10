@@ -11,13 +11,13 @@ import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.selection.ItemDetailsLookup;
 import androidx.recyclerview.selection.MutableSelection;
 import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.selection.StorageStrategy;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
-import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -29,7 +29,7 @@ public class RecyclerViewActionModeSelectionTracker<ID,
     private ActionModeCallback actionModeCallback;
 
     public RecyclerViewActionModeSelectionTracker(
-            AudioBrowserFragment audioBrowserFragment,
+            FragmentActivity fragmentActivity,
             String selectionID,
             RecyclerView recView,
             Adapter recViewAdapter,
@@ -156,8 +156,8 @@ public class RecyclerViewActionModeSelectionTracker<ID,
                                 actionModeCallback,
                                 selectionTracker.getSelection()
                         );
-                    } else {
-                        audioBrowserFragment.requireActivity().startActionMode(actionModeCallback);
+                    } else if (actionModeCallback != null) {
+                        fragmentActivity.startActionMode(actionModeCallback);
                         recViewAdapter.onActionModeStarted(
                                 actionModeCallback,
                                 selectionTracker.getSelection()
@@ -191,5 +191,9 @@ public class RecyclerViewActionModeSelectionTracker<ID,
         List<ID> selectionList = new ArrayList<>();
         selection.forEach(selectionList::add);
         return selectionList;
+    }
+
+    public boolean hasSelection() {
+        return selectionTracker.hasSelection();
     }
 }

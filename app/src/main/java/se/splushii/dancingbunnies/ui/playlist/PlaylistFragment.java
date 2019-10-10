@@ -284,7 +284,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         });
         playlistRecView.setAdapter(playlistRecViewAdapter);
         playlistSelectionTracker = new RecyclerViewActionModeSelectionTracker<>(
-                this,
+                requireActivity(),
                 MainActivity.SELECTION_ID_PLAYLIST,
                 playlistRecView,
                 playlistRecViewAdapter,
@@ -366,7 +366,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         playlistEntriesRecViewAdapter = new PlaylistEntriesAdapter(this);
         playlistEntriesRecView.setAdapter(playlistEntriesRecViewAdapter);
         playlistEntriesSelectionTracker = new RecyclerViewActionModeSelectionTracker<>(
-                this,
+                requireActivity(),
                 MainActivity.SELECTION_ID_PLAYLIST_ENTRIES,
                 playlistEntriesRecView,
                 playlistEntriesRecViewAdapter,
@@ -419,6 +419,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
                 super.onScrollStateChanged(recyclerView, newState);
                 if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
                     playlistEntriesRecViewAdapter.hideTrackItemActions();
+                    clearFocus();
                 }
             }
         });
@@ -432,7 +433,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         playlistPlaybackEntriesRecViewAdapter = new PlaylistPlaybackEntriesAdapter(this);
         playlistPlaybackEntriesRecView.setAdapter(playlistPlaybackEntriesRecViewAdapter);
         playlistPlaybackEntriesSelectionTracker = new RecyclerViewActionModeSelectionTracker<>(
-                this,
+                requireActivity(),
                 MainActivity.SELECTION_ID_PLAYLIST_PLAYBACK_ENTRIES,
                 playlistPlaybackEntriesRecView,
                 playlistPlaybackEntriesRecViewAdapter,
@@ -510,7 +511,6 @@ public class PlaylistFragment extends AudioBrowserFragment {
 
         ViewGroup newPlaylistView = rootView.findViewById(R.id.playlist_new_playlist);
         newPlaylistName = rootView.findViewById(R.id.playlist_new_playlist_name);
-        newPlaylistName.setShowSoftInputOnFocus(true);
         newPlaylistFAB = rootView.findViewById(R.id.playlist_new_playlist_fab);
         rootView.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
             if (newPlaylistView.getFocusedChild() == null) {
@@ -571,12 +571,20 @@ public class PlaylistFragment extends AudioBrowserFragment {
     }
 
     public boolean onBackPressed() {
-        if (newPlaylistName.hasFocus()) {
-            newPlaylistName.clearFocus();
+        if (clearFocus()) {
             return true;
         }
         if (!model.getUserStateValue().showPlaylists) {
             model.browsePlaylists();
+            return true;
+        }
+        return false;
+    }
+
+    public boolean clearFocus() {
+        if (newPlaylistName != null && newPlaylistName.hasFocus()) {
+            newPlaylistName.clearFocus();
+            Util.hideSoftInput(requireActivity(), newPlaylistName);
             return true;
         }
         return false;
