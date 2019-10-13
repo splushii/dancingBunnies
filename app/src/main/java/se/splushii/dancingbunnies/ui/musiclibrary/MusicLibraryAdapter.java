@@ -67,6 +67,10 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         return firstChar + secondChar;
     }
 
+    void scrollWhenReady() {
+        initialScrolled = false;
+    }
+
     void setModel(MusicLibraryFragmentModel model) {
         initialScrolled = false;
         model.getDataSet().observe(fragment.getViewLifecycleOwner(), dataset -> {

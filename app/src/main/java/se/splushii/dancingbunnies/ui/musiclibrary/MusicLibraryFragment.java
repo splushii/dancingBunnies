@@ -135,6 +135,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         if (newUserState == null) {
             return;
         }
+        recyclerViewAdapter.scrollWhenReady();
         String showField = getCurrentQuery().getShowField();
         String showDisplayField = Meta.getDisplayKey(showField);
         String sortField = getCurrentQuery().getSortByField();
