@@ -12,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.selection.MutableSelection;
 import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -104,6 +105,11 @@ public class ItemTouchHelperCallback<
         return validMove(current, target);
     }
 
+    private boolean validMove(RecyclerView.ViewHolder current,
+                              RecyclerView.ViewHolder target) {
+        return !aborted && listener.validMove((ViewHolder) current, (ViewHolder) target);
+    }
+
     @Override
     public boolean onMove(@NonNull RecyclerView recyclerView,
                           @NonNull RecyclerView.ViewHolder current,
@@ -122,9 +128,51 @@ public class ItemTouchHelperCallback<
         return false;
     }
 
-    private boolean validMove(RecyclerView.ViewHolder current,
-                              RecyclerView.ViewHolder target) {
-        return !aborted && listener.validMove((ViewHolder) current, (ViewHolder) target);
+    @Override
+    public void onMoved(@NonNull RecyclerView recyclerView,
+                        @NonNull RecyclerView.ViewHolder viewHolder,
+                        int fromPos,
+                        @NonNull RecyclerView.ViewHolder target,
+                        int toPos,
+                        int x,
+                        int y) {
+        RecyclerView.LayoutManager layoutManager = recyclerView.getLayoutManager();
+        if (!(layoutManager instanceof LinearLayoutManager)) {
+            return;
+        }
+        LinearLayoutManager linearLayoutManager = (LinearLayoutManager) layoutManager;
+        RecyclerView.LayoutParams targetParams = (RecyclerView.LayoutParams) target.itemView.getLayoutParams();
+        boolean isMovedHigher = fromPos < toPos;
+        if (linearLayoutManager.getReverseLayout()) {
+            if (isMovedHigher) {
+                linearLayoutManager.scrollToPositionWithOffset(
+                        toPos,
+                        (linearLayoutManager.getHeight() - linearLayoutManager.getPaddingBottom())
+                                - ((linearLayoutManager.getDecoratedTop(target.itemView) - targetParams.topMargin)
+                                + (linearLayoutManager.getDecoratedMeasuredHeight(target.itemView) + targetParams.topMargin + targetParams.bottomMargin))
+                );
+            } else {
+                linearLayoutManager.scrollToPositionWithOffset(
+                        toPos,
+                        (linearLayoutManager.getHeight() - linearLayoutManager.getPaddingBottom())
+                                - (linearLayoutManager.getDecoratedBottom(target.itemView) + targetParams.bottomMargin)
+                );
+            }
+        } else {
+            if (isMovedHigher) {
+                linearLayoutManager.scrollToPositionWithOffset(
+                        toPos,
+                        (linearLayoutManager.getDecoratedBottom(target.itemView) + targetParams.bottomMargin)
+                                - (linearLayoutManager.getDecoratedMeasuredHeight(target.itemView) + targetParams.topMargin + targetParams.bottomMargin)
+                                - recyclerView.getPaddingTop()
+                );
+            } else {
+                linearLayoutManager.scrollToPositionWithOffset(
+                        toPos,
+                        linearLayoutManager.getDecoratedTop(target.itemView) - targetParams.topMargin - recyclerView.getPaddingTop()
+                );
+            }
+        }
     }
 
     @Override
