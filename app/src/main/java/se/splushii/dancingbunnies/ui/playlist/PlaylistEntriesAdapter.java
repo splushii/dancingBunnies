@@ -228,7 +228,6 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
     public void onBindViewHolder(@NonNull PlaylistEntryHolder holder, int position) {
         holder.actionsView.initialize();
         holder.position = position;
-
         holder.entry.setBackgroundResource(position % 2 == 0 ?
                 R.color.white_active_accent : R.color.gray50_active_accent
         );

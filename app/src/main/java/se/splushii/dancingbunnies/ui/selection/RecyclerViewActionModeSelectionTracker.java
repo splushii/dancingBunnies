@@ -25,6 +25,7 @@ public class RecyclerViewActionModeSelectionTracker<ID,
         Adapter extends SelectionRecyclerViewAdapter<ID, ViewHolder>,
         ViewHolder extends ItemDetailsViewHolder<ID>> {
     private static final String LC = Util.getLogContext(RecyclerViewActionModeSelectionTracker.class);
+    private final ItemTouchHelper itemTouchHelper;
     private SelectionTracker<ID> selectionTracker;
     private ActionModeCallback actionModeCallback;
 
@@ -53,6 +54,7 @@ public class RecyclerViewActionModeSelectionTracker<ID,
                     @Override
                     public void onAbort() {
                         Log.d(LC, "ItemTouchHelper onAbort");
+                        actionModeCallback.finish();
                     }
 
                     @Override
@@ -69,18 +71,6 @@ public class RecyclerViewActionModeSelectionTracker<ID,
                     }
 
                     @Override
-                    public void onDropMode() {
-                        Log.d(LC, "ItemTouchHelper onDropMode");
-                        // TODO: Implement
-                    }
-
-                    @Override
-                    public void onAbortMode() {
-                        Log.d(LC, "ItemTouchHelper onAbortMode");
-                        // TODO: Implement
-                    }
-
-                    @Override
                     public boolean validMove(ViewHolder current, ViewHolder target) {
                         return recViewAdapter.validMove(current, target);
                     }
@@ -91,7 +81,7 @@ public class RecyclerViewActionModeSelectionTracker<ID,
                     }
                 }
         );
-        ItemTouchHelper itemTouchHelper = new ItemTouchHelper(itemTouchHelperCallback);
+        itemTouchHelper = new ItemTouchHelper(itemTouchHelperCallback);
         itemTouchHelper.attachToRecyclerView(recView);
         ItemDetailsLookup<ID> itemDetailsLookup = new ItemDetailsLookup<ID>() {
             @Nullable

@@ -117,7 +117,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                              Bundle savedInstanceState) {
         final View rootView = inflater.inflate(R.layout.nowplaying_fragment_layout, container,
                 false);
-
         RecyclerView recView = rootView.findViewById(R.id.nowplaying_recyclerview);
         LinearLayoutManager recViewLayoutManager = new LinearLayoutManager(this.getContext());
         recViewLayoutManager.setReverseLayout(true);

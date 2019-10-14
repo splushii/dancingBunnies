@@ -23,7 +23,6 @@ public class ItemTouchHelperCallback<
     private static final String LC = Util.getLogContext(ItemTouchHelperCallback.class);
     private final Adapter adapter;
     private Listener<ID, ViewHolder> listener;
-    private boolean abort = false;
     private TreeMap<Integer, ID> initialSelection;
     private TreeMap<Integer, ID> removedSelectedItems;
     private SelectionTracker<ID> selectionTracker;
@@ -31,14 +30,13 @@ public class ItemTouchHelperCallback<
     private ID dragID;
     private int initialDragPos;
     private int targetDragPos = -1;
+    private boolean aborted = false;
 
     public interface Listener<ID, ViewHolder> {
         void onDrop(Collection<ID> selection, int targetPos, ID idAfterTargetPos);
         void onAbort();
         void onUseViewHolderForDrag(ViewHolder dragViewHolder, Collection<ID> selection);
         void onResetDragViewHolder(ViewHolder dragViewHolder);
-        void onDropMode();
-        void onAbortMode();
         boolean validMove(ViewHolder current, ViewHolder target);
         boolean validDrag(ViewHolder v);
     }
@@ -72,17 +70,7 @@ public class ItemTouchHelperCallback<
         if (initialSelection.size() > 1) {
             listener.onUseViewHolderForDrag(dragViewHolder, initialSelection.values());
         }
-        setDropMode();
-    }
-
-    private void setDropMode() {
-        abort = false;
-        listener.onDropMode();
-    }
-
-    private void setAbortMode() {
-        abort = true;
-        listener.onAbortMode();
+        aborted = false;
     }
 
     @Override
@@ -120,36 +108,35 @@ public class ItemTouchHelperCallback<
     public boolean onMove(@NonNull RecyclerView recyclerView,
                           @NonNull RecyclerView.ViewHolder current,
                           @NonNull RecyclerView.ViewHolder target) {
+        if (aborted) {
+            return false;
+        }
         int from = current.getAdapterPosition();
         int to = target.getAdapterPosition();
         Log.d(LC, "onMove from: " + from + " to " + to);
         if (to != targetDragPos && canDropOver(recyclerView, current, target)) {
-            if (abort) {
-                setDropMode();
-            }
             adapter.moveItem(from, to);
             targetDragPos = to;
+            return true;
         }
-        return true;
+        return false;
     }
 
     private boolean validMove(RecyclerView.ViewHolder current,
                               RecyclerView.ViewHolder target) {
-        return listener.validMove((ViewHolder) current, (ViewHolder) target);
+        return !aborted && listener.validMove((ViewHolder) current, (ViewHolder) target);
     }
 
     @Override
     public void clearView(@NonNull RecyclerView recyclerView,
                           @NonNull RecyclerView.ViewHolder viewHolder) {
+        Log.d(LC, "clearView");
         super.clearView(recyclerView, viewHolder);
-        if (abort || targetDragPos == initialDragPos) {
-            listener.onResetDragViewHolder(dragViewHolder);
-            listener.onAbort();
-            // Reset adapter items
-            if (targetDragPos != initialDragPos) {
-                adapter.moveItem(targetDragPos, initialDragPos);
-            }
-            adapter.insertItems(removedSelectedItems);
+        if (aborted) {
+            return;
+        }
+        if (targetDragPos == initialDragPos) {
+            reset();
         } else {
             int newPos = targetDragPos;
             ID idAfterTargetPos = adapter.getKey(newPos + 1);
@@ -167,16 +154,33 @@ public class ItemTouchHelperCallback<
         }
     }
 
+    private void reset() {
+        // Reset drag view
+        listener.onResetDragViewHolder(dragViewHolder);
+        // Reset adapter items
+        if (targetDragPos != initialDragPos) {
+            adapter.moveItem(targetDragPos, initialDragPos);
+        }
+        adapter.insertItems(removedSelectedItems);
+        listener.onAbort();
+    }
+
     @Override
     public int interpolateOutOfBoundsScroll(@NonNull RecyclerView recyclerView,
                                             int viewSize,
                                             int viewSizeOutOfBounds,
                                             int totalSize,
                                             long msSinceStartScroll) {
-        if (!abort && Math.abs(viewSizeOutOfBounds) > viewSize) {
-            setAbortMode();
-        } else if (abort && Math.abs(viewSizeOutOfBounds) < viewSize) {
-            setDropMode();
+        if (aborted) {
+            return 0;
+        }
+        if (Math.abs(viewSizeOutOfBounds) > viewSize * 1.5) {
+            // FIXME: This is an ugly fix because of the two problems below
+            // viewHolder is detached when dragged out of bounds (and thus calling clearView())
+            // ItemTouchHelper does not fire onMove when dragging view out of bounds
+            reset();
+            aborted = true;
+            return 0;
         }
         return super.interpolateOutOfBoundsScroll(recyclerView, viewSize,
                 viewSizeOutOfBounds, totalSize, msSinceStartScroll);
