@@ -11,6 +11,7 @@ import android.widget.TextView;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 
 import androidx.annotation.NonNull;
@@ -50,6 +51,7 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
         this.fragment = fragment;
         playlistDataset = new LinkedList<>();
         playlistStorage = PlaylistStorage.getInstance(fragment.getContext());
+        setHasStableIds(true);
     }
 
     @Override
@@ -153,6 +155,12 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
         return playlistDataset.size();
     }
 
+    @Override
+    public long getItemId(int position) {
+        Playlist playlist = playlistDataset.get(position);
+        return Objects.hash(playlist.api, playlist.id, playlist.type);
+    }
+
     private void setDataSet(List<Playlist> playlists) {
         Log.d(LC, "playlists: " + playlists);
         playlistDataset = playlists;
@@ -168,14 +176,16 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
                     setDataSet(playlistFilter.apply(entries));
                     updateScrollPos(model.getUserStateValue(), entries);
                 });
-        model.getUserState().observe(fragment.getViewLifecycleOwner(), userState -> {
-            updateScrollPos(userState, playlistDataset);
-        });
+        model.getUserState().observe(
+                fragment.getViewLifecycleOwner(),
+                userState -> updateScrollPos(userState, playlistDataset)
+        );
         currentPlaylistEntryLiveData = model.getCurrentPlaylistID();
     }
 
     private void updateScrollPos(PlaylistUserState userState, List<Playlist> entries) {
         if (!initialScrolled && !entries.isEmpty() && fragment instanceof PlaylistFragment) {
+            initialScrolled = true;
             ((PlaylistFragment) fragment).scrollPlaylistsTo(
                     userState.playlistPos,
                     userState.playlistPad
