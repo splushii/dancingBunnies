@@ -305,22 +305,25 @@ public class PlaybackControllerStorage {
                 .apply();
     }
 
-    public long getNextPlaybackID() {
+    public long getNextPlaybackIDs(int num) {
         synchronized (playback_id_counter_key) {
-            return getNextID(playback_id_counter_key);
+            return getNextIDs(playback_id_counter_key, num);
         }
     }
 
     public long getNextPlaylistSelectionID() {
         synchronized (playlist_selection_id_counter_key) {
-            return getNextID(playlist_selection_id_counter_key);
+            return getNextIDs(playlist_selection_id_counter_key, 1);
         }
     }
 
-    private long getNextID(String idCounterKey) {
+    private long getNextIDs(String idCounterKey, int num) {
         long id = preferences.getLong(idCounterKey, 0);
+        if (id + num < 0) { // overflow
+            id = 0;
+        }
         if (!preferences.edit()
-                .putLong(idCounterKey, id + 1 >= 0 ? id + 1 : 0)
+                .putLong(idCounterKey, id + num)
                 .commit()) {
             throw new RuntimeException("Could not update ID for: " + idCounterKey);
         }

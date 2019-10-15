@@ -1005,7 +1005,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 if (playbackEntry.playbackID == PlaybackEntry.PLAYBACK_ID_INVALID) {
                     playbackEntry = new PlaybackEntry(
                             playbackEntry.entryID,
-                            playbackController.generatePlaybackID(),
+                            playbackController.reservePlaybackIDs(1),
                             playbackEntry.playbackType,
                             playbackEntry.playlistPos,
                             playbackEntry.playlistSelectionID

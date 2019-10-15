@@ -423,7 +423,7 @@ public class PlaybackController {
         return null;
     }
 
-    List<PlaybackEntry> playlistGetNext(int offset, int maxEntries) {
+    List<PlaybackEntry> playlistGetNext(int offset, int maxEntries, boolean dummyPlaybackID) {
         List<PlaybackEntry> entries = currentPlaylistPlaybackEntries.getEntries();
         if (entries == null || entries.isEmpty() || endOfPlaylistPlayback) {
             return Collections.emptyList();
@@ -452,13 +452,15 @@ public class PlaybackController {
         }
         nextRandom = randomOrder ? getNextRandomSeed(nextRandom) : 0L;
         boolean repeat = getCurrentPlaylistPlaybackRepeatMode();
+        long playbackID = dummyPlaybackID ?
+                PlaybackEntry.PLAYBACK_ID_INVALID : reservePlaybackIDs(maxEntries);
         for (int i = 0; i < offset + maxEntries; i++) {
             if (i >= offset) {
                 chosenEntries.add(new PlaybackEntry(
                         nextEntry.entryID,
                         // Set new ID:s, or else there may be multiple playback entries with same
                         // playback id in the queue.
-                        generatePlaybackID(),
+                        dummyPlaybackID ? PlaybackEntry.PLAYBACK_ID_INVALID : playbackID++,
                         nextEntry.playbackType,
                         nextEntry.playlistPos,
                         // Overwrite dummy selection id with current playlist selection id
@@ -628,7 +630,8 @@ public class PlaybackController {
         // expected playlist entries from the selected playlist
         List<PlaybackEntry> expectedPlaylistEntries = playlistGetNext(
                 0,
-                currentPlaylistEntries.size()
+                currentPlaylistEntries.size(),
+                true
         );
         if (currentPlaylistEntries.size() > expectedPlaylistEntries.size()) {
             Log.d(LC, "isCurrentPlaylistCorrect: No."
@@ -719,7 +722,8 @@ public class PlaybackController {
                     List<PlaybackEntry> newPlaylistPlaybackEntries = numPlaylistEntriesToFetch > 0 ?
                             playlistGetNext(
                                     getAllPlaylistEntries().size(),
-                                    numPlaylistEntriesToFetch)
+                                    numPlaylistEntriesToFetch,
+                                    false)
                                     .stream()
                                     .filter(p -> !allEntries.contains(p))
                                     .collect(Collectors.toList())
@@ -825,8 +829,8 @@ public class PlaybackController {
         }
     }
 
-    long generatePlaybackID() {
-        return storage.getNextPlaybackID();
+    long reservePlaybackIDs(int num) {
+        return storage.getNextPlaybackIDs(num);
     }
 
     CompletableFuture<Void> queueToPos(List<EntryID> entryIDs, int toPosition) {
@@ -872,16 +876,18 @@ public class PlaybackController {
                 + "entries.size: " + entries.size()
                 + ", beforePlaybackID: " + beforePlaybackID
                 + ")");
-        return queuePlaybackEntries(
-                entries.stream().map(e -> new PlaybackEntry(
-                        e,
-                        generatePlaybackID(),
-                        PlaybackEntry.USER_TYPE_QUEUE,
-                        PlaybackEntry.PLAYLIST_POS_NONE,
-                        PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID
-                )).collect(Collectors.toList()),
-                beforePlaybackID
-        );
+        List<PlaybackEntry> playbackEntries = new ArrayList<>();
+        long playbackID = reservePlaybackIDs(entries.size());
+        for (EntryID entryID: entries) {
+            playbackEntries.add(new PlaybackEntry(
+                    entryID,
+                    playbackID++,
+                    PlaybackEntry.USER_TYPE_QUEUE,
+                    PlaybackEntry.PLAYLIST_POS_NONE,
+                    PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID
+            ));
+        }
+        return queuePlaybackEntries(playbackEntries, beforePlaybackID);
     }
 
     private CompletableFuture<Void> queuePlaybackEntries(List<PlaybackEntry> entries,
@@ -1025,15 +1031,15 @@ public class PlaybackController {
         } else if (currentPlaylistPlaybackEntries.isEmpty()) {
             Log.d(LC, "playlistEntriesObserver."
                     + " No playlist playback entries. Initializing from playlist entries.");
-            List<PlaybackEntry> playlistPlaybackEntries = newPlaylistEntries.stream()
-                    .map(playlistEntry -> new PlaybackEntry(
-                            playlistEntry,
-                            PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID,
-                            // TODO: This may be too slow. If so, optimize
-                            // TODO: May be bottleneck with large playlist (e.g. 10000 entries)
-                            generatePlaybackID()
-                    ))
-                    .collect(Collectors.toList());
+            List<PlaybackEntry> playlistPlaybackEntries = new ArrayList<>();
+            long playbackID = reservePlaybackIDs(newPlaylistEntries.size());
+            for (PlaylistEntry playlistEntry: newPlaylistEntries) {
+                playlistPlaybackEntries.add(new PlaybackEntry(
+                        playlistEntry,
+                        PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID,
+                        playbackID++
+                ));
+            }
             currentPlaylistPlaybackEntries.add(0, playlistPlaybackEntries);
         } else {
             // Check if playlistEntries have changed.
@@ -1121,6 +1127,7 @@ public class PlaybackController {
 
             // On addition, add new entries according to shuffle algorithm.
             List<PlaybackEntry> addedPlaybackEntries = new ArrayList<>();
+            long playbackID = reservePlaybackIDs(addedPositions.size());
             for (int addedPos: addedPositions) {
                 PlaylistEntry addedPlaylistEntry = newPlaylistEntries.get(addedPos);
                 boolean alreadyPresent = false;
@@ -1134,7 +1141,7 @@ public class PlaybackController {
                     addedPlaybackEntries.add(new PlaybackEntry(
                             addedPlaylistEntry,
                             PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID,
-                            generatePlaybackID()
+                            playbackID++
                     ));
                 }
             }
