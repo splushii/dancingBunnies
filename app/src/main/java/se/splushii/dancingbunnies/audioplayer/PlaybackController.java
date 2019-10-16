@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -1201,13 +1202,79 @@ public class PlaybackController {
     CompletableFuture<Void> moveQueueItems(List<PlaybackEntry> playbackEntries,
                                            long beforePlaybackID) {
         synchronized (executorLock) {
+            return submitCompletableFuture(() -> _moveQueueItems(playbackEntries, beforePlaybackID));
+        }
+    }
+
+    private CompletableFuture<Void> _moveQueueItems(List<PlaybackEntry> playbackEntries,
+                                                    long beforePlaybackID) {
+        Log.d(LC, "moveQueueItems(" + playbackEntries
+                + ", beforePlaybackID: " + beforePlaybackID + ")");
+        return _deQueue(playbackEntries, false)
+                .thenCompose(v -> queuePlaybackEntries(playbackEntries, beforePlaybackID));
+    }
+
+    CompletableFuture<Void> shuffleQueueItems(List<PlaybackEntry> playbackEntries) {
+        synchronized (executorLock) {
             return submitCompletableFuture(() -> {
-                Log.d(LC, "moveQueueItems("
-                        + playbackEntries + ", beforePlaybackID: " + beforePlaybackID + ")");
-                return _deQueue(playbackEntries, false)
-                        .thenCompose(v -> queuePlaybackEntries(playbackEntries, beforePlaybackID));
+                Log.d(LC, "shuffleQueueItems(" + playbackEntries.size() + ")");
+                CompletableFuture<Void> ret = CompletableFuture.completedFuture(null);
+                List<PlaybackEntry> queueEntries = getAllQueueEntries();
+                HashMap<Long, List<PlaybackEntry>> entriesToMoveMap = getShuffledEntriesToMove(
+                        queueEntries,
+                        playbackEntries
+                );
+                for (Map.Entry<Long, List<PlaybackEntry>> entry: entriesToMoveMap.entrySet()) {
+                    long beforePlaybackID = entry.getKey();
+                    List<PlaybackEntry> entriesToMove = entry.getValue();
+                    ret = ret.thenCompose(aVoid -> _moveQueueItems(
+                            entriesToMove,
+                            beforePlaybackID
+                    ));
+                }
+                return ret;
             });
         }
+    }
+
+    public static HashMap<Long, List<PlaybackEntry>> getShuffledEntriesToMove(
+            List<PlaybackEntry> allEntries,
+            List<PlaybackEntry> entriesToShuffle
+    ) {
+        HashMap<Long, Integer> entriesBeforePlaybackIDMap = new HashMap<>();
+        int streak = 0;
+        for (int i = 0; i < allEntries.size(); i++) {
+            PlaybackEntry queueEntry = allEntries.get(i);
+            if (entriesToShuffle.contains(queueEntry)) {
+                streak++;
+            } else {
+                entriesBeforePlaybackIDMap.put(queueEntry.playbackID, streak);
+                streak = 0;
+            }
+        }
+        if (streak > 0) {
+            for (int j = 0; j < streak; j++) {
+                entriesBeforePlaybackIDMap.put(PlaybackEntry.PLAYBACK_ID_INVALID, streak);
+            }
+        }
+        List<PlaybackEntry> shuffledEntries = new ArrayList<>(entriesToShuffle);
+        Collections.shuffle(shuffledEntries);
+        HashMap<Long, List<PlaybackEntry>> entriesToMoveMap = new HashMap<>();
+        for (Map.Entry<Long, Integer> entry: entriesBeforePlaybackIDMap.entrySet()) {
+            long beforePlaybackID = entry.getKey();
+            int num = entry.getValue();
+            List<PlaybackEntry> entriesToMove = new ArrayList<>();
+            for (int i = 0; i < num; i++) {
+                if (shuffledEntries.isEmpty()) {
+                    break;
+                }
+                entriesToMove.add(shuffledEntries.remove(shuffledEntries.size() - 1));
+            }
+            if (!entriesToMove.isEmpty()) {
+                entriesToMoveMap.put(beforePlaybackID, entriesToMove);
+            }
+        }
+        return entriesToMoveMap;
     }
 
     CompletableFuture<Void> seekTo(long pos) {

@@ -48,6 +48,9 @@ public class MenuActions {
     public static final int ACTION_CACHE_DELETE_MULTIPLE = View.generateViewId();
     public static final int ACTION_HISTORY_DELETE_MULTIPLE = View.generateViewId();
     public static final int ACTION_PLAYLIST_DELETE_MULTIPLE = View.generateViewId();
+    public static final int ACTION_SHUFFLE_MULTIPLE_IN_QUEUE = View.generateViewId();
+    public static final int ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK = View.generateViewId();
+
     public static final int ACTION_PLAY = View.generateViewId();
     public static final int ACTION_ADD_TO_QUEUE = View.generateViewId();
     public static final int ACTION_REMOVE_FROM_QUEUE = View.generateViewId();
@@ -238,6 +241,14 @@ public class MenuActions {
         } else if (action == ACTION_PLAYLIST_DELETE_MULTIPLE) {
             PlaylistStorage.getInstance(audioBrowserFragment.requireContext())
                     .deletePlaylists(playlistSupplier.get());
+        } else if (action == ACTION_SHUFFLE_MULTIPLE_IN_QUEUE) {
+            audioBrowserFragment.shuffleQueueItems(playbackEntrySupplier.get());
+        } else if (action == ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK) {
+            PlaybackControllerStorage.getInstance(audioBrowserFragment.requireContext())
+                    .shuffle(
+                            PlaybackControllerStorage.QUEUE_ID_CURRENT_PLAYLIST_PLAYBACK,
+                            playbackEntrySupplier.get()
+                    );
         } else {
             return false;
         }
@@ -291,6 +302,10 @@ public class MenuActions {
             return R.string.item_action_delete_meta;
         } else if (action == ACTION_GOTO_META) {
             return R.string.item_action_goto_meta;
+        } else if (action == ACTION_SHUFFLE_MULTIPLE_IN_QUEUE) {
+            return R.string.item_action_shuffle_selection;
+        } else if (action == ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK) {
+            return R.string.item_action_shuffle_selection;
         }
         return -1;
     }
@@ -342,6 +357,10 @@ public class MenuActions {
             return R.drawable.ic_delete_black_24dp;
         } else if (action == ACTION_GOTO_META) {
             return R.drawable.ic_open_in_new_black_24dp;
+        } else if (action == ACTION_SHUFFLE_MULTIPLE_IN_QUEUE) {
+            return R.drawable.ic_shuffle_black_24dp;
+        } else if (action == ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK) {
+            return R.drawable.ic_shuffle_black_24dp;
         }
         return -1;
     }

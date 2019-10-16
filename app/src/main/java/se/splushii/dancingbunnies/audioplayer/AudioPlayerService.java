@@ -79,6 +79,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static final String COMMAND_QUEUE_ENTRYIDS = "QUEUE_ENTRYIDS";
     private static final String COMMAND_DEQUEUE = "DEQUEUE";
     private static final String COMMAND_MOVE_QUEUE_ITEMS = "MOVE_QUEUE_ITEMS";
+    private static final String COMMAND_SHUFFLE_QUEUE_ITEMS = "SHUFFLE_QUEUE_ITEMS";
 
     public static final String BUNDLE_KEY_CURRENT_PLAYBACK_ENTRY_BUNDLE =
             "dancingbunnies.bundle.key.audioplayerservice.playback_entry_bundle";
@@ -685,6 +686,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 case COMMAND_MOVE_QUEUE_ITEMS:
                     moveQueueItems(cb, extras);
                     break;
+                case COMMAND_SHUFFLE_QUEUE_ITEMS:
+                    shuffleQueueItems(cb, extras);
+                    break;
                 default:
                     Log.e(LC, "Unhandled MediaSession onCommand: " + command);
                     break;
@@ -824,6 +828,32 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         List<PlaybackEntry> playbackEntries = extras.getParcelableArrayList("playbackEntries");
         long beforePlaybackID = extras.getLong("beforePlaybackID");
         playbackController.moveQueueItems(playbackEntries, beforePlaybackID).handle((r, t) -> {
+            cb.send(t == null ? 0 : 1, null);
+            return handleControllerResult(r, t);
+        });
+    }
+
+    public static CompletableFuture<Boolean> shuffleQueueItems(MediaControllerCompat mediaController,
+                                                               List<PlaybackEntry> playbackEntries) {
+        Bundle params = new Bundle();
+        params.putParcelableArrayList("playbackEntries", new ArrayList<>(playbackEntries));
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        mediaController.sendCommand(
+                AudioPlayerService.COMMAND_SHUFFLE_QUEUE_ITEMS,
+                params,
+                new ResultReceiver(null) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        future.complete(resultCode == 0);
+                    }
+                }
+        );
+        return future;
+    }
+
+    private void shuffleQueueItems(ResultReceiver cb, Bundle extras) {
+        List<PlaybackEntry> playbackEntries = extras.getParcelableArrayList("playbackEntries");
+        playbackController.shuffleQueueItems(playbackEntries).handle((r, t) -> {
             cb.send(t == null ? 0 : 1, null);
             return handleControllerResult(r, t);
         });

@@ -117,7 +117,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         boolean showDelete = playlistID.type == PlaylistID.TYPE_STUPID
                 && MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_DELETE);
         int[] disabled = showDelete ? new int[0] :
-                new int[] { ACTION_REMOVE_MULTIPLE_FROM_PLAYLIST};
+                new int[] { ACTION_REMOVE_MULTIPLE_FROM_PLAYLIST };
         actionModeCallback.setActions(
                 new int[] {
                         ACTION_PLAY_MULTIPLE,

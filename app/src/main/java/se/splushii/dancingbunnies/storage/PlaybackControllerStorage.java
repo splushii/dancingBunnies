@@ -4,12 +4,15 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackController;
@@ -142,50 +145,57 @@ public class PlaybackControllerStorage {
         if (entries == null || entries.isEmpty()) {
             return Util.futureResult(null);
         }
-        return CompletableFuture.supplyAsync(() -> {
-            entryModel.insert(queueID, toPosition, entries);
-            return null;
-        });
+        return CompletableFuture.runAsync(() -> entryModel.insert(queueID, toPosition, entries));
     }
 
     public CompletableFuture<Void> update(int queueID, List<PlaybackEntry> entries) {
         if (entries == null || entries.isEmpty()) {
             return Util.futureResult(null);
         }
-        return CompletableFuture.supplyAsync(() -> {
-            entryModel.update(queueID, entries);
-            return null;
-        });
+        return CompletableFuture.runAsync(() -> entryModel.update(queueID, entries));
     }
 
     public CompletableFuture<Void> replaceWith(int queueID, List<PlaybackEntry> entries) {
-        return CompletableFuture.supplyAsync(() -> {
-            entryModel.replaceWith(queueID, entries);
-            return null;
-        });
+        return CompletableFuture.runAsync(() -> entryModel.replaceWith(queueID, entries));
     }
 
     public CompletableFuture<Void> removeEntries(int queueID, List<PlaybackEntry> playbackEntries) {
-        return CompletableFuture.supplyAsync(() -> {
-            entryModel.removeEntries(queueID, playbackEntries);
-            return null;
-        });
+        return CompletableFuture.runAsync(() -> entryModel.removeEntries(queueID, playbackEntries));
     }
 
     public CompletableFuture<Void> removeAll(int queueID) {
-        return CompletableFuture.supplyAsync(() -> {
-            entryModel.removeAll(queueID);
-            return null;
-        });
+        return CompletableFuture.runAsync(() -> entryModel.removeAll(queueID));
     }
 
     public CompletableFuture<Void> move(int queueID,
                                         long beforePlaybackID,
                                         List<PlaybackEntry> playbackEntries) {
-        return CompletableFuture.supplyAsync(() -> {
-            entryModel.move(queueID, beforePlaybackID, playbackEntries);
-            return null;
+        return CompletableFuture.runAsync(() ->
+                entryModel.move(queueID, beforePlaybackID, playbackEntries)
+        );
+    }
+
+    public CompletableFuture<Void> shuffle(int queueID, List<PlaybackEntry> playbackEntries) {
+        CompletableFuture<Void> shuffleFuture = new CompletableFuture<>();
+        LiveData<List<PlaybackEntry>> qEntriesLiveData = getEntries(queueID);
+        qEntriesLiveData.observeForever(new Observer<List<PlaybackEntry>>() {
+            @Override
+            public void onChanged(List<PlaybackEntry> allEntries) {
+                HashMap<Long, List<PlaybackEntry>> entriesToMoveMap =
+                        PlaybackController.getShuffledEntriesToMove(
+                                allEntries,
+                                playbackEntries
+                        );
+                for (Map.Entry<Long, List<PlaybackEntry>> entry: entriesToMoveMap.entrySet()) {
+                    long beforePlaybackID = entry.getKey();
+                    List<PlaybackEntry> entriesToMove = entry.getValue();
+                    move(queueID, beforePlaybackID, entriesToMove).join();
+                }
+                shuffleFuture.complete(null);
+                qEntriesLiveData.removeObserver(this);
+            }
         });
+        return shuffleFuture;
     }
 
     public void setLocalAudioPlayerCurrent(PlaybackEntry playbackEntry, long lastPos) {

@@ -50,6 +50,7 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_Q
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK;
 
 public class PlaylistFragment extends AudioBrowserFragment {
 
@@ -488,6 +489,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
                 new int[] {
                         ACTION_PLAY_MULTIPLE,
                         ACTION_ADD_MULTIPLE_TO_QUEUE,
+                        ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK,
                         ACTION_ADD_MULTIPLE_TO_PLAYLIST,
                         ACTION_CACHE_MULTIPLE,
                         ACTION_CACHE_DELETE_MULTIPLE

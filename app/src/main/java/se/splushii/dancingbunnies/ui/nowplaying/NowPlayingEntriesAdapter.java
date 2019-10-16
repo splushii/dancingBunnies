@@ -40,6 +40,7 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_FROM_QUEUE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_MULTIPLE_FROM_QUEUE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SET_CURRENT_PLAYLIST;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SHUFFLE_MULTIPLE_IN_QUEUE;
 
 public class NowPlayingEntriesAdapter extends
         SelectionRecyclerViewAdapter<PlaybackEntry, NowPlayingEntriesAdapter.ViewHolder> {
@@ -124,15 +125,18 @@ public class NowPlayingEntriesAdapter extends
 
     private void updateActionModeView(ActionModeCallback actionModeCallback, Selection<PlaybackEntry> selection) {
         actionModeCallback.getActionMode().setTitle(selection.size() + " entries");
-        boolean showDelete = true;
+        boolean containsPlaylistEntries = false;
         for (PlaybackEntry entry: selection) {
             if (PlaybackEntry.USER_TYPE_PLAYLIST.equals(entry.playbackType)) {
-                showDelete = false;
+                containsPlaylistEntries = true;
                 break;
             }
         }
-        int[] disabled = showDelete ?
-                new int[0] : new int[] { ACTION_REMOVE_MULTIPLE_FROM_QUEUE};
+        int[] disabled = containsPlaylistEntries ?
+                new int[] {
+                        ACTION_REMOVE_MULTIPLE_FROM_QUEUE,
+                        ACTION_SHUFFLE_MULTIPLE_IN_QUEUE
+                } : new int[0];
         actionModeCallback.setActions(
                 new int[] {
                         ACTION_PLAY_MULTIPLE,
@@ -141,6 +145,7 @@ public class NowPlayingEntriesAdapter extends
                 new int[] {
                         ACTION_PLAY_MULTIPLE,
                         ACTION_ADD_MULTIPLE_TO_QUEUE,
+                        ACTION_SHUFFLE_MULTIPLE_IN_QUEUE,
                         ACTION_ADD_MULTIPLE_TO_PLAYLIST,
                         ACTION_REMOVE_MULTIPLE_FROM_QUEUE,
                         ACTION_CACHE_MULTIPLE,

@@ -140,6 +140,18 @@ public abstract class AudioBrowserFragment extends Fragment {
         });
     }
 
+    public CompletableFuture<Boolean> shuffleQueueItems(List<PlaybackEntry> playbackEntries) {
+        return AudioPlayerService.shuffleQueueItems(
+                mediaController,
+                playbackEntries
+        ).thenApply(success -> {
+            if (!success) {
+                Log.e(LC, "shuffleQueueItems failed");
+            }
+            return success;
+        });
+    }
+
     public CompletableFuture<Boolean> setCurrentPlaylist(PlaylistID playlistID, long pos) {
         return AudioPlayerService.setCurrentPlaylist(
                 mediaController,

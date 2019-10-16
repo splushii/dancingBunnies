@@ -59,6 +59,7 @@
     <string name="item_action_edit_meta">Edit metadata tag</string>
     <string name="item_action_delete_meta">Delete metadata tag</string>
     <string name="item_action_goto_meta">Show all entries for tag</string>
+    <string name="item_action_shuffle_selection">Shuffle selected entries</string>
     <string name="song_info" />
     <string name="search_hint">…</string>
     <string name="app_label">Dancing Bunnies</string>
