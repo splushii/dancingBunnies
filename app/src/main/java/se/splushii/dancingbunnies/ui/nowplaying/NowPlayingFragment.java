@@ -68,6 +68,8 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CLEAR_HISTORY;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CLEAR_QUEUE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_HISTORY_DELETE_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_INFO;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE;
@@ -86,7 +88,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private TextView positionText;
     private TextView durationText;
     private TextView mediaInfoText;
-    private TextView bufferingText;
+    private View bufferingView;
     private TextView sizeText;
     private MutableLiveData<EntryID> entryIDLiveData;
     private Meta currentMeta = Meta.UNKNOWN_ENTRY;
@@ -254,15 +256,37 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         positionText = rootView.findViewById(R.id.nowplaying_position);
         durationText = rootView.findViewById(R.id.nowplaying_duration);
         mediaInfoText = rootView.findViewById(R.id.nowplaying_media_info);
-        bufferingText = rootView.findViewById(R.id.nowplaying_buffering);
+        bufferingView = rootView.findViewById(R.id.nowplaying_buffering);
         sizeText = rootView.findViewById(R.id.nowplaying_size);
 
         currentPlaylistView = rootView.findViewById(R.id.nowplaying_current_playlist);
+        rootView.findViewById(R.id.nowplaying_actions).setOnClickListener(v ->
+                MenuActions.showPopupMenu(
+                        getContext(),
+                        v,
+                        new int[] {
+                                ACTION_CLEAR_QUEUE,
+                                ACTION_CLEAR_HISTORY
+                        },
+                        new HashSet<>(),
+                        menuItem -> MenuActions.doAction(
+                                menuItem.getItemId(),
+                                this,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null
+                        )
+                )
+        );
         rootView.findViewById(R.id.nowplaying_current_more).setOnClickListener(v ->
                 MenuActions.showPopupMenu(
                         getContext(),
                         v,
-                        new int[]{
+                        new int[] {
                                 ACTION_ADD_TO_QUEUE,
                                 ACTION_ADD_TO_PLAYLIST,
                                 ACTION_CACHE,
@@ -487,7 +511,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 Log.d(LC, "state: playing");
                 waveformSeekBar.setEnabled(true);
                 playPauseBtn.setImageDrawable(pauseDrawable);
-                bufferingText.setVisibility(INVISIBLE);
+                bufferingView.setVisibility(INVISIBLE);
                 isPlaying = true;
                 scheduleProgressUpdate();
                 break;
@@ -497,7 +521,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             case PlaybackStateCompat.STATE_PAUSED:
                 waveformSeekBar.setEnabled(true);
                 playPauseBtn.setImageDrawable(playDrawable);
-                bufferingText.setVisibility(INVISIBLE);
+                bufferingView.setVisibility(INVISIBLE);
                 isPlaying = false;
                 updateProgress();
                 stopProgressUpdate();
@@ -506,7 +530,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             case PlaybackStateCompat.STATE_BUFFERING:
                 waveformSeekBar.setEnabled(true);
                 playPauseBtn.setImageDrawable(playDrawable);
-                bufferingText.setVisibility(VISIBLE);
+                bufferingView.setVisibility(VISIBLE);
                 isPlaying = false;
                 updateProgress();
                 stopProgressUpdate();
@@ -520,7 +544,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             case PlaybackStateCompat.STATE_ERROR:
                 waveformSeekBar.setEnabled(false);
                 playPauseBtn.setImageDrawable(playDrawable);
-                bufferingText.setVisibility(INVISIBLE);
+                bufferingView.setVisibility(INVISIBLE);
                 isPlaying = false;
                 stopProgressUpdate();
                 break;
@@ -577,14 +601,10 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             sizeText.setVisibility(INVISIBLE);
         }
         String contentType = metadata.getFirstString(Meta.FIELD_CONTENT_TYPE);
-        String suffix = metadata.getFirstString(Meta.FIELD_FILE_SUFFIX);
         long bitrate = metadata.getFirstLong(Meta.FIELD_BITRATE, -1);
         ArrayList<String> info = new ArrayList<>();
         if (!contentType.isEmpty()) {
             info.add(contentType);
-        }
-        if (!suffix.isEmpty()) {
-            info.add(suffix);
         }
         if (bitrate >= 0) {
             info.add(Meta.getDisplayValue(Meta.FIELD_BITRATE, bitrate));

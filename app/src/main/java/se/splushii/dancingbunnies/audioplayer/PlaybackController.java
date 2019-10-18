@@ -1199,6 +1199,14 @@ public class PlaybackController {
         return thenUpdateState ? result.thenCompose(aVoid -> updateState()) : result;
     }
 
+    CompletableFuture<Void> clearQueue() {
+        synchronized (executorLock) {
+            return submitCompletableFuture(() -> queue.clear()
+                    .thenCompose(v -> audioPlayer.dePreload(getPlayerEntries()))
+            );
+        }
+    }
+
     CompletableFuture<Void> moveQueueItems(List<PlaybackEntry> playbackEntries,
                                            long beforePlaybackID) {
         synchronized (executorLock) {

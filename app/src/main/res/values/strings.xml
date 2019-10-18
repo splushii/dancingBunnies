@@ -60,6 +60,8 @@
     <string name="item_action_delete_meta">Delete metadata tag</string>
     <string name="item_action_goto_meta">Show all entries for tag</string>
     <string name="item_action_shuffle_selection">Shuffle selected entries</string>
+    <string name="item_action_queue_clear">Clear queue</string>
+    <string name="item_action_history_clear">Clear history</string>
     <string name="song_info" />
     <string name="search_hint">…</string>
     <string name="app_label">Dancing Bunnies</string>
@@ -79,6 +81,7 @@
     <string name="nowplaying_next_contentdesc">Skip to next</string>
     <string name="nowplaying_context_play">Play</string>
     <string name="nowplaying_actionmode_action_play">Play</string>
+    <string name="nowplaying_actions">Actions</string>
     <string name="musiclibrary_entry_type_select">Show:</string>
     <string name="musiclibrary_sort_select">Sort by:</string>
     <string name="musiclibrary_home">Music library home</string>

@@ -126,6 +126,14 @@ public abstract class AudioBrowserFragment extends Fragment {
         });
     }
 
+    public void clearQueue() {
+        AudioPlayerService.clearQueue(mediaController).thenAccept(success -> {
+            if (!success) {
+                Log.e(LC, "dequeue entries failed");
+            }
+        });
+    }
+
     public CompletableFuture<Boolean> moveQueueItems(List<PlaybackEntry> playbackEntries,
                                                      long beforePlaybackID) {
         return AudioPlayerService.moveQueueItems(

@@ -78,6 +78,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static final String COMMAND_PLAY_ENTRYIDS = "PLAY_ENTRYIDS";
     private static final String COMMAND_QUEUE_ENTRYIDS = "QUEUE_ENTRYIDS";
     private static final String COMMAND_DEQUEUE = "DEQUEUE";
+    private static final String COMMAND_CLEAR_QUEUE = "CLEAR_QUEUE";
     private static final String COMMAND_MOVE_QUEUE_ITEMS = "MOVE_QUEUE_ITEMS";
     private static final String COMMAND_SHUFFLE_QUEUE_ITEMS = "SHUFFLE_QUEUE_ITEMS";
 
@@ -683,6 +684,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 case COMMAND_DEQUEUE:
                     dequeue(cb, extras);
                     break;
+                case COMMAND_CLEAR_QUEUE:
+                    clearQueue(cb, extras);
+                    break;
                 case COMMAND_MOVE_QUEUE_ITEMS:
                     moveQueueItems(cb, extras);
                     break;
@@ -798,6 +802,30 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private void dequeue(ResultReceiver cb, Bundle extras) {
         List<PlaybackEntry> playbackEntries = extras.getParcelableArrayList("playbackEntries");
         playbackController.deQueue(playbackEntries)
+                .handle((r, t) -> {
+                    cb.send(t == null ? 0 : 1, null);
+                    return handleControllerResult(r, t);
+                });
+    }
+
+    public static CompletableFuture<Boolean> clearQueue(MediaControllerCompat mediaController) {
+        Bundle params = new Bundle();
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        mediaController.sendCommand(
+                AudioPlayerService.COMMAND_CLEAR_QUEUE,
+                params,
+                new ResultReceiver(null) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        future.complete(resultCode == 0);
+                    }
+                }
+        );
+        return future;
+    }
+
+    private void clearQueue(ResultReceiver cb, Bundle extras) {
+        playbackController.clearQueue()
                 .handle((r, t) -> {
                     cb.send(t == null ? 0 : 1, null);
                     return handleControllerResult(r, t);

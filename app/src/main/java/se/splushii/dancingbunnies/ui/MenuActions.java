@@ -65,6 +65,9 @@ public class MenuActions {
     public static final int ACTION_GOTO_META = View.generateViewId();
     public static final int ACTION_INFO = View.generateViewId();
 
+    public static final int ACTION_CLEAR_QUEUE = View.generateViewId();
+    public static final int ACTION_CLEAR_HISTORY = View.generateViewId();
+
     static void addAction(Context context,
                           Menu menu,
                           int order,
@@ -189,6 +192,11 @@ public class MenuActions {
             metaDialogFragment.requireActivity().startActivity(intent);
         } else if (action == ACTION_EDIT_META) {
         } else if (action == ACTION_DELETE_META) {
+        } else if (action == ACTION_CLEAR_QUEUE) {
+            audioBrowserFragment.clearQueue();
+        } else if (action == ACTION_CLEAR_HISTORY) {
+            PlaybackControllerStorage.getInstance(audioBrowserFragment.requireContext())
+                    .removeAll(PlaybackControllerStorage.QUEUE_ID_HISTORY);
         } else {
             return false;
         }
@@ -306,6 +314,10 @@ public class MenuActions {
             return R.string.item_action_shuffle_selection;
         } else if (action == ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK) {
             return R.string.item_action_shuffle_selection;
+        } else if (action == ACTION_CLEAR_QUEUE) {
+            return R.string.item_action_queue_clear;
+        } else if (action == ACTION_CLEAR_HISTORY) {
+            return R.string.item_action_history_clear;
         }
         return -1;
     }
@@ -361,6 +373,10 @@ public class MenuActions {
             return R.drawable.ic_shuffle_black_24dp;
         } else if (action == ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK) {
             return R.drawable.ic_shuffle_black_24dp;
+        } else if (action == ACTION_CLEAR_QUEUE) {
+            return 0;
+        } else if (action == ACTION_CLEAR_HISTORY) {
+            return 0;
         }
         return -1;
     }
