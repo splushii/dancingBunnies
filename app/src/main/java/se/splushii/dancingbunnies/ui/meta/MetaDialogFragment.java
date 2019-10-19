@@ -1,5 +1,6 @@
 package se.splushii.dancingbunnies.ui.meta;
 
+import android.annotation.SuppressLint;
 import android.app.Dialog;
 import android.os.Bundle;
 import android.util.Log;
@@ -9,7 +10,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.inputmethod.EditorInfo;
-import android.widget.EditText;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
@@ -17,6 +19,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -26,6 +30,8 @@ import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Transformations;
 import androidx.recyclerview.selection.StorageStrategy;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -48,12 +54,18 @@ public class MetaDialogFragment extends DialogFragment {
     private ArrayList<Pair<String, String>> data;
 
     private View addView;
-    private EditText addValueEditText;
+    private AutoCompleteTextView addKeyEditText;
+    private MutableLiveData<String> addValueKeyLiveData;
+    private AutoCompleteTextView addValueEditText;
     private ImageButton addBtn;
 
     private MetaDialogFragmentAdapter recViewAdapter;
     private RecyclerViewActionModeSelectionTracker<MetaTag, MetaDialogFragmentAdapter, MetaDialogFragmentAdapter.ViewHolder> selectionTracker;
     private LiveData<Meta> metaLiveData;
+    private SwitchCompat addLocalTagSwitch;
+
+    private ArrayList<String> metaKeys;
+    private ArrayAdapter<String> displayMetaKeysAdapter;
 
     public static void showMeta(AudioBrowserFragment audioBrowserFragment, EntryID entryID) {
         if (entryID == null || entryID.isUnknown()) {
@@ -93,15 +105,49 @@ public class MetaDialogFragment extends DialogFragment {
         return dialog;
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.meta_dialog_fragment_layout, container, false);
         TextView title = rootView.findViewById(R.id.meta_dialog_title);
         addView = rootView.findViewById(R.id.meta_dialog_add_view);
-        SwitchCompat addLocalTagSwitch = rootView.findViewById(R.id.meta_dialog_add_local_switch);
-        EditText addKeyEditText = rootView.findViewById(R.id.meta_dialog_add_tag_key);
+        addLocalTagSwitch = rootView.findViewById(R.id.meta_dialog_add_local_switch);
+        addKeyEditText = rootView.findViewById(R.id.meta_dialog_add_tag_key);
+        metaKeys = new ArrayList<>();
+        displayMetaKeysAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_spinner_dropdown_item
+        );
+        addKeyEditText.setAdapter(displayMetaKeysAdapter);
+        MetaStorage.getInstance(requireContext())
+                .getMetaFields()
+                .observe(getViewLifecycleOwner(), newFields -> {
+                    metaKeys.clear();
+                    metaKeys.addAll(newFields);
+                    updateAddKeySuggestions();
+                });
+
         addValueEditText = rootView.findViewById(R.id.meta_dialog_add_tag_value);
+        ArrayAdapter<String> addValueAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_spinner_dropdown_item
+        );
+        addValueEditText.setAdapter(addValueAdapter);
+        addValueKeyLiveData = new MutableLiveData<>();
+        Transformations.switchMap(
+                addValueKeyLiveData,
+                key -> MetaStorage.getInstance(requireContext()).getMetaValuesAsStrings(key)
+        ).observe(getViewLifecycleOwner(), values -> {
+            addValueAdapter.clear();
+            addValueAdapter.addAll(values);
+            addValueAdapter.notifyDataSetChanged();
+        });
+        addValueEditText.setOnFocusChangeListener((view, hasFocus) -> {
+            if (hasFocus) {
+                updateAddValueSuggestions();
+            }
+        });
         addBtn = rootView.findViewById(R.id.meta_dialog_add_btn);
         RecyclerView recView = rootView.findViewById(R.id.meta_dialog_recyclerview);
         LinearLayoutManager recViewLayoutManager = new LinearLayoutManager(this.getContext());
@@ -127,11 +173,22 @@ public class MetaDialogFragment extends DialogFragment {
             }
         });
 
-
         boolean metaAddSupported = MusicLibraryService
                 .checkAPISupport(entryID.src, MusicLibraryService.META_ADD);
         addLocalTagSwitch.setEnabled(metaAddSupported);
         addLocalTagSwitch.setChecked(!metaAddSupported);
+        AtomicBoolean userSelectedLocalTag = new AtomicBoolean(false);
+        addLocalTagSwitch.setOnTouchListener((v, event) -> {
+            userSelectedLocalTag.set(true);
+            return false;
+        });
+        addLocalTagSwitch.setOnCheckedChangeListener((compoundButton, checked) -> {
+            if (userSelectedLocalTag.get()) {
+                userSelectedLocalTag.set(false);
+                updateAddKeySuggestions();
+                updateAddValueSuggestions();
+            }
+        });
 
         addBtn.setOnClickListener(v -> {
             addBtn.animate().rotation(45f).setInterpolator(new AccelerateDecelerateInterpolator());
@@ -149,8 +206,7 @@ public class MetaDialogFragment extends DialogFragment {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 String key = addKeyEditText.getText().toString();
                 String value = addValueEditText.getText().toString();
-                boolean isLocalUserTag = addLocalTagSwitch.isChecked();
-                if (isLocalUserTag) {
+                if (isLocalUserTag()) {
                     // TODO: Support adding other local user tag types (long, double)
                     String userLocalKey = Meta.constructLocalUserStringKey(key);
                     CompletableFuture.runAsync(() ->
@@ -179,6 +235,40 @@ public class MetaDialogFragment extends DialogFragment {
             initMetaRecView();
         });
         return rootView;
+    }
+
+    private void updateAddValueSuggestions() {
+        String key = addKeyEditText.getText().toString();
+        if (isLocalUserTag()) {
+            key = Meta.constructLocalUserStringKey(key);
+        }
+        if (!key.equals(addValueKeyLiveData.getValue())) {
+            addValueKeyLiveData.setValue(key);
+        }
+    }
+
+    private void updateAddKeySuggestions() {
+        displayMetaKeysAdapter.clear();
+        boolean isLocalUser = isLocalUserTag();
+        displayMetaKeysAdapter.addAll(metaKeys.stream()
+                .filter(key -> {
+                    if (Meta.isSpecial(key)) {
+                        return false;
+                    }
+                    if (Meta.isLocalUser(key)) {
+                        return isLocalUser;
+                    } else {
+                        return !isLocalUser;
+                    }
+                })
+                .map(key -> isLocalUser ? Meta.getUserLocalTagName(key) : key)
+                .collect(Collectors.toList())
+        );
+        displayMetaKeysAdapter.notifyDataSetChanged();
+    }
+
+    private boolean isLocalUserTag() {
+        return addLocalTagSwitch.isChecked();
     }
 
     private boolean hideAddView() {

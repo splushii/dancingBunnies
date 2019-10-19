@@ -242,4 +242,23 @@ public abstract class MetaDao {
             + " UNION"
             + " SELECT DISTINCT \"" + DB.COLUMN_KEY + "\" FROM " + DB.TABLE_META_LOCAL_DOUBLE)
     public abstract LiveData<List<String>> getDoubleMetaKeys();
+
+    @Query("SELECT DISTINCT \"" + DB.COLUMN_VALUE + "\" FROM " + DB.TABLE_META_STRING
+            + " WHERE \"" + DB.COLUMN_KEY + "\" = :key"
+            + " UNION"
+            + " SELECT DISTINCT \"" + DB.COLUMN_VALUE + "\" FROM " + DB.TABLE_META_LOCAL_STRING
+            + " WHERE \"" + DB.COLUMN_KEY + "\" = :key")
+    public abstract LiveData<List<String>> getStringMetaValues(String key);
+    @Query("SELECT DISTINCT \"" + DB.COLUMN_VALUE + "\" FROM " + DB.TABLE_META_LONG
+            + " WHERE \"" + DB.COLUMN_KEY + "\" = :key"
+            + " UNION"
+            + " SELECT DISTINCT \"" + DB.COLUMN_VALUE + "\" FROM " + DB.TABLE_META_LOCAL_LONG
+            + " WHERE \"" + DB.COLUMN_KEY + "\" = :key")
+    public abstract LiveData<List<Long>> getLongMetaValues(String key);
+    @Query("SELECT DISTINCT \"" + DB.COLUMN_VALUE + "\" FROM " + DB.TABLE_META_DOUBLE
+            + " WHERE \"" + DB.COLUMN_KEY + "\" = :key"
+            + " UNION"
+            + " SELECT DISTINCT \"" + DB.COLUMN_VALUE + "\" FROM " + DB.TABLE_META_LOCAL_DOUBLE
+            + " WHERE \"" + DB.COLUMN_KEY + "\" = :key")
+    public abstract LiveData<List<Double>> getDoubleMetaValues(String key);
 }

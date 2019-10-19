@@ -91,7 +91,7 @@ public class Meta {
             Meta.FIELD_SPECIAL_MEDIA_ID
     );
 
-    private static boolean isSpecial(String key) {
+    public static boolean isSpecial(String key) {
         return FIELD_SPECIAL_MEDIA_ID.equals(key) || FIELD_SPECIAL_MEDIA_SRC.equals(key);
     }
 
@@ -158,11 +158,17 @@ public class Meta {
         return getDisplayValue(key, Long.toString(value));
     }
 
-    public static String getDisplayKey(String key) {
+    public static String getUserLocalTagName(String key) {
         if (isLocalUser(key)) {
             String keySuffix = key.substring(FIELD_LOCAL_USER_PREFIX.length());
-            String tagName = keySuffix.split("\\.", 2)[1];
-            return "dB " + tagName;
+            return keySuffix.split("\\.", 2)[1];
+        }
+        return null;
+    }
+
+    public static String getDisplayKey(String key) {
+        if (isLocalUser(key)) {
+            return "dB " + getUserLocalTagName(key);
         }
         if (isLocal(key) || isSpecial(key)) {
             String tagName = key.substring(FIELD_DANCINGBUNNIES_PREFIX.length());

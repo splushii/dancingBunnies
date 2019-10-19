@@ -130,7 +130,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"/>
-                    <EditText
+                    <AutoCompleteTextView
                         android:id="@+id/musiclibrary_filter_new_text"
                         android:layout_width="0dp"
                         android:layout_weight="1"
@@ -138,6 +138,7 @@
                         android:layout_gravity="center_vertical"
                         android:background="@android:color/transparent"
                         android:imeOptions="actionDone"
+                        android:completionThreshold="1"
                         android:hint="@string/enter_filter"
                         android:paddingTop="4sp"
                         android:paddingBottom="4sp"
@@ -172,7 +173,7 @@
                         android:paddingBottom="4sp"
                         android:paddingStart="16sp"
                         android:paddingEnd="2dp"/>
-                    <EditText
+                    <AutoCompleteTextView
                         android:id="@+id/musiclibrary_filter_edit_input"
                         android:layout_width="0dp"
                         android:layout_weight="1"

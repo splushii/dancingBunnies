@@ -33,7 +33,7 @@
             android:textColor="@color/primary_text_color"
             android:fontFamily="sans-serif"
             android:textSize="14sp" />
-        <EditText
+        <AutoCompleteTextView
             android:id="@+id/meta_dialog_list_value_edit"
             android:layout_width="0dp"
             android:layout_weight="2"
@@ -47,6 +47,7 @@
             android:visibility="gone"
             android:background="@color/white_active_accent_extra_light"
             android:imeOptions="actionDone"
+            android:completionThreshold="1"
             android:hint="@string/meta_value"
             android:textColor="@color/colorPrimaryText"
             android:textSize="14sp"

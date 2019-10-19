@@ -4,8 +4,8 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
-import android.widget.ImageButton;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -80,35 +80,42 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.add_to_new_playlist_dialog_fragment_layout, container, false);
         addToNewPlaylistEditText = rootView.findViewById(R.id.add_to_new_playlist_dialog_input);
-        ImageButton addToNewPlaylistBtn = rootView.findViewById(R.id.add_to_new_playlist_dialog_btn);
-        addToNewPlaylistBtn.setOnClickListener(v -> {
-            String name = addToNewPlaylistEditText.getText().toString();
-            if (entryIDs != null) {
-                // Create a StupidPlaylist
-                MetaStorage.getInstance(requireContext())
-                        .getSongEntriesOnce(entryIDs, query)
-                        .thenCompose(songEntryIDs ->
-                                PlaylistStorage.getInstance(requireContext()).insertPlaylists(
-                                        0,
-                                        Collections.singletonList(new StupidPlaylist(
-                                                PlaylistStorage.generatePlaylistID(PlaylistID.TYPE_STUPID),
-                                                name,
-                                                songEntryIDs
-                                        ))
-                                ))
-                        .thenRun(this::dismiss);
-            } else {
-                // Create a SmartPlaylist
-                PlaylistStorage.getInstance(requireContext()).insertPlaylists(
-                        0,
-                        Collections.singletonList(new SmartPlaylist(
-                                PlaylistStorage.generatePlaylistID(PlaylistID.TYPE_SMART),
-                                name,
-                                query
-                        )))
-                        .thenRunAsync(this::dismiss, Util.getMainThreadExecutor());
+        addToNewPlaylistEditText.setOnEditorActionListener((textView, actionId, keyEvent) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                String name = addToNewPlaylistEditText.getText().toString();
+                createPlaylist(name);
+                return true;
             }
+            return false;
         });
         return rootView;
+    }
+
+    private void createPlaylist(String name) {
+        if (entryIDs != null) {
+            // Create a StupidPlaylist
+            MetaStorage.getInstance(requireContext())
+                    .getSongEntriesOnce(entryIDs, query)
+                    .thenCompose(songEntryIDs ->
+                            PlaylistStorage.getInstance(requireContext()).insertPlaylists(
+                                    0,
+                                    Collections.singletonList(new StupidPlaylist(
+                                            PlaylistStorage.generatePlaylistID(PlaylistID.TYPE_STUPID),
+                                            name,
+                                            songEntryIDs
+                                    ))
+                            ))
+                    .thenRun(this::dismiss);
+        } else {
+            // Create a SmartPlaylist
+            PlaylistStorage.getInstance(requireContext()).insertPlaylists(
+                    0,
+                    Collections.singletonList(new SmartPlaylist(
+                            PlaylistStorage.generatePlaylistID(PlaylistID.TYPE_SMART),
+                            name,
+                            query
+                    )))
+                    .thenRunAsync(this::dismiss, Util.getMainThreadExecutor());
+        }
     }
 }

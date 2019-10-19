@@ -9,8 +9,9 @@ import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.EditText;
+import android.widget.AutoCompleteTextView;
 import android.widget.ImageButton;
 import android.widget.Spinner;
 import android.widget.TableRow;
@@ -30,6 +31,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.selection.MutableSelection;
 import androidx.recyclerview.selection.SelectionPredicates;
@@ -76,11 +79,11 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private ChipGroup filterChips;
     private View filterEdit;
     private TextView filterEditType;
-    private String filterEditTypeValue = "";
-    private EditText filterEditInput;
+    private MutableLiveData<String> filterEditTypeValueLiveData;
+    private AutoCompleteTextView filterEditInput;
     private View filterNew;
     private Spinner filterNewType;
-    private EditText filterNewInput;
+    private AutoCompleteTextView filterNewInput;
 
     private ArrayList<String> metaKeys;
     private ArrayAdapter<String> metaKeyAdapter;
@@ -409,6 +412,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 displayedFields
         );
         filterNewType.setAdapter(metaKeyAdapter);
+        filterNewType.setSelection(0);
         filterNewInput.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 int pos = filterNewType.getSelectedItemPosition();
@@ -428,6 +432,33 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             }
             return false;
         });
+        ArrayAdapter<String> filterNewTagValuesAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_spinner_dropdown_item
+        );
+        filterNewInput.setAdapter(filterNewTagValuesAdapter);
+        MutableLiveData<String> filterNewTagValuesLiveData = new MutableLiveData<>();
+        Transformations.switchMap(
+                filterNewTagValuesLiveData,
+                key -> MetaStorage.getInstance(requireContext()).getMetaValuesAsStrings(key)
+        ).observe(getViewLifecycleOwner(), values -> {
+            filterNewTagValuesAdapter.clear();
+            filterNewTagValuesAdapter.addAll(values);
+            filterNewTagValuesAdapter.notifyDataSetChanged();
+        });
+        filterNewType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                String filterNewKey = metaKeys.get(filterNewType.getSelectedItemPosition());
+                if (!filterNewKey.equals(filterNewTagValuesLiveData.getValue())) {
+                    filterNewTagValuesLiveData.setValue(filterNewKey);
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {}
+        });
+
         MetaStorage.getInstance(requireContext())
                 .getMetaFields()
                 .observe(getViewLifecycleOwner(), newFields -> {
@@ -489,6 +520,20 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         filterEdit = rootView.findViewById(R.id.musiclibrary_filter_edit);
         filterEditType = rootView.findViewById(R.id.musiclibrary_filter_edit_type);
         filterEditInput = rootView.findViewById(R.id.musiclibrary_filter_edit_input);
+        ArrayAdapter<String> filterEditTagValuesAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_spinner_dropdown_item
+        );
+        filterEditInput.setAdapter(filterEditTagValuesAdapter);
+        filterEditTypeValueLiveData = new MutableLiveData<>();
+        Transformations.switchMap(
+                filterEditTypeValueLiveData,
+                key -> MetaStorage.getInstance(requireContext()).getMetaValuesAsStrings(key)
+        ).observe(getViewLifecycleOwner(), values -> {
+            filterEditTagValuesAdapter.clear();
+            filterEditTagValuesAdapter.addAll(values);
+            filterEditTagValuesAdapter.notifyDataSetChanged();
+        });
 
         rootView.findViewById(R.id.musiclibrary_filter_chip_new).setOnClickListener(view -> {
             filterEdit.setVisibility(GONE);
@@ -569,7 +614,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         newChip.setText(text);
         newChip.setOnClickListener(v -> {
             filterNew.setVisibility(GONE);
-            if (metaKey.equals(filterEditTypeValue) && filterEdit.getVisibility() == VISIBLE) {
+            if (metaKey.equals(filterEditTypeValueLiveData.getValue()) && filterEdit.getVisibility() == VISIBLE) {
                 filterEdit.setVisibility(GONE);
                 Util.hideSoftInput(requireActivity(), filterEditInput);
             } else {
@@ -590,7 +635,9 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                     }
                     return false;
                 });
-                filterEditTypeValue = metaKey;
+                if (!metaKey.equals(filterEditTypeValueLiveData.getValue())) {
+                    filterEditTypeValueLiveData.setValue(metaKey);
+                }
                 String filterEditTypeText = Meta.getDisplayKey(metaKey) + ':';
                 filterEditType.setText(filterEditTypeText);
                 filterEdit.setVisibility(VISIBLE);

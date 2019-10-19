@@ -53,7 +53,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal">
-            <EditText
+            <AutoCompleteTextView
                 android:id="@+id/meta_dialog_add_tag_key"
                 android:layout_width="0dp"
                 android:layout_weight="1"
@@ -62,13 +62,14 @@
                 android:background="@android:color/transparent"
                 android:imeOptions="actionNext"
                 android:layout_marginStart="16dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="8dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
                 android:textSize="14sp"
+                android:completionThreshold="1"
                 android:hint="@string/meta_key"
                 android:inputType="text"
                 android:autofillHints="" />
-            <EditText
+            <AutoCompleteTextView
                 android:id="@+id/meta_dialog_add_tag_value"
                 android:layout_width="0dp"
                 android:layout_weight="2"
@@ -76,10 +77,11 @@
                 android:layout_gravity="center_vertical"
                 android:background="@android:color/transparent"
                 android:imeOptions="actionDone"
-                android:layout_marginTop="8dp"
-                android:layout_marginBottom="8dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
                 android:layout_marginEnd="24dp"
                 android:textSize="14sp"
+                android:completionThreshold="1"
                 android:hint="@string/meta_value"
                 android:inputType="text"
                 android:scrollHorizontally="false"

@@ -97,6 +97,7 @@
     <string name="cached">Cached</string>
     <string name="add_to_playlist">Add to playlist</string>
     <string name="add_to_new_playlist">Add to new playlist</string>
+    <string name="add_to_new_playlist_name">New playlist name</string>
     <string name="playlist_select">Active</string>
     <string name="playlist_show_playback_order">Playback order</string>
     <string name="playlist_deselect">Deselect playlist</string>
@@ -116,7 +117,7 @@
     <string name="metadata_edit">Edit metadata</string>
     <string name="metadata_add">Add metadata</string>
     <string name="metadata_add_local">Local tag:</string>
-    <string name="metadata_add_title">Add new tag</string>
+    <string name="metadata_add_title">Adding new tag</string>
     <string name="meta_key">Key</string>
     <string name="meta_value">Value</string>
     <string name="cancel">Cancel</string>

@@ -5,7 +5,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
-import android.widget.EditText;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -13,6 +14,8 @@ import java.util.Collection;
 import java.util.List;
 
 import androidx.annotation.NonNull;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Transformations;
 import androidx.recyclerview.selection.Selection;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
@@ -167,7 +170,8 @@ public class MetaDialogFragmentAdapter extends
         private final TrackItemActionsView actionsView;
         private final TextView keyTextView;
         private final TextView valueTextView;
-        private final EditText editValueEditText;
+        private final AutoCompleteTextView editValueEditText;
+        private final MutableLiveData<String> editValueKeyLiveData;
 
         private MetaTag tag;
 
@@ -212,7 +216,20 @@ public class MetaDialogFragmentAdapter extends
                 }
                 return false;
             });
-
+            ArrayAdapter<String> editValueAdapter = new ArrayAdapter<>(
+                    v.getContext(),
+                    android.R.layout.simple_spinner_dropdown_item
+            );
+            editValueEditText.setAdapter(editValueAdapter);
+            editValueKeyLiveData = new MutableLiveData<>();
+            Transformations.switchMap(
+                    editValueKeyLiveData,
+                    key -> MetaStorage.getInstance(v.getContext()).getMetaValuesAsStrings(key)
+            ).observe(fragment.getViewLifecycleOwner(), values -> {
+                editValueAdapter.clear();
+                editValueAdapter.addAll(values);
+                editValueAdapter.notifyDataSetChanged();
+            });
         }
 
         @Override
@@ -229,6 +246,7 @@ public class MetaDialogFragmentAdapter extends
             this.tag = tag;
             String displayKey = Meta.getDisplayKey(tag.key);
             String displayValue = Meta.getDisplayValue(tag.key, tag.value);
+            editValueKeyLiveData.setValue(tag.key);
             keyTextView.setText(displayKey);
             valueTextView.setText(displayValue);
 

@@ -674,6 +674,40 @@ public class MetaStorage {
         metaMediator.setValue(meta);
     }
 
+    public LiveData<List<String>> getMetaStringValues(String key) {
+        return metaModel.getStringMetaValues(key);
+    }
+
+    public LiveData<List<Long>> getMetaLongValues(String key) {
+        return metaModel.getLongMetaValues(key);
+    }
+
+    public LiveData<List<Double>> getMetaDoubleValues(String key) {
+        return metaModel.getDoubleMetaValues(key);
+    }
+
+    public LiveData<List<String>> getMetaValuesAsStrings(String key) {
+        switch (Meta.getType(key)) {
+            default:
+            case STRING:
+                return getMetaStringValues(key);
+            case LONG:
+                return Transformations.map(
+                        getMetaLongValues(key),
+                        longValues -> longValues.stream()
+                                .map(String::valueOf)
+                                .collect(Collectors.toList())
+                );
+            case DOUBLE:
+                return Transformations.map(
+                        getMetaDoubleValues(key),
+                        doubleValues -> doubleValues.stream()
+                                .map(String::valueOf)
+                                .collect(Collectors.toList())
+                );
+        }
+    }
+
     public LiveData<List<String>> getMetaFields() {
         MediatorLiveData<List<String>> allMetaKeys = new MediatorLiveData<>();
         LiveData<List<String>> stringKeys = metaModel.getStringMetaKeys();
