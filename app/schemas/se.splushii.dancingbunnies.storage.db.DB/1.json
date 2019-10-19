@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "c0bec087e781a83796371a193773a02c",
+    "identityHash": "5988f3b63ed0e88110aa2c10545c2e6d",
     "entities": [
       {
         "tableName": "entry_id",
@@ -92,6 +92,26 @@
             "createSql": "CREATE UNIQUE INDEX `index_meta_string_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
           },
           {
+            "name": "index_meta_string_key_value_api",
+            "unique": false,
+            "columnNames": [
+              "key",
+              "value",
+              "api"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_string_key_value_api` ON `${TABLE_NAME}` (`key`, `value`, `api`)"
+          },
+          {
+            "name": "index_meta_string_value_key_api",
+            "unique": false,
+            "columnNames": [
+              "value",
+              "key",
+              "api"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_string_value_key_api` ON `${TABLE_NAME}` (`value`, `key`, `api`)"
+          },
+          {
             "name": "index_meta_string_value",
             "unique": false,
             "columnNames": [
@@ -165,6 +185,26 @@
               "value"
             ],
             "createSql": "CREATE UNIQUE INDEX `index_meta_long_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+          },
+          {
+            "name": "index_meta_long_key_value_api",
+            "unique": false,
+            "columnNames": [
+              "key",
+              "value",
+              "api"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_long_key_value_api` ON `${TABLE_NAME}` (`key`, `value`, `api`)"
+          },
+          {
+            "name": "index_meta_long_value_key_api",
+            "unique": false,
+            "columnNames": [
+              "value",
+              "key",
+              "api"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_long_value_key_api` ON `${TABLE_NAME}` (`value`, `key`, `api`)"
           },
           {
             "name": "index_meta_long_value",
@@ -242,6 +282,26 @@
             "createSql": "CREATE UNIQUE INDEX `index_meta_double_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
           },
           {
+            "name": "index_meta_double_key_value_api",
+            "unique": false,
+            "columnNames": [
+              "key",
+              "value",
+              "api"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_double_key_value_api` ON `${TABLE_NAME}` (`key`, `value`, `api`)"
+          },
+          {
+            "name": "index_meta_double_value_key_api",
+            "unique": false,
+            "columnNames": [
+              "value",
+              "key",
+              "api"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_double_value_key_api` ON `${TABLE_NAME}` (`value`, `key`, `api`)"
+          },
+          {
             "name": "index_meta_double_value",
             "unique": false,
             "columnNames": [
@@ -317,6 +377,26 @@
             "createSql": "CREATE UNIQUE INDEX `index_meta_local_string_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
           },
           {
+            "name": "index_meta_local_string_key_value_api",
+            "unique": false,
+            "columnNames": [
+              "key",
+              "value",
+              "api"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_local_string_key_value_api` ON `${TABLE_NAME}` (`key`, `value`, `api`)"
+          },
+          {
+            "name": "index_meta_local_string_value_key_api",
+            "unique": false,
+            "columnNames": [
+              "value",
+              "key",
+              "api"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_local_string_value_key_api` ON `${TABLE_NAME}` (`value`, `key`, `api`)"
+          },
+          {
             "name": "index_meta_local_string_value",
             "unique": false,
             "columnNames": [
@@ -378,6 +458,26 @@
             "createSql": "CREATE UNIQUE INDEX `index_meta_local_long_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
           },
           {
+            "name": "index_meta_local_long_key_value_api",
+            "unique": false,
+            "columnNames": [
+              "key",
+              "value",
+              "api"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_local_long_key_value_api` ON `${TABLE_NAME}` (`key`, `value`, `api`)"
+          },
+          {
+            "name": "index_meta_local_long_value_key_api",
+            "unique": false,
+            "columnNames": [
+              "value",
+              "key",
+              "api"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_local_long_value_key_api` ON `${TABLE_NAME}` (`value`, `key`, `api`)"
+          },
+          {
             "name": "index_meta_local_long_value",
             "unique": false,
             "columnNames": [
@@ -437,6 +537,26 @@
               "value"
             ],
             "createSql": "CREATE UNIQUE INDEX `index_meta_local_double_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+          },
+          {
+            "name": "index_meta_local_double_key_value_api",
+            "unique": false,
+            "columnNames": [
+              "key",
+              "value",
+              "api"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_local_double_key_value_api` ON `${TABLE_NAME}` (`key`, `value`, `api`)"
+          },
+          {
+            "name": "index_meta_local_double_value_key_api",
+            "unique": false,
+            "columnNames": [
+              "value",
+              "key",
+              "api"
+            ],
+            "createSql": "CREATE  INDEX `index_meta_local_double_value_key_api` ON `${TABLE_NAME}` (`value`, `key`, `api`)"
           },
           {
             "name": "index_meta_local_double_value",
@@ -717,7 +837,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'c0bec087e781a83796371a193773a02c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5988f3b63ed0e88110aa2c10545c2e6d')"
     ]
   }
 }

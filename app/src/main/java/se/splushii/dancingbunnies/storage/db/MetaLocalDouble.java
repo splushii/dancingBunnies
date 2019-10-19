@@ -13,6 +13,16 @@ import androidx.room.Index;
                         DB.COLUMN_KEY,
                         DB.COLUMN_VALUE
                 }, unique = true),
+                @Index({
+                        DB.COLUMN_KEY,
+                        DB.COLUMN_VALUE,
+                        DB.COLUMN_API
+                }),
+                @Index({
+                        DB.COLUMN_VALUE,
+                        DB.COLUMN_KEY,
+                        DB.COLUMN_API
+                }),
                 @Index(DB.COLUMN_VALUE)
         },
         primaryKeys = {
