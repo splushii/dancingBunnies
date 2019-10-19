@@ -16,6 +16,7 @@ public class MusicLibraryQuery {
     public static final String BUNDLE_KEY_SHOW = "dancingbunnies.bundle.key.musiclibraryquery.show";
     public static final String BUNDLE_KEY_SORT = "dancingbunnies.bundle.key.musiclibraryquery.sort";
     public static final String BUNDLE_KEY_QUERY = "dancingbunnies.bundle.key.musiclibraryquery.query";
+    public static final String BUNDLE_KEY_SORT_ORDER = "dancingbunnies.bundle.key.musiclibraryquery.sort_order";
 
     public enum MusicLibraryQueryType {
         SUBSCRIPTION,
@@ -26,6 +27,7 @@ public class MusicLibraryQuery {
     private String searchQuery;
     private String showField;
     private String sortByField;
+    private boolean sortOrderAscending;
 
     public MusicLibraryQuery() {
         this.type = MusicLibraryQueryType.SUBSCRIPTION;
@@ -53,18 +55,21 @@ public class MusicLibraryQuery {
         } else {
             sortByField = query.sortByField;
         }
+        this.sortOrderAscending = query.sortOrderAscending;
         this.searchQuery = query.searchQuery;
     }
 
     public MusicLibraryQuery(String searchQuery) {
         this.type = MusicLibraryQueryType.SEARCH;
         this.searchQuery = searchQuery;
+        this.showField = Meta.FIELD_TITLE;
     }
 
     private void init() {
         this.subQuery = new Bundle();
         this.showField = DEFAULT_SHOW_FIELD;
         this.sortByField = DEFAULT_SORT_FIELD;
+        this.sortOrderAscending = true;
     }
 
     public void setShowField(String field) {
@@ -81,6 +86,14 @@ public class MusicLibraryQuery {
 
     public String getSortByField() {
         return sortByField;
+    }
+
+    public void setSortOrder(boolean ascending) {
+        sortOrderAscending = ascending;
+    }
+
+    public boolean isSortOrderAscending() {
+        return sortOrderAscending;
     }
 
     public boolean querySortedByShow() {
@@ -112,6 +125,7 @@ public class MusicLibraryQuery {
         Bundle b = new Bundle();
         b.putString(BUNDLE_KEY_SHOW, showField);
         b.putString(BUNDLE_KEY_SORT, sortByField);
+        b.putBoolean(BUNDLE_KEY_SORT_ORDER, sortOrderAscending);
         b.putBundle(BUNDLE_KEY_QUERY, subQuery);
         return b;
     }

@@ -84,6 +84,7 @@
     <string name="nowplaying_actions">Actions</string>
     <string name="musiclibrary_entry_type_select">Show:</string>
     <string name="musiclibrary_sort_select">Sort by:</string>
+    <string name="musiclibrary_sort_order">Sort order</string>
     <string name="musiclibrary_home">Music library home</string>
     <string name="musiclibrary_item_more_actions">Music library item more actions</string>
     <string name="musiclibrary_query">Query:</string>

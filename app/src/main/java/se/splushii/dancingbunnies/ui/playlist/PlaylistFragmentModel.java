@@ -96,6 +96,7 @@ public class PlaylistFragmentModel extends ViewModel {
                 MetaStorage.getInstance(context).getEntries(
                         query.getShowField(),
                         query.getSortByField(),
+                        query.isSortOrderAscending(),
                         query.getQueryBundle()
                 ),
                 libraryEntries -> libraryEntries.stream()

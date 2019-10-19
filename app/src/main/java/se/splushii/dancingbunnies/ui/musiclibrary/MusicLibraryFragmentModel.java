@@ -103,6 +103,12 @@ public class MusicLibraryFragmentModel extends ViewModel {
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 
+    void setSortOrder(boolean ascending) {
+        MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
+        query.setSortOrder(ascending);
+        getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
+    }
+
     void clearFilter(String filterType) {
         MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
         query.removeFromQuery(filterType);

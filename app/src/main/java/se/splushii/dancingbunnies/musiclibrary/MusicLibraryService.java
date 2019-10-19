@@ -133,6 +133,7 @@ public class MusicLibraryService extends Service {
                                 MetaStorage.getInstance(context).getEntries(
                                         Meta.FIELD_SPECIAL_MEDIA_ID,
                                         Meta.FIELD_TITLE,
+                                        true,
                                         SmartPlaylist.jsonQueryToBundle(playlist.query)
                                 )
                 ),
@@ -361,8 +362,9 @@ public class MusicLibraryService extends Service {
 
     public LiveData<List<LibraryEntry>> getSubscriptionEntries(String showField,
                                                                String sortField,
+                                                               boolean sortOrderAscending,
                                                                Bundle query) {
-        return metaStorage.getEntries(showField, sortField, query);
+        return metaStorage.getEntries(showField, sortField, sortOrderAscending, query);
     }
 
     public static CompletableFuture<List<EntryID>> getSongEntriesOnce(Context context, List<EntryID> entryIDs, Bundle query) {

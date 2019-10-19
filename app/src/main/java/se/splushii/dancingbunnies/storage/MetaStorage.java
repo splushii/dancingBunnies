@@ -58,6 +58,7 @@ public class MetaStorage {
     // TODO: rework bundleQuery and getEntries to support nested queries
     public LiveData<List<LibraryEntry>> getEntries(String showField,
                                                    String sortField,
+                                                   boolean sortOrderAscending,
                                                    Bundle bundleQuery) {
         HashMap<String, String> keyToTableAliasMap = new HashMap<>();
         String showTypeKey = showField == null ? Meta.FIELD_SPECIAL_MEDIA_ID : showField;
@@ -255,21 +256,21 @@ public class MetaStorage {
         }
         // Sort
         query.append("\nORDER BY ");
-        switch (sortKey) {
-            case Meta.FIELD_SPECIAL_MEDIA_ID:
-                query.append(showTypeTableAlias + "." + DB.COLUMN_ID);
-                break;
-            case Meta.FIELD_SPECIAL_MEDIA_SRC:
-                query.append(showTypeTableAlias + "." + DB.COLUMN_API);
-                break;
-            default:
-                query.append(keyToTableAliasMap.get(sortKey) + "." + DB.COLUMN_VALUE);
-                break;
-        }
-        if (Meta.getType(sortKey).equals(Meta.Type.STRING)) {
-            query.append(" COLLATE NOCASE");
-        }
-        query.append(" ASC");
+        addSortToQuery(
+                query,
+                showTypeTableAlias,
+                sortKey,
+                keyToTableAliasMap.get(sortKey),
+                sortOrderAscending
+        );
+        query.append(",\n");
+        addSortToQuery(
+                query,
+                showTypeTableAlias,
+                showTypeKey,
+                keyToTableAliasMap.get(showTypeKey),
+                sortOrderAscending
+        );
         SimpleSQLiteQuery sqlQuery = new SimpleSQLiteQuery(query.toString(), queryArgs.toArray());
         Log.d(LC, "getEntries:"
                 + "\nquery: " + sqlQuery.getSql()
@@ -317,6 +318,29 @@ public class MetaStorage {
                 }).collect(Collectors.toList())
         );
     }
+
+    private void addSortToQuery(StringBuilder query,
+                                String showTypeTableAlias,
+                                String key,
+                                String keyTable,
+                                boolean sortOrderAscending) {
+        switch (key) {
+            case Meta.FIELD_SPECIAL_MEDIA_ID:
+                query.append(showTypeTableAlias).append(".").append(DB.COLUMN_ID);
+                break;
+            case Meta.FIELD_SPECIAL_MEDIA_SRC:
+                query.append(showTypeTableAlias).append(".").append(DB.COLUMN_API);
+                break;
+            default:
+                query.append(keyTable).append(".").append(DB.COLUMN_VALUE);
+                break;
+        }
+        if (Meta.getType(key).equals(Meta.Type.STRING)) {
+            query.append(" COLLATE NOCASE");
+        }
+        query.append(sortOrderAscending ? " ASC" : " DESC");
+    }
+
     public LiveData<Integer> getNumSongEntries(List<EntryID> entryIDs, Bundle query) {
         if (query == null) {
             query = new Bundle();
@@ -508,7 +532,7 @@ public class MetaStorage {
             b.putString(entryID.type, entryID.id);
         }
         return Transformations.map(
-                getEntries(Meta.FIELD_SPECIAL_MEDIA_ID, Meta.FIELD_TITLE, b),
+                getEntries(Meta.FIELD_SPECIAL_MEDIA_ID, Meta.FIELD_TITLE, true, b),
                 libraryEntries -> libraryEntries.stream()
                         .map(libraryEntry -> libraryEntry.entryID)
                         .collect(Collectors.toList())
@@ -551,6 +575,7 @@ public class MetaStorage {
         LiveData<List<LibraryEntry>> liveData = getEntries(
                 Meta.FIELD_SPECIAL_MEDIA_ID,
                 Meta.FIELD_TITLE,
+                true,
                 b
         );
         liveData.observeForever(new Observer<List<LibraryEntry>>() {

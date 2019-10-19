@@ -132,26 +132,25 @@ public class Meta {
 
     public static String getDisplayValue(String key, String value) {
         long longValue;
-        switch (key) {
-            case Meta.FIELD_DURATION:
-                try {
+        try {
+            switch (key) {
+                case Meta.FIELD_DURATION:
                     return getDurationString(Long.parseLong(value));
-                } catch (NumberFormatException ignored) {}
-                break;
-            case Meta.FIELD_FILE_SIZE:
-                longValue = Long.parseLong(value);
-                if (longValue >= 1_000_000L) {
-                    return String.format(Locale.getDefault(),"%.1f MB", longValue / 1_000_000d);
-                }
-                if (longValue >= 1_000L) {
-                    return String.format(Locale.getDefault(),"%.1f KB", longValue / 1_000d);
-                }
-                return String.format(Locale.getDefault(),"%d B", longValue);
-            case Meta.FIELD_BITRATE:
-                return String.format(Locale.getDefault(), "%d kbps", Long.parseLong(value));
-            default:
-                break;
+                case Meta.FIELD_FILE_SIZE:
+                    longValue = Long.parseLong(value);
+                    if (longValue >= 1_000_000L) {
+                        return String.format(Locale.getDefault(),"%.1f MB", longValue / 1_000_000d);
+                    }
+                    if (longValue >= 1_000L) {
+                        return String.format(Locale.getDefault(),"%.1f KB", longValue / 1_000d);
+                    }
+                    return String.format(Locale.getDefault(),"%d B", longValue);
+                case Meta.FIELD_BITRATE:
+                    return String.format(Locale.getDefault(), "%d kbps", Long.parseLong(value));
+                default:
+                    break;
         }
+    } catch (NumberFormatException ignored) {}
         return value;
     }
 

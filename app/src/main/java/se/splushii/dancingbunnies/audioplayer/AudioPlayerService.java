@@ -166,10 +166,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         subscriptionResults.put(id, new ArrayList<>());
         String showField = options.getString(MusicLibraryQuery.BUNDLE_KEY_SHOW);
         String sortField = options.getString(MusicLibraryQuery.BUNDLE_KEY_SORT);
+        boolean sortOrderAscending = options.getBoolean(MusicLibraryQuery.BUNDLE_KEY_SORT_ORDER);
         Bundle query = options.getBundle(MusicLibraryQuery.BUNDLE_KEY_QUERY);
         LiveData<List<LibraryEntry>> entries = musicLibraryService.getSubscriptionEntries(
                 showField,
                 sortField,
+                sortOrderAscending,
                 query
         );
         subscriptionLiveData.put(id, entries);
@@ -307,7 +309,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     @Override
     public void onDestroy() {
         Log.d(LC, "onDestroy");
-        playbackController.onDestroy();
+        if (playbackController != null) {
+            playbackController.onDestroy();
+        }
         playbackController = null;
         unbindService(serviceConnection);
         musicLibraryService = null;

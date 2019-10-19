@@ -58,7 +58,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     }
 
     private String getFastScrollerText(SongViewHolder holder) {
-        String title = holder == null ? "" : holder.getSortedBy();
+        String title = holder == null ? "" : holder.getSortedByDisplayValue();
         if (title == null) {
             return "";
         }
@@ -154,7 +154,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
 
         void setShowValue(List<String> showMeta) {
             if (showMeta != null) {
-                libraryEntryShow.setText(Meta.getAsString(showMeta));
+                libraryEntryShow.setText(getShowDisplayValue(Meta.getAsString(showMeta)));
             }
         }
 
@@ -170,13 +170,13 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         void update(LibraryEntry libraryEntry, boolean browsable) {
             entry = libraryEntry;
             this.browsable = browsable;
-            if (fragment.showHeaderSortedBy()) {
-                libraryEntrySortedBy.setText(entry.sortedBy());
+            if (fragment.showSortedByValues()) {
+                libraryEntrySortedBy.setText(getSortedByDisplayValue());
                 libraryEntrySortedBy.setVisibility(View.VISIBLE);
             } else {
                 libraryEntrySortedBy.setVisibility(View.GONE);
             }
-            libraryEntryShow.setText(fragment.isSearchQuery() ? "" : entry.name());
+            libraryEntryShow.setText(fragment.isSearchQuery() ? "" : getShowDisplayValue(entry.name()));
             libraryEntryArtist.setText("");
             libraryEntryNum.setVisibility(fragment.showHeaderNum(browsable) ?
                     View.VISIBLE : View.GONE
@@ -187,8 +187,15 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             entryIDLiveData.setValue(libraryEntry.entryID);
         }
 
-        String getSortedBy() {
-            return entry.sortedBy();
+        String getSortedByDisplayValue() {
+            String sortField = fragment.getCurrentQuery().getSortByField();
+            String sortValue = entry.sortedBy();
+            return Meta.getDisplayValue(sortField, sortValue);
+        }
+
+        String getShowDisplayValue(String value) {
+            String showField = fragment.getCurrentQuery().getShowField();
+            return Meta.getDisplayValue(showField, value);
         }
 
         boolean isBrowsable() {
@@ -299,6 +306,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 String sortField = Meta.FIELD_SPECIAL_MEDIA_ID.equals(showField) ?
                         Meta.FIELD_TITLE : showField;
                 query.setSortByField(sortField);
+                query.setSortOrder(true);
                 if (!entryID.isUnknown()) {
                     query.addToQuery(entryID.type, entryID.id);
                 }
