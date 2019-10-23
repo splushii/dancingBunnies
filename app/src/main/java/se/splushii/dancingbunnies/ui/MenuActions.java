@@ -27,6 +27,7 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
@@ -156,6 +157,7 @@ public class MenuActions {
         } else if (action == ACTION_CACHE) {
             audioBrowserFragment.downloadAudioData(
                     Collections.singletonList(entryIDSupplier.get()),
+                    AudioStorage.DOWNLOAD_PRIO_LOW,
                     null
             );
         } else if (action == ACTION_CACHE_DELETE) {
@@ -225,6 +227,7 @@ public class MenuActions {
         } else if (action == ACTION_CACHE_MULTIPLE) {
             audioBrowserFragment.downloadAudioData(
                     entryIDSupplier.get(),
+                    AudioStorage.DOWNLOAD_PRIO_LOW,
                     queryBundleSupplier.get()
             );
         } else if (action == ACTION_CACHE_DELETE_MULTIPLE) {

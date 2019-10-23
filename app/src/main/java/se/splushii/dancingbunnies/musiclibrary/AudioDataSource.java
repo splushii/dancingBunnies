@@ -9,6 +9,9 @@ import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.util.Log;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -38,7 +41,7 @@ public class AudioDataSource extends MediaDataSource {
     private static final String LC = Util.getLogContext(AudioDataSource.class);
     private static final long BYTES_BETWEEN_PROGRESS_UPDATE = 100_000L;
     private final String url;
-    private final EntryID entryID;
+    public final EntryID entryID;
     private final File cacheFile;
     private final File cachePartFile;
     private final AudioStorage audioStorage;
@@ -46,8 +49,6 @@ public class AudioDataSource extends MediaDataSource {
     private Thread fetchThread;
     private final Object fetchLock = new Object();
     private boolean isFetching = false;
-    private volatile boolean isDataReady = false;
-    private volatile boolean areSamplesReady = false;
     private double[] peakSamples;
     private double[] peakNegativeSamples;
     private double[] rmsSamples;
@@ -72,11 +73,7 @@ public class AudioDataSource extends MediaDataSource {
                 isFetching = true;
                 fetchThread = new Thread(() -> {
                     Log.d(LC, "fetching data");
-                    if (cacheFile.isFile()) {
-                        Log.d(LC, "entryID " + entryID
-                                + " in file cache " + cacheFile.getAbsolutePath()
-                                + " size: " + cacheFile.length() + " bytes.");
-                        isDataReady = true;
+                    if (isDataReady()) {
                         handler.onDownloadFinished();
                     } else {
                         Log.d(LC, "entryID " + entryID + " downloading");
@@ -87,17 +84,7 @@ public class AudioDataSource extends MediaDataSource {
                             handler.onFailure("Data fetch failed");
                             return;
                         }
-                        isDataReady = true;
                     }
-                    handler.onSampling();
-                    Log.d(LC, "fetching samples");
-                    boolean samplesSuccess = fetchSamples(handler);
-                    if (!samplesSuccess) {
-                        isFetching = false;
-                        handler.onFailure("Sample fetch failed");
-                        return;
-                    }
-                    areSamplesReady = true;
                     handler.onSuccess();
                 });
                 fetchThread.start();
@@ -112,35 +99,14 @@ public class AudioDataSource extends MediaDataSource {
                 fetchThread.join();
             } catch (InterruptedException e) {
                 handler.onDownloadFailed("Could not join download thread");
-                handler.onSamplingFailed("Could not join download thread");
                 handler.onFailure("Could not join download thread");
                 return;
             }
-            if (isDataReady && areSamplesReady) {
+            if (isDataReady()) {
                 handler.onDownloadFinished();
-                handler.onSamplingFinished(
-                        peakSamples,
-                        peakNegativeSamples,
-                        rmsSamples,
-                        rmsNegativeSamples
-                );
                 handler.onSuccess();
-            } else if (isDataReady) {
-                handler.onDownloadFinished();
-                handler.onSamplingFailed("fetch thread failed");
-                handler.onFailure("fetch thread failed");
-            } else if (areSamplesReady) {
-                handler.onDownloadFailed("fetch thread failed");
-                handler.onSamplingFinished(
-                        peakSamples,
-                        peakNegativeSamples,
-                        rmsSamples,
-                        rmsNegativeSamples
-                );
-                handler.onFailure("fetch thread failed");
             } else {
                 handler.onDownloadFailed("fetch thread failed");
-                handler.onSamplingFailed("fetch thread failed");
                 handler.onFailure("fetch thread failed");
             }
         }).start();
@@ -294,23 +260,14 @@ public class AudioDataSource extends MediaDataSource {
         return url;
     }
 
-    private boolean fetchSamples(FetchDataHandler handler) {
+    public boolean fetchSamples() {
         WaveformEntry waveformEntry = audioStorage.getWaveformSync(entryID);
         if (waveformEntry != null) {
-            peakSamples = waveformEntry.getPeakPositive();
-            peakNegativeSamples = waveformEntry.getPeakNegative();
-            rmsSamples = waveformEntry.getRMSPositive();
-            rmsNegativeSamples = waveformEntry.getRMSNegative();
-            handler.onSamplingFinished(
-                    peakSamples,
-                    peakNegativeSamples,
-                    rmsSamples,
-                    rmsNegativeSamples
-            );
+            Log.d(LC, "getSamples samples already exist");
             return true;
         }
-        if (!isDataReady) {
-            handler.onSamplingFailed("getSamples from non-finished source");
+        if (!isDataReady()) {
+            Log.e(LC, "getSamples from non-finished source");
             return false;
         }
         MediaExtractor extractor = new MediaExtractor();
@@ -318,12 +275,12 @@ public class AudioDataSource extends MediaDataSource {
             extractor.setDataSource(this);
         } catch (IOException e) {
             e.printStackTrace();
-            handler.onSamplingFailed("getSamples could not set datasource for extractor: " + e.getMessage());
+            Log.e(LC, "getSamples could not set datasource for extractor: " + e.getMessage());
             return false;
         }
         int numTracks = extractor.getTrackCount();
         if (numTracks > 1) {
-            handler.onSamplingFailed("getSamples NOT HANDLING MORE THAN ONE TRACK. CONTAINS " + numTracks);
+            Log.e(LC, "getSamples NOT HANDLING MORE THAN ONE TRACK. CONTAINS " + numTracks);
             return false;
         }
         MediaFormat mediaFormat = null;
@@ -339,12 +296,12 @@ loop:   for (int i = 0; i < numTracks; ++i) {
                     extractor.selectTrack(i);
                     break loop;
                 default:
-                    handler.onSamplingFailed("getSamples not supported for mime: " + mime);
+                    Log.e(LC, "getSamples not supported for mime: " + mime);
                     return false;
             }
         }
         if (mime == null) {
-            handler.onSamplingFailed("getSamples contains no tracks");
+            Log.e(LC, "getSamples contains no tracks");
             return false;
         }
         MediaCodec mediaCodec;
@@ -353,7 +310,7 @@ loop:   for (int i = 0; i < numTracks; ++i) {
             mediaCodec = MediaCodec.createByCodecName(list.findDecoderForFormat(mediaFormat));
         } catch (IOException e) {
             e.printStackTrace();
-            handler.onSamplingFailed("getSamples could not create codec for mime: " + mime);
+            Log.e(LC, "getSamples could not create codec for mime: " + mime);
             return false;
         }
         mediaCodec.configure(mediaFormat, null, null, 0);
@@ -408,12 +365,12 @@ loop:   for (int i = 0; i < numTracks; ++i) {
             int outputBufferId = mediaCodec.dequeueOutputBuffer(bufferInfo, timeoutUs);
             if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_PARTIAL_FRAME)
                     == MediaCodec.BUFFER_FLAG_PARTIAL_FRAME) {
-                handler.onSamplingFailed("getSamples NOT HANDLING PARTIAL FRAMES");
+                Log.e(LC, "getSamples NOT HANDLING PARTIAL FRAMES");
                 return false;
             }
             if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG)
                     == MediaCodec.BUFFER_FLAG_CODEC_CONFIG) {
-                handler.onSamplingFailed("getSamples NOT HANDLING CODEC CONFIG");
+                Log.e(LC, "getSamples NOT HANDLING CODEC CONFIG");
                 return false;
             }
             if (outputBufferId >= 0) {
@@ -426,7 +383,7 @@ loop:   for (int i = 0; i < numTracks; ++i) {
                 }
                 switch (pcmEncoding) {
                     case AudioFormat.ENCODING_PCM_8BIT:
-                        handler.onSamplingFailed("NOT HANDLING PCM 8 BIT");
+                        Log.e(LC, "NOT HANDLING PCM 8 BIT");
                         return false;
                     case AudioFormat.ENCODING_PCM_16BIT:
                         ShortBuffer shortBuffer = outputBuffer.order(ByteOrder.nativeOrder()).asShortBuffer();
@@ -492,7 +449,7 @@ loop:   for (int i = 0; i < numTracks; ++i) {
                         }
                         break;
                     case AudioFormat.ENCODING_PCM_FLOAT:
-                        handler.onSamplingFailed("NOT HANDLING PCM FLOAT");
+                        Log.e(LC, "NOT HANDLING PCM FLOAT");
                         return false;
                 }
                 mediaCodec.releaseOutputBuffer(outputBufferId, false);
@@ -540,17 +497,34 @@ loop:   for (int i = 0; i < numTracks; ++i) {
         this.peakNegativeSamples = peakNegativeList;
         this.rmsSamples = rmsList;
         this.rmsNegativeSamples = rmsNegativeList;
-        handler.onSamplingFinished(
-                peakSamples,
-                peakNegativeSamples,
-                rmsSamples,
-                rmsNegativeSamples
-        );
+        try {
+            JSONArray peakSamplesPositiveJSON = new JSONArray(peakSamples);
+            JSONArray peakSamplesNegativeJSON = new JSONArray(peakNegativeSamples);
+            JSONArray rmsSamplesPositiveJSON = new JSONArray(rmsSamples);
+            JSONArray rmsSamplesNegativeJSON = new JSONArray(rmsNegativeSamples);
+            audioStorage.insertWaveform(WaveformEntry.from(
+                    entryID,
+                    peakSamplesPositiveJSON.toString().getBytes(),
+                    peakSamplesNegativeJSON.toString().getBytes(),
+                    rmsSamplesPositiveJSON.toString().getBytes(),
+                    rmsSamplesNegativeJSON.toString().getBytes()
+            ));
+        } catch (JSONException e) {
+            e.printStackTrace();
+            Log.e(LC, "Could not convert samples to JSON");
+            return false;
+        }
         return true;
     }
 
-    boolean isDataReady() {
-        return isDataReady;
+    public boolean isDataReady() {
+        if (cacheFile.isFile()) {
+            Log.d(LC, "entryID " + entryID
+                    + " in file cache " + cacheFile.getAbsolutePath()
+                    + " size: " + cacheFile.length() + " bytes.");
+            return true;
+        }
+        return false;
     }
 
     public interface FetchDataHandler {
@@ -558,15 +532,8 @@ loop:   for (int i = 0; i < numTracks; ++i) {
         void onDownloadProgress(long i, long max);
         void onDownloadFinished();
         void onDownloadFailed(String err);
-        void onSampling();
-        void onSamplingFinished(double[] peakSamplesPositive,
-                                double[] peakSamplesNegative,
-                                double[] rmsSamplesPositive,
-                                double[] rmsSamplesNegative);
-        void onSamplingFailed(String err);
         void onFailure(String message);
         void onSuccess();
-
     }
 
     private class CacheFileException extends Exception {

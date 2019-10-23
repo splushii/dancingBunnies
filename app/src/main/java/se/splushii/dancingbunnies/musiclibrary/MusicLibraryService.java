@@ -30,7 +30,7 @@ import androidx.lifecycle.Transformations;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.backend.APIClientRequestHandler;
-import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
+import se.splushii.dancingbunnies.backend.AudioDataHandler;
 import se.splushii.dancingbunnies.backend.MusicLibraryRequestHandler;
 import se.splushii.dancingbunnies.backend.SubsonicAPIClient;
 import se.splushii.dancingbunnies.search.Indexer;
@@ -261,61 +261,24 @@ public class MusicLibraryService extends Service {
 
     public static CompletableFuture<Void> downloadAudioData(Context context,
                                                             List<EntryID> entryIDs,
+                                                            int priority,
                                                             Bundle query) {
         return getSongEntriesOnce(context, entryIDs, query)
                 .thenAccept(songEntryIDs -> songEntryIDs.forEach(songEntryID ->
-                        downloadAudioData(context, songEntryID)
+                        downloadAudioData(context, songEntryID, priority)
                 ));
     }
 
-    public static void downloadAudioData(Context context, EntryID entryID) {
-        getAudioData(context, entryID, new AudioDataDownloadHandler() {
-            @Override
-            public void onDownloading() {
-                Log.d(LC, "Downloading: " + entryID);
-            }
-
-            @Override
-            public void onSuccess(AudioDataSource audioDataSource) {
-                Log.d(LC, "Downloaded: " + entryID + " size: " + audioDataSource.getSize());
-            }
-
-            @Override
-            public void onFailure(String status) {
-                Log.e(LC, "Failed to download: " + entryID);
-            }
-        });
+    public static void downloadAudioData(Context context, EntryID entryID, int priority) {
+        getAudioData(context, entryID, priority, null);
     }
 
     public static synchronized void getAudioData(Context context,
                                                  EntryID entryID,
-                                                 AudioDataDownloadHandler handler) {
-        AudioStorage storage = AudioStorage.getInstance(context);
-        AudioDataSource audioDataSource = storage.get(entryID);
-        if (audioDataSource == null) {
-            HashMap<String, APIClient> apis = new HashMap<>();
-            SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
-            if (settings.getBoolean(context.getResources().getString(R.string.pref_key_subsonic), false)) {
-                apis.put(API_ID_SUBSONIC, new SubsonicAPIClient(context));
-            }
-            for (String key: apis.keySet()) {
-                apis.get(key).loadSettings(context);
-            }
-            APIClient apiClient = apis.get(entryID.src);
-            audioDataSource = apiClient == null ? null : apiClient.getAudioData(entryID);
-            if (audioDataSource == null) {
-                handler.onFailure("Could not get AudioDataSource for song with src: "
-                        + entryID.src + ", id: " + entryID.id);
-                return;
-            }
-            storage.put(entryID, audioDataSource);
-        }
-        if (audioDataSource.isDataReady()) {
-            handler.onSuccess(audioDataSource);
-            return;
-        }
+                                                 int priority,
+                                                 AudioDataHandler handler) {
         // TODO: JobSchedule this with AudioDataDownloadJob
-        storage.fetch(entryID, handler);
+        AudioStorage.getInstance(context).fetch(context, entryID, priority, handler);
     }
 
     public static synchronized CompletableFuture<Void> deleteAudioData(Context context,
@@ -328,18 +291,7 @@ public class MusicLibraryService extends Service {
 
     public static synchronized CompletableFuture<Void> deleteAudioData(Context context,
                                                                        EntryID entryID) {
-        AudioStorage storage = AudioStorage.getInstance(context);
-        AudioDataSource audioDataSource = storage.get(entryID);
-        if (audioDataSource != null) {
-            audioDataSource.close();
-        }
-        AudioStorage.deleteCacheFile(context, entryID);
-        return AudioStorage.getInstance(context).deleteWaveform(entryID)
-                .thenCompose(aVoid -> MetaStorage.getInstance(context).deleteLocalMeta(
-                        entryID,
-                        Meta.FIELD_LOCAL_CACHED,
-                        Meta.FIELD_LOCAL_CACHED_VALUE_YES
-                ));
+        return AudioStorage.getInstance(context).deleteAudioData(context, entryID);
     }
 
     public CompletableFuture<Meta> getSongMeta(EntryID entryID) {

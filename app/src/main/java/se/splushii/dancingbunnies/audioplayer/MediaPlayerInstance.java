@@ -5,7 +5,7 @@ import android.media.MediaPlayer;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
-import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
+import se.splushii.dancingbunnies.backend.AudioDataHandler;
 import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -85,7 +85,7 @@ class MediaPlayerInstance {
         Log.d(LC, "MediaPlayer(" + title() + ") preload");
         buffering = true;
         callback.onBuffering(this);
-        callback.getAudioData(playbackEntry.entryID, new AudioDataDownloadHandler() {
+        callback.getAudioData(this, playbackEntry.entryID, new AudioDataHandler() {
             @Override
             public void onDownloading() {
                 Log.d(LC, "MediaPlayer(" + title() + ") downloading audio data");
@@ -154,6 +154,10 @@ class MediaPlayerInstance {
                 return false;
             case STOPPED:
                 prepare();
+                return false;
+            case NULL:
+                reconstruct();
+                getReady();
                 return false;
             default:
                 Log.w(LC, "MediaPlayer(" + title() + ") play in wrong state: " + state);

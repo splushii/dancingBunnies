@@ -240,11 +240,15 @@
             android:elevation="4dp"
             android:orientation="horizontal"
             android:paddingBottom="4dp"
-            android:gravity="center_horizontal"
+            android:gravity="center_vertical"
             android:layout_gravity="center_horizontal">
             <View
                 android:layout_width="36dp"
                 android:layout_height="match_parent" />
+            <androidx.mediarouter.app.MediaRouteButton
+                android:id="@+id/nowlaying_mediaroutebutton"
+                android:layout_width="36dp"
+                android:layout_height="36dp" />
             <View
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
@@ -282,6 +286,9 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1" />
+            <View
+                android:layout_width="36dp"
+                android:layout_height="match_parent" />
             <ImageButton
                 android:id="@+id/nowplaying_actions"
                 android:layout_width="36dp"

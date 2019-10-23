@@ -85,15 +85,15 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         SharedPreferences settings = getPreferenceManager().getSharedPreferences();
-        EditTextPreference SSurl = (EditTextPreference) findPreference(getResources()
+        EditTextPreference SSurl = findPreference(getResources()
                 .getString(R.string.pref_key_subsonic_url));
         SSurl.setSummary(settings.getString(getResources()
                 .getString(R.string.pref_key_subsonic_url), ""));
-        EditTextPreference SSusr = (EditTextPreference) findPreference(getResources()
+        EditTextPreference SSusr = findPreference(getResources()
                 .getString(R.string.pref_key_subsonic_usr));
         SSusr.setSummary(settings.getString(getResources()
                 .getString(R.string.pref_key_subsonic_usr), ""));
-        EditTextPreference SSpwd = (EditTextPreference) findPreference(getResources()
+        EditTextPreference SSpwd = findPreference(getResources()
                 .getString(R.string.pref_key_subsonic_pwd));
         SSpwd.setSummary(settings.contains(getResources()
                 .getString(R.string.pref_key_subsonic_pwd)) ?

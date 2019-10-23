@@ -12,9 +12,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import androidx.core.util.Pair;
-import se.splushii.dancingbunnies.backend.AudioDataDownloadHandler;
+import se.splushii.dancingbunnies.backend.AudioDataHandler;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
+import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -45,6 +46,11 @@ class LocalAudioPlayer implements AudioPlayer {
                 long lastPos = currentEntryInfo.second == null ? 0L : currentEntryInfo.second;
                 player = new MediaPlayerInstance(playbackEntry, mediaPlayerCallback);
                 player.seekTo(lastPos);
+                MusicLibraryService.downloadAudioData(
+                        context,
+                        player.playbackEntry.entryID,
+                        AudioStorage.DOWNLOAD_PRIO_TOP
+                );
                 callback.onCurrentEntryChanged(playbackEntry);
             }
             storage.getLocalAudioPlayerQueueEntries()
@@ -61,6 +67,7 @@ class LocalAudioPlayer implements AudioPlayer {
         } else {
             clearState().join();
         }
+        AudioStorage.getInstance(context).addDeleteListener(this::onDeleteAudioData);
     }
 
     @Override
@@ -73,10 +80,24 @@ class LocalAudioPlayer implements AudioPlayer {
     @Override
     public CompletableFuture<Void> destroy() {
         Log.d(LC, "destroy");
+        AudioStorage.getInstance(context).removeDeleteListener(this::onDeleteAudioData);
         callback = AudioPlayer.dummyCallback;
         return stop()
                 .thenCompose(v -> clearState())
                 .thenRun(() -> Log.d(LC, "destroyed"));
+    }
+
+    private void onDeleteAudioData(EntryID entryID) {
+        if (player != null && player.playbackEntry.entryID.equals(entryID)) {
+            player.stop();
+            player.release();
+            updatePlaybackState();
+        }
+        for (MediaPlayerInstance preloadPlayer: preloadPlayers) {
+            if (preloadPlayer.playbackEntry.entryID.equals(entryID)) {
+                preloadPlayer.release();
+            }
+        }
     }
 
     private CompletableFuture<Void> clearState() {
@@ -113,10 +134,16 @@ class LocalAudioPlayer implements AudioPlayer {
                     entry,
                     mediaPlayerCallback
             );
-            MusicLibraryService.downloadAudioData(context, playerInstance.playbackEntry.entryID);
             playersToQueue.add(playerInstance);
         }
         preloadPlayers.addAll(offset, playersToQueue);
+        for (int i = 0; i < preloadPlayers.size(); i++) {
+            MusicLibraryService.downloadAudioData(
+                    context,
+                    preloadPlayers.get(i).playbackEntry.entryID,
+                    AudioStorage.DOWNLOAD_PRIO_MEDIUM + i
+            );
+        }
         setNextPlayer();
     }
 
@@ -303,6 +330,10 @@ class LocalAudioPlayer implements AudioPlayer {
         if (player == null) {
             callback.onCurrentEntryChanged(null);
         } else {
+            MusicLibraryService.downloadAudioData(
+                    context,
+                    player.playbackEntry.entryID,
+                    AudioStorage.DOWNLOAD_PRIO_TOP);
             player.getReady();
             callback.onCurrentEntryChanged(player.playbackEntry);
         }
@@ -328,6 +359,10 @@ class LocalAudioPlayer implements AudioPlayer {
     private boolean isNextPlayer(MediaPlayerInstance mediaPlayerInstance) {
         MediaPlayerInstance nextPlayer = preloadPlayers.peek();
         return mediaPlayerInstance.equals(nextPlayer);
+    }
+
+    private int getQueueIndex(MediaPlayerInstance instance) {
+        return preloadPlayers.indexOf(instance);
     }
 
     private MediaPlayerCallback mediaPlayerCallback = new MediaPlayerCallback() {
@@ -368,9 +403,17 @@ class LocalAudioPlayer implements AudioPlayer {
         }
 
         @Override
-        public void getAudioData(EntryID entryID,
-                                 AudioDataDownloadHandler audioDataDownloadHandler) {
-            MusicLibraryService.getAudioData(context, entryID, audioDataDownloadHandler);
+        public void getAudioData(MediaPlayerInstance instance,
+                                 EntryID entryID,
+                                 AudioDataHandler audioDataHandler) {
+            MusicLibraryService.getAudioData(
+                    context,
+                    entryID,
+                    isCurrentPlayer(instance) ?
+                            AudioStorage.DOWNLOAD_PRIO_TOP :
+                            AudioStorage.DOWNLOAD_PRIO_MEDIUM + getQueueIndex(instance),
+                    audioDataHandler
+            );
         }
     };
 
@@ -378,6 +421,8 @@ class LocalAudioPlayer implements AudioPlayer {
         void onBuffering(MediaPlayerInstance instance);
         void onPrepared(MediaPlayerInstance instance);
         void onPlaybackCompleted(MediaPlayerInstance instance);
-        void getAudioData(EntryID entryID, AudioDataDownloadHandler audioDataDownloadHandler);
+        void getAudioData(MediaPlayerInstance instance,
+                          EntryID entryID,
+                          AudioDataHandler audioDataHandler);
     }
 }

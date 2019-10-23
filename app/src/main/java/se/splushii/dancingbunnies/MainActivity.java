@@ -160,12 +160,6 @@ public final class MainActivity extends AppCompatActivity {
                 return false;
             }
         });
-
-        CastButtonFactory.setUpMediaRouteButton(
-                getApplicationContext(),
-                menu,
-                R.id.media_route_menu_item);
-
         return true;
     }
 

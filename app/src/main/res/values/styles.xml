@@ -42,6 +42,9 @@
         <item name="android:popupBackground">@color/white</item>
     </style>
 
+    <style name="MediaRouteTheme" parent="Theme.MediaRouter.Light">
+    </style>
+
     <style name="AppTheme.Base" parent="Theme.MaterialComponents.NoActionBar">
         <item name="android:windowBackground">@color/white</item>
         <item name="android:textColorPrimary">@color/primary_text_color</item>
@@ -60,7 +63,7 @@
         <item name="android:spinnerDropDownItemStyle">@style/SpinnerDropDownItemTheme</item>
         <item name="imageButtonStyle">@style/ImageButtonStyle</item>
         <item name="popupMenuStyle">@style/PopupMenuTheme</item>
-        <!-- colorForeground set for switch track -->
+        <item name="mediaRouteTheme">@style/MediaRouteTheme</item>
         <item name="android:colorForeground">@color/grey500</item>
     </style>
 

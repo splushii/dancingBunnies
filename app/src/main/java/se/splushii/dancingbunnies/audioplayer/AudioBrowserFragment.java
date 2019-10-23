@@ -279,8 +279,8 @@ public abstract class AudioBrowserFragment extends Fragment {
         }
     }
 
-    public void downloadAudioData(List<EntryID> selection, Bundle queryBundle) {
-        MusicLibraryService.downloadAudioData(requireContext(), selection, queryBundle);
+    public void downloadAudioData(List<EntryID> selection, int priority, Bundle queryBundle) {
+        MusicLibraryService.downloadAudioData(requireContext(), selection, priority, queryBundle);
     }
 
     private final MediaBrowserCompat.ConnectionCallback mediaBrowserConnectionCallback =

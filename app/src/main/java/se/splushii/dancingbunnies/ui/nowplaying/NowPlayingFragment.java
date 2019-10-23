@@ -17,6 +17,8 @@ import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import com.google.android.gms.cast.framework.CastButtonFactory;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -34,6 +36,7 @@ import androidx.core.content.ContextCompat;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModelProviders;
+import androidx.mediarouter.app.MediaRouteButton;
 import androidx.recyclerview.selection.StorageStrategy;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -107,6 +110,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private MutableLiveData<PlaylistID> currentPlaylistIDLiveData = new MutableLiveData<>();
     private View currentPlaylistView;
     private WaveformSeekBar waveformSeekBar;
+    private MediaRouteButton mediaRouteButton;
 
     public NowPlayingFragment() {
         entryIDLiveData = new MutableLiveData<>();
@@ -119,6 +123,9 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                              Bundle savedInstanceState) {
         final View rootView = inflater.inflate(R.layout.nowplaying_fragment_layout, container,
                 false);
+
+        mediaRouteButton = rootView.findViewById(R.id.nowlaying_mediaroutebutton);
+
         RecyclerView recView = rootView.findViewById(R.id.nowplaying_recyclerview);
         LinearLayoutManager recViewLayoutManager = new LinearLayoutManager(this.getContext());
         recViewLayoutManager.setReverseLayout(true);
@@ -447,6 +454,11 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             }
         });
         model.getState().observe(getViewLifecycleOwner(), this::refreshView);
+
+        CastButtonFactory.setUpMediaRouteButton(
+                requireContext(),
+                mediaRouteButton
+        );
     }
 
     @Override
@@ -653,14 +665,13 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
     private ScheduledFuture<?> scheduledFuture;
     private final Handler handler = new Handler();
-    private final Runnable updateProgressTask = this::updateProgress;
 
     private void scheduleProgressUpdate() {
         stopProgressUpdate();
         if (!executor.isShutdown()) {
             Log.d(LC, "schedule progress update");
             scheduledFuture = executor.scheduleAtFixedRate(
-                    () -> handler.post(updateProgressTask),
+                    () -> handler.post(this::updateProgress),
                     PROGRESS_UPDATE_INITIAL_INTERVAL,
                     PROGRESS_UPDATE_INTERNAL,
                     TimeUnit.MILLISECONDS
