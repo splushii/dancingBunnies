@@ -16,9 +16,35 @@ android {
             }
         }
     }
-    buildTypes {
+    signingConfigs {
+        debug {
+            keyAlias "debugKey"
+            keyPassword "debugpassword"
+            storeFile file("../debug.jks")
+            storePassword "debugpassword"
+        }
         release {
+            keyAlias "releaseKey"
+            keyPassword System.getenv("KEYPWD")
+            storeFile file(System.getenv("KEYSTOREPATH") ?: "release.jks")
+            storePassword System.getenv("KEYSTOREPWD")
+        }
+    }
+    buildTypes {
+        debug {
+            resValue "string", "app_name", "debug Bunnies"
+            signingConfig signingConfigs.debug
+            applicationIdSuffix ".debug"
+            debuggable true
             minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        release {
+            resValue "string", "app_name", "dancing Bunnies"
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
@@ -37,19 +63,21 @@ dependencies {
 
     implementation "androidx.lifecycle:lifecycle-extensions:2.1.0"
     implementation "androidx.lifecycle:lifecycle-common-java8:2.1.0"
-
-    implementation "androidx.room:room-runtime:2.1.0"
-    annotationProcessor "androidx.room:room-compiler:2.1.0"
-
-    implementation 'com.google.android.material:material:1.0.0'
+    implementation "androidx.room:room-runtime:2.2.1"
+    annotationProcessor "androidx.room:room-compiler:2.2.1"
+    implementation "androidx.work:work-runtime:2.3.0-alpha03"
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'androidx.mediarouter:mediarouter:1.1.0'
     implementation 'androidx.recyclerview:recyclerview:1.0.0'
     implementation 'androidx.recyclerview:recyclerview-selection:1.0.0'
     implementation 'androidx.preference:preference:1.1.0'
+
+    implementation 'com.google.android.material:material:1.0.0'
+    implementation 'com.android.volley:volley:1.1.1'
     implementation 'com.google.android.gms:play-services-cast-framework:17.1.0'
-    implementation 'com.loopj.android:android-async-http:1.4.9'
+
     testImplementation 'junit:junit:4.12'
+
     // Android is missing ClassValue. Needed to update Lucene.
     implementation 'org.apache.lucene:lucene-core:4.8.1'
     implementation 'org.apache.lucene:lucene-queryparser:4.8.1'
