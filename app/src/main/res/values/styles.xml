@@ -74,7 +74,8 @@
         <item name="colorControlHighlight">@color/white</item>
     </style>
 
-    <style name="AppTheme.Settings" parent="AppTheme.Base">
-        <item name="android:textColorPrimary">@color/grey50</item>
+    <style name="AppTheme.Settings" parent="AppTheme">
+        <item name="android:textColorPrimary">@color/preferences_primary_text_color</item>
+        <item name="android:textColorSecondary">@color/preferences_secondary_text_color</item>
     </style>
 </resources>

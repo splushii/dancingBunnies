@@ -106,7 +106,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private PlaybackController playbackController;
     private final PlaybackController.Callback audioPlayerManagerCallback = new PlaybackCallback();
     private MediaSessionCompat mediaSession;
-    private int metaChangedListenerID;
     private PlaybackStateCompat.Builder playbackStateBuilder;
     private PlaybackStateCompat playbackState;
     private boolean casting = false;
@@ -134,7 +133,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            musicLibraryService.removeMetaChangedListener(metaChangedListenerID);
             playbackController.onDestroy();
             playbackController = null;
             musicLibraryService = null;
@@ -423,10 +421,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         mediaSession.setQueueTitle("Queue");
         mediaSession.setQueue(new LinkedList<>());
-        metaChangedListenerID = musicLibraryService.addMetaChangedListener(() -> {
-            playbackController.updateCurrent();
-            playbackController.onQueueChanged();
-        });
     }
 
     private boolean isStoppedState() {

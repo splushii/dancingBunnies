@@ -1,5 +1,4 @@
 <resources>
-    <string name="app_name">Dancing Bunnies</string>
     <string name="action_settings">Settings</string>
     <string name="subsonic_ping">Ping</string>
     <string name="subsonic_artists">Get artists</string>
@@ -11,13 +10,17 @@
     <string name="pref_subsonic_usr">Subsonic username</string>
     <string name="pref_subsonic_pwd">Subsonic password</string>
     <string name="pref_subsonic_url">Subsonic URL</string>
-    <string name="pref_subsonic_refresh">Refresh library</string>
+    <string name="pref_subsonic_refresh">Refresh library now</string>
+    <string name="pref_subsonic_refresh_time">Schedule library refresh</string>
     <string name="pref_key_backends">se.splushii.dancingbunnies.pref_backends</string>
     <string name="pref_key_subsonic">se.splushii.dancingbunnies.pref_subsonic</string>
     <string name="pref_key_subsonic_url">se.splushii.dancingbunnies.pref_subsonic_url</string>
     <string name="pref_key_subsonic_usr">se.splushii.dancingbunnies.pref_subsonic_usr</string>
     <string name="pref_key_subsonic_pwd">se.splushii.dancingbunnies.pref_subsonic_pwd</string>
     <string name="pref_key_subsonic_refresh">se.splushii.dancingbunnies.pref_subsonic_refresh</string>
+    <string name="pref_key_subsonic_refresh_enabled">se.splushii.dancingbunnies.pref_subsonic_refresh_enabled</string>
+    <string name="pref_key_subsonic_refresh_time">se.splushii.dancingbunnies.pref_subsonic_refresh_time</string>
+    <string name="pref_key_subsonic_refresh_last_sync">se.splushii.dancingbunnies.pref_subsonic_refresh_last_sync</string>
     <string name="pref_key_playbackcontroller_playback_id_counter">se.splushii.dancingbunnies.pref_playbackcontroller_playback_id_counter</string>
     <string name="pref_key_playbackcontroller_playlist_selection_id_counter">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_selection_id_counter</string>
     <string name="pref_key_playbackcontroller_playlist_src">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_src</string>

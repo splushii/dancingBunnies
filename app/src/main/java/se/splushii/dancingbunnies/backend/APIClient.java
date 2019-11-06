@@ -49,6 +49,20 @@ public abstract class APIClient {
     public abstract AudioDataSource getAudioData(EntryID entryID);
     public abstract void loadSettings(Context context);
 
+    public static APIClient getAPIClient(Context context, String api) {
+        HashMap<String, APIClient> apis = new HashMap<>();
+        SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
+        if (!settings.getBoolean(context.getResources().getString(R.string.pref_key_subsonic), false)) {
+            apis.remove(API_ID_SUBSONIC);
+        } else if (!apis.containsKey(API_ID_SUBSONIC)) {
+            apis.put(API_ID_SUBSONIC, new SubsonicAPIClient(context));
+        }
+        for (String key: apis.keySet()) {
+            apis.get(key).loadSettings(context);
+        }
+        return apis.get(api);
+    }
+
     public static AudioDataSource getAudioDataSource(Context context, EntryID entryID) {
         HashMap<String, APIClient> apis = new HashMap<>();
         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);

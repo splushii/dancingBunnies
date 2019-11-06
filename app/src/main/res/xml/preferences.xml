@@ -1,26 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+<androidx.preference.PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
     <PreferenceCategory
+        app:iconSpaceReserved="false"
         android:title="Backends"
         android:key="@string/pref_key_backends" >
         <CheckBoxPreference
+            app:iconSpaceReserved="false"
             android:key="@string/pref_key_subsonic"
             android:title="@string/pref_subsonic"
             android:defaultValue="false" />
         <EditTextPreference
+            app:iconSpaceReserved="false"
             android:dependency="@string/pref_key_subsonic"
             android:key="@string/pref_key_subsonic_url"
             android:title="@string/pref_subsonic_url" />
         <EditTextPreference
+            app:iconSpaceReserved="false"
             android:dependency="@string/pref_key_subsonic"
             android:key="@string/pref_key_subsonic_usr"
             android:title="@string/pref_subsonic_usr" />
         <EditTextPreference
+            app:iconSpaceReserved="false"
             android:dependency="@string/pref_key_subsonic"
-            android:password="true"
+            android:inputType="textPassword"
             android:key="@string/pref_key_subsonic_pwd"
             android:title="@string/pref_subsonic_pwd" />
+        <CheckBoxPreference
+            app:iconSpaceReserved="false"
+            android:dependency="@string/pref_key_subsonic"
+            android:key="@string/pref_key_subsonic_refresh_enabled"
+            android:title="Enable scheduled refresh"
+            android:defaultValue="false" />
+        <se.splushii.dancingbunnies.ui.TimePreference
+            app:iconSpaceReserved="false"
+            android:dependency="@string/pref_key_subsonic_refresh_enabled"
+            android:key="@string/pref_key_subsonic_refresh_time"
+            android:title="@string/pref_subsonic_refresh_time" />
         <Preference
+            app:iconSpaceReserved="false"
             android:dependency="@string/pref_key_subsonic"
             android:key="@string/pref_key_subsonic_refresh"
             android:title="@string/pref_subsonic_refresh" />

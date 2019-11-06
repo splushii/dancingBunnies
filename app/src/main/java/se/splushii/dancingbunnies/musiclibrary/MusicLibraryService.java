@@ -76,15 +76,11 @@ public class MusicLibraryService extends Service {
             case API_ID_DANCINGBUNNIES:
                 switch (action) {
                     case PLAYLIST_ENTRY_DELETE:
-                        return true;
                     case PLAYLIST_ENTRY_MOVE:
-                        return true;
                     case PLAYLIST_DELETE:
-                        return true;
                     case PLAYLIST_ENTRY_ADD:
                         return true;
                     case META_EDIT:
-                        return false;
                     case META_ADD:
                         return false;
                 }
@@ -92,15 +88,10 @@ public class MusicLibraryService extends Service {
             case API_ID_SUBSONIC:
                 switch (action) {
                     case PLAYLIST_ENTRY_DELETE:
-                        return false;
                     case PLAYLIST_ENTRY_MOVE:
-                        return false;
                     case PLAYLIST_DELETE:
-                        return false;
                     case PLAYLIST_ENTRY_ADD:
-                        return false;
                     case META_EDIT:
-                        return false;
                     case META_ADD:
                         return false;
                 }
@@ -116,11 +107,8 @@ public class MusicLibraryService extends Service {
     private HashMap<String, APIClient> apis;
     private Searcher searcher;
     private MetaStorage metaStorage;
-    private AudioStorage audioStorage;
-    private PlaylistStorage playlistStorage;
 
     private final IBinder binder = new MusicLibraryBinder();
-    private List<Runnable> metaChangedListeners;
 
     public static LiveData<List<PlaylistEntry>> getSmartPlaylistEntries(Context context,
                                                                         PlaylistID playlistID) {
@@ -171,16 +159,6 @@ public class MusicLibraryService extends Service {
         return ret;
     }
 
-    public int addMetaChangedListener(Runnable runnable) {
-        int position = metaChangedListeners.size();
-        metaChangedListeners.add(runnable);
-        return position;
-    }
-
-    public void removeMetaChangedListener(int id) {
-        metaChangedListeners.remove(id);
-    }
-
     public class MusicLibraryBinder extends Binder {
         public MusicLibraryService getService() {
             return MusicLibraryService.this;
@@ -192,26 +170,23 @@ public class MusicLibraryService extends Service {
         super.onCreate();
         Log.d(LC, "onCreate");
         apis = new HashMap<>();
-        metaChangedListeners = new ArrayList<>();
         loadSettings();
         metaStorage = MetaStorage.getInstance(this);
-        playlistStorage = PlaylistStorage.getInstance(this);
-        audioStorage = AudioStorage.getInstance(this);
-        prepareIndex();
-        notifyLibraryChanged();
+        indexDirectoryPath = prepareIndex(getFilesDir(), indexDirectoryPath);
     }
 
-    private void prepareIndex() {
-        if (indexDirectoryPath != null) {
-            return;
+    private static File prepareIndex(File filesDir, File currentIndexPath) {
+        if (currentIndexPath != null) {
+            return currentIndexPath;
         }
-        indexDirectoryPath = new File(getFilesDir(), LUCENE_INDEX_PATH);
-        if (!indexDirectoryPath.isDirectory()) {
-            if (!indexDirectoryPath.mkdirs()) {
-                Log.w(LC, "Could not create lucene index dir " + indexDirectoryPath.toPath());
+        currentIndexPath = new File(filesDir, LUCENE_INDEX_PATH);
+        if (!currentIndexPath.isDirectory()) {
+            if (!currentIndexPath.mkdirs()) {
+                Log.w(LC, "Could not create lucene index dir " + currentIndexPath.toPath());
             }
         }
-        Log.e(LC, "index path: " + indexDirectoryPath);
+        Log.e(LC, "index path: " + currentIndexPath);
+        return currentIndexPath;
     }
 
     @Override
@@ -226,10 +201,10 @@ public class MusicLibraryService extends Service {
         return binder;
     }
 
-    private void reIndex(List<Meta> metas) {
+    private static void reIndex(Context context, List<Meta> metas, File indexPath) {
         Log.d(LC, "Indexing library...");
-        prepareIndex();
-        Indexer indexer = new Indexer(indexDirectoryPath);
+        indexPath = prepareIndex(context.getFilesDir(), indexPath);
+        Indexer indexer = new Indexer(indexPath);
         long startTime = System.currentTimeMillis();
         int numDocs = 0;
         Log.d(LC, "Songs: " + metas.size());
@@ -239,14 +214,6 @@ public class MusicLibraryService extends Service {
         indexer.close();
         long time = System.currentTimeMillis() - startTime;
         Log.d(LC, "Library indexed (" + numDocs + " docs)! Took " + time + "ms");
-    }
-
-    private void notifyLibraryChanged() {
-        Log.d(LC, "notifyLibraryChange");
-        for (Runnable r: metaChangedListeners) {
-            r.run();
-        }
-
     }
 
     private AudioDataSource getAudioDataSource(EntryID entryID) {
@@ -365,76 +332,71 @@ public class MusicLibraryService extends Service {
         }
     }
 
-    private void saveLibraryToStorage(List<Meta> data) {
-        long start = System.currentTimeMillis();
-        Log.d(LC, "saveLibraryToStorage start");
-        metaStorage.insertSongs(data);
-        Log.d(LC, "saveLibraryToStorage finish " + (System.currentTimeMillis() - start));
-    }
-
-    private void clearLibraryStorageEntries(final String src) {
-        long start = System.currentTimeMillis();
-        Log.d(LC, "clearLibraryStorageEntries start");
-        metaStorage.clearAll(src);
-        Log.d(LC, "clearLibraryStorageEntries finish " + (System.currentTimeMillis() - start));
-    }
-
-    private void savePlaylistsToStorage(List<Playlist> data) {
-        long start = System.currentTimeMillis();
-        Log.d(LC, "saveLibraryToStorage start");
-        playlistStorage.insertPlaylists(0, data);
-        Log.d(LC, "saveLibraryToStorage finish " + (System.currentTimeMillis() - start));
-    }
-
-    private void clearPlaylistStorageEntries(String src) {
-        long start = System.currentTimeMillis();
-        Log.d(LC, "clearPlaylistStorageEntries start");
-        playlistStorage.clearAll(src);
-        Log.d(LC, "clearPlaylistStorageEntries finish " + (System.currentTimeMillis() - start));
-    }
-
-    public void fetchAPILibrary(final String api, final MusicLibraryRequestHandler handler) {
+    public static CompletableFuture<Void> fetchAPILibrary(Context context, final String api, final MusicLibraryRequestHandler handler) {
         handler.onStart();
-        loadSettings();
-        APIClient client = apis.get(api);
+        MetaStorage metaStorage = MetaStorage.getInstance(context);
+        APIClient client = APIClient.getAPIClient(context, api);
         if (client == null) {
             handler.onFailure("Can not fetch library. API " + api + " not found.");
-            return;
+            return Util.futureResult("Can not fetch library. API " + api + " not found.");
         }
         if (!client.hasLibrary()) {
             handler.onFailure("Can not fetch library. API " + api + " does not support library.");
-            return;
+            return Util.futureResult("Can not fetch library. API " + api + " does not support library.");
         }
-        client.getLibrary(new APIClientRequestHandler() {
+        return client.getLibrary(new APIClientRequestHandler() {
             @Override
             public void onProgress(String s) {
                 handler.onProgress(s);
             }
-        }).thenAccept(opt -> {
+        }).thenCompose(opt -> {
             if (opt.isPresent()) {
                 final List<Meta> data = opt.get();
                 Log.d(LC, "Fetched library from " + api + ": " + data.size() + " entries.");
                 handler.onProgress("Saving entries to local meta storage...");
                 // TODO: Possible to perform a smart merge instead?
-                clearLibraryStorageEntries(api);
-                saveLibraryToStorage(data);
-                Log.d(LC, "Saved library to local meta storage.");
-                notifyLibraryChanged();
-                handler.onProgress("Indexing...");
-                reIndex(data);
-                handler.onProgress("Indexing done.");
-                handler.onSuccess("Successfully processed "
-                        + data.size() + " library entries from " + api + ".");
+                Log.d(LC, "clearLibraryStorageEntries start");
+                return CompletableFuture.supplyAsync(() -> {
+                    metaStorage.clearAll(api);
+                    Log.d(LC, "clearLibraryStorageEntries finish");
+                    return data;
+                });
             } else {
                 handler.onFailure("Could not fetch library from " + api + ".");
+                return Util.futureResult("Could not fetch library from " + api + ".");
             }
+        }).thenCompose(data -> {
+            Log.d(LC, "saveLibraryToStorage start");
+            return CompletableFuture.supplyAsync(() -> {
+                metaStorage.insertSongs(data);
+                Log.d(LC, "saveLibraryToStorage finish");
+                return data;
+            });
+        }).thenCompose(data -> {
+            Log.d(LC, "Saved library to local meta storage.");
+            handler.onProgress("Indexing...");
+            return CompletableFuture.supplyAsync(() -> {
+                reIndex(context, data, null);
+                handler.onProgress("Indexing done.");
+                return data;
+            });
+        }).thenAccept(data -> {
+            handler.onSuccess("Successfully processed "
+                    + data.size() + " library entries from " + api + ".");
+        }).exceptionally(throwable -> {
+            if (throwable != null) {
+                throwable.printStackTrace();
+                Log.e(LC, "msg: " + throwable.getMessage());
+            }
+            handler.onFailure("Could not fetch library from " + api + ".");
+            return null;
         });
     }
 
-    public void fetchPlayLists(final String api, final MusicLibraryRequestHandler handler) {
+    public static void fetchPlayLists(Context context, final String api, final MusicLibraryRequestHandler handler) {
         handler.onStart();
-        loadSettings();
-        APIClient client = apis.get(api);
+        APIClient client = APIClient.getAPIClient(context, api);
+        PlaylistStorage playlistStorage = PlaylistStorage.getInstance(context);
         if (client == null) {
             handler.onFailure("Can not fetch playlists. API " + api + " not found.");
             return;
@@ -449,21 +411,40 @@ public class MusicLibraryService extends Service {
             public void onProgress(String s) {
                 handler.onProgress(s);
             }
-        }).thenAccept(opt -> {
+        }).thenCompose(opt -> {
             if (opt.isPresent()) {
                 final List<Playlist> data = opt.get();
                 Log.d(LC, "Fetched playlists from " + api + ": " + data.size() + " entries.");
                 handler.onProgress("Saving playlists to local playlist storage...");
                 // TODO: Before clearing, check if there are any unsynced changes in 'api' playlists
-                clearPlaylistStorageEntries(api);
-                savePlaylistsToStorage(data);
-                Log.d(LC, "Saved playlists to local playlist storage.");
-                notifyLibraryChanged();
-                handler.onSuccess("Successfully processed "
-                        + data.size() + " playlist entries from " + api + ".");
+                Log.d(LC, "clearPlaylistStorageEntries start");
+                return CompletableFuture.supplyAsync(() -> {
+                    playlistStorage.clearAll(api);
+                    Log.d(LC, "clearPlaylistStorageEntries finish");
+                    return data;
+                });
             } else {
                 handler.onFailure("Could not fetch playlists from " + api + ".");
+                return Util.futureResult("Could not fetch playlists from " + api + ".");
             }
+        }).thenCompose(data -> {
+            Log.d(LC, "saveLibraryToStorage start");
+            return CompletableFuture.supplyAsync(() -> {
+                playlistStorage.insertPlaylists(0, data);
+                Log.d(LC, "saveLibraryToStorage finish");
+                Log.d(LC, "Saved playlists to local playlist storage.");
+                return data;
+            });
+        }).thenAccept(data -> {
+            handler.onSuccess("Successfully processed "
+                    + data.size() + " playlist entries from " + api + ".");
+        }).exceptionally(throwable -> {
+            if (throwable != null) {
+                throwable.printStackTrace();
+                Log.e(LC, "msg: " + throwable.getMessage());
+            }
+            handler.onFailure("Could not fetch playlists from " + api + ".");
+            return null;
         });
     }
 }
