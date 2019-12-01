@@ -4,6 +4,7 @@
     <string name="subsonic_artists">Get artists</string>
     <string name="sort_by_artist">Sort by artist</string>
     <string name="sort_by_song">Sort by song</string>
+    <string name="sort_entries">Sort selected entries</string>
     <string name="refresh">Refresh</string>
     <string name="title_activity_settings">Settings</string>
     <string name="pref_subsonic">Subsonic</string>
@@ -63,6 +64,7 @@
     <string name="item_action_delete_meta">Delete metadata tag</string>
     <string name="item_action_goto_meta">Show all entries for tag</string>
     <string name="item_action_shuffle_selection">Shuffle selected entries</string>
+    <string name="item_action_sort_selection">Sort selected entries</string>
     <string name="item_action_queue_clear">Clear queue</string>
     <string name="item_action_history_clear">Clear history</string>
     <string name="song_info" />

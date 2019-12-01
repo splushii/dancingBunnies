@@ -3,6 +3,7 @@ package se.splushii.dancingbunnies.ui.musiclibrary;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -41,7 +42,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     private SongViewHolder currentFastScrollerHolder;
     private List<LibraryEntry> dataset;
     private TrackItemActionsView selectedActionView;
-    private SelectionTracker<EntryID> selectionTracker;
+    private SelectionTracker<LibraryEntry> selectionTracker;
     private boolean initialScrolled;
 
     MusicLibraryAdapter(MusicLibraryFragment fragment,
@@ -58,7 +59,11 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     }
 
     private String getFastScrollerText(SongViewHolder holder) {
-        String title = holder == null ? "" : holder.getSortedByDisplayValue();
+        String title = holder == null ? "" : fragment.getSortedByDisplayString(
+                holder.entry.sortedByValues(),
+                false,
+                false
+        );
         if (title == null) {
             return "";
         }
@@ -93,7 +98,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         }
     }
 
-    void setSelectionTracker(SelectionTracker<EntryID> selectionTracker) {
+    void setSelectionTracker(SelectionTracker<LibraryEntry> selectionTracker) {
         this.selectionTracker = selectionTracker;
         selectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
             @Override
@@ -117,6 +122,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         private final TextView libraryEntryShow;
         private final TextView libraryEntryArtist;
         private final TextView libraryEntrySortedBy;
+        private final LinearLayout libraryEntryExtra;
         private final TrackItemActionsView actionsView;
         private final TextView libraryEntryNum;
         private LiveData<Integer> numSubEntriesLiveData;
@@ -124,7 +130,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         private LibraryEntry entry;
         private boolean browsable = false;
 
-        private final ItemDetailsLookup.ItemDetails<EntryID> itemDetails = new ItemDetailsLookup.ItemDetails<EntryID>() {
+        private final ItemDetailsLookup.ItemDetails<LibraryEntry> itemDetails =
+                new ItemDetailsLookup.ItemDetails<LibraryEntry>() {
             @Override
             public int getPosition() {
                 return getAdapterPosition();
@@ -132,8 +139,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
 
             @Nullable
             @Override
-            public EntryID getSelectionKey() {
-                return entryIDLiveData.getValue();
+            public LibraryEntry getSelectionKey() {
+                return entry;
             }
         };
 
@@ -145,10 +152,11 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             libraryEntrySortedBy = view.findViewById(R.id.library_entry_sortedby);
             libraryEntryArtist = view.findViewById(R.id.library_entry_artist);
             libraryEntryNum = view.findViewById(R.id.library_entry_num);
+            libraryEntryExtra = view.findViewById(R.id.library_entry_extra);
             actionsView = view.findViewById(R.id.library_entry_actions);
         }
 
-        public ItemDetailsLookup.ItemDetails<EntryID> getItemDetails() {
+        public ItemDetailsLookup.ItemDetails<LibraryEntry> getItemDetails() {
             return itemDetails;
         }
 
@@ -170,11 +178,23 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         void update(LibraryEntry libraryEntry, boolean browsable) {
             entry = libraryEntry;
             this.browsable = browsable;
-            if (fragment.showSortedByValues()) {
-                libraryEntrySortedBy.setText(getSortedByDisplayValue());
-                libraryEntrySortedBy.setVisibility(View.VISIBLE);
+            if (fragment.showSortedByHeader()) {
+                libraryEntryExtra.setVisibility(View.GONE);
+                libraryEntryExtra.removeAllViews();
+                if (!fragment.querySortedByShow()) {
+                    libraryEntrySortedBy.setText(fragment.getSortedByDisplayString(
+                            entry.sortedByValues(),
+                            false,
+                            true
+                    ));
+                    libraryEntrySortedBy.setVisibility(View.VISIBLE);
+                } else {
+                    libraryEntrySortedBy.setVisibility(View.GONE);
+                }
             } else {
                 libraryEntrySortedBy.setVisibility(View.GONE);
+                fragment.addSortedByColumns(libraryEntryExtra, entry.sortedByValues(), false);
+                libraryEntryExtra.setVisibility(View.VISIBLE);
             }
             libraryEntryShow.setText(fragment.isSearchQuery() ? "" : getShowDisplayValue(entry.name()));
             libraryEntryArtist.setText("");
@@ -185,12 +205,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                     View.VISIBLE : View.GONE
             );
             entryIDLiveData.setValue(libraryEntry.entryID);
-        }
-
-        String getSortedByDisplayValue() {
-            String sortField = fragment.getCurrentQuery().getSortByField();
-            String sortValue = entry.sortedBy();
-            return Meta.getDisplayValue(sortField, sortValue);
         }
 
         String getShowDisplayValue(String value) {
@@ -269,11 +283,10 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         if (holder.isBrowsable() && !fragment.querySortedByShow()) {
             // If the entries are sorted by a key (other than the entries' type),
             // then add it to the query
-            String sortedByKey = fragment.querySortedByKey();
-            String sortedByValue = holder.entry.sortedBy();
-            if (sortedByValue != null) {
-                query.addToQuery(sortedByKey, sortedByValue);
-            }
+            query.addSortedByValuesToQuery(
+                    fragment.querySortedByKeys(),
+                    holder.entry.sortedByValues()
+            );
         }
     }
 
@@ -332,14 +345,14 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         }
     }
 
-    EntryID getEntryId(int position) {
-        return dataset.get(position).entryID;
+    LibraryEntry getEntryId(int position) {
+        return dataset.get(position);
     }
 
-    int getEntryIdPosition(@NonNull EntryID entryID) {
+    int getEntryIdPosition(@NonNull LibraryEntry libraryEntry) {
         int index = 0;
-        for (LibraryEntry libraryEntry: dataset) {
-            if (entryID.equals(libraryEntry.entryID)) {
+        for (LibraryEntry l: dataset) {
+            if (libraryEntry.equals(l)) {
                 return index;
             }
             index++;

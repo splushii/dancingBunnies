@@ -11,6 +11,7 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -79,6 +80,18 @@ public abstract class AudioBrowserFragment extends Fragment {
         });
     }
 
+    public CompletableFuture<Boolean> playQueryBundles(List<Bundle> queryBundles) {
+        return AudioPlayerService.playQueryBundles(
+                mediaController,
+                queryBundles
+        ).thenApply(success -> {
+            if (!success) {
+                Log.e(LC, "play queries failed");
+            }
+            return success;
+        });
+    }
+
     public List<PlaybackEntry> getQueue() {
         return sessionQueueToPlaybackEntries(mediaController.getQueue());
     }
@@ -103,6 +116,18 @@ public abstract class AudioBrowserFragment extends Fragment {
         ).thenApply(success -> {
             if (!success) {
                 Log.e(LC, "queue entryIDs failed");
+            }
+            return success;
+        });
+    }
+
+    public CompletableFuture<Boolean> queueQueryBundles(List<Bundle> queryBundles) {
+        return AudioPlayerService.queueQueryBundles(
+                mediaController,
+                queryBundles
+        ).thenApply(success -> {
+            if (!success) {
+                Log.e(LC, "queue queries failed");
             }
             return success;
         });
@@ -155,6 +180,20 @@ public abstract class AudioBrowserFragment extends Fragment {
         ).thenApply(success -> {
             if (!success) {
                 Log.e(LC, "shuffleQueueItems failed");
+            }
+            return success;
+        });
+    }
+
+    public CompletableFuture<Boolean> sortQueueItems(List<PlaybackEntry> playbackEntries,
+                                                     List<String> sortBy) {
+        return AudioPlayerService.sortQueueItems(
+                mediaController,
+                playbackEntries,
+                sortBy
+        ).thenApply(success -> {
+            if (!success) {
+                Log.e(LC, "sortQueueItems failed");
             }
             return success;
         });
@@ -279,8 +318,8 @@ public abstract class AudioBrowserFragment extends Fragment {
         }
     }
 
-    public void downloadAudioData(List<EntryID> selection, int priority, Bundle queryBundle) {
-        MusicLibraryService.downloadAudioData(requireContext(), selection, priority, queryBundle);
+    public void downloadAudioData(ArrayList<Bundle> queryBundles, int priority) {
+        MusicLibraryService.downloadAudioData(requireContext(), queryBundles, priority);
     }
 
     private final MediaBrowserCompat.ConnectionCallback mediaBrowserConnectionCallback =

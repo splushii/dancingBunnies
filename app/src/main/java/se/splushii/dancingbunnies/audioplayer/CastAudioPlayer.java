@@ -1,5 +1,6 @@
 package se.splushii.dancingbunnies.audioplayer;
 
+import android.content.Context;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 import android.util.LongSparseArray;
@@ -39,7 +40,7 @@ public class CastAudioPlayer implements AudioPlayer {
     static final String CASTMETA_KEY_PLAYLIST_POS = "dancingbunnies.castmeta.PLAYLIST_POS";
     static final String CASTMETA_KEY_PLAYLIST_SELECTION_ID = "dancingbunnies.castmeta.PLAYLIST_SELECTION_ID";
 
-    private final MusicLibraryService musicLibraryService;
+    private final Context context;
     private Callback callback;
     private final SparseArray<MediaQueueItem> queueItemMap;
     private final MediaQueueCallback mediaQueueCallback;
@@ -67,11 +68,11 @@ public class CastAudioPlayer implements AudioPlayer {
     }
 
     CastAudioPlayer(Callback callback,
-                    MusicLibraryService musicLibraryService,
+                    Context context,
                     CastSession castSession,
                     boolean waitForResume) {
         this.callback = callback;
-        this.musicLibraryService = musicLibraryService;
+        this.context = context;
         this.waitingForResume = waitForResume;
         queueChangeLock.drainPermits();
         queueItemMap = new SparseArray<>();
@@ -580,7 +581,8 @@ public class CastAudioPlayer implements AudioPlayer {
             List<PlaybackEntry> playbackEntries,
             boolean playWhenReady
     ) {
-        return musicLibraryService.getSongMetas(
+        return MusicLibraryService.getSongMetas(
+                context,
                 playbackEntries.stream()
                         .map(p -> p.entryID)
                         .collect(Collectors.toList())
@@ -626,7 +628,7 @@ public class CastAudioPlayer implements AudioPlayer {
     }
 
     private MediaInfo buildMediaInfo(PlaybackEntry playbackEntry, Meta meta) {
-        String URL = musicLibraryService.getAudioURL(playbackEntry.entryID);
+        String URL = MusicLibraryService.getAudioURL(context, playbackEntry.entryID);
         if (URL == null) {
             Log.e(LC, "Could not get URL for " + playbackEntry);
             return null;

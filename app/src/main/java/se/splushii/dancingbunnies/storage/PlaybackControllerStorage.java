@@ -4,10 +4,11 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import androidx.core.util.Pair;
@@ -35,6 +36,7 @@ public class PlaybackControllerStorage {
     public static final int QUEUE_ID_LOCALAUDIOPLAYER_HISTORY = 5;
 
     private static PlaybackControllerStorage instance;
+    private final Context context;
 
     private final PlaybackControllerEntryDao entryModel;
     private final SharedPreferences preferences;
@@ -58,12 +60,13 @@ public class PlaybackControllerStorage {
 
     public static synchronized PlaybackControllerStorage getInstance(Context context) {
         if (instance == null) {
-            instance = new PlaybackControllerStorage(context);
+            instance = new PlaybackControllerStorage(context.getApplicationContext());
         }
         return instance;
     }
 
     private PlaybackControllerStorage(Context context) {
+        this.context = context;
         entryModel = DB.getDB(context).playbackControllerEntryModel();
         preferences = PreferenceManager.getDefaultSharedPreferences(context);
         playback_id_counter_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playback_id_counter);
@@ -176,26 +179,48 @@ public class PlaybackControllerStorage {
     }
 
     public CompletableFuture<Void> shuffle(int queueID, List<PlaybackEntry> playbackEntries) {
-        CompletableFuture<Void> shuffleFuture = new CompletableFuture<>();
+        List<PlaybackEntry> shuffledEntries = new ArrayList<>(playbackEntries);
+        Collections.shuffle(shuffledEntries);
+        return reorderQueueItemsAccordingToList(queueID, shuffledEntries);
+    }
+
+    private CompletableFuture<Void> reorderQueueItemsAccordingToList(
+            int queueID,
+            List<PlaybackEntry> playbackEntries
+    ) {
+        CompletableFuture<Void> future = new CompletableFuture<>();
         LiveData<List<PlaybackEntry>> qEntriesLiveData = getEntries(queueID);
         qEntriesLiveData.observeForever(new Observer<List<PlaybackEntry>>() {
             @Override
             public void onChanged(List<PlaybackEntry> allEntries) {
-                HashMap<Long, List<PlaybackEntry>> entriesToMoveMap =
-                        PlaybackController.getShuffledEntriesToMove(
-                                allEntries,
-                                playbackEntries
-                        );
-                for (Map.Entry<Long, List<PlaybackEntry>> entry: entriesToMoveMap.entrySet()) {
-                    long beforePlaybackID = entry.getKey();
-                    List<PlaybackEntry> entriesToMove = entry.getValue();
+                List<Pair<Long, List<PlaybackEntry>>> entryChunksToMove =
+                        PlaybackController.getEntryChunksToMove(allEntries, playbackEntries);
+                for (Pair<Long, List<PlaybackEntry>> entry: entryChunksToMove) {
+                    long beforePlaybackID = entry.first;
+                    List<PlaybackEntry> entriesToMove = entry.second;
                     move(queueID, beforePlaybackID, entriesToMove).join();
                 }
-                shuffleFuture.complete(null);
+                future.complete(null);
                 qEntriesLiveData.removeObserver(this);
             }
         });
-        return shuffleFuture;
+        return future;
+    }
+
+    public CompletableFuture<Void> sort(int queueID,
+                                        List<PlaybackEntry> playbackEntries,
+                                        List<String> sortBy) {
+        CompletableFuture<List<PlaybackEntry>> sortedEntries = PlaybackController.sorted(
+                context,
+                playbackEntries,
+                sortBy
+        );
+        try {
+            return reorderQueueItemsAccordingToList(queueID, sortedEntries.get());
+        } catch (ExecutionException | InterruptedException e) {
+            e.printStackTrace();
+            return Util.futureResult("Could not sort: " + e.getMessage());
+        }
     }
 
     public void setLocalAudioPlayerCurrent(PlaybackEntry playbackEntry, long lastPos) {

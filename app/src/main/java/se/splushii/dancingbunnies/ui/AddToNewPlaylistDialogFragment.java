@@ -10,6 +10,7 @@ import android.widget.EditText;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -18,7 +19,6 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.SmartPlaylist;
 import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
@@ -33,24 +33,22 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
             "dancingbunnies.splushii.se.fragment_tag.add_to_new_playlist_dialog";
     private static final String BUNDLE_KEY_QUERY =
             "dancingbunnies.bundle.key.add_to_new_playlist_dialog.query";
-    private static final String BUNDLE_KEY_ENTRY_IDS =
+    private static final String BUNDLE_KEY_QUERY_BUNDLES =
             "dancingbunnies.bundle.key.add_to_new_playlist_dialog.entryids";
 
     private Bundle query;
-    private List<EntryID> entryIDs;
+    private ArrayList<Bundle> queryBundles;
     private EditText addToNewPlaylistEditText;
 
     public static void showDialog(Fragment fragment, Bundle query) {
         Bundle args = new Bundle();
-        args.remove(BUNDLE_KEY_ENTRY_IDS);
         args.putBundle(BUNDLE_KEY_QUERY, query);
         _showDialog(fragment, args);
     }
 
-    static void showDialog(Fragment fragment, List<EntryID> entryIDs, Bundle query) {
+    static void showDialog(Fragment fragment, List<Bundle> bundleQueries) {
         Bundle args = new Bundle();
-        args.putParcelableArrayList(BUNDLE_KEY_ENTRY_IDS, new ArrayList<>(entryIDs));
-        args.putBundle(BUNDLE_KEY_QUERY, query);
+        args.putParcelableArrayList(BUNDLE_KEY_QUERY_BUNDLES, new ArrayList<>(bundleQueries));
         _showDialog(fragment, args);
     }
 
@@ -70,7 +68,7 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         Bundle args = getArguments();
-        this.entryIDs = args.getParcelableArrayList(BUNDLE_KEY_ENTRY_IDS);
+        this.queryBundles = args.getParcelableArrayList(BUNDLE_KEY_QUERY_BUNDLES);
         this.query = args.getBundle(BUNDLE_KEY_QUERY);
         super.onCreate(savedInstanceState);
     }
@@ -92,10 +90,11 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
     }
 
     private void createPlaylist(String name) {
-        if (entryIDs != null) {
+        CompletableFuture<Void> completableFuture;
+        if (queryBundles != null) {
             // Create a StupidPlaylist
-            MetaStorage.getInstance(requireContext())
-                    .getSongEntriesOnce(entryIDs, query)
+            completableFuture = MetaStorage.getInstance(requireContext())
+                    .getSongEntriesOnce(queryBundles)
                     .thenCompose(songEntryIDs ->
                             PlaylistStorage.getInstance(requireContext()).insertPlaylists(
                                     0,
@@ -104,18 +103,31 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
                                             name,
                                             songEntryIDs
                                     ))
-                            ))
-                    .thenRun(this::dismiss);
+                            ));
         } else {
             // Create a SmartPlaylist
-            PlaylistStorage.getInstance(requireContext()).insertPlaylists(
+            completableFuture = PlaylistStorage.getInstance(requireContext()).insertPlaylists(
                     0,
                     Collections.singletonList(new SmartPlaylist(
                             PlaylistStorage.generatePlaylistID(PlaylistID.TYPE_SMART),
                             name,
                             query
-                    )))
-                    .thenRunAsync(this::dismiss, Util.getMainThreadExecutor());
+                    )));
         }
+        completableFuture
+                .thenRunAsync(this::dismiss, Util.getMainThreadExecutor())
+                .thenRun(this::finish);
+
+    }
+
+    private void finish() {
+        Fragment fragment = getTargetFragment();
+        if (fragment instanceof AddToNewPlaylistDialogFragment.Handler) {
+            ((AddToNewPlaylistDialogFragment.Handler) fragment).onNewPlaylistCreated();
+        }
+    }
+
+    interface Handler {
+        void onNewPlaylistCreated();
     }
 }

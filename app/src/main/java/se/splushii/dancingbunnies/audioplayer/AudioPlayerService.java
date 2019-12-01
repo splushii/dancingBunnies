@@ -81,6 +81,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static final String COMMAND_CLEAR_QUEUE = "CLEAR_QUEUE";
     private static final String COMMAND_MOVE_QUEUE_ITEMS = "MOVE_QUEUE_ITEMS";
     private static final String COMMAND_SHUFFLE_QUEUE_ITEMS = "SHUFFLE_QUEUE_ITEMS";
+    private static final String COMMAND_SORT_QUEUE_ITEMS = "SORT_QUEUE_ITEMS";
+    private static final String COMMAND_PLAY_QUERY_BUNDLES = "PLAY_QUERY_BUNDLES";
+    private static final String COMMAND_QUEUE_QUERY_BUNDLES = "QUEUE_QUERY_BUNDLES";
 
     public static final String BUNDLE_KEY_CURRENT_PLAYBACK_ENTRY_BUNDLE =
             "dancingbunnies.bundle.key.audioplayerservice.playback_entry_bundle";
@@ -163,12 +166,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         subscriptionIDs.add(id);
         subscriptionResults.put(id, new ArrayList<>());
         String showField = options.getString(MusicLibraryQuery.BUNDLE_KEY_SHOW);
-        String sortField = options.getString(MusicLibraryQuery.BUNDLE_KEY_SORT);
+        List<String> sortFields = options.getStringArrayList(MusicLibraryQuery.BUNDLE_KEY_SORT);
         boolean sortOrderAscending = options.getBoolean(MusicLibraryQuery.BUNDLE_KEY_SORT_ORDER);
         Bundle query = options.getBundle(MusicLibraryQuery.BUNDLE_KEY_QUERY);
         LiveData<List<LibraryEntry>> entries = musicLibraryService.getSubscriptionEntries(
                 showField,
-                sortField,
+                sortFields,
                 sortOrderAscending,
                 query
         );
@@ -563,7 +566,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         private void setToast(EntryID entryID, String format) {
             String type = Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type) ?
                     Meta.FIELD_TITLE : entryID.type;
-            musicLibraryService.getSongMeta(entryID).thenAcceptAsync(meta -> {
+            MusicLibraryService.getSongMeta(getBaseContext(), entryID).thenAcceptAsync(meta -> {
                         String title = meta.getAsString(Meta.FIELD_TITLE);
                         String message = String.format(Locale.getDefault(), format, type, title);
                         Toast.makeText(
@@ -691,13 +694,21 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 case COMMAND_SHUFFLE_QUEUE_ITEMS:
                     shuffleQueueItems(cb, extras);
                     break;
+                case COMMAND_SORT_QUEUE_ITEMS:
+                    sortQueueItems(cb, extras);
+                    break;
+                case COMMAND_PLAY_QUERY_BUNDLES:
+                    playQueryBundles(cb, extras);
+                    break;
+                case COMMAND_QUEUE_QUERY_BUNDLES:
+                    queueQueryBundles(cb, extras);
+                    break;
                 default:
                     Log.e(LC, "Unhandled MediaSession onCommand: " + command);
                     break;
             }
         }
     }
-
 
     public static CompletableFuture<Boolean> play(MediaControllerCompat mediaController,
                                                   List<EntryID> entryIDs,
@@ -707,7 +718,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         params.putBundle("query", query);
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
-                AudioPlayerService.COMMAND_PLAY_ENTRYIDS,
+                COMMAND_PLAY_ENTRYIDS,
                 params,
                 new ResultReceiver(null) {
                     @Override
@@ -739,6 +750,43 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 });
     }
 
+    public static CompletableFuture<Boolean> playQueryBundles(MediaControllerCompat mediaController,
+                                                              List<Bundle> queryBundles) {
+        Bundle params = new Bundle();
+        params.putParcelableArrayList("queryBundles", new ArrayList<>(queryBundles));
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        mediaController.sendCommand(
+                COMMAND_PLAY_QUERY_BUNDLES,
+                params,
+                new ResultReceiver(null) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        future.complete(resultCode == 0);
+                    }
+                }
+        );
+        return future;
+    }
+
+    private void playQueryBundles(ResultReceiver cb, Bundle b) {
+        ArrayList<Bundle> queryBundles = b.getParcelableArrayList("queryBundles");
+        if (queryBundles == null || queryBundles.isEmpty()) {
+            cb.send(-1, null);
+            return;
+        }
+        Log.d(LC, "play() " + queryBundles.size() + " queries");
+        MusicLibraryService.getSongEntriesOnce(musicLibraryService, queryBundles)
+                .thenComposeAsync(songEntryIDs -> {
+                    Log.d(LC, "play() total song entries: " + songEntryIDs.size());
+                    return playbackController.playNow(songEntryIDs);
+                }, Util.getMainThreadExecutor())
+                .handle((r, t) -> {
+                    handleControllerResult(r, t);
+                    cb.send(t == null ? 0 : 1, null);
+                    return r;
+                });
+    }
+
     public static CompletableFuture<Boolean> queue(MediaControllerCompat mediaController,
                                                    List<EntryID> entryIDs,
                                                    Bundle query) {
@@ -747,7 +795,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         params.putBundle("query", query);
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
-                AudioPlayerService.COMMAND_QUEUE_ENTRYIDS,
+                COMMAND_QUEUE_ENTRYIDS,
                 params,
                 new ResultReceiver(null) {
                     @Override
@@ -779,13 +827,52 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 });
     }
 
+    public static CompletableFuture<Boolean> queueQueryBundles(
+            MediaControllerCompat mediaController,
+            List<Bundle> queryBundles
+    ) {
+        Bundle params = new Bundle();
+        params.putParcelableArrayList("queryBundles", new ArrayList<>(queryBundles));
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        mediaController.sendCommand(
+                COMMAND_QUEUE_QUERY_BUNDLES,
+                params,
+                new ResultReceiver(null) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        future.complete(resultCode == 0);
+                    }
+                }
+        );
+        return future;
+    }
+
+    private void queueQueryBundles(ResultReceiver cb, Bundle b) {
+        ArrayList<Bundle> queryBundles = b.getParcelableArrayList("queryBundles");
+        if (queryBundles == null || queryBundles.isEmpty()) {
+            cb.send(-1, null);
+            return;
+        }
+        Log.d(LC, "queue() " + queryBundles.size() + " queries");
+        MusicLibraryService.getSongEntriesOnce(musicLibraryService, queryBundles)
+                .thenComposeAsync(songEntryIDs -> {
+                    Log.d(LC, "queue() total song entries: " + songEntryIDs.size());
+                    return playbackController.queue(songEntryIDs);
+                }, Util.getMainThreadExecutor())
+                .handle((r, t) -> {
+                    handleControllerResult(r, t);
+                    cb.send(t == null ? 0 : 1, null);
+                    return r;
+                });
+    }
+
     public static CompletableFuture<Boolean> dequeue(MediaControllerCompat mediaController,
                                                      List<PlaybackEntry> playbackEntries) {
         Bundle params = new Bundle();
         params.putParcelableArrayList("playbackEntries", new ArrayList<>(playbackEntries));
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
-                AudioPlayerService.COMMAND_DEQUEUE,
+                COMMAND_DEQUEUE,
                 params,
                 new ResultReceiver(null) {
                     @Override
@@ -810,7 +897,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         Bundle params = new Bundle();
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
-                AudioPlayerService.COMMAND_CLEAR_QUEUE,
+                COMMAND_CLEAR_QUEUE,
                 params,
                 new ResultReceiver(null) {
                     @Override
@@ -838,7 +925,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         params.putLong("beforePlaybackID", beforePlaybackID);
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
-                AudioPlayerService.COMMAND_MOVE_QUEUE_ITEMS,
+                COMMAND_MOVE_QUEUE_ITEMS,
                 params,
                 new ResultReceiver(null) {
                     @Override
@@ -865,7 +952,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         params.putParcelableArrayList("playbackEntries", new ArrayList<>(playbackEntries));
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
-                AudioPlayerService.COMMAND_SHUFFLE_QUEUE_ITEMS,
+                COMMAND_SHUFFLE_QUEUE_ITEMS,
                 params,
                 new ResultReceiver(null) {
                     @Override
@@ -885,6 +972,35 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         });
     }
 
+    public static CompletableFuture<Boolean> sortQueueItems(MediaControllerCompat mediaController,
+                                                            List<PlaybackEntry> playbackEntries,
+                                                            List<String> sortBy) {
+        Bundle params = new Bundle();
+        params.putParcelableArrayList("playbackEntries", new ArrayList<>(playbackEntries));
+        params.putStringArrayList("sortBy", new ArrayList<>(sortBy));
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        mediaController.sendCommand(
+                COMMAND_SORT_QUEUE_ITEMS,
+                params,
+                new ResultReceiver(null) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        future.complete(resultCode == 0);
+                    }
+                }
+        );
+        return future;
+    }
+
+    private void sortQueueItems(ResultReceiver cb, Bundle extras) {
+        List<PlaybackEntry> playbackEntries = extras.getParcelableArrayList("playbackEntries");
+        List<String> sortBy = extras.getStringArrayList("sortBy");
+        playbackController.sortQueueItems(playbackEntries, sortBy).handle((r, t) -> {
+            cb.send(t == null ? 0 : 1, null);
+            return handleControllerResult(r, t);
+        });
+    }
+
     public static CompletableFuture<Boolean> setCurrentPlaylist(MediaControllerCompat mediaController,
                                                                 PlaylistID playlistID,
                                                                 long pos) {
@@ -893,7 +1009,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         params.putLong("playlistPos", pos);
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
-                AudioPlayerService.COMMAND_SET_CURRENT_PLAYLIST,
+                COMMAND_SET_CURRENT_PLAYLIST,
                 params,
                 new ResultReceiver(null) {
                     @Override
@@ -1032,7 +1148,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         @Override
         public void onMetaChanged(EntryID entryID) {
-            musicLibraryService.getSongMeta(entryID).thenAcceptAsync(
+            MusicLibraryService.getSongMeta(getBaseContext(), entryID).thenAcceptAsync(
                     meta -> mediaSession.setMetadata(meta.toMediaMetadataCompat()),
                     Util.getMainThreadExecutor()
             );

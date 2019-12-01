@@ -117,12 +117,15 @@ public class LibrarySyncWorker extends Worker {
     }
 
     private static void requeue(Context context, boolean forceRunNow) {
-        Constraints workConstraints = new Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .setRequiresBatteryNotLow(true)
-                .setRequiresCharging(true)
-//                .setRequiresDeviceIdle(true)
-                .build();
+        Constraints.Builder workConstraintsBuilder = new Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED);
+        if (!forceRunNow) {
+            workConstraintsBuilder
+//                    .setRequiresDeviceIdle(true)
+                    .setRequiresBatteryNotLow(true)
+                    .setRequiresCharging(true);
+        }
+        Constraints workConstraints = workConstraintsBuilder.build();
         OneTimeWorkRequest.Builder workRequestBuilder =
                 new OneTimeWorkRequest.Builder(LibrarySyncWorker.class)
                         .setConstraints(workConstraints);

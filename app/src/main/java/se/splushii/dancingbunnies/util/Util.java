@@ -70,6 +70,11 @@ public class Util {
         return new Pair<>(hPos, hPad - llm.getPaddingTop());
     }
 
+    public static int dpToPixels(Context context, int dp) {
+        float density = context.getResources().getDisplayMetrics().density;
+        return (int) (density * dp);
+    }
+
     public static class FutureException extends Throwable {
         final String msg;
         public FutureException(String msg) {

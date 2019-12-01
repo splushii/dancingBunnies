@@ -2,6 +2,7 @@ package se.splushii.dancingbunnies.ui.musiclibrary;
 
 import android.support.v4.media.MediaBrowserCompat;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -97,9 +98,9 @@ public class MusicLibraryFragmentModel extends ViewModel {
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 
-    void sortBy(String field) {
+    void sortBy(List<String> fields) {
         MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
-        query.setSortByField(field);
+        query.setSortByFields(new ArrayList<>(fields));
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 

@@ -53,6 +53,7 @@ public final class MainActivity extends AppCompatActivity {
     public static final int REQUEST_CODE_META_DIALOG = 1337;
     public static final int REQUEST_CODE_ADD_TO_PLAYLIST_DIALOG = 1338;
     public static final int REQUEST_CODE_ADD_TO_NEW_PLAYLIST_DIALOG = 1339;
+    public static final int REQUEST_CODE_SORT_DIALOG = 1340;
 
     private SearchView searchView;
     private MenuItem searchMenuItem;

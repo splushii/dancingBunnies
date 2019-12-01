@@ -1,11 +1,14 @@
 package se.splushii.dancingbunnies.ui.musiclibrary;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.ActionMode;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
@@ -13,7 +16,9 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
+import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -23,12 +28,13 @@ import com.google.android.material.chip.ChipGroup;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.view.menu.MenuBuilder;
+import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.MutableLiveData;
@@ -45,6 +51,7 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
@@ -55,19 +62,30 @@ import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.AddToNewPlaylistDialogFragment;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.FastScrollerBubble;
-import se.splushii.dancingbunnies.ui.selection.EntryIDItemDetailsLookup;
+import se.splushii.dancingbunnies.ui.SortDialogFragment;
+import se.splushii.dancingbunnies.ui.selection.LibraryEntryItemDetailsLookup;
 import se.splushii.dancingbunnies.util.Util;
 
 import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_PLAYLIST;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_QUEUE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULTIPLE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULTIPLE_QUERIES;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE_QUERIES;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE_QUERIES;
 
-public class MusicLibraryFragment extends AudioBrowserFragment {
+public class MusicLibraryFragment extends AudioBrowserFragment implements SortDialogFragment.ConfigHandler {
     private static final String LC = Util.getLogContext(MusicLibraryFragment.class);
+    private static final int SORT_BY_GROUP_ID_HEADER = 0;
+    private static final int SORT_BY_GROUP_ID_CUSTOM = 1;
+    private static final int SORT_BY_GROUP_ID_SINGLE = 2;
+    private static final int SORT_BY_GROUP_ORDER_HEADER = Menu.FIRST;
+    private static final int SORT_BY_GROUP_ORDER_CUSTUM = Menu.FIRST + 1;
+    private static final int SORT_BY_GROUP_ORDER_SINGLE = Menu.FIRST + 2;
+    private static final int SHOW_GROUP_ID_HEADER = 0;
+    private static final int SHOW_GROUP_ID_SINGLE = 1;
+    private static final int SHOW_GROUP_ORDER_HEADER = Menu.FIRST;
+    private static final int SHOW_GROUP_ORDER_SINGLE = Menu.FIRST + 1;
 
     private MusicLibraryAdapter recyclerViewAdapter;
     private LinearLayoutManager recViewLayoutManager;
@@ -88,17 +106,19 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private ArrayList<String> metaKeys;
     private ArrayAdapter<String> metaKeyAdapter;
 
-    private int showSelectionPos;
-    private int sortSelectionPos;
-
     private TextView headerShow;
+    private Menu headerShowMenu;
     private View headerSortedByRoot;
     private TextView headerSortedBy;
+    private Menu headerSortedByMenu;
     private ImageButton headerSortedByOrder;
     private TextView headerArtist;
     private View headerNum;
+    private LinearLayout headerExtraSortedBy;
+    private LinearLayout headerExtraSortedByKeys;
+    private ImageButton headerExtraSortedByOrder;
 
-    private SelectionTracker<EntryID> selectionTracker;
+    private SelectionTracker<LibraryEntry> selectionTracker;
     private ActionMode actionMode;
 
     private FastScroller fastScroller;
@@ -140,8 +160,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         recyclerViewAdapter.scrollWhenReady();
         String showField = getCurrentQuery().getShowField();
         String showDisplayField = Meta.getDisplayKey(showField);
-        String sortField = getCurrentQuery().getSortByField();
-        String sortDisplayField = Meta.getDisplayKey(sortField);
         clearFilterView();
         boolean browsable = isBrowsable(showField);
         headerShow.setText(showDisplayField);
@@ -154,14 +172,18 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
 
         headerNum.setVisibility(showHeaderNum(browsable) ? VISIBLE : GONE);
         if (showSortedByHeader()) {
-            headerSortedBy.setText(sortDisplayField);
+            headerExtraSortedBy.setVisibility(GONE);
+            headerSortedBy.setText(getSortedByDisplayString(null, true, false));
             headerSortedByRoot.setVisibility(VISIBLE);
         } else {
             headerSortedByRoot.setVisibility(GONE);
+            addSortedByColumns(headerExtraSortedByKeys, null, true);
+            headerExtraSortedBy.setVisibility(VISIBLE);
         }
-        headerSortedByOrder.setImageResource(isSortedAscending() ?
-                R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp
-        );
+        int sortOrderResource = isSortedAscending() ?
+                R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp;
+        headerSortedByOrder.setImageResource(sortOrderResource);
+        headerExtraSortedByOrder.setImageResource(sortOrderResource);
         if (isSearchQuery()) {
             Log.d(LC, "refreshView search");
             headerShow.setEnabled(false);
@@ -174,8 +196,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             headerShow.setEnabled(true);
             searchView.setVisibility(GONE);
             fastScroller.enableBubble(true);
-            showSelectionPos = getMetaKeyPosition(showField);
-            sortSelectionPos = getMetaKeyPosition(sortField);
+            setShowMenuHeader(newUserState.query.getShowField());
+            setSortByMenuHeader(getSortedByDisplayString(null, true, false));
             Bundle b = newUserState.query.getQueryBundle();
             for (String metaKey: b.keySet()) {
                 String filterValue = b.getString(metaKey);
@@ -187,6 +209,74 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
             filterChips.setVisibility(VISIBLE);
         } else {
             filterChips.setVisibility(GONE);
+        }
+    }
+
+    String getSortedByDisplayString(List<String> sortValues,
+                                    boolean showKeys,
+                                    boolean excludeShowKey) {
+        String showKey = getCurrentQuery().getShowField();
+        List<String> sortKeys = getCurrentQuery().getSortByFields();
+        if (sortKeys == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (int i = 0; i < sortKeys.size(); i++) {
+            String key = sortKeys.get(i);
+            if (excludeShowKey && showKey.equals(key)) {
+                continue;
+            }
+            if (first) {
+                first = false;
+            } else {
+                sb.append("; ");
+            }
+            if (showKeys) {
+                sb.append(Meta.getDisplayKey(key));
+            } else {
+                String value = sortValues == null || i >= sortValues.size() ?
+                        "" : sortValues.get(i);
+                sb.append(value == null ? "" : Meta.getDisplayValue(key, value));
+            }
+        }
+        return sb.toString();
+    }
+
+    void addSortedByColumns(LinearLayout root, List<String> sortValues, boolean showKeys) {
+        root.removeAllViews();
+        String showKey = getCurrentQuery().getShowField();
+        List<String> sortKeys = getCurrentQuery().getSortByFields();
+        TableLayout.LayoutParams layoutParams = new TableLayout.LayoutParams(
+                0,
+                TableLayout.LayoutParams.MATCH_PARENT,
+                1f
+        );
+        for (int i = 0; i < sortKeys.size(); i++) {
+            String key = sortKeys.get(i);
+            if (showKey.equals(key)) {
+                continue;
+            }
+            TextView tv = new TextView(requireContext());
+            tv.setLayoutParams(layoutParams);
+            tv.setGravity(Gravity.CENTER_VERTICAL);
+            tv.setTextColor(ContextCompat.getColorStateList(
+                    requireContext(),
+                    R.color.primary_text_color
+            ));
+            tv.setSingleLine();
+            tv.setEllipsize(TextUtils.TruncateAt.END);
+            if (showKeys) {
+                tv.setText(Meta.getDisplayKey(key));
+            } else {
+                String value = sortValues == null || i >= sortValues.size() ?
+                        "" : sortValues.get(i);
+                tv.setText(value == null ? "" : Meta.getDisplayValue(key, value));
+            }
+            int padding = Util.dpToPixels(requireContext(), 4);
+            tv.setPadding(padding, padding, padding, padding);
+            tv.setBackgroundResource(R.drawable.sorted_by_bg);
+            root.addView(tv);
         }
     }
 
@@ -245,63 +335,63 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         List<String> displayedFields = new ArrayList<>();
 
         headerShow = rootView.findViewById(R.id.musiclibrary_header_show);
-        final PopupMenu headerShowDropdownMenu = new PopupMenu(requireContext(), headerShow);
-        final Menu headerShowMenu = headerShowDropdownMenu.getMenu();
-        headerShowDropdownMenu.setOnMenuItemClickListener(item -> {
-            int position = item.getItemId();
-            if (showSelectionPos == position) {
-                return false;
-            }
-            showSelectionPos = position;
-            String field = metaKeys.get(position);
-            String displayedField = displayedFields.get(position);
-            Log.d(LC, "Showing entries of type: " + displayedField);
-            Toast.makeText(
-                    requireContext(),
-                    "Showing entries of type: " + displayedField,
-                    Toast.LENGTH_SHORT
-            ).show();
-            displayType(field);
-            return true;
-        });
-        headerShow.setOnClickListener(view -> headerShowDropdownMenu.show());
+        final PopupMenu headerShowPopup = new PopupMenu(requireContext(), headerShow);
+        headerShowMenu = headerShowPopup.getMenu();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            headerShowMenu.setGroupDividerEnabled(true);
+        }
+        MenuPopupHelper headerShowPopupHelper = new MenuPopupHelper(
+                requireContext(),
+                (MenuBuilder) headerShowMenu,
+                headerShow
+        );
+        headerShowPopupHelper.setForceShowIcon(true);
+        headerShowPopup.setOnMenuItemClickListener(item -> onShowSelected(item, displayedFields));
+        headerShow.setOnClickListener(view -> headerShowPopupHelper.show());
         headerSortedByRoot = rootView.findViewById(R.id.musiclibrary_header_sortedby_root);
         headerSortedBy = rootView.findViewById(R.id.musiclibrary_header_sortedby);
-        final PopupMenu headerSortedByDropdownMenu = new PopupMenu(requireContext(), headerSortedBy);
-        final Menu headerSortedByMenu = headerSortedByDropdownMenu.getMenu();
-        headerSortedByDropdownMenu.setOnMenuItemClickListener(item -> {
-            int position = item.getItemId();
-            if (sortSelectionPos == position) {
-                return false;
-            }
-            sortSelectionPos = position;
-            String field = metaKeys.get(position);
-            String displayedField = displayedFields.get(position);
-            Log.d(LC, "Sorting by: " + displayedField);
-            Toast.makeText(
-                    requireContext(),
-                    "Sorting by: " + displayedField,
-                    Toast.LENGTH_SHORT
-            ).show();
-            sortBy(field);
-            return true;
-        });
-        headerSortedBy.setOnClickListener(view -> headerSortedByDropdownMenu.show());
+        final PopupMenu headerSortedByPopup = new PopupMenu(requireContext(), headerSortedBy);
+        headerSortedByMenu = headerSortedByPopup.getMenu();
+        setShowMenuHeader("");
+        headerSortedByMenu.add(SORT_BY_GROUP_ID_CUSTOM, Menu.NONE, SORT_BY_GROUP_ORDER_CUSTUM, "Custom sort")
+                .setIcon(R.drawable.ic_edit_black_24dp);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            headerSortedByMenu.setGroupDividerEnabled(true);
+        }
+        MenuPopupHelper headerSortedByPopupHelper = new MenuPopupHelper(
+                requireContext(),
+                (MenuBuilder) headerSortedByMenu,
+                headerSortedBy
+        );
+        headerSortedByPopupHelper.setForceShowIcon(true);
+        headerSortedByPopup.setOnMenuItemClickListener(item -> onSortedBySelected(item, displayedFields));
+        headerSortedBy.setOnClickListener(view -> headerSortedByPopupHelper.show());
         headerSortedByOrder = rootView.findViewById(R.id.musiclibrary_header_sortedby_order);
         headerSortedByOrder.setOnClickListener(view -> setSortOrder(!isSortedAscending()));
+
         headerArtist = rootView.findViewById(R.id.musiclibrary_header_artist);
         headerNum = rootView.findViewById(R.id.musiclibrary_header_num);
+
+        headerExtraSortedBy = rootView.findViewById(R.id.musiclibrary_header_extra_sortedby);
+        final PopupMenu headerExtraSortedByPopup = new PopupMenu(requireContext(), headerExtraSortedBy);
+        MenuPopupHelper headerExtraSortedByPopupHelper = new MenuPopupHelper(
+                requireContext(),
+                (MenuBuilder) headerSortedByMenu,
+                headerExtraSortedBy
+        );
+        headerExtraSortedByPopupHelper.setForceShowIcon(true);
+        headerExtraSortedByPopup.setOnMenuItemClickListener(item -> onSortedBySelected(item, displayedFields));
+        headerExtraSortedByKeys = rootView.findViewById(R.id.musiclibrary_header_extra_sortedby_keys);
+        headerExtraSortedByKeys.setOnClickListener(view -> headerExtraSortedByPopupHelper.show());
+        headerExtraSortedByOrder = rootView.findViewById(R.id.musiclibrary_header_extra_sortedby_order);
+        headerExtraSortedByOrder.setOnClickListener(view -> setSortOrder(!isSortedAscending()));
 
         ActionModeCallback actionModeCallback = new ActionModeCallback(
                 this,
                 new ActionModeCallback.Callback() {
                     @Override
                     public List<EntryID> getEntryIDSelection() {
-                        MutableSelection<EntryID> selection = new MutableSelection<>();
-                        selectionTracker.copySelection(selection);
-                        List<EntryID> selectionList = new LinkedList<>();
-                        selection.forEach(selectionList::add);
-                        return selectionList;
+                        return Collections.emptyList();
                     }
 
                     @Override
@@ -330,6 +420,11 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                     }
 
                     @Override
+                    public List<Bundle> getQueries() {
+                        return getSelectedBundleQueries();
+                    }
+
+                    @Override
                     public void onDestroyActionMode(ActionMode actionMode) {
                         selectionTracker.clearSelection();
                         MusicLibraryFragment.this.actionMode = null;
@@ -338,15 +433,15 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         );
         actionModeCallback.setActions(
                 new int[]{
-                        ACTION_ADD_MULTIPLE_TO_QUEUE,
-                        ACTION_ADD_MULTIPLE_TO_PLAYLIST
+                        ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE,
+                        ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST
                 },
                 new int[]{
-                        ACTION_PLAY_MULTIPLE,
-                        ACTION_ADD_MULTIPLE_TO_QUEUE,
-                        ACTION_ADD_MULTIPLE_TO_PLAYLIST,
-                        ACTION_CACHE_MULTIPLE,
-                        ACTION_CACHE_DELETE_MULTIPLE
+                        ACTION_PLAY_MULTIPLE_QUERIES,
+                        ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE,
+                        ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST,
+                        ACTION_CACHE_MULTIPLE_QUERIES,
+                        ACTION_CACHE_DELETE_MULTIPLE_QUERIES
                 },
                 new int[0]
         );
@@ -355,8 +450,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 MainActivity.SELECTION_ID_MUSICLIBRARY,
                 recyclerView,
                 new MusicLibraryKeyProvider(recyclerViewAdapter),
-                new EntryIDItemDetailsLookup(recyclerView),
-                StorageStrategy.createParcelableStorage(EntryID.class)
+                new LibraryEntryItemDetailsLookup(recyclerView),
+                StorageStrategy.createParcelableStorage(LibraryEntry.class)
         ).withSelectionPredicate(
                 SelectionPredicates.createSelectAnything()
         ).build();
@@ -376,7 +471,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                     actionMode.finish();
                 }
                 if (actionMode != null && selectionTracker.hasSelection()) {
-                    actionMode.setTitle(selectionTracker.getSelection().size() + " entries.");
+                    actionMode.setTitle(selectionTracker.getSelection().size() + " sel.");
                 }
             }
 
@@ -464,8 +559,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                 .observe(getViewLifecycleOwner(), newFields -> {
                     newFields.add(Meta.FIELD_SPECIAL_MEDIA_ID);
                     newFields.add(Meta.FIELD_SPECIAL_MEDIA_SRC);
-                    String showField = getCurrentQuery().getShowField();
-                    String sortField = getCurrentQuery().getSortByField();
                     Collections.sort(newFields, (f1, f2) -> {
                         if (f1.equals(f2)) {
                             return 0;
@@ -480,16 +573,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                         }
                         return f1.compareTo(f2);
                     });
-                    int initialShowSelectionPos = 0;
-                    int initialSortSelectionPos = 0;
-                    for (int i = 0; i < newFields.size(); i++) {
-                        if (newFields.get(i).equals(showField)) {
-                            initialShowSelectionPos = i;
-                        }
-                        if (newFields.get(i).equals(sortField)) {
-                            initialSortSelectionPos = i;
-                        }
-                    }
                     metaKeys.clear();
                     metaKeys.addAll(newFields);
                     displayedFields.clear();
@@ -497,17 +580,15 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
                             .map(Meta::getDisplayKey)
                             .collect(Collectors.toList())
                     );
-                    headerShowMenu.clear();
+                    headerShowMenu.removeGroup(SHOW_GROUP_ID_SINGLE);
                     for (int i = 0; i < displayedFields.size(); i++) {
-                        headerShowMenu.add(0, i, 0, displayedFields.get(i));
+                        headerShowMenu.add(SHOW_GROUP_ID_SINGLE, i, SHOW_GROUP_ORDER_SINGLE, displayedFields.get(i));
                     }
-                    headerSortedByMenu.clear();
+                    headerSortedByMenu.removeGroup(SORT_BY_GROUP_ID_SINGLE);
                     for (int i = 0; i < displayedFields.size(); i++) {
-                        headerSortedByMenu.add(0, i, 0, displayedFields.get(i));
+                        headerSortedByMenu.add(SORT_BY_GROUP_ID_SINGLE, i, SORT_BY_GROUP_ORDER_SINGLE, displayedFields.get(i));
                     }
                     metaKeyAdapter.notifyDataSetChanged();
-                    showSelectionPos = initialShowSelectionPos;
-                    sortSelectionPos = initialSortSelectionPos;
                 });
 
         ImageButton saveQueryBtn = rootView.findViewById(R.id.musiclibrary_filter_save);
@@ -550,6 +631,62 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         return rootView;
     }
 
+    private boolean onShowSelected(MenuItem item, List<String> displayedFields) {
+        int position = item.getItemId();
+        int groupId = item.getGroupId();
+        if (groupId != SHOW_GROUP_ID_SINGLE) {
+            return false;
+        }
+        String field = metaKeys.get(position);
+        String displayedField = displayedFields.get(position);
+        Log.d(LC, "Showing entries of type: " + displayedField);
+        Toast.makeText(
+                requireContext(),
+                "Showing entries of type: " + displayedField,
+                Toast.LENGTH_SHORT
+        ).show();
+        displayType(field);
+        return true;
+    }
+
+    private void setShowMenuHeader(String header) {
+        headerShowMenu.removeGroup(SHOW_GROUP_ID_HEADER);
+        headerShowMenu.add(SHOW_GROUP_ID_HEADER, Menu.NONE, SHOW_GROUP_ORDER_HEADER, "Showing entries of type:")
+                .setEnabled(false);
+        headerShowMenu.add(SHOW_GROUP_ID_HEADER, Menu.NONE, SHOW_GROUP_ORDER_HEADER, header)
+                .setEnabled(false);
+    }
+
+    private boolean onSortedBySelected(MenuItem item, List<String> displayedFields) {
+        int groupId = item.getGroupId();
+        int position = item.getItemId();
+        if (groupId == SORT_BY_GROUP_ID_CUSTOM) {
+            SortDialogFragment.showDialogForSortConfig(this);
+            return true;
+        }
+        if (groupId != SORT_BY_GROUP_ID_SINGLE) {
+            return false;
+        }
+        String field = metaKeys.get(position);
+        String displayedField = displayedFields.get(position);
+        Log.d(LC, "Sorting by: " + displayedField);
+        Toast.makeText(
+                requireContext(),
+                "Sorting by: " + displayedField,
+                Toast.LENGTH_SHORT
+        ).show();
+        sortBy(Collections.singletonList(field));
+        return true;
+    }
+
+    private void setSortByMenuHeader(String header) {
+        headerSortedByMenu.removeGroup(SORT_BY_GROUP_ID_HEADER);
+        headerSortedByMenu.add(SORT_BY_GROUP_ID_HEADER, Menu.NONE, SORT_BY_GROUP_ORDER_HEADER, "Sort shown entries by:")
+                .setEnabled(false);
+        headerSortedByMenu.add(SORT_BY_GROUP_ID_HEADER, Menu.NONE, SORT_BY_GROUP_ORDER_HEADER, header)
+                .setEnabled(false);
+    }
+
     public boolean onBackPressed() {
         boolean actionPerformed = false;
         if (filterEdit.getVisibility() == VISIBLE) {
@@ -569,13 +706,13 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
     private void displayType(String displayType) {
         model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
         model.displayType(displayType);
-        model.sortBy(displayType);
+        model.sortBy(Collections.singletonList(displayType));
         model.setSortOrder(true);
     }
 
-    private void sortBy(String field) {
+    private void sortBy(List<String> fields) {
         model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
-        model.sortBy(field);
+        model.sortBy(fields);
         model.setSortOrder(true);
     }
 
@@ -595,10 +732,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
 
     void setQuery(MusicLibraryQuery query) {
         model.setQuery(query);
-    }
-
-    private int getMetaKeyPosition(String key) {
-        return metaKeys == null ? 0 : metaKeys.indexOf(key);
     }
 
     private void clearFilterView() {
@@ -655,6 +788,23 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         model.clearFilter(filterType);
     }
 
+    private ArrayList<Bundle> getSelectedBundleQueries() {
+        MutableSelection<LibraryEntry> selection = new MutableSelection<>();
+        selectionTracker.copySelection(selection);
+        ArrayList<Bundle> bundleQueries = new ArrayList<>();
+        List<String> sortedByKeys = querySortedByKeys();
+        selection.forEach(libraryEntry -> {
+            MusicLibraryQuery query = getCurrentQuery();
+            query.addToQuery(libraryEntry.entryID.type, libraryEntry.entryID.id);
+            query.addSortedByValuesToQuery(
+                    sortedByKeys,
+                    libraryEntry.sortedByValues()
+            );
+            bundleQueries.add(query.getQueryBundle());
+        });
+        return bundleQueries;
+    }
+
     MusicLibraryQuery getCurrentQuery() {
         MusicLibraryUserState state = model.getUserState().getValue();
         return state == null ? null : new MusicLibraryQuery(state.query);
@@ -680,6 +830,14 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         return query.querySortedByShow();
     }
 
+    boolean sortedByMultipleFields() {
+        MusicLibraryQuery query = getCurrentQuery();
+        if (query == null) {
+            return false;
+        }
+        return query.sortedByMultipleFields();
+    }
+
     boolean isSortedAscending() {
         MusicLibraryQuery query = getCurrentQuery();
         if (query == null) {
@@ -688,12 +846,12 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         return query.isSortOrderAscending();
     }
 
-    String querySortedByKey() {
+    List<String> querySortedByKeys() {
         MusicLibraryQuery query = getCurrentQuery();
         if (query == null) {
             return null;
         }
-        return query.getSortByField();
+        return query.getSortByFields();
     }
 
     public void clearSelection() {
@@ -714,12 +872,14 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         return !query.isSearchQuery() && !Meta.FIELD_SPECIAL_MEDIA_ID.equals(query.getShowField());
     }
 
-    private boolean showSortedByHeader() {
-        return !isSearchQuery(); // && !querySortedByShow();
+    boolean showSortedByHeader() {
+        return !isSearchQuery() && !showExtraSortedByHeader();
     }
 
-    boolean showSortedByValues() {
-        return !isSearchQuery() && !querySortedByShow();
+    private boolean showExtraSortedByHeader() {
+        boolean extraNotNeeded = querySortedByKeys().size() == 2
+                && querySortedByKeys().contains(getCurrentQuery().getShowField());
+        return !isSearchQuery() && sortedByMultipleFields() && !extraNotNeeded;
     }
 
     boolean isSearchQuery() {
@@ -728,8 +888,11 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
 
     boolean showHeaderArtist(boolean browsable) {
         MusicLibraryQuery query = getCurrentQuery();
-        return query.isSearchQuery()
-                || !browsable && !Meta.FIELD_ARTIST.equals(query.getSortByField());
+        List<String> sortByFields = query.getSortByFields();
+        if (sortByFields == null) {
+            sortByFields = new ArrayList<>();
+        }
+        return query.isSearchQuery() || !browsable && !sortByFields.contains(Meta.FIELD_ARTIST);
     }
 
     boolean showHeaderNum(boolean browsable) {
@@ -747,6 +910,14 @@ public class MusicLibraryFragment extends AudioBrowserFragment {
         if (filterNew != null && filterNew.getVisibility() == VISIBLE) {
             Util.hideSoftInput(requireActivity(), filterNewInput);
             filterNew.setVisibility(GONE);
+        }
+    }
+
+    @Override
+    public void onSortConfig(List<String> sortBy) {
+        Log.d(LC, "onSortConfig: " + sortBy);
+        if (!sortBy.isEmpty()) {
+            sortBy(sortBy);
         }
     }
 }

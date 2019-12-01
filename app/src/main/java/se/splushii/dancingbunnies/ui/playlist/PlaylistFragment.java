@@ -51,6 +51,7 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULT
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SORT_MULTIPLE_IN_PLAYLIST_PLAYBACK;
 
 public class PlaylistFragment extends AudioBrowserFragment {
 
@@ -148,6 +149,9 @@ public class PlaylistFragment extends AudioBrowserFragment {
     }
 
     private void updatePlaylistPlaybackButtons(int playbackOrderMode, boolean repeat) {
+        if (getView() == null) {
+            return;
+        }
         playlistSortActionView.setActivated(playbackOrderMode == PlaybackController.PLAYBACK_ORDER_SEQUENTIAL);
         playlistShuffleActionView.setActivated(playbackOrderMode == PlaybackController.PLAYBACK_ORDER_SHUFFLE);
         playlistRandomActionView.setActivated(playbackOrderMode == PlaybackController.PLAYBACK_ORDER_RANDOM);
@@ -325,6 +329,11 @@ public class PlaylistFragment extends AudioBrowserFragment {
                     }
 
                     @Override
+                    public List<Bundle> getQueries() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
                     public void onDestroyActionMode(ActionMode actionMode) {
                         playlistSelectionTracker.clearSelection();
                     }
@@ -409,6 +418,11 @@ public class PlaylistFragment extends AudioBrowserFragment {
                     }
 
                     @Override
+                    public List<Bundle> getQueries() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
                     public void onDestroyActionMode(ActionMode actionMode) {
                         playlistEntriesSelectionTracker.clearSelection();
                     }
@@ -477,6 +491,11 @@ public class PlaylistFragment extends AudioBrowserFragment {
                     }
 
                     @Override
+                    public List<Bundle> getQueries() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
                     public void onDestroyActionMode(ActionMode actionMode) {
                         playlistPlaybackEntriesSelectionTracker.clearSelection();
                     }
@@ -490,6 +509,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
                         ACTION_PLAY_MULTIPLE,
                         ACTION_ADD_MULTIPLE_TO_QUEUE,
                         ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK,
+                        ACTION_SORT_MULTIPLE_IN_PLAYLIST_PLAYBACK,
                         ACTION_ADD_MULTIPLE_TO_PLAYLIST,
                         ACTION_CACHE_MULTIPLE,
                         ACTION_CACHE_DELETE_MULTIPLE
@@ -550,8 +570,12 @@ public class PlaylistFragment extends AudioBrowserFragment {
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        playlistSelectionTracker.onSaveInstanceState(outState);
-        playlistEntriesSelectionTracker.onSaveInstanceState(outState);
+        if (playlistSelectionTracker != null) {
+            playlistSelectionTracker.onSaveInstanceState(outState);
+        }
+        if (playlistEntriesSelectionTracker != null) {
+            playlistEntriesSelectionTracker.onSaveInstanceState(outState);
+        }
     }
 
     public void clearSelection() {

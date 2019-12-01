@@ -25,6 +25,7 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
@@ -41,16 +42,23 @@ public class MenuActions {
 
     static final int ACTION_MORE = View.generateViewId();
     public static final int ACTION_PLAY_MULTIPLE = View.generateViewId();
+    public static final int ACTION_PLAY_MULTIPLE_QUERIES = View.generateViewId();
     public static final int ACTION_ADD_MULTIPLE_TO_QUEUE = View.generateViewId();
+    public static final int ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE = View.generateViewId();
     public static final int ACTION_REMOVE_MULTIPLE_FROM_QUEUE = View.generateViewId();
     public static final int ACTION_ADD_MULTIPLE_TO_PLAYLIST = View.generateViewId();
+    public static final int ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST = View.generateViewId();
     public static final int ACTION_REMOVE_MULTIPLE_FROM_PLAYLIST = View.generateViewId();
     public static final int ACTION_CACHE_MULTIPLE = View.generateViewId();
+    public static final int ACTION_CACHE_MULTIPLE_QUERIES = View.generateViewId();
     public static final int ACTION_CACHE_DELETE_MULTIPLE = View.generateViewId();
+    public static final int ACTION_CACHE_DELETE_MULTIPLE_QUERIES = View.generateViewId();
     public static final int ACTION_HISTORY_DELETE_MULTIPLE = View.generateViewId();
     public static final int ACTION_PLAYLIST_DELETE_MULTIPLE = View.generateViewId();
     public static final int ACTION_SHUFFLE_MULTIPLE_IN_QUEUE = View.generateViewId();
     public static final int ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK = View.generateViewId();
+    public static final int ACTION_SORT_MULTIPLE_IN_QUEUE = View.generateViewId();
+    public static final int ACTION_SORT_MULTIPLE_IN_PLAYLIST_PLAYBACK = View.generateViewId();
 
     public static final int ACTION_PLAY = View.generateViewId();
     public static final int ACTION_ADD_TO_QUEUE = View.generateViewId();
@@ -151,14 +159,18 @@ public class MenuActions {
         } else if (action == ACTION_ADD_TO_PLAYLIST) {
             AddToPlaylistDialogFragment.showDialog(
                     audioBrowserFragment,
-                    new ArrayList<>(Collections.singletonList(entryIDSupplier.get())),
-                    null
+                    MusicLibraryQuery.toQueryBundles(
+                            Collections.singletonList(entryIDSupplier.get()),
+                            null
+                    )
             );
         } else if (action == ACTION_CACHE) {
             audioBrowserFragment.downloadAudioData(
-                    Collections.singletonList(entryIDSupplier.get()),
-                    AudioStorage.DOWNLOAD_PRIO_LOW,
-                    null
+                    MusicLibraryQuery.toQueryBundles(
+                            Collections.singletonList(entryIDSupplier.get()),
+                            null
+                    ),
+                    AudioStorage.DOWNLOAD_PRIO_LOW
             );
         } else if (action == ACTION_CACHE_DELETE) {
             MusicLibraryService.deleteAudioData(
@@ -212,28 +224,55 @@ public class MenuActions {
                                      Supplier<List<PlaybackEntry>> playbackEntrySupplier,
                                      Supplier<List<PlaylistEntry>> playlistEntrySupplier,
                                      Supplier<PlaylistID> playlistIDSupplier,
-                                     Supplier<List<Playlist>> playlistSupplier
+                                     Supplier<List<Playlist>> playlistSupplier,
+                                     Supplier<List<Bundle>> queryBundlesSupplier
     ) {
         if (action == ACTION_PLAY_MULTIPLE) {
             audioBrowserFragment.play(entryIDSupplier.get(), queryBundleSupplier.get());
+        } else if (action == ACTION_PLAY_MULTIPLE_QUERIES) {
+            audioBrowserFragment.playQueryBundles(queryBundlesSupplier.get());
         } else if (action == ACTION_ADD_MULTIPLE_TO_QUEUE) {
             audioBrowserFragment.queue(entryIDSupplier.get(), queryBundleSupplier.get());
+        } else if (action == ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE) {
+            audioBrowserFragment.queueQueryBundles(queryBundlesSupplier.get());
         } else if (action == ACTION_ADD_MULTIPLE_TO_PLAYLIST) {
             AddToPlaylistDialogFragment.showDialog(
                     audioBrowserFragment,
-                    new ArrayList<>(entryIDSupplier.get()),
-                    queryBundleSupplier.get()
+                    MusicLibraryQuery.toQueryBundles(
+                            entryIDSupplier.get(),
+                            queryBundleSupplier.get()
+                    )
+            );
+        } else if (action == ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST) {
+            AddToPlaylistDialogFragment.showDialog(
+                    audioBrowserFragment,
+                    queryBundlesSupplier.get()
             );
         } else if (action == ACTION_CACHE_MULTIPLE) {
             audioBrowserFragment.downloadAudioData(
-                    entryIDSupplier.get(),
-                    AudioStorage.DOWNLOAD_PRIO_LOW,
-                    queryBundleSupplier.get()
+                    MusicLibraryQuery.toQueryBundles(
+                            entryIDSupplier.get(),
+                            queryBundleSupplier.get()
+                    ),
+                    AudioStorage.DOWNLOAD_PRIO_LOW
+            );
+        } else if (action == ACTION_CACHE_MULTIPLE_QUERIES) {
+            audioBrowserFragment.downloadAudioData(
+                    new ArrayList<>(queryBundlesSupplier.get()),
+                    AudioStorage.DOWNLOAD_PRIO_LOW
             );
         } else if (action == ACTION_CACHE_DELETE_MULTIPLE) {
             MusicLibraryService.deleteAudioData(
                     audioBrowserFragment.requireContext(),
-                    entryIDSupplier.get()
+                    MusicLibraryQuery.toQueryBundles(
+                            entryIDSupplier.get(),
+                            queryBundleSupplier.get()
+                    )
+            );
+        } else if (action == ACTION_CACHE_DELETE_MULTIPLE_QUERIES) {
+            MusicLibraryService.deleteAudioData(
+                    audioBrowserFragment.requireContext(),
+                    new ArrayList<>(queryBundlesSupplier.get())
             );
         } else if (action == ACTION_REMOVE_MULTIPLE_FROM_QUEUE) {
             audioBrowserFragment.dequeue(playbackEntrySupplier.get());
@@ -255,11 +294,22 @@ public class MenuActions {
         } else if (action == ACTION_SHUFFLE_MULTIPLE_IN_QUEUE) {
             audioBrowserFragment.shuffleQueueItems(playbackEntrySupplier.get());
         } else if (action == ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK) {
-            PlaybackControllerStorage.getInstance(audioBrowserFragment.requireContext())
-                    .shuffle(
-                            PlaybackControllerStorage.QUEUE_ID_CURRENT_PLAYLIST_PLAYBACK,
-                            playbackEntrySupplier.get()
-                    );
+            PlaybackControllerStorage.getInstance(audioBrowserFragment.requireContext()).shuffle(
+                    PlaybackControllerStorage.QUEUE_ID_CURRENT_PLAYLIST_PLAYBACK,
+                    playbackEntrySupplier.get()
+            );
+        } else if (action == ACTION_SORT_MULTIPLE_IN_QUEUE) {
+            SortDialogFragment.showDialogToSort(
+                    audioBrowserFragment,
+                    new ArrayList<>(playbackEntrySupplier.get()),
+                    SortDialogFragment.SORT_QUEUE
+            );
+        } else if (action == ACTION_SORT_MULTIPLE_IN_PLAYLIST_PLAYBACK) {
+            SortDialogFragment.showDialogToSort(
+                    audioBrowserFragment,
+                    new ArrayList<>(playbackEntrySupplier.get()),
+                    SortDialogFragment.SORT_PLAYLIST_PLAYBACK
+            );
         } else {
             return false;
         }
@@ -291,13 +341,23 @@ public class MenuActions {
             return R.string.item_action_more;
         } else if (action == ACTION_ADD_MULTIPLE_TO_QUEUE) {
             return R.string.item_action_queue;
+        } else if (action == ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE) {
+            return R.string.item_action_queue;
         } else if (action == ACTION_ADD_MULTIPLE_TO_PLAYLIST) {
+            return R.string.item_action_add_to_playlist;
+        } else if (action == ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST) {
             return R.string.item_action_add_to_playlist;
         } else if (action == ACTION_PLAY_MULTIPLE) {
             return R.string.item_action_play;
+        } else if (action == ACTION_PLAY_MULTIPLE_QUERIES) {
+            return R.string.item_action_play;
         } else if (action == ACTION_CACHE_MULTIPLE) {
             return R.string.item_action_cache;
+        } else if (action == ACTION_CACHE_MULTIPLE_QUERIES) {
+            return R.string.item_action_cache;
         } else if (action == ACTION_CACHE_DELETE_MULTIPLE) {
+            return R.string.item_action_cache_delete;
+        } else if (action == ACTION_CACHE_DELETE_MULTIPLE_QUERIES) {
             return R.string.item_action_cache_delete;
         } else if (action == ACTION_REMOVE_MULTIPLE_FROM_QUEUE) {
             return R.string.item_action_queue_delete;
@@ -317,6 +377,10 @@ public class MenuActions {
             return R.string.item_action_shuffle_selection;
         } else if (action == ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK) {
             return R.string.item_action_shuffle_selection;
+        } else if (action == ACTION_SORT_MULTIPLE_IN_QUEUE) {
+            return R.string.item_action_sort_selection;
+        } else if (action == ACTION_SORT_MULTIPLE_IN_PLAYLIST_PLAYBACK) {
+            return R.string.item_action_sort_selection;
         } else if (action == ACTION_CLEAR_QUEUE) {
             return R.string.item_action_queue_clear;
         } else if (action == ACTION_CLEAR_HISTORY) {
@@ -350,13 +414,23 @@ public class MenuActions {
             return R.drawable.ic_more_vert_black_24dp;
         } else if (action == ACTION_ADD_MULTIPLE_TO_QUEUE) {
             return R.drawable.ic_queue_black_24dp;
+        } else if (action == ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE) {
+            return R.drawable.ic_queue_black_24dp;
         } else if (action == ACTION_ADD_MULTIPLE_TO_PLAYLIST) {
+            return R.drawable.ic_playlist_add_black_24dp;
+        } else if (action == ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST) {
             return R.drawable.ic_playlist_add_black_24dp;
         } else if (action == ACTION_PLAY_MULTIPLE) {
             return R.drawable.ic_play_arrow_black_24dp;
+        } else if (action == ACTION_PLAY_MULTIPLE_QUERIES) {
+            return R.drawable.ic_play_arrow_black_24dp;
         } else if (action == ACTION_CACHE_MULTIPLE) {
             return R.drawable.ic_offline_pin_black_24dp;
+        } else if (action == ACTION_CACHE_MULTIPLE_QUERIES) {
+            return R.drawable.ic_offline_pin_black_24dp;
         } else if (action == ACTION_CACHE_DELETE_MULTIPLE) {
+            return R.drawable.ic_remove_circle_black_24dp;
+        } else if (action == ACTION_CACHE_DELETE_MULTIPLE_QUERIES) {
             return R.drawable.ic_remove_circle_black_24dp;
         } else if (action == ACTION_REMOVE_MULTIPLE_FROM_QUEUE) {
             return R.drawable.ic_delete_black_24dp;
@@ -376,6 +450,10 @@ public class MenuActions {
             return R.drawable.ic_shuffle_black_24dp;
         } else if (action == ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK) {
             return R.drawable.ic_shuffle_black_24dp;
+        } else if (action == ACTION_SORT_MULTIPLE_IN_QUEUE) {
+            return R.drawable.ic_sort_black_24dp;
+        } else if (action == ACTION_SORT_MULTIPLE_IN_PLAYLIST_PLAYBACK) {
+            return R.drawable.ic_sort_black_24dp;
         } else if (action == ACTION_CLEAR_QUEUE) {
             return 0;
         } else if (action == ACTION_CLEAR_HISTORY) {

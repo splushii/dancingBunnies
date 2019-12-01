@@ -5,6 +5,8 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.support.v4.media.MediaBrowserCompat;
 
+import java.util.ArrayList;
+
 import androidx.annotation.NonNull;
 
 public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
@@ -14,18 +16,19 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
 
     public final EntryID entryID;
     private final String name;
-    private final String sortedBy;
+    private final ArrayList<String> sortedByValues;
 
-    public LibraryEntry(EntryID entryID, String name, String sortedBy) {
+    public LibraryEntry(EntryID entryID, String name, ArrayList<String> sortedByValues) {
         this.entryID = entryID;
         this.name = name;
-        this.sortedBy = sortedBy;
+        this.sortedByValues = sortedByValues;
     }
 
     private LibraryEntry(Parcel in) {
         entryID = in.readParcelable(EntryID.class.getClassLoader());
         name = in.readString();
-        sortedBy = in.readString();
+        sortedByValues = new ArrayList<>();
+        in.readStringList(sortedByValues);
     }
 
     public static final Creator<LibraryEntry> CREATOR = new Creator<LibraryEntry>() {
@@ -44,7 +47,7 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
         Bundle b = new Bundle();
         b.putParcelable(BUNDLE_KEY_ENTRY_ID, entryID);
         b.putString(BUNDLE_KEY_NAME, name());
-        b.putString(BUNDLE_KEY_SORTED_BY, sortedBy());
+        b.putStringArrayList(BUNDLE_KEY_SORTED_BY, sortedByValues());
         return b;
     }
 
@@ -52,8 +55,8 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
         Bundle b = item.getDescription().getExtras();
         EntryID entryID = b.getParcelable(BUNDLE_KEY_ENTRY_ID);
         String name = b.getString(BUNDLE_KEY_NAME);
-        String sortedBy = b.getString(BUNDLE_KEY_SORTED_BY);
-        return new LibraryEntry(entryID, name, sortedBy);
+        ArrayList<String> sortedByValues = b.getStringArrayList(BUNDLE_KEY_SORTED_BY);
+        return new LibraryEntry(entryID, name, sortedByValues);
     }
 
     @Override
@@ -81,12 +84,12 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
         if (name == null && e.name != null) {
             return false;
         }
-        if (sortedBy == null && e.sortedBy != null) {
+        if (sortedByValues == null && e.sortedByValues != null) {
             return false;
         }
         return this.entryID.equals(e.entryID)
                 && (name == null || name.equals(e.name))
-                && (sortedBy == null || sortedBy.equals(e.sortedBy));
+                && (sortedByValues == null || sortedByValues.equals(e.sortedByValues));
     }
 
     @Override
@@ -106,7 +109,7 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
     public String type() { return entryID.type; }
     public String key() { return entryID.key(); }
     public String name() { return name; }
-    public String sortedBy() { return sortedBy; }
+    public ArrayList<String> sortedByValues() { return sortedByValues; }
 
     @Override
     public int describeContents() {
@@ -117,7 +120,7 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeParcelable(entryID, flags);
         dest.writeString(name);
-        dest.writeString(sortedBy);
+        dest.writeStringList(sortedByValues);
     }
 
     public boolean isBrowsable() {

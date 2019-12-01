@@ -42,6 +42,7 @@ public class ActionModeCallback implements ActionMode.Callback {
         List<Playlist> getPlaylistSelection();
         Bundle getQueryBundle();
         PlaylistID getPlaylistID();
+        List<Bundle> getQueries();
         void onDestroyActionMode(ActionMode actionMode);
     }
 
@@ -123,7 +124,8 @@ public class ActionModeCallback implements ActionMode.Callback {
                 callback::getPlaybackEntrySelection,
                 callback::getPlaylistEntrySelection,
                 callback::getPlaylistID,
-                callback::getPlaylistSelection
+                callback::getPlaylistSelection,
+                callback::getQueries
         )) {
             return false;
         }

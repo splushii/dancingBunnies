@@ -95,7 +95,7 @@ public class PlaylistFragmentModel extends ViewModel {
         return Transformations.map(
                 MetaStorage.getInstance(context).getEntries(
                         query.getShowField(),
-                        query.getSortByField(),
+                        query.getSortByFields(),
                         query.isSortOrderAscending(),
                         query.getQueryBundle()
                 ),

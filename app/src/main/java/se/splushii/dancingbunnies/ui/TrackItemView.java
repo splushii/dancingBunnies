@@ -33,6 +33,7 @@ public class TrackItemView extends LinearLayout {
     private TextView artistView;
     private TextView trackNumView;
     private TextView albumView;
+    private TextView discNumView;
     private ImageView sourceView;
     private ImageView preloadedView;
     private TextView cacheStatusView;
@@ -47,6 +48,7 @@ public class TrackItemView extends LinearLayout {
     private String artist;
     private String trackNum;
     private String album;
+    private String discNum;
     private String src;
     private String cacheStatus;
     private boolean isCached;
@@ -83,6 +85,7 @@ public class TrackItemView extends LinearLayout {
         artistView = findViewById(R.id.track_item_artist);
         trackNumView = findViewById(R.id.track_item_track_num);
         albumView = findViewById(R.id.track_item_album);
+        discNumView = findViewById(R.id.track_item_album_disc);
         sourceView = findViewById(R.id.track_item_source);
         preloadedView = findViewById(R.id.track_item_preload_status);
         cachedView = findViewById(R.id.track_item_cached);
@@ -163,6 +166,16 @@ public class TrackItemView extends LinearLayout {
         albumView.setText(album);
     }
 
+    public void setDiscNum(String discNum) {
+        this.discNum = discNum;
+        if (discNum == null || discNum.isEmpty()) {
+            discNumView.setVisibility(GONE);
+        } else {
+            discNumView.setText(discNum);
+            discNumView.setVisibility(VISIBLE);
+        }
+    }
+
     public void setSource(String src) {
         this.src = src;
         sourceView.setBackgroundResource(MusicLibraryService.getAPIIconResource(src));
@@ -191,6 +204,7 @@ public class TrackItemView extends LinearLayout {
         setArtist(artist);
         setTrackNum(trackNum);
         setAlbum(album);
+        setDiscNum(discNum);
         setSource(src);
         setCacheStatus();
         setPreloaded(isPreloaded);
@@ -248,6 +262,7 @@ public class TrackItemView extends LinearLayout {
         setArtist("");
         setTrackNum("");
         setAlbum("");
+        setDiscNum(null);
     }
 
     public void initMetaObserver(Context context) {
@@ -308,6 +323,8 @@ public class TrackItemView extends LinearLayout {
         setTrackNum(trackNum.isEmpty() ? "" : "#" + trackNum);
         String album = meta.getAsString(Meta.FIELD_ALBUM);
         setAlbum(album);
+        String discNum = meta.getAsString(Meta.FIELD_DISCNUMBER);
+        setDiscNum(discNum.isEmpty() ? "" : "(" + discNum + ")");
         String src = meta.entryID.src;
         setSource(src);
     }

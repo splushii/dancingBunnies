@@ -12,10 +12,10 @@ import com.google.android.gms.cast.framework.SessionManagerListener;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -32,6 +32,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
@@ -60,7 +61,7 @@ public class PlaybackController {
     public static final int PLAYBACK_ORDER_SHUFFLE = 1;
     public static final int PLAYBACK_ORDER_RANDOM = 2;
 
-    private final MusicLibraryService musicLibraryService;
+    private final Context context;
     private final Callback callback;
     private final SessionManagerListener<Session> sessionManagerListener = new SessionManagerListenerImpl();
     private final SessionManager sessionManager;
@@ -107,8 +108,8 @@ public class PlaybackController {
                        PlaybackControllerStorage playbackControllerStorage,
                        MusicLibraryService musicLibraryService,
                        Callback callback) {
+        this.context = context;
         this.storage = playbackControllerStorage;
-        this.musicLibraryService = musicLibraryService;
         this.callback = callback;
 
         currentPlaylistSelectionID = storage.getCurrentPlaylistSelectionID();
@@ -271,7 +272,7 @@ public class PlaybackController {
         storage.setCurrentPlaylist(playlistID);
     }
 
-    PlaylistID getCurrentPlaylistID() {
+    private PlaylistID getCurrentPlaylistID() {
         return currentPlaylistID;
     }
 
@@ -1019,7 +1020,7 @@ public class PlaybackController {
                 .thenCompose(v -> updateState());
     }
 
-    void onQueueChanged() {
+    private void onQueueChanged() {
         callback.onQueueChanged(getAllEntries());
     }
 
@@ -1226,63 +1227,140 @@ public class PlaybackController {
         synchronized (executorLock) {
             return submitCompletableFuture(() -> {
                 Log.d(LC, "shuffleQueueItems(" + playbackEntries.size() + ")");
-                CompletableFuture<Void> ret = CompletableFuture.completedFuture(null);
                 List<PlaybackEntry> queueEntries = getAllQueueEntries();
-                HashMap<Long, List<PlaybackEntry>> entriesToMoveMap = getShuffledEntriesToMove(
-                        queueEntries,
-                        playbackEntries
-                );
-                for (Map.Entry<Long, List<PlaybackEntry>> entry: entriesToMoveMap.entrySet()) {
-                    long beforePlaybackID = entry.getKey();
-                    List<PlaybackEntry> entriesToMove = entry.getValue();
-                    ret = ret.thenCompose(aVoid -> _moveQueueItems(
-                            entriesToMove,
-                            beforePlaybackID
-                    ));
-                }
-                return ret;
+                List<PlaybackEntry> shuffledEntries = new ArrayList<>(playbackEntries);
+                Collections.shuffle(shuffledEntries);
+                return reorderQueueItemsAccordingToList(queueEntries, shuffledEntries);
             });
         }
     }
 
-    public static HashMap<Long, List<PlaybackEntry>> getShuffledEntriesToMove(
+    CompletableFuture<Void> sortQueueItems(List<PlaybackEntry> playbackEntries,
+                                           List<String> sortBy) {
+        synchronized (executorLock) {
+            return submitCompletableFuture(() -> {
+                Log.d(LC, "shuffleQueueItems(" + playbackEntries.size() + ")");
+                List<PlaybackEntry> queueEntries = getAllQueueEntries();
+                return sorted(playbackEntries, sortBy)
+                        .thenCompose(sortedEntries -> reorderQueueItemsAccordingToList(
+                                queueEntries,
+                                sortedEntries
+                        ));
+            });
+        }
+    }
+
+    private CompletableFuture<List<PlaybackEntry>> sorted(List<PlaybackEntry> playbackEntries,
+                                                          List<String> sortBy) {
+        return sorted(context, playbackEntries, sortBy);
+    }
+
+    public static CompletableFuture<List<PlaybackEntry>> sorted(Context context,
+                                                                List<PlaybackEntry> playbackEntries,
+                                                                List<String> sortBy) {
+        return MusicLibraryService.getSongMetas(
+                context,
+                playbackEntries.stream()
+                        .map(p -> p.entryID)
+                        .collect(Collectors.toList())
+        ).thenApply(metas -> {
+            if (metas.size() != playbackEntries.size()) {
+                return playbackEntries;
+            }
+            List<Pair<PlaybackEntry, Meta>> sortedPairs = new ArrayList<>();
+            for (int i = 0; i < playbackEntries.size(); i++) {
+                sortedPairs.add(new Pair<>(playbackEntries.get(i), metas.get(i)));
+            }
+            Comparator<Pair<PlaybackEntry, Meta>> comparator = null;
+            for (String sortByField: sortBy) {
+                if (comparator == null) {
+                    comparator = Comparator.comparing(meta ->
+                            meta.second.getAsComparable(sortByField)
+                    );
+                    continue;
+                }
+                comparator = comparator.thenComparing(meta ->
+                        meta.second.getAsComparable(sortByField)
+                );
+            }
+            if (comparator != null) {
+                Collections.sort(sortedPairs, comparator);
+            }
+            return sortedPairs.stream()
+                    .map(pair -> pair.first)
+                    .collect(Collectors.toList());
+        });
+    }
+
+    private CompletableFuture<Void> reorderQueueItemsAccordingToList(List<PlaybackEntry> allEntries,
+                                                                     List<PlaybackEntry> list) {
+        List<Pair<Long, List<PlaybackEntry>>> entryChunksToMove = getEntryChunksToMove(
+                allEntries,
+                list
+        );
+        return moveEntryChunks(entryChunksToMove);
+    }
+
+    public static List<Pair<Long, List<PlaybackEntry>>> getEntryChunksToMove(
             List<PlaybackEntry> allEntries,
-            List<PlaybackEntry> entriesToShuffle
+            List<PlaybackEntry> list
     ) {
-        HashMap<Long, Integer> entriesBeforePlaybackIDMap = new HashMap<>();
+        // Calculate entry chunk sizes to move to the position before specific playbackID:s
+        List<Pair<Long, Integer>> entryChunkSizesBeforePlaybackIDs = new ArrayList<>();
         int streak = 0;
         for (int i = 0; i < allEntries.size(); i++) {
             PlaybackEntry queueEntry = allEntries.get(i);
-            if (entriesToShuffle.contains(queueEntry)) {
+            if (list.contains(queueEntry)) {
                 streak++;
             } else {
-                entriesBeforePlaybackIDMap.put(queueEntry.playbackID, streak);
+                entryChunkSizesBeforePlaybackIDs.add(new Pair<>(
+                        queueEntry.playbackID,
+                        streak
+                ));
                 streak = 0;
             }
         }
         if (streak > 0) {
             for (int j = 0; j < streak; j++) {
-                entriesBeforePlaybackIDMap.put(PlaybackEntry.PLAYBACK_ID_INVALID, streak);
+                entryChunkSizesBeforePlaybackIDs.add(new Pair<>(
+                        PlaybackEntry.PLAYBACK_ID_INVALID,
+                        streak
+                ));
             }
         }
-        List<PlaybackEntry> shuffledEntries = new ArrayList<>(entriesToShuffle);
-        Collections.shuffle(shuffledEntries);
-        HashMap<Long, List<PlaybackEntry>> entriesToMoveMap = new HashMap<>();
-        for (Map.Entry<Long, Integer> entry: entriesBeforePlaybackIDMap.entrySet()) {
-            long beforePlaybackID = entry.getKey();
-            int num = entry.getValue();
+        // Chunk entries to move to the position before specific playbackID:s
+        List<Pair<Long, List<PlaybackEntry>>> entryChunksToMove = new ArrayList<>();
+        int count = 0;
+        for (Pair<Long, Integer> numBeforePlaybackID: entryChunkSizesBeforePlaybackIDs) {
+            long beforePlaybackID = numBeforePlaybackID.first;
+            int num = numBeforePlaybackID.second;
             List<PlaybackEntry> entriesToMove = new ArrayList<>();
             for (int i = 0; i < num; i++) {
-                if (shuffledEntries.isEmpty()) {
+                if (count >= list.size()) {
                     break;
                 }
-                entriesToMove.add(shuffledEntries.remove(shuffledEntries.size() - 1));
+                entriesToMove.add(list.get(count++));
             }
             if (!entriesToMove.isEmpty()) {
-                entriesToMoveMap.put(beforePlaybackID, entriesToMove);
+                entryChunksToMove.add(new Pair<>(beforePlaybackID, entriesToMove));
             }
         }
-        return entriesToMoveMap;
+        return entryChunksToMove;
+    }
+
+    private CompletableFuture<Void> moveEntryChunks(
+            List<Pair<Long, List<PlaybackEntry>>> entryChunksToMove
+    ) {
+        CompletableFuture<Void> future = CompletableFuture.completedFuture(null);
+        for (Pair<Long, List<PlaybackEntry>> entry: entryChunksToMove) {
+            long beforePlaybackID = entry.first;
+            List<PlaybackEntry> entriesToMove = entry.second;
+            future = future.thenCompose(aVoid -> _moveQueueItems(
+                    entriesToMove,
+                    beforePlaybackID
+            ));
+        }
+        return future;
     }
 
     CompletableFuture<Void> seekTo(long pos) {
@@ -1307,7 +1385,7 @@ public class PlaybackController {
         return getPlayerQueueEntries().size() + queue.size();
     }
 
-    void updateCurrent() {
+    private void updateCurrent() {
         PlaybackEntry currentEntry = audioPlayer.getCurrentEntry();
         EntryID entryID = currentEntry == null ? EntryID.UNKOWN : currentEntry.entryID;
         callback.onCurrentEntryChanged(currentEntry);
@@ -1397,10 +1475,7 @@ public class PlaybackController {
             try {
                 futureSupplier.get().get();
                 ret.complete(null);
-            } catch (ExecutionException e) {
-                e.printStackTrace();
-                ret.completeExceptionally(e);
-            } catch (InterruptedException e) {
+            } catch (ExecutionException | InterruptedException e) {
                 e.printStackTrace();
                 ret.completeExceptionally(e);
             }
@@ -1454,7 +1529,7 @@ public class PlaybackController {
         AudioPlayer.AudioPlayerState lastPlayerState = resetController();
         audioPlayer = new CastAudioPlayer(
                 audioPlayerCallback,
-                musicLibraryService,
+                context,
                 session,
                 resumed
         );
@@ -1470,7 +1545,7 @@ public class PlaybackController {
         AudioPlayer.AudioPlayerState lastPlayerState = resetController();
         audioPlayer = new LocalAudioPlayer(
                 audioPlayerCallback,
-                musicLibraryService,
+                context,
                 storage,
                 false
         );

@@ -3,9 +3,9 @@ package se.splushii.dancingbunnies.ui.musiclibrary;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.recyclerview.selection.ItemKeyProvider;
-import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 
-class MusicLibraryKeyProvider extends ItemKeyProvider<EntryID> {
+class MusicLibraryKeyProvider extends ItemKeyProvider<LibraryEntry> {
     private final MusicLibraryAdapter adapter;
 
     MusicLibraryKeyProvider(MusicLibraryAdapter adapter) {
@@ -15,12 +15,12 @@ class MusicLibraryKeyProvider extends ItemKeyProvider<EntryID> {
 
     @Nullable
     @Override
-    public EntryID getKey(int position) {
+    public LibraryEntry getKey(int position) {
         return adapter.getEntryId(position);
     }
 
     @Override
-    public int getPosition(@NonNull EntryID key) {
+    public int getPosition(@NonNull LibraryEntry key) {
         return adapter.getEntryIdPosition(key);
     }
 }

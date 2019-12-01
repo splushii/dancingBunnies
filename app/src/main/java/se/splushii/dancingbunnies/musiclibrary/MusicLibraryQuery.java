@@ -4,7 +4,10 @@ import android.os.Bundle;
 import android.support.v4.media.MediaBrowserCompat;
 import android.util.Log;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import se.splushii.dancingbunnies.util.Util;
@@ -12,7 +15,7 @@ import se.splushii.dancingbunnies.util.Util;
 public class MusicLibraryQuery {
     private static final String LC = Util.getLogContext(MusicLibraryQuery.class);
     public static final String DEFAULT_SHOW_FIELD = Meta.FIELD_ARTIST;
-    public static final String DEFAULT_SORT_FIELD = Meta.FIELD_ARTIST;
+    public static final ArrayList<String> DEFAULT_SORT_FIELDS = new ArrayList<>(Collections.singletonList(Meta.FIELD_ARTIST));
     public static final String BUNDLE_KEY_SHOW = "dancingbunnies.bundle.key.musiclibraryquery.show";
     public static final String BUNDLE_KEY_SORT = "dancingbunnies.bundle.key.musiclibraryquery.sort";
     public static final String BUNDLE_KEY_QUERY = "dancingbunnies.bundle.key.musiclibraryquery.query";
@@ -26,7 +29,7 @@ public class MusicLibraryQuery {
     private Bundle subQuery;
     private String searchQuery;
     private String showField;
-    private String sortByField;
+    private ArrayList<String> sortByFields;
     private boolean sortOrderAscending;
 
     public MusicLibraryQuery() {
@@ -50,10 +53,10 @@ public class MusicLibraryQuery {
         } else {
             showField = query.showField;
         }
-        if (query.sortByField == null) {
-            sortByField = DEFAULT_SORT_FIELD;
+        if (query.sortByFields == null) {
+            sortByFields = DEFAULT_SORT_FIELDS;
         } else {
-            sortByField = query.sortByField;
+            sortByFields = query.sortByFields;
         }
         this.sortOrderAscending = query.sortOrderAscending;
         this.searchQuery = query.searchQuery;
@@ -68,7 +71,7 @@ public class MusicLibraryQuery {
     private void init() {
         this.subQuery = new Bundle();
         this.showField = DEFAULT_SHOW_FIELD;
-        this.sortByField = DEFAULT_SORT_FIELD;
+        this.sortByFields = DEFAULT_SORT_FIELDS;
         this.sortOrderAscending = true;
     }
 
@@ -81,11 +84,15 @@ public class MusicLibraryQuery {
     }
 
     public void setSortByField(String field) {
-        this.sortByField = field;
+        this.sortByFields = new ArrayList<>(Collections.singletonList(field));
     }
 
-    public String getSortByField() {
-        return sortByField;
+    public void setSortByFields(ArrayList<String> field) {
+        this.sortByFields = field;
+    }
+
+    public ArrayList<String> getSortByFields() {
+        return sortByFields;
     }
 
     public void setSortOrder(boolean ascending) {
@@ -97,8 +104,18 @@ public class MusicLibraryQuery {
     }
 
     public boolean querySortedByShow() {
-        return getSortByField().equals(getShowField())
-                || Meta.FIELD_SPECIAL_MEDIA_ID.equals(getShowField()) && Meta.FIELD_TITLE.equals(getSortByField());
+        List<String> sortByFields = getSortByFields();
+        String showField = getShowField();
+        if (sortByFields.size() != 1) {
+            return false;
+        }
+        String sortByField = sortByFields.get(0);
+        return sortByField.equals(showField)
+                || Meta.FIELD_SPECIAL_MEDIA_ID.equals(showField) && Meta.FIELD_TITLE.equals(sortByField);
+    }
+
+    public boolean sortedByMultipleFields() {
+        return sortByFields.size() > 1;
     }
 
     public void addToQuery(String key, String value) {
@@ -107,6 +124,20 @@ public class MusicLibraryQuery {
             return;
         }
         subQuery.putString(key, value);
+    }
+
+    public void addSortedByValuesToQuery(List<String> sortedByKeys,
+                                         ArrayList<String> sortedByValues) {
+        for (int i = 0; i < sortedByKeys.size(); i++) {
+            String key = sortedByKeys.get(i);
+            String value = sortedByValues == null || i >= sortedByValues.size() ?
+                    null : sortedByValues.get(i);
+            // TODO: OR DO WE NEED TO ADD THE NULL VALUE CONSTRAINT TO THE QUERY?
+            if (value == null) {
+                continue;
+            }
+            addToQuery(key, value);
+        }
     }
 
     public Bundle getQueryBundle() {
@@ -124,7 +155,7 @@ public class MusicLibraryQuery {
     private Bundle toSubscriptionBundle() {
         Bundle b = new Bundle();
         b.putString(BUNDLE_KEY_SHOW, showField);
-        b.putString(BUNDLE_KEY_SORT, sortByField);
+        b.putStringArrayList(BUNDLE_KEY_SORT, sortByFields);
         b.putBoolean(BUNDLE_KEY_SORT_ORDER, sortOrderAscending);
         b.putBundle(BUNDLE_KEY_QUERY, subQuery);
         return b;
@@ -203,5 +234,18 @@ public class MusicLibraryQuery {
 
     public static abstract class MusicLibraryQueryCallback {
         public abstract void onQueryResult(@NonNull List<MediaBrowserCompat.MediaItem> items);
+    }
+
+    public static ArrayList<Bundle> toQueryBundles(List<EntryID> entryIDs, Bundle query) {
+        return entryIDs.stream().map(entryID -> {
+            Bundle b = new Bundle();
+            if (query != null) {
+                b.putAll(query);
+            }
+            if (!entryID.isUnknown()) {
+                b.putString(entryID.type, entryID.id);
+            }
+            return b;
+        }).collect(Collectors.toCollection(ArrayList::new));
     }
 }

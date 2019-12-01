@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModelProviders;
@@ -93,8 +94,9 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private TextView mediaInfoText;
     private View bufferingView;
     private TextView sizeText;
+    private View moreView;
     private MutableLiveData<EntryID> entryIDLiveData;
-    private Meta currentMeta = Meta.UNKNOWN_ENTRY;
+    private LiveData<Meta> metaLiveData;
 
     private final NowPlayingEntriesAdapter recViewAdapter;
     private FastScroller fastScroller;
@@ -171,6 +173,11 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                     @Override
                     public PlaylistID getPlaylistID() {
                         return null;
+                    }
+
+                    @Override
+                    public List<Bundle> getQueries() {
+                        return Collections.emptyList();
                     }
 
                     @Override
@@ -254,11 +261,8 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                     }
                 }
         );
-        MetaStorage.getInstance(requireContext()).getMeta(entryIDLiveData)
-                .observe(getViewLifecycleOwner(), meta -> {
-                    currentMeta = meta;
-                    updateMeta(meta);
-                });
+        metaLiveData = MetaStorage.getInstance(requireContext()).getMeta(entryIDLiveData);
+        metaLiveData.observe(getViewLifecycleOwner(), this::updateMeta);
 
         positionText = rootView.findViewById(R.id.nowplaying_position);
         durationText = rootView.findViewById(R.id.nowplaying_duration);
@@ -289,7 +293,8 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                         )
                 )
         );
-        rootView.findViewById(R.id.nowplaying_current_more).setOnClickListener(v ->
+        moreView = rootView.findViewById(R.id.nowplaying_current_more);
+        moreView.setOnClickListener(v ->
                 MenuActions.showPopupMenu(
                         getContext(),
                         v,
@@ -304,7 +309,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                         menuItem -> MenuActions.doAction(
                                 menuItem.getItemId(),
                                 this,
-                                () -> currentMeta.entryID,
+                                () -> entryIDLiveData.getValue(),
                                 null,
                                 null,
                                 null,
@@ -372,6 +377,11 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                     }
 
                     @Override
+                    public List<Bundle> getQueries() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
                     public void onDestroyActionMode(ActionMode actionMode) {
                         historySelectionTracker.clearSelection();
                     }
@@ -430,8 +440,10 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         model = ViewModelProviders.of(requireActivity()).get(NowPlayingFragmentModel.class);
         model.getFetchState(requireContext()).observe(getViewLifecycleOwner(), audioDataFetchStates -> {
             boolean showSize = false;
-            AudioStorage.AudioDataFetchState state = audioDataFetchStates.get(currentMeta.entryID);
-            String formattedFileSize = currentMeta.getFormattedFileSize();
+            Meta meta = metaLiveData.getValue();
+            EntryID entryID = meta == null ? null : meta.entryID;
+            AudioStorage.AudioDataFetchState state = audioDataFetchStates.get(entryID);
+            String formattedFileSize = meta == null ? null : meta.getFormattedFileSize();
             if (state != null) {
                 sizeText.setText(state.getStatusMsg(formattedFileSize));
                 showSize = true;
@@ -576,6 +588,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     private void updateMeta(Meta meta) {
+        moreView.setVisibility(meta.entryID.isUnknown() ? INVISIBLE : VISIBLE);
         updateDescription(meta);
         updateMediaInfo(meta);
         updateDuration(meta);
@@ -585,13 +598,21 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         String title = metadata.getAsString(Meta.FIELD_TITLE);
         String album = metadata.getAsString(Meta.FIELD_ALBUM);
         String artist = metadata.getAsString(Meta.FIELD_ARTIST);
+        String trackNum = metadata.getAsString(Meta.FIELD_TRACKNUMBER);
+        String discNum = metadata.getAsString(Meta.FIELD_DISCNUMBER);
         if (title == null || title.isEmpty()) {
             title = "Unknown title";
         }
         if (album == null || album.isEmpty()) {
-            album = "Unknown album";
+            album = "";
         } else {
             String year = metadata.getAsString(Meta.FIELD_YEAR);
+            if (!trackNum.isEmpty()) {
+                album = String.format(Locale.getDefault(), "#%s, %s", trackNum, album);
+            }
+            if (!discNum.isEmpty()) {
+                album = String.format(Locale.getDefault(), "%s (%s)", album, discNum);
+            }
             if (!year.isEmpty()) {
                 album = String.format(Locale.getDefault(), "%s - %s", album, year);
             }

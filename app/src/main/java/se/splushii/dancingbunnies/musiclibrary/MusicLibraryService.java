@@ -3,11 +3,9 @@ package se.splushii.dancingbunnies.musiclibrary;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Binder;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.preference.PreferenceManager;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -19,7 +17,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -32,7 +29,6 @@ import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.backend.APIClientRequestHandler;
 import se.splushii.dancingbunnies.backend.AudioDataHandler;
 import se.splushii.dancingbunnies.backend.MusicLibraryRequestHandler;
-import se.splushii.dancingbunnies.backend.SubsonicAPIClient;
 import se.splushii.dancingbunnies.search.Indexer;
 import se.splushii.dancingbunnies.search.Searcher;
 import se.splushii.dancingbunnies.storage.AudioStorage;
@@ -104,7 +100,6 @@ public class MusicLibraryService extends Service {
     private static final String LUCENE_INDEX_PATH = "lucene_index";
 
     private File indexDirectoryPath;
-    private HashMap<String, APIClient> apis;
     private Searcher searcher;
     private MetaStorage metaStorage;
 
@@ -120,7 +115,7 @@ public class MusicLibraryService extends Service {
                                 :
                                 MetaStorage.getInstance(context).getEntries(
                                         Meta.FIELD_SPECIAL_MEDIA_ID,
-                                        Meta.FIELD_TITLE,
+                                        Collections.singletonList(Meta.FIELD_TITLE),
                                         true,
                                         SmartPlaylist.jsonQueryToBundle(playlist.query)
                                 )
@@ -169,8 +164,6 @@ public class MusicLibraryService extends Service {
     public void onCreate() {
         super.onCreate();
         Log.d(LC, "onCreate");
-        apis = new HashMap<>();
-        loadSettings();
         metaStorage = MetaStorage.getInstance(this);
         indexDirectoryPath = prepareIndex(getFilesDir(), indexDirectoryPath);
     }
@@ -216,21 +209,20 @@ public class MusicLibraryService extends Service {
         Log.d(LC, "Library indexed (" + numDocs + " docs)! Took " + time + "ms");
     }
 
-    private AudioDataSource getAudioDataSource(EntryID entryID) {
-        APIClient apiClient = apis.get(entryID.src);
+    private static AudioDataSource getAudioDataSource(Context context, EntryID entryID) {
+        APIClient apiClient = APIClient.getAPIClient(context, entryID.src);
         return apiClient == null ? null : apiClient.getAudioData(entryID);
     }
 
-    public String getAudioURL(EntryID entryID) {
-        AudioDataSource audioDataSource = getAudioDataSource(entryID);
+    public static String getAudioURL(Context context, EntryID entryID) {
+        AudioDataSource audioDataSource = getAudioDataSource(context, entryID);
         return audioDataSource == null ? null : audioDataSource.getURL();
     }
 
     public static CompletableFuture<Void> downloadAudioData(Context context,
-                                                            List<EntryID> entryIDs,
-                                                            int priority,
-                                                            Bundle query) {
-        return getSongEntriesOnce(context, entryIDs, query)
+                                                            ArrayList<Bundle> queryBundles,
+                                                            int priority) {
+        return getSongEntriesOnce(context, queryBundles)
                 .thenAccept(songEntryIDs -> songEntryIDs.forEach(songEntryID ->
                         downloadAudioData(context, songEntryID, priority)
                 ));
@@ -248,9 +240,11 @@ public class MusicLibraryService extends Service {
         AudioStorage.getInstance(context).fetch(context, entryID, priority, handler);
     }
 
-    public static synchronized CompletableFuture<Void> deleteAudioData(Context context,
-                                                                       List<EntryID> entryIDs) {
-        return getSongEntriesOnce(context, entryIDs, null)
+    public static synchronized CompletableFuture<Void> deleteAudioData(
+            Context context,
+            ArrayList<Bundle> queryBundles
+    ) {
+        return getSongEntriesOnce(context, queryBundles)
                 .thenAccept(songEntryIDs -> songEntryIDs.forEach(songEntryID ->
                         deleteAudioData(context, songEntryID)
                 ));
@@ -261,18 +255,19 @@ public class MusicLibraryService extends Service {
         return AudioStorage.getInstance(context).deleteAudioData(context, entryID);
     }
 
-    public CompletableFuture<Meta> getSongMeta(EntryID entryID) {
-        return metaStorage.getMetaOnce(entryID);
+    public static CompletableFuture<Meta> getSongMeta(Context context, EntryID entryID) {
+        return MetaStorage.getInstance(context).getMetaOnce(entryID);
     }
 
-    public CompletableFuture<List<Meta>> getSongMetas(List<EntryID> entryIDs) {
+    public static CompletableFuture<List<Meta>> getSongMetas(Context context,
+                                                             List<EntryID> entryIDs) {
         CompletableFuture<List<Meta>> ret = new CompletableFuture<>();
         Meta[] metas = new Meta[entryIDs.size()];
         List<CompletableFuture> futureList = new ArrayList<>();
         for (int i = 0; i < metas.length; i++) {
             int index = i;
             EntryID entryID = entryIDs.get(index);
-            futureList.add(getSongMeta(entryID).thenAccept(meta -> metas[index] = meta));
+            futureList.add(getSongMeta(context, entryID).thenAccept(meta -> metas[index] = meta));
         }
         CompletableFuture.allOf(futureList.toArray(new CompletableFuture[0]))
                 .thenRun(() -> ret.complete(Arrays.asList(metas)));
@@ -280,14 +275,23 @@ public class MusicLibraryService extends Service {
     }
 
     public LiveData<List<LibraryEntry>> getSubscriptionEntries(String showField,
-                                                               String sortField,
+                                                               List<String> sortField,
                                                                boolean sortOrderAscending,
                                                                Bundle query) {
         return metaStorage.getEntries(showField, sortField, sortOrderAscending, query);
     }
 
-    public static CompletableFuture<List<EntryID>> getSongEntriesOnce(Context context, List<EntryID> entryIDs, Bundle query) {
+    public static CompletableFuture<List<EntryID>> getSongEntriesOnce(Context context,
+                                                                      List<EntryID> entryIDs,
+                                                                      Bundle query) {
         return MetaStorage.getInstance(context).getSongEntriesOnce(entryIDs, query);
+    }
+
+    public static CompletableFuture<List<EntryID>> getSongEntriesOnce(
+            Context context,
+            ArrayList<Bundle> queryBundles
+    ) {
+        return MetaStorage.getInstance(context).getSongEntriesOnce(queryBundles);
     }
 
     public List<EntryID> getSearchEntries(String query) {
@@ -318,18 +322,6 @@ public class MusicLibraryService extends Service {
             return false;
         }
         return true;
-    }
-
-    private void loadSettings() {
-        SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(this);
-        if (!settings.getBoolean(getResources().getString(R.string.pref_key_subsonic), false)) {
-            apis.remove(API_ID_SUBSONIC);
-        } else if (!apis.containsKey(API_ID_SUBSONIC)) {
-            apis.put(API_ID_SUBSONIC, new SubsonicAPIClient(this));
-        }
-        for (String key: apis.keySet()) {
-            apis.get(key).loadSettings(this);
-        }
     }
 
     public static CompletableFuture<Void> fetchAPILibrary(Context context, final String api, final MusicLibraryRequestHandler handler) {

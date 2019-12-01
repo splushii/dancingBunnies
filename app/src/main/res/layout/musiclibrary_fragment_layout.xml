@@ -207,6 +207,7 @@
                     android:paddingBottom="4dp"
                     android:paddingEnd="0dp"
                     android:textSize="16sp"
+                    android:textStyle="bold"
                     android:singleLine="true"
                     android:ellipsize="end"
                     android:textColor="@color/primary_text_color"/>
@@ -271,6 +272,28 @@
                     android:id="@+id/musiclibrary_header_fastscroller_padding"
                     android:layout_width="@dimen/fastscroller_width"
                     android:layout_height="match_parent" />
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/musiclibrary_header_extra_sortedby"
+                android:layout_width="match_parent"
+                android:layout_height="32dp"
+                android:paddingStart="16dp"
+                android:orientation="horizontal">
+                <LinearLayout
+                    android:id="@+id/musiclibrary_header_extra_sortedby_keys"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="36dp"
+                    android:background="?android:selectableItemBackground"
+                    android:orientation="horizontal"
+                    android:paddingStart="4dp"/>
+                <ImageButton
+                    android:id="@+id/musiclibrary_header_extra_sortedby_order"
+                    android:layout_width="@dimen/fastscroller_width"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:src="@drawable/ic_arrow_drop_down_black_24dp"
+                    android:contentDescription="@string/musiclibrary_sort_order" />
             </LinearLayout>
         </LinearLayout>
         <androidx.coordinatorlayout.widget.CoordinatorLayout

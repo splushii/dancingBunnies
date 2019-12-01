@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.musiclibrary.Meta.Type.DOUBLE;
@@ -149,8 +150,8 @@ public class Meta {
                     return String.format(Locale.getDefault(), "%d kbps", Long.parseLong(value));
                 default:
                     break;
-        }
-    } catch (NumberFormatException ignored) {}
+            }
+        } catch (NumberFormatException ignored) {}
         return value;
     }
 
@@ -285,14 +286,14 @@ public class Meta {
                 return strings == null ? "" : getAsString(strings);
             case LONG:
                 List<Long> longs = longMap.get(key);
-                return longs == null ? "" : String.join(DELIM, longs.stream()
+                return longs == null ? "" : longs.stream()
                         .map(Object::toString)
-                        .collect(Collectors.toList()));
+                        .collect(Collectors.joining(DELIM));
             case DOUBLE:
                 List<Double> doubles = doubleMap.get(key);
-                return doubles == null ? "" : String.join(DELIM, doubles.stream()
+                return doubles == null ? "" : doubles.stream()
                         .map(Object::toString)
-                        .collect(Collectors.toList()));
+                        .collect(Collectors.joining(DELIM));
         }
         return "";
     }
@@ -300,6 +301,93 @@ public class Meta {
 
     public static String getAsString(List<String> strings) {
         return String.join(DELIM, strings);
+    }
+
+    public static class ComparableValue implements Comparable<ComparableValue> {
+        Meta.Type type;
+        private List<String> stringValues;
+        private List<Long> longValues;
+        private List<Double> doubleValues;
+
+        private ComparableValue() {}
+
+        private static ComparableValue withStrings(List<String> values) {
+            ComparableValue comparableValue = new ComparableValue();
+            comparableValue.type = STRING;
+            comparableValue.stringValues = values;
+            return comparableValue;
+        }
+
+        private static ComparableValue withLongs(List<Long> values) {
+            ComparableValue comparableValue = new ComparableValue();
+            comparableValue.type = LONG;
+            comparableValue.longValues = values;
+            return comparableValue;
+        }
+
+        private static ComparableValue withDoubles(List<Double> values) {
+            ComparableValue comparableValue = new ComparableValue();
+            comparableValue.type = DOUBLE;
+            comparableValue.doubleValues = values;
+            return comparableValue;
+        }
+
+        @Override
+        public int compareTo(ComparableValue that) {
+            if (type != that.type) {
+                return type.ordinal() - that.type.ordinal();
+            }
+            switch (type) {
+                default:
+                case STRING:
+                    return compare(stringValues, that.stringValues);
+                case LONG:
+                    return compare(longValues, that.longValues);
+                case DOUBLE:
+                    return compare(doubleValues, that.doubleValues);
+            }
+        }
+
+        private <T extends Comparable<T>>int compare(List<T> list1, List<T> list2) {
+            if (list1 == null || list1.isEmpty()) {
+                if (list2 == null || list2.isEmpty()) {
+                    return 0;
+                }
+                return -1;
+            } else if (list2 == null || list2.isEmpty()) {
+                return 1;
+            }
+            return list1.get(0).compareTo(list2.get(0));
+        }
+
+        @Override
+        public boolean equals(@Nullable Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            ComparableValue that = (ComparableValue) o;
+            if (type != that.type) return false;
+            switch (type) {
+                default:
+                case STRING:
+                    return stringValues.equals(that.stringValues);
+                case LONG:
+                    return longValues.equals(that.longValues);
+                case DOUBLE:
+                    return doubleValues.equals(that.doubleValues);
+            }
+        }
+    }
+
+    public ComparableValue getAsComparable(String key) {
+        switch (getType(key)) {
+            default:
+            case STRING:
+                return ComparableValue.withStrings(stringMap.get(key));
+            case LONG:
+                return ComparableValue.withLongs(longMap.get(key));
+            case DOUBLE:
+                return ComparableValue.withDoubles(doubleMap.get(key));
+        }
     }
 
     public Bundle toBundle() {

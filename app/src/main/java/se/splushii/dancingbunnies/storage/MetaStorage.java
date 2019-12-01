@@ -23,12 +23,14 @@ import androidx.sqlite.db.SimpleSQLiteQuery;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.storage.db.DB;
 import se.splushii.dancingbunnies.storage.db.MetaDao;
 import se.splushii.dancingbunnies.storage.db.MetaDouble;
 import se.splushii.dancingbunnies.storage.db.MetaLong;
 import se.splushii.dancingbunnies.storage.db.MetaString;
+import se.splushii.dancingbunnies.storage.db.MetaValueEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MetaStorage {
@@ -57,7 +59,7 @@ public class MetaStorage {
 
     // TODO: rework bundleQuery and getEntries to support nested queries
     public LiveData<List<LibraryEntry>> getEntries(String showField,
-                                                   String sortField,
+                                                   List<String> sortFields,
                                                    boolean sortOrderAscending,
                                                    Bundle bundleQuery) {
         HashMap<String, String> keyToTableAliasMap = new HashMap<>();
@@ -76,8 +78,19 @@ public class MetaStorage {
         if (!showMeta) {
             uniqueQueryKeys.add(Meta.FIELD_TITLE);
         }
-        String sortKey = sortField == null ? showTypeKey : sortField;
-        uniqueQueryKeys.add(sortKey);
+        List<String> sortKeys = new ArrayList<>();
+        for (String sortField: sortFields) {
+            if (sortField != null) {
+                if (!sortKeys.contains(sortField)) {
+                    sortKeys.add(sortField);
+                }
+                uniqueQueryKeys.add(sortField);
+            }
+        }
+        if (sortKeys.isEmpty()) {
+            sortKeys.add(showTypeKey);
+            uniqueQueryKeys.add(showTypeKey);
+        }
 
         // Create table aliases
         int tableAliasIndex = 1;
@@ -139,24 +152,28 @@ public class MetaStorage {
                 ));
                 break;
         }
-        String sortKeyColumn;
-        switch (sortKey) {
-            case Meta.FIELD_SPECIAL_MEDIA_SRC:
-                sortKeyColumn = DB.COLUMN_API;
-                break;
-            case Meta.FIELD_SPECIAL_MEDIA_ID:
-                sortKeyColumn = DB.COLUMN_ID;
-                break;
-            default:
-                sortKeyColumn = DB.COLUMN_VALUE;
-                break;
+        // Fetch columns with sort values ("sort1", "sort2", ...) as defined in MetaValueEntry
+        for (int i = 0; i < sortKeys.size() && i < MetaValueEntry.NUM_SORT_VALUES; i++) {
+            String sortKey = sortKeys.get(i);
+            String sortKeyColumn;
+            switch (sortKey) {
+                case Meta.FIELD_SPECIAL_MEDIA_SRC:
+                    sortKeyColumn = DB.COLUMN_API;
+                    break;
+                case Meta.FIELD_SPECIAL_MEDIA_ID:
+                    sortKeyColumn = DB.COLUMN_ID;
+                    break;
+                default:
+                    sortKeyColumn = DB.COLUMN_VALUE;
+                    break;
+            }
+            query.append(String.format(
+                    ", %s.%s AS %s",
+                    keyToTableAliasMap.get(sortKey),
+                    sortKeyColumn,
+                    "sort" + (i + 1)
+            ));
         }
-        query.append(String.format(
-                ", %s.%s AS %s",
-                keyToTableAliasMap.get(sortKey),
-                sortKeyColumn,
-                "sort1"
-        ));
         query.append(" FROM ").append(showTypeTable).append(" AS ").append(showTypeTableAlias);
         for (String key: uniqueQueryKeys) {
             if (showTypeKey.equals(key)) {
@@ -255,14 +272,21 @@ public class MetaStorage {
             query.append(" )");
         }
         // Sort
-        query.append("\nORDER BY ");
-        addSortToQuery(
-                query,
-                showTypeTableAlias,
-                sortKey,
-                keyToTableAliasMap.get(sortKey),
-                sortOrderAscending
-        );
+        for (int i = 0; i < sortKeys.size(); i++) {
+            if (i == 0) {
+                query.append("\nORDER BY ");
+            } else {
+                query.append(",\n");
+            }
+            String sortKey = sortKeys.get(i);
+            addSortToQuery(
+                    query,
+                    showTypeTableAlias,
+                    sortKey,
+                    keyToTableAliasMap.get(sortKey),
+                    sortOrderAscending
+            );
+        }
         query.append(",\n");
         addSortToQuery(
                 query,
@@ -314,7 +338,17 @@ public class MetaStorage {
                             name = value.value;
                             break;
                     }
-                    return new LibraryEntry(entryID, name, value.sort1);
+                    return new LibraryEntry(
+                            entryID,
+                            name,
+                            new ArrayList<>(Arrays.asList(
+                                    value.sort1,
+                                    value.sort2,
+                                    value.sort3,
+                                    value.sort4,
+                                    value.sort5
+                            ))
+                    );
                 }).collect(Collectors.toList())
         );
     }
@@ -532,19 +566,28 @@ public class MetaStorage {
             b.putString(entryID.type, entryID.id);
         }
         return Transformations.map(
-                getEntries(Meta.FIELD_SPECIAL_MEDIA_ID, Meta.FIELD_TITLE, true, b),
+                getEntries(
+                        Meta.FIELD_SPECIAL_MEDIA_ID,
+                        Collections.singletonList(Meta.FIELD_TITLE),
+                        true,
+                        b
+                ),
                 libraryEntries -> libraryEntries.stream()
                         .map(libraryEntry -> libraryEntry.entryID)
                         .collect(Collectors.toList())
         );
     }
 
-    public CompletableFuture<List<EntryID>> getSongEntriesOnce(List<EntryID> entryIDs, Bundle query) {
+    public CompletableFuture<List<EntryID>> getSongEntriesOnce(List<EntryID> entryIDs,
+                                                               Bundle query) {
+        return getSongEntriesOnce(MusicLibraryQuery.toQueryBundles(entryIDs, query));
+    }
+
+    public CompletableFuture<List<EntryID>> getSongEntriesOnce(ArrayList<Bundle> queryBundles) {
         List<CompletableFuture<List<EntryID>>> futureEntryLists = new ArrayList<>();
-//        Log.d(LC, "getSongEntriesOnce for " + entryIDs.size() + " entryIDs, query: " + query);
-        for (EntryID entryID : entryIDs) {
+        for (Bundle query: queryBundles) {
             CompletableFuture<List<EntryID>> songEntries;
-            songEntries = getSongEntriesOnce(entryID, query);
+            songEntries = getSongEntriesOnce(query);
             futureEntryLists.add(songEntries);
         }
         return CompletableFuture.allOf(futureEntryLists.toArray(new CompletableFuture[0]))
@@ -552,9 +595,7 @@ public class MetaStorage {
                         .map(futureEntryList -> {
                             try {
                                 return futureEntryList.get();
-                            } catch (ExecutionException e) {
-                                e.printStackTrace();
-                            } catch (InterruptedException e) {
+                            } catch (ExecutionException | InterruptedException e) {
                                 e.printStackTrace();
                             }
                             return Collections.<EntryID>emptyList();
@@ -563,21 +604,14 @@ public class MetaStorage {
                         .collect(Collectors.toList()));
     }
 
-    private CompletableFuture<List<EntryID>> getSongEntriesOnce(EntryID entryID, Bundle query) {
-        CompletableFuture<List<EntryID>> ret = new CompletableFuture<>();
-        Bundle b = new Bundle();
-        if (query != null) {
-            b.putAll(query);
-        }
-        if (!entryID.isUnknown()) {
-            b.putString(entryID.type, entryID.id);
-        }
+    private CompletableFuture<List<EntryID>> getSongEntriesOnce(Bundle query) {
         LiveData<List<LibraryEntry>> liveData = getEntries(
                 Meta.FIELD_SPECIAL_MEDIA_ID,
-                Meta.FIELD_TITLE,
+                Collections.singletonList(Meta.FIELD_TITLE),
                 true,
-                b
+                query
         );
+        CompletableFuture<List<EntryID>> ret = new CompletableFuture<>();
         liveData.observeForever(new Observer<List<LibraryEntry>>() {
             @Override
             public void onChanged(List<LibraryEntry> libraryEntries) {

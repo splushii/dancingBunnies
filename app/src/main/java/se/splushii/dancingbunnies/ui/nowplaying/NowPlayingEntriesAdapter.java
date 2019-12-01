@@ -41,6 +41,7 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_FROM_QUEUE
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_MULTIPLE_FROM_QUEUE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SET_CURRENT_PLAYLIST;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SHUFFLE_MULTIPLE_IN_QUEUE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SORT_MULTIPLE_IN_QUEUE;
 
 public class NowPlayingEntriesAdapter extends
         SelectionRecyclerViewAdapter<PlaybackEntry, NowPlayingEntriesAdapter.ViewHolder> {
@@ -135,7 +136,8 @@ public class NowPlayingEntriesAdapter extends
         int[] disabled = containsPlaylistEntries ?
                 new int[] {
                         ACTION_REMOVE_MULTIPLE_FROM_QUEUE,
-                        ACTION_SHUFFLE_MULTIPLE_IN_QUEUE
+                        ACTION_SHUFFLE_MULTIPLE_IN_QUEUE,
+                        ACTION_SORT_MULTIPLE_IN_QUEUE
                 } : new int[0];
         actionModeCallback.setActions(
                 new int[] {
@@ -146,6 +148,7 @@ public class NowPlayingEntriesAdapter extends
                         ACTION_PLAY_MULTIPLE,
                         ACTION_ADD_MULTIPLE_TO_QUEUE,
                         ACTION_SHUFFLE_MULTIPLE_IN_QUEUE,
+                        ACTION_SORT_MULTIPLE_IN_QUEUE,
                         ACTION_ADD_MULTIPLE_TO_PLAYLIST,
                         ACTION_REMOVE_MULTIPLE_FROM_QUEUE,
                         ACTION_CACHE_MULTIPLE,
