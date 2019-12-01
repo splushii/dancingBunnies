@@ -22,6 +22,7 @@
     <string name="pref_key_subsonic_refresh_enabled">se.splushii.dancingbunnies.pref_subsonic_refresh_enabled</string>
     <string name="pref_key_subsonic_refresh_time">se.splushii.dancingbunnies.pref_subsonic_refresh_time</string>
     <string name="pref_key_subsonic_refresh_last_sync">se.splushii.dancingbunnies.pref_subsonic_refresh_last_sync</string>
+    <string name="pref_key_playbackcontroller_play_when_ready">se.splushii.dancingbunnies.pref_playbackcontroller_play_when_ready</string>
     <string name="pref_key_playbackcontroller_playback_id_counter">se.splushii.dancingbunnies.pref_playbackcontroller_playback_id_counter</string>
     <string name="pref_key_playbackcontroller_playlist_selection_id_counter">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_selection_id_counter</string>
     <string name="pref_key_playbackcontroller_playlist_src">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_src</string>

@@ -191,10 +191,13 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 } else {
                     libraryEntrySortedBy.setVisibility(View.GONE);
                 }
-            } else {
+            } else if (fragment.showExtraSortedByHeader()){
                 libraryEntrySortedBy.setVisibility(View.GONE);
                 fragment.addSortedByColumns(libraryEntryExtra, entry.sortedByValues(), false);
                 libraryEntryExtra.setVisibility(View.VISIBLE);
+            } else {
+                libraryEntrySortedBy.setVisibility(View.GONE);
+                libraryEntryExtra.setVisibility(View.GONE);
             }
             libraryEntryShow.setText(fragment.isSearchQuery() ? "" : getShowDisplayValue(entry.name()));
             libraryEntryArtist.setText("");

@@ -40,6 +40,7 @@ public class PlaybackControllerStorage {
 
     private final PlaybackControllerEntryDao entryModel;
     private final SharedPreferences preferences;
+    private final String play_when_ready_key;
     private final String playback_id_counter_key;
     private final String playlist_selection_id_counter_key;
     private final String playlist_src_key;
@@ -69,6 +70,7 @@ public class PlaybackControllerStorage {
         this.context = context;
         entryModel = DB.getDB(context).playbackControllerEntryModel();
         preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        play_when_ready_key = context.getResources().getString(R.string.pref_key_playbackcontroller_play_when_ready);
         playback_id_counter_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playback_id_counter);
         playlist_selection_id_counter_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_selection_id_counter);
         playlist_src_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_src);
@@ -313,6 +315,16 @@ public class PlaybackControllerStorage {
                 .putString(playlist_id_key, id)
                 .putInt(playlist_type_key, type)
                 .apply();
+    }
+
+    public void setPlayWhenReady(boolean playWhenReady) {
+        preferences.edit()
+                .putBoolean(play_when_ready_key, playWhenReady)
+                .apply();
+    }
+
+    public boolean getPlayWhenReady() {
+        return preferences.getBoolean(play_when_ready_key, false);
     }
 
     public void setCurrentPlaylistPosition(long playlistPos, long playlistPlaybackPos) {

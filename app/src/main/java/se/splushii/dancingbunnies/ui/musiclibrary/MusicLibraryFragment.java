@@ -175,10 +175,13 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
             headerExtraSortedBy.setVisibility(GONE);
             headerSortedBy.setText(getSortedByDisplayString(null, true, false));
             headerSortedByRoot.setVisibility(VISIBLE);
-        } else {
+        } else if (showExtraSortedByHeader()) {
             headerSortedByRoot.setVisibility(GONE);
             addSortedByColumns(headerExtraSortedByKeys, null, true);
             headerExtraSortedBy.setVisibility(VISIBLE);
+        } else {
+            headerSortedByRoot.setVisibility(GONE);
+            headerExtraSortedBy.setVisibility(GONE);
         }
         int sortOrderResource = isSortedAscending() ?
                 R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp;
@@ -876,7 +879,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
         return !isSearchQuery() && !showExtraSortedByHeader();
     }
 
-    private boolean showExtraSortedByHeader() {
+    boolean showExtraSortedByHeader() {
         boolean extraNotNeeded = querySortedByKeys().size() == 2
                 && querySortedByKeys().contains(getCurrentQuery().getShowField());
         return !isSearchQuery() && sortedByMultipleFields() && !extraNotNeeded;

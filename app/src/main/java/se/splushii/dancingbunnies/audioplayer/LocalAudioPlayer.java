@@ -33,10 +33,12 @@ class LocalAudioPlayer implements AudioPlayer {
     LocalAudioPlayer(Callback audioPlayerCallback,
                      Context context,
                      PlaybackControllerStorage storage,
-                     boolean initFromStorage) {
+                     boolean initFromStorage,
+                     boolean playWhenReady) {
         this.callback = audioPlayerCallback;
         this.context = context;
         this.storage = storage;
+        this.playWhenReady = playWhenReady;
         preloadPlayers = new LinkedList<>();
         historyPlaybackEntries = new LinkedList<>();
         if (initFromStorage) {

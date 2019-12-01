@@ -70,10 +70,12 @@ public class CastAudioPlayer implements AudioPlayer {
     CastAudioPlayer(Callback callback,
                     Context context,
                     CastSession castSession,
-                    boolean waitForResume) {
+                    boolean waitForResume,
+                    boolean playWhenReady) {
         this.callback = callback;
         this.context = context;
         this.waitingForResume = waitForResume;
+        this.playWhenReady = playWhenReady;
         queueChangeLock.drainPermits();
         queueItemMap = new SparseArray<>();
         playbackIDToCastItemIDMap = new LongSparseArray<>();

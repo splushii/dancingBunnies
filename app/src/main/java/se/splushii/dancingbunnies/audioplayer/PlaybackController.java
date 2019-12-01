@@ -98,6 +98,7 @@ public class PlaybackController {
     private final PlaybackQueue history;
 
     // Internal state
+    private boolean playWhenReady;
     private boolean isPlaying;
     private boolean endOfPlaylistPlayback = false;
 
@@ -112,6 +113,7 @@ public class PlaybackController {
         this.storage = playbackControllerStorage;
         this.callback = callback;
 
+        playWhenReady = storage.getPlayWhenReady();
         currentPlaylistSelectionID = storage.getCurrentPlaylistSelectionID();
         currentPlaylistID = storage.getCurrentPlaylist();
         currentPlaylistPosition = storage.getCurrentPlaylistPosition();
@@ -163,7 +165,8 @@ public class PlaybackController {
                 audioPlayerCallback,
                 musicLibraryService,
                 storage,
-                true
+                true,
+                playWhenReady
         );
 
         currentPlaylistIDLiveData.setValue(currentPlaylistID);
@@ -196,10 +199,16 @@ public class PlaybackController {
         Log.d(LC, "onDestroy");
         currentPlaylistEntriesLiveData.removeObserver(currentPlaylistEntriesObserver);
         sessionManager.removeSessionManagerListener(sessionManagerListener);
+        setPlayWhenReady(false);
         audioPlayer.stop();
         queue.onDestroy();
         playlistItems.onDestroy();
         history.onDestroy();
+    }
+
+    private void setPlayWhenReady(boolean playWhenReady) {
+        storage.setPlayWhenReady(playWhenReady);
+        this.playWhenReady = playWhenReady;
     }
 
     long getPlayerSeekPosition() {
@@ -353,28 +362,25 @@ public class PlaybackController {
 
     CompletableFuture<Void> play() {
         Log.d(LC, "play");
+        setPlayWhenReady(true);
         synchronized (executorLock) {
             return submitCompletableFuture(() -> audioPlayer.play());
         }
     }
 
     CompletableFuture<Void> pause() {
+        setPlayWhenReady(false);
         synchronized (executorLock) {
             return submitCompletableFuture(() -> audioPlayer.pause());
         }
     }
 
     CompletableFuture<Void> playPause() {
-        synchronized (executorLock) {
-            if (isPlaying) {
-                return submitCompletableFuture(() -> audioPlayer.pause());
-            } else {
-                return submitCompletableFuture(() -> audioPlayer.play());
-            }
-        }
+        return isPlaying ? pause() : play();
     }
 
     CompletableFuture<Void> stop() {
+        setPlayWhenReady(false);
         synchronized (executorLock) {
             return submitCompletableFuture(() -> audioPlayer.stop());
         }
@@ -710,6 +716,7 @@ public class PlaybackController {
             Log.d(LC, "syncPlaylistEntries: End reached. Back at start. Repeat false."
                     + " Stop and reset endOfPlaylistPlayback");
             endOfPlaylistPlayback = false;
+            setPlayWhenReady(false);
             audioPlayer.stop();
         }
 
@@ -1375,6 +1382,7 @@ public class PlaybackController {
     }
 
     CompletableFuture<Void> playNow(List<EntryID> entryIDs) {
+        setPlayWhenReady(true);
         long beforePlaybackID = getQueuePlaybackID(0);
         synchronized (executorLock) {
             return submitCompletableFuture(() -> queueEntries(entryIDs, beforePlaybackID))
@@ -1534,7 +1542,8 @@ public class PlaybackController {
                 audioPlayerCallback,
                 context,
                 session,
-                resumed
+                resumed,
+                playWhenReady
         );
         submitCompletableFuture(() -> transferAudioPlayerState(lastPlayerState));
         callback.onPlayerChanged(AudioPlayer.Type.CAST);
@@ -1550,7 +1559,8 @@ public class PlaybackController {
                 audioPlayerCallback,
                 context,
                 storage,
-                false
+                false,
+                playWhenReady
         );
         submitCompletableFuture(() -> transferAudioPlayerState(lastPlayerState));
         callback.onPlayerChanged(AudioPlayer.Type.LOCAL);
