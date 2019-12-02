@@ -17,6 +17,7 @@ import com.google.android.gms.cast.framework.media.RemoteMediaClient;
 import com.google.android.gms.common.api.PendingResult;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -49,12 +50,13 @@ public class CastAudioPlayer implements AudioPlayer {
     private MediaQueue mediaQueue;
     private int playerState;
     private int idleReason;
-    private boolean playWhenReady = false;
+    private boolean playWhenReady;
     private long lastPos = 0L;
     private int[] lastItemIds = new int[0];
     private int lastCurrentItemId = MediaQueueItem.INVALID_ITEM_ID;
     private SparseArray<MediaQueueItem> lastQueueItemMap;
     private LongSparseArray<Integer> playbackIDToCastItemIDMap;
+    private PlaybackEntry playbackFinishedEntry;
 
     private Semaphore queueChangeLock = new Semaphore(1);
     private StampedLock queueStateLock = new StampedLock();
@@ -124,6 +126,17 @@ public class CastAudioPlayer implements AudioPlayer {
 
     @Override
     public AudioPlayerState getLastState() {
+        if (playerState == MediaStatus.PLAYER_STATE_IDLE
+                && (idleReason == MediaStatus.IDLE_REASON_FINISHED
+                || idleReason == MediaStatus.IDLE_REASON_INTERRUPTED)) {
+            // All entries has already been returned to PlaybackController
+            return new AudioPlayerState(
+                    null,
+                    Collections.emptyList(),
+                    Collections.emptyList(),
+                    0
+            );
+        }
         long lastPos = getSeekPosition();
         PlaybackEntry currentEntry = null;
         List<PlaybackEntry> entries = new LinkedList<>();
@@ -134,7 +147,7 @@ public class CastAudioPlayer implements AudioPlayer {
             if (queueItem == null) {
                 continue;
             }
-            PlaybackEntry entry = new PlaybackEntry(queueItem.getMedia().getMetadata());
+            PlaybackEntry entry = mediaQueueItem2PlaybackEntry(queueItem);
             if (itemId == lastCurrentItemId) {
                 currentEntry = entry;
                 isHistory = false;
@@ -337,6 +350,10 @@ public class CastAudioPlayer implements AudioPlayer {
                     new PlaybackEntry(mediaQueueItem.getMedia().getMetadata());
             playbackEntry.setPreloaded(true);
             entries.add(playbackEntry);
+        }
+        if (playbackFinishedEntry != null) {
+            entries.add(playbackFinishedEntry);
+            playbackFinishedEntry = null;
         }
         return entries;
     }
@@ -884,8 +901,7 @@ public class CastAudioPlayer implements AudioPlayer {
                     switch (idleReason) {
                         case MediaStatus.IDLE_REASON_FINISHED:
                             if (getNumPreloaded() <= 0) {
-                                callback.onCurrentEntryChanged(null);
-                                callback.onStateChanged(PlaybackStateCompat.STATE_STOPPED);
+                                onPlaybackFinished();
                             }
                             callback.onSongEnded();
                             break;
@@ -897,7 +913,13 @@ public class CastAudioPlayer implements AudioPlayer {
                         case MediaStatus.IDLE_REASON_INTERRUPTED:
                             // Constant indicating that the player is idle because playback has
                             // been interrupted by a LOAD command.
-                            // Happens when song is changed by outside force (e.g. assistant)
+                            // Happens when last track explicitly receives next()
+                            if (lastItemIds.length > 0
+                                    && lastCurrentItemId == lastItemIds[lastItemIds.length - 1]) {
+                                onPlaybackFinished();
+                                break;
+                            }
+                            // Also happens when song is changed by outside force (e.g. assistant)
                             callback.onSongEnded();
                             break;
                         default:
@@ -916,6 +938,13 @@ public class CastAudioPlayer implements AudioPlayer {
                 default:
                     break;
             }
+        }
+
+        private void onPlaybackFinished() {
+            MediaQueueItem queueItem = lastQueueItemMap.get(lastCurrentItemId);
+            playbackFinishedEntry = mediaQueueItem2PlaybackEntry(queueItem);
+            callback.onCurrentEntryChanged(null);
+            callback.onStateChanged(PlaybackStateCompat.STATE_STOPPED);
         }
 
         @Override
@@ -965,6 +994,8 @@ public class CastAudioPlayer implements AudioPlayer {
 
     private String getStateString(int state, int idleReason) {
         switch (state) {
+            case MediaStatus.PLAYER_STATE_UNKNOWN:
+                return "UNKNOWN";
             case MediaStatus.PLAYER_STATE_IDLE:
                 switch (idleReason) {
                     case MediaStatus.IDLE_REASON_FINISHED:
@@ -975,17 +1006,21 @@ public class CastAudioPlayer implements AudioPlayer {
                         return "IDLE_ERROR";
                     case MediaStatus.IDLE_REASON_INTERRUPTED:
                         return "IDLE_INTERRUPTED";
-                    default:
+                    case MediaStatus.IDLE_REASON_NONE:
                         return "IDLE_NONE";
+                    default:
+                        return "<unhandled IDLE state>";
                 }
-            case MediaStatus.PLAYER_STATE_BUFFERING:
-                return "BUFFERING";
-            case MediaStatus.PLAYER_STATE_PAUSED:
-                return "PAUSED";
             case MediaStatus.PLAYER_STATE_PLAYING:
                 return "PLAYING";
+            case MediaStatus.PLAYER_STATE_PAUSED:
+                return "PAUSED";
+            case MediaStatus.PLAYER_STATE_BUFFERING:
+                return "BUFFERING";
+            case MediaStatus.PLAYER_STATE_LOADING:
+                return "LOADING";
             default:
-                return "UNKNOWN";
+                return "<unhandled state>";
         }
     }
 }

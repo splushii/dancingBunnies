@@ -427,14 +427,21 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private boolean isStoppedState() {
-        int state = playbackState.getState();
+        return isStoppedState(playbackState.getState());
+    }
+
+    static boolean isStoppedState(int state) {
         return state == PlaybackStateCompat.STATE_ERROR
                 || state == PlaybackStateCompat.STATE_NONE
                 || state == PlaybackStateCompat.STATE_STOPPED;
     }
 
     private boolean isPlayingState() {
-        return playbackState.getState() == PlaybackStateCompat.STATE_PLAYING;
+        return isPlayingState(playbackState.getState());
+    }
+
+    static boolean isPlayingState(int state) {
+        return state == PlaybackStateCompat.STATE_PLAYING;
     }
 
     @SuppressLint("SwitchIntDef")

@@ -1,7 +1,6 @@
 package se.splushii.dancingbunnies.audioplayer;
 
 import android.content.Context;
-import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
 import com.google.android.gms.cast.framework.CastContext;
@@ -1455,7 +1454,11 @@ public class PlaybackController {
     private class AudioPlayerCallback implements AudioPlayer.Callback {
         @Override
         public void onStateChanged(int newPlaybackState) {
-            isPlaying = newPlaybackState  == PlaybackStateCompat.STATE_PLAYING;
+            isPlaying = AudioPlayerService.isPlayingState(newPlaybackState);
+            if (AudioPlayerService.isStoppedState(newPlaybackState)) {
+                Log.d(LC, "AudioPlayer playback stopped. Setting playWhenReady to false");
+                setPlayWhenReady(false);
+            }
             callback.onStateChanged(newPlaybackState);
         }
 
@@ -1555,6 +1558,7 @@ public class PlaybackController {
             return;
         }
         AudioPlayer.AudioPlayerState lastPlayerState = resetController();
+        setPlayWhenReady(false);
         audioPlayer = new LocalAudioPlayer(
                 audioPlayerCallback,
                 context,
