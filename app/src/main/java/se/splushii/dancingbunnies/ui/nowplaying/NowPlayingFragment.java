@@ -98,13 +98,13 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private MutableLiveData<EntryID> entryIDLiveData;
     private LiveData<Meta> metaLiveData;
 
-    private final NowPlayingEntriesAdapter recViewAdapter;
+    private NowPlayingEntriesAdapter recViewAdapter;
     private FastScroller fastScroller;
     private RecyclerViewActionModeSelectionTracker<PlaybackEntry, NowPlayingEntriesAdapter, NowPlayingEntriesAdapter.ViewHolder> selectionTracker;
     private TextView currentPlaylistName;
     private ImageView currentPlaylistOrder;
     private ImageView currentPlaylistRepeat;
-    private final NowPlayingHistoryEntriesAdapter historyRecViewAdapter;
+    private NowPlayingHistoryEntriesAdapter historyRecViewAdapter;
     private FastScroller historyFastScroller;
     private RecyclerViewActionModeSelectionTracker<PlaybackEntry, NowPlayingHistoryEntriesAdapter, NowPlayingHistoryEntriesAdapter.ViewHolder> historySelectionTracker;
 
@@ -116,8 +116,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
 
     public NowPlayingFragment() {
         entryIDLiveData = new MutableLiveData<>();
-        recViewAdapter = new NowPlayingEntriesAdapter(this);
-        historyRecViewAdapter = new NowPlayingHistoryEntriesAdapter(this);
     }
 
     @Override
@@ -132,6 +130,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         LinearLayoutManager recViewLayoutManager = new LinearLayoutManager(this.getContext());
         recViewLayoutManager.setReverseLayout(true);
         recView.setLayoutManager(recViewLayoutManager);
+        recViewAdapter = new NowPlayingEntriesAdapter(this);
         recView.setAdapter(recViewAdapter);
         selectionTracker = new RecyclerViewActionModeSelectionTracker<>(
                 requireActivity(),
@@ -333,6 +332,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         RecyclerView historyRecView = rootView.findViewById(R.id.nowplaying_history_recyclerview);
         LinearLayoutManager historyRecViewLayoutManager = new LinearLayoutManager(this.getContext());
         historyRecView.setLayoutManager(historyRecViewLayoutManager);
+        historyRecViewAdapter = new NowPlayingHistoryEntriesAdapter(this);
         historyRecView.setAdapter(historyRecViewAdapter);
         historySelectionTracker = new RecyclerViewActionModeSelectionTracker<>(
                 requireActivity(),
@@ -438,7 +438,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         Log.d(LC, "onActivityCreated");
         super.onActivityCreated(savedInstanceState);
         model = ViewModelProviders.of(requireActivity()).get(NowPlayingFragmentModel.class);
-        model.getFetchState(requireContext()).observe(getViewLifecycleOwner(), audioDataFetchStates -> {
+        AudioStorage.getInstance(requireContext()).getFetchState().observe(getViewLifecycleOwner(), audioDataFetchStates -> {
             boolean showSize = false;
             Meta meta = metaLiveData.getValue();
             EntryID entryID = meta == null ? null : meta.entryID;
@@ -454,7 +454,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
             sizeText.setVisibility(showSize ? VISIBLE : INVISIBLE);
         });
         recViewAdapter.setModel(model);
-        historyRecViewAdapter.setModel(model);
         Transformations.switchMap(currentPlaylistIDLiveData, playlistID ->
                 PlaylistStorage.getInstance(requireContext()).getPlaylist(playlistID)
         ).observe(getViewLifecycleOwner(), playlist -> {

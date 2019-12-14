@@ -299,16 +299,16 @@ public class MenuActions {
                     playbackEntrySupplier.get()
             );
         } else if (action == ACTION_SORT_MULTIPLE_IN_QUEUE) {
-            SortDialogFragment.showDialogToSort(
+            EntryTypeSelectionDialogFragment.showDialogToSort(
                     audioBrowserFragment,
                     new ArrayList<>(playbackEntrySupplier.get()),
-                    SortDialogFragment.SORT_QUEUE
+                    EntryTypeSelectionDialogFragment.SORT_QUEUE
             );
         } else if (action == ACTION_SORT_MULTIPLE_IN_PLAYLIST_PLAYBACK) {
-            SortDialogFragment.showDialogToSort(
+            EntryTypeSelectionDialogFragment.showDialogToSort(
                     audioBrowserFragment,
                     new ArrayList<>(playbackEntrySupplier.get()),
-                    SortDialogFragment.SORT_PLAYLIST_PLAYBACK
+                    EntryTypeSelectionDialogFragment.SORT_PLAYLIST_PLAYBACK
             );
         } else {
             return false;

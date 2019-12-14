@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
@@ -65,8 +66,8 @@ public class NowPlayingEntriesAdapter extends
     }
 
     void setModel(NowPlayingFragmentModel model) {
-        cachedEntriesLiveData = model.getCachedEntries(fragment.getContext());
-        fetchStateLiveData = model.getFetchState(fragment.getContext());
+        cachedEntriesLiveData = MusicLibraryService.getCachedEntries(fragment.getContext());
+        fetchStateLiveData = AudioStorage.getInstance(fragment.getContext()).getFetchState();
         nowPlayingStateLiveData = model.getState();
     }
 
@@ -267,8 +268,10 @@ public class NowPlayingEntriesAdapter extends
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
-        ViewHolder holder = new ViewHolder(layoutInflater.inflate(R.layout.nowplaying_queue_item, parent, false));
+        ViewHolder holder = new ViewHolder(
+                LayoutInflater.from(parent.getContext())
+                        .inflate(R.layout.nowplaying_queue_item, parent, false)
+        );
         nowPlayingStateLiveData.observe(fragment.getViewLifecycleOwner(), holder::updateHighlight);
         holder.itemContent.initMetaObserver(fragment.requireContext());
         holder.itemContent.observeMeta(fragment.getViewLifecycleOwner());

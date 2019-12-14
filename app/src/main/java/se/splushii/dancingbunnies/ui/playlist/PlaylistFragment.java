@@ -325,7 +325,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
 
                     @Override
                     public PlaylistID getPlaylistID() {
-                        return getCurrentPlaylist();
+                        return null;
                     }
 
                     @Override
@@ -414,7 +414,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
 
                     @Override
                     public PlaylistID getPlaylistID() {
-                        return getCurrentPlaylist();
+                        return model.getUserStateValue().browsedPlaylistID;
                     }
 
                     @Override

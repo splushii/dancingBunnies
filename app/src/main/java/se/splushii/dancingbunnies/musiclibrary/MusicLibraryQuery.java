@@ -114,8 +114,10 @@ public class MusicLibraryQuery {
                 || Meta.FIELD_SPECIAL_MEDIA_ID.equals(showField) && Meta.FIELD_TITLE.equals(sortByField);
     }
 
-    public boolean sortedByMultipleFields() {
-        return sortByFields.size() > 1;
+    public void addEntryIDToQuery(EntryID entryID) {
+        if (entryID != null && !entryID.isUnknown()) {
+            addToQuery(entryID.type, entryID.id);
+        }
     }
 
     public void addToQuery(String key, String value) {
@@ -237,15 +239,19 @@ public class MusicLibraryQuery {
     }
 
     public static ArrayList<Bundle> toQueryBundles(List<EntryID> entryIDs, Bundle query) {
-        return entryIDs.stream().map(entryID -> {
-            Bundle b = new Bundle();
-            if (query != null) {
-                b.putAll(query);
-            }
-            if (!entryID.isUnknown()) {
-                b.putString(entryID.type, entryID.id);
-            }
-            return b;
-        }).collect(Collectors.toCollection(ArrayList::new));
+        return entryIDs.stream()
+                .map(entryID -> toQueryBundle(entryID, query))
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    public static Bundle toQueryBundle(EntryID entryID, Bundle query) {
+        Bundle b = new Bundle();
+        if (query != null) {
+            b.putAll(query);
+        }
+        if (!entryID.isUnknown()) {
+            b.putString(entryID.type, entryID.id);
+        }
+        return b;
     }
 }

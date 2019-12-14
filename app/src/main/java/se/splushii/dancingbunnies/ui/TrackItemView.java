@@ -91,6 +91,7 @@ public class TrackItemView extends LinearLayout {
         cachedView = findViewById(R.id.track_item_cached);
         cacheStatusView = findViewById(R.id.track_item_cache_status);
         posView = findViewById(R.id.track_item_pos);
+        resetPos();
         entryIDLiveData = new MutableLiveData<>();
         title = "";
         duration = "";

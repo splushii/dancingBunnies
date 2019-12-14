@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
@@ -50,12 +51,9 @@ public class NowPlayingHistoryEntriesAdapter extends
         this.fragment = fragment;
         historyEntries = new ArrayList<>();
         setHasStableIds(true);
-    }
-
-    void setModel(NowPlayingFragmentModel model) {
-        cachedEntriesLiveData = model.getCachedEntries(fragment.getContext());
-        fetchStateLiveData = model.getFetchState(fragment.getContext());
-        PlaybackControllerStorage.getInstance(fragment.getContext())
+        cachedEntriesLiveData = MusicLibraryService.getCachedEntries(fragment.requireContext());
+        fetchStateLiveData = AudioStorage.getInstance(fragment.requireContext()).getFetchState();
+        PlaybackControllerStorage.getInstance(fragment.requireContext())
                 .getHistoryEntries()
                 .observe(fragment.getViewLifecycleOwner(), this::setHistoryEntries);
     }

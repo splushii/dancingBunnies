@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/white">
+    <LinearLayout
+        android:id="@+id/sort_item"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:background="?android:selectableItemBackground">
+        <TextView
+            android:id="@+id/entry_type_selection_item_value"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:textColor="@color/primary_text_color"
+            android:padding="8dp"/>
+        <ImageView
+            android:id="@+id/entry_type_selection_item_handle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="8dp"
+            android:src="@drawable/ic_drag_handle_black_24dp"
+            android:contentDescription="@string/drag_handle" />
+    </LinearLayout>
+</LinearLayout>

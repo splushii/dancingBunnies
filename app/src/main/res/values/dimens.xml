@@ -12,4 +12,7 @@
     <dimen name="musiclibrary_column_width_num">48dp</dimen>
     <dimen name="musiclibrary_column_mstart_num">4dp</dimen>
     <dimen name="musiclibrary_column_mend_num">8dp</dimen>
+    <dimen name="musiclibrary_column_width_sortedby_order">24dp</dimen>
+    <dimen name="musiclibrary_column_weight_sortedby">1</dimen>
+    <dimen name="musiclibrary_column_weight_sortedby_keys">1</dimen>
 </resources>

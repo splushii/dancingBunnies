@@ -63,8 +63,8 @@ public class PlaylistPlaybackEntriesAdapter extends
     }
 
     void setModel(PlaylistFragmentModel model) {
-        cachedEntriesLiveData = model.getCachedEntries(fragment.getContext());
-        fetchStateLiveData = model.getFetchState(fragment.getContext());
+        cachedEntriesLiveData = MusicLibraryService.getCachedEntries(fragment.getContext());
+        fetchStateLiveData = AudioStorage.getInstance(fragment.getContext()).getFetchState();
         currentPlaylistPosLiveData = model.getCurrentPlaylistPos();
         currentPlaylistIDLiveData = model.getCurrentPlaylistID();
         currentEntryLiveData = model.getCurrentEntry();

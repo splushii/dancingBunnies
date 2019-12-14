@@ -316,7 +316,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         playbackController = null;
         unbindService(serviceConnection);
         musicLibraryService = null;
-        mediaSession.release();
+        if (mediaSession != null) {
+            mediaSession.release();
+        }
         super.onDestroy();
     }
 

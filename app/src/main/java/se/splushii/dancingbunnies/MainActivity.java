@@ -45,7 +45,8 @@ public final class MainActivity extends AppCompatActivity {
     public static final String INTENT_EXTRA_PLAYLIST_POS = "dancingbunnies.mainactivity.playlist_pos";
     public static final String SELECTION_ID_NOWPLAYING = "dancingbunnies.selection_id.nowplaying";
     public static final String SELECTION_ID_NOWPLAYING_HISTORY = "dancingbunnies.selection_id.nowplaying_history";
-    public static final String SELECTION_ID_MUSICLIBRARY = "dancingbunnies.selection_id.musiclibrary";
+    public static final String SELECTION_ID_MUSICLIBRARY_BROWSE = "dancingbunnies.selection_id.musiclibrary_browse";
+    public static final String SELECTION_ID_MUSICLIBRARY_SEARCH = "dancingbunnies.selection_id.musiclibrary_search";
     public static final String SELECTION_ID_PLAYLIST = "dancingbunnies.selection_id.playlist";
     public static final String SELECTION_ID_PLAYLIST_ENTRIES = "dancingbunnies.selection_id.playlist_entries";
     public static final String SELECTION_ID_PLAYLIST_PLAYBACK_ENTRIES = "dancingbunnies.selection_id.playlist_entries";

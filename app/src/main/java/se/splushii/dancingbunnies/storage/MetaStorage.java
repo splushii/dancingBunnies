@@ -58,51 +58,53 @@ public class MetaStorage {
     }
 
     // TODO: rework bundleQuery and getEntries to support nested queries
-    public LiveData<List<LibraryEntry>> getEntries(String showField,
+    public LiveData<List<LibraryEntry>> getEntries(String primaryField,
                                                    List<String> sortFields,
                                                    boolean sortOrderAscending,
                                                    Bundle bundleQuery) {
         HashMap<String, String> keyToTableAliasMap = new HashMap<>();
-        String showTypeKey = showField == null ? Meta.FIELD_SPECIAL_MEDIA_ID : showField;
-        String showTypeTable = MetaDao.getTable(showTypeKey);
-        String showTypeTableAlias = "meta_show";
-        keyToTableAliasMap.put(showTypeKey, showTypeTableAlias);
-        if (showTypeTable == null) {
+        HashSet<String> uniqueQueryKeys = new HashSet<>(bundleQuery.keySet());
+        String primaryTypeKey = primaryField == null ? Meta.FIELD_SPECIAL_MEDIA_ID : primaryField;
+        String primaryTypeTable = MetaDao.getTable(primaryTypeKey);
+        String primaryTypeTableAlias = "meta_primary";
+        keyToTableAliasMap.put(primaryTypeKey, primaryTypeTableAlias);
+        if (primaryTypeTable == null) {
             MutableLiveData<List<LibraryEntry>> entries = new MutableLiveData<>();
             entries.setValue(Collections.emptyList());
             return entries;
         }
-        boolean showMeta = !Meta.FIELD_SPECIAL_MEDIA_ID.equals(showTypeKey);
+        boolean showMeta = !Meta.FIELD_SPECIAL_MEDIA_ID.equals(primaryTypeKey);
         // Other types (keys) which needs to be joined for the query
-        HashSet<String> uniqueQueryKeys = new HashSet<>(bundleQuery.keySet());
         if (!showMeta) {
             uniqueQueryKeys.add(Meta.FIELD_TITLE);
         }
         List<String> sortKeys = new ArrayList<>();
-        for (String sortField: sortFields) {
-            if (sortField != null) {
-                if (!sortKeys.contains(sortField)) {
-                    sortKeys.add(sortField);
+        if (sortFields != null && !sortFields.isEmpty()) {
+            for (String sortField: sortFields) {
+                if (sortField != null) {
+                    if (!sortKeys.contains(sortField)) {
+                        sortKeys.add(sortField);
+                    }
+                    uniqueQueryKeys.add(sortField);
                 }
-                uniqueQueryKeys.add(sortField);
             }
+
         }
-        if (sortKeys.isEmpty()) {
-            sortKeys.add(showTypeKey);
-            uniqueQueryKeys.add(showTypeKey);
+        if (sortKeys.isEmpty() || !sortKeys.contains(primaryTypeKey)) {
+            sortKeys.add(primaryTypeKey);
         }
 
         // Create table aliases
         int tableAliasIndex = 1;
         for (String key: uniqueQueryKeys) {
-            if (showTypeKey.equals(key)) {
+            if (primaryTypeKey.equals(key)) {
                 // Already handled
                 continue;
             }
             if (Meta.FIELD_SPECIAL_MEDIA_SRC.equals(key)
                     || Meta.FIELD_SPECIAL_MEDIA_ID.equals(key)) {
                 // These keys are present in every meta table
-                keyToTableAliasMap.put(key, showTypeTableAlias);
+                keyToTableAliasMap.put(key, primaryTypeTableAlias);
                 continue;
             }
             String typeTableAlias = "meta_" + tableAliasIndex++;
@@ -114,11 +116,11 @@ public class MetaStorage {
         if (showMeta) {
             query.append(" DISTINCT");
         }
-        switch (showTypeKey) {
+        switch (primaryTypeKey) {
             case Meta.FIELD_SPECIAL_MEDIA_SRC:
                 query.append(String.format(
                         " %s.%s AS %s",
-                        showTypeTableAlias,
+                        primaryTypeTableAlias,
                         DB.COLUMN_API,
                         DB.COLUMN_API
                 ));
@@ -126,13 +128,13 @@ public class MetaStorage {
             case Meta.FIELD_SPECIAL_MEDIA_ID:
                 query.append(String.format(
                         " %s.%s AS %s",
-                        showTypeTableAlias,
+                        primaryTypeTableAlias,
                         DB.COLUMN_API,
                         DB.COLUMN_API
                 ));
                 query.append(String.format(
                         ", %s.%s AS %s",
-                        showTypeTableAlias,
+                        primaryTypeTableAlias,
                         DB.COLUMN_ID,
                         DB.COLUMN_ID
                 ));
@@ -146,14 +148,14 @@ public class MetaStorage {
             default:
                 query.append(String.format(
                         " %s.%s AS %s",
-                        showTypeTableAlias,
+                        primaryTypeTableAlias,
                         DB.COLUMN_VALUE,
                         DB.COLUMN_VALUE
                 ));
                 break;
         }
-        // Fetch columns with sort values ("sort1", "sort2", ...) as defined in MetaValueEntry
-        for (int i = 0; i < sortKeys.size() && i < MetaValueEntry.NUM_SORT_VALUES; i++) {
+        // Fetch columns with extra values ("extra1", "extra2", ...) as defined in MetaValueEntry
+        for (int i = 0; i < sortKeys.size() && i < MetaValueEntry.NUM_MAX_EXTRA_VALUES; i++) {
             String sortKey = sortKeys.get(i);
             String sortKeyColumn;
             switch (sortKey) {
@@ -171,19 +173,19 @@ public class MetaStorage {
                     ", %s.%s AS %s",
                     keyToTableAliasMap.get(sortKey),
                     sortKeyColumn,
-                    "sort" + (i + 1)
+                    "extra" + (i + 1)
             ));
         }
-        query.append(" FROM ").append(showTypeTable).append(" AS ").append(showTypeTableAlias);
+        query.append(" FROM ").append(primaryTypeTable).append(" AS ").append(primaryTypeTableAlias);
         for (String key: uniqueQueryKeys) {
-            if (showTypeKey.equals(key)) {
+            if (primaryTypeKey.equals(key)) {
                 // Already handled
                 continue;
             }
             if (Meta.FIELD_SPECIAL_MEDIA_SRC.equals(key)
                     || Meta.FIELD_SPECIAL_MEDIA_ID.equals(key)) {
                 // These keys are present in every meta table
-                keyToTableAliasMap.put(key, showTypeTableAlias);
+                keyToTableAliasMap.put(key, primaryTypeTableAlias);
                 continue;
             }
             String typeTable = MetaDao.getTable(key);
@@ -202,17 +204,17 @@ public class MetaStorage {
             }
             query.append("\nLEFT JOIN " + typeTable + " AS " + typeTableAlias
                     + " ON ( " + typeTableAlias + "." + DB.COLUMN_API
-                    + " = " + showTypeTableAlias + "." + DB.COLUMN_API
+                    + " = " + primaryTypeTableAlias + "." + DB.COLUMN_API
                     + " AND " + typeTableAlias + "." + DB.COLUMN_ID
-                    + " = " + showTypeTableAlias + "." + DB.COLUMN_ID
+                    + " = " + primaryTypeTableAlias + "." + DB.COLUMN_ID
                     + " AND " + typeTableAlias + "." + DB.COLUMN_KEY + " = ? )");
             queryArgs.add(key);
         }
         // Add showType filter
-        if (!showTypeKey.equals(Meta.FIELD_SPECIAL_MEDIA_ID)
-                && !showTypeKey.equals(Meta.FIELD_SPECIAL_MEDIA_SRC)) {
-            query.append("\nWHERE " + showTypeTableAlias + "." + DB.COLUMN_KEY + " = ?");
-            queryArgs.add(showTypeKey);
+        if (!primaryTypeKey.equals(Meta.FIELD_SPECIAL_MEDIA_ID)
+                && !primaryTypeKey.equals(Meta.FIELD_SPECIAL_MEDIA_SRC)) {
+            query.append("\nWHERE " + primaryTypeTableAlias + "." + DB.COLUMN_KEY + " = ?");
+            queryArgs.add(primaryTypeKey);
         }
         // Add user query
         boolean whereClauseEmpty = true;
@@ -281,43 +283,35 @@ public class MetaStorage {
             String sortKey = sortKeys.get(i);
             addSortToQuery(
                     query,
-                    showTypeTableAlias,
+                    primaryTypeTableAlias,
                     sortKey,
                     keyToTableAliasMap.get(sortKey),
                     sortOrderAscending
             );
         }
-        query.append(",\n");
-        addSortToQuery(
-                query,
-                showTypeTableAlias,
-                showTypeKey,
-                keyToTableAliasMap.get(showTypeKey),
-                sortOrderAscending
-        );
         SimpleSQLiteQuery sqlQuery = new SimpleSQLiteQuery(query.toString(), queryArgs.toArray());
         Log.d(LC, "getEntries:"
                 + "\nquery: " + sqlQuery.getSql()
                 + "\nargs: "
-                + String.join(", ", queryArgs.stream()
+                + queryArgs.stream()
                 .map(Object::toString)
-                .collect(Collectors.toList()))
+                .collect(Collectors.joining(", "))
                 + "\naliases: "
-                + String.join(", ", keyToTableAliasMap.entrySet().stream()
+                + keyToTableAliasMap.entrySet().stream()
                 .map(e -> e.getKey() + ": " + e.getValue())
-                .collect(Collectors.toList()))
+                .collect(Collectors.joining(", "))
         );
         return Transformations.map(
                 metaModel.getEntries(sqlQuery),
                 values -> values.stream().map(value -> {
                     EntryID entryID;
                     String name;
-                    switch (showTypeKey) {
+                    switch (primaryTypeKey) {
                         case Meta.FIELD_SPECIAL_MEDIA_SRC:
                             entryID = new EntryID(
                                     MusicLibraryService.API_ID_DANCINGBUNNIES,
                                     value.api,
-                                    showTypeKey
+                                    primaryTypeKey
                             );
                             name = value.api;
                             break;
@@ -325,7 +319,7 @@ public class MetaStorage {
                             entryID = new EntryID(
                                     value.api,
                                     value.id,
-                                    showTypeKey
+                                    primaryTypeKey
                             );
                             name = value.value;
                             break;
@@ -333,7 +327,7 @@ public class MetaStorage {
                             entryID = new EntryID(
                                     MusicLibraryService.API_ID_DANCINGBUNNIES,
                                     value.value,
-                                    showTypeKey
+                                    primaryTypeKey
                             );
                             name = value.value;
                             break;
@@ -342,11 +336,11 @@ public class MetaStorage {
                             entryID,
                             name,
                             new ArrayList<>(Arrays.asList(
-                                    value.sort1,
-                                    value.sort2,
-                                    value.sort3,
-                                    value.sort4,
-                                    value.sort5
+                                    value.extra1,
+                                    value.extra2,
+                                    value.extra3,
+                                    value.extra4,
+                                    value.extra5
                             ))
                     );
                 }).collect(Collectors.toList())
@@ -560,17 +554,13 @@ public class MetaStorage {
     }
 
     private LiveData<List<EntryID>> getSongEntries(EntryID entryID, Bundle query) {
-        Bundle b = new Bundle();
-        b.putAll(query);
-        if (!entryID.isUnknown()) {
-            b.putString(entryID.type, entryID.id);
-        }
+        Bundle queryBundle = MusicLibraryQuery.toQueryBundle(entryID, query);
         return Transformations.map(
                 getEntries(
                         Meta.FIELD_SPECIAL_MEDIA_ID,
                         Collections.singletonList(Meta.FIELD_TITLE),
                         true,
-                        b
+                        queryBundle
                 ),
                 libraryEntries -> libraryEntries.stream()
                         .map(libraryEntry -> libraryEntry.entryID)
@@ -708,15 +698,15 @@ public class MetaStorage {
         metaMediator.setValue(meta);
     }
 
-    public LiveData<List<String>> getMetaStringValues(String key) {
+    private LiveData<List<String>> getMetaStringValues(String key) {
         return metaModel.getStringMetaValues(key);
     }
 
-    public LiveData<List<Long>> getMetaLongValues(String key) {
+    private LiveData<List<Long>> getMetaLongValues(String key) {
         return metaModel.getLongMetaValues(key);
     }
 
-    public LiveData<List<Double>> getMetaDoubleValues(String key) {
+    private LiveData<List<Double>> getMetaDoubleValues(String key) {
         return metaModel.getDoubleMetaValues(key);
     }
 
@@ -772,7 +762,7 @@ public class MetaStorage {
         );
     }
 
-    public CompletableFuture<Void> deleteLocalMeta(EntryID entryID, String field, String value) {
+    CompletableFuture<Void> deleteLocalMeta(EntryID entryID, String field, String value) {
         return CompletableFuture.runAsync(() ->
                 metaModel.deleteLocalMeta(entryID, field, value, false)
         );

@@ -63,7 +63,7 @@
                     android:contentDescription="@string/musiclibrary_home" />
             </LinearLayout>
             <LinearLayout
-                android:id="@+id/musiclibrary_filter"
+                android:id="@+id/musiclibrary_browse_filter"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:animateLayoutChanges="true"
@@ -73,7 +73,7 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal">
                     <ImageButton
-                        android:id="@+id/musiclibrary_filter_save"
+                        android:id="@+id/musiclibrary_browse_save"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:padding="8dp"
@@ -91,7 +91,7 @@
                         android:textSize="16sp"
                         android:text="@string/musiclibrary_query" />
                     <com.google.android.material.chip.Chip
-                        android:id="@+id/musiclibrary_filter_chip_new"
+                        android:id="@+id/musiclibrary_browse_filter_chip_new"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
@@ -106,7 +106,7 @@
                         android:layout_weight="1"
                         android:layout_height="1dp" />
                     <ImageButton
-                        android:id="@+id/musiclibrary_filter_home"
+                        android:id="@+id/musiclibrary_browse_home"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:padding="8dp"
@@ -114,7 +114,7 @@
                         android:contentDescription="@string/musiclibrary_home" />
                 </LinearLayout>
                 <LinearLayout
-                    android:id="@+id/musiclibrary_filter_new"
+                    android:id="@+id/musiclibrary_browse_filter_new"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
@@ -122,7 +122,7 @@
                     android:paddingBottom="4dp"
                     android:visibility="gone">
                     <Spinner
-                        android:id="@+id/musiclibrary_filter_new_type"
+                        android:id="@+id/musiclibrary_browse_filter_new_type"
                         android:paddingStart="16sp"
                         android:paddingEnd="2dp"
                         android:paddingTop="4dp"
@@ -131,7 +131,7 @@
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"/>
                     <AutoCompleteTextView
-                        android:id="@+id/musiclibrary_filter_new_text"
+                        android:id="@+id/musiclibrary_browe_filter_new_text"
                         android:layout_width="0dp"
                         android:layout_weight="1"
                         android:layout_height="wrap_content"
@@ -148,7 +148,7 @@
                         android:autofillHints=""/>
                 </LinearLayout>
                 <com.google.android.material.chip.ChipGroup
-                    android:id="@+id/musiclibrary_filter_chips"
+                    android:id="@+id/musiclibrary_browse_filter_chips"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="4dp"
@@ -156,7 +156,7 @@
                     android:paddingStart="4dp"
                     android:paddingEnd="4dp" />
                 <LinearLayout
-                    android:id="@+id/musiclibrary_filter_edit"
+                    android:id="@+id/musiclibrary_browse_filter_edit"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
@@ -164,7 +164,7 @@
                     android:paddingBottom="4dp"
                     android:visibility="gone">
                     <TextView
-                        android:id="@+id/musiclibrary_filter_edit_type"
+                        android:id="@+id/musiclibrary_browse_filter_edit_type"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
@@ -174,7 +174,7 @@
                         android:paddingStart="16sp"
                         android:paddingEnd="2dp"/>
                     <AutoCompleteTextView
-                        android:id="@+id/musiclibrary_filter_edit_input"
+                        android:id="@+id/musiclibrary_browse_filter_edit_input"
                         android:layout_width="0dp"
                         android:layout_weight="1"
                         android:layout_height="wrap_content"
@@ -192,11 +192,12 @@
                 </LinearLayout>
             </LinearLayout>
             <LinearLayout
+                android:id="@+id/musiclibrary_browse_header"
                 android:layout_width="match_parent"
-                android:layout_height="36dp"
+                android:layout_height="32dp"
                 android:orientation="horizontal">
                 <TextView
-                    android:id="@+id/musiclibrary_header_show"
+                    android:id="@+id/musiclibrary_browse_header_show"
                     android:background="?android:selectableItemBackground"
                     android:layout_width="0dp"
                     android:layout_weight="@dimen/musiclibrary_column_weight_show"
@@ -206,56 +207,34 @@
                     android:paddingTop="4dp"
                     android:paddingBottom="4dp"
                     android:paddingEnd="0dp"
-                    android:textSize="16sp"
+                    android:textSize="14sp"
                     android:textStyle="bold"
                     android:singleLine="true"
                     android:ellipsize="end"
                     android:textColor="@color/primary_text_color"/>
                 <LinearLayout
-                    android:id="@+id/musiclibrary_header_sortedby_root"
+                    android:id="@+id/musiclibrary_browse_header_sortedby"
                     android:layout_width="0dp"
-                    android:layout_weight="@dimen/musiclibrary_column_weight_sortedBy"
-                    android:layout_height="match_parent">
-                    <TextView
-                        android:id="@+id/musiclibrary_header_sortedby"
-                        android:background="?android:selectableItemBackground"
+                    android:layout_weight="@dimen/musiclibrary_column_weight_sortedby"
+                    android:layout_height="wrap_content"
+                    android:background="?android:selectableItemBackground">
+                    <LinearLayout
+                        android:id="@+id/musiclibrary_browse_header_sortedby_keys"
                         android:layout_width="0dp"
-                        android:layout_weight="1"
-                        android:layout_height="match_parent"
-                        android:gravity="center_vertical"
-                        android:paddingStart="@dimen/musiclibrary_column_mstart_sortedBy"
-                        android:paddingEnd="0dp"
-                        android:paddingTop="4dp"
-                        android:paddingBottom="4dp"
-                        android:textSize="16sp"
-                        android:singleLine="true"
-                        android:ellipsize="end"
-                        android:textColor="@color/primary_text_color"/>
-                    <ImageButton
-                        android:id="@+id/musiclibrary_header_sortedby_order"
-                        android:layout_width="36dp"
+                        android:layout_weight="@dimen/musiclibrary_column_weight_sortedby_keys"
+                        android:layout_height="36dp"
+                        android:orientation="horizontal"
+                        android:layout_marginStart="4dp"/>
+                    <ImageView
+                        android:id="@+id/musiclibrary_browse_header_sortedby_order"
+                        android:layout_width="@dimen/musiclibrary_column_width_sortedby_order"
                         android:layout_height="match_parent"
                         android:gravity="center_vertical"
                         android:src="@drawable/ic_arrow_drop_down_black_24dp"
                         android:contentDescription="@string/musiclibrary_sort_order" />
                 </LinearLayout>
                 <TextView
-                    android:id="@+id/musiclibrary_header_artist"
-                    android:layout_width="0dp"
-                    android:layout_weight="@dimen/musiclibrary_column_weight_artist"
-                    android:layout_height="match_parent"
-                    android:gravity="center_vertical"
-                    android:paddingStart="@dimen/musiclibrary_column_mstart_artist"
-                    android:paddingTop="4dp"
-                    android:paddingBottom="4dp"
-                    android:paddingEnd="0dp"
-                    android:textColor="@color/secondary_text_color"
-                    android:textSize="16sp"
-                    android:singleLine="true"
-                    android:ellipsize="end"
-                    android:text="@string/artist"/>
-                <TextView
-                    android:id="@+id/musiclibrary_header_num"
+                    android:id="@+id/musiclibrary_browse_header_num"
                     android:layout_width="@dimen/musiclibrary_column_width_num"
                     android:layout_height="match_parent"
                     android:gravity="end|center_vertical"
@@ -264,39 +243,18 @@
                     android:paddingTop="4dp"
                     android:paddingBottom="4dp"
                     android:textColor="@color/secondary_text_color"
-                    android:textSize="16sp"
+                    android:textSize="14sp"
                     android:singleLine="true"
                     android:ellipsize="end"
                     android:text="@string/entries"/>
                 <View
-                    android:id="@+id/musiclibrary_header_fastscroller_padding"
+                    android:id="@+id/musiclibrary_browse_header_fastscroller_padding"
                     android:layout_width="@dimen/fastscroller_width"
                     android:layout_height="match_parent" />
             </LinearLayout>
-            <LinearLayout
-                android:id="@+id/musiclibrary_header_extra_sortedby"
-                android:layout_width="match_parent"
-                android:layout_height="32dp"
-                android:paddingStart="16dp"
-                android:orientation="horizontal">
-                <LinearLayout
-                    android:id="@+id/musiclibrary_header_extra_sortedby_keys"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="36dp"
-                    android:background="?android:selectableItemBackground"
-                    android:orientation="horizontal"
-                    android:paddingStart="4dp"/>
-                <ImageButton
-                    android:id="@+id/musiclibrary_header_extra_sortedby_order"
-                    android:layout_width="@dimen/fastscroller_width"
-                    android:layout_height="match_parent"
-                    android:gravity="center_vertical"
-                    android:src="@drawable/ic_arrow_drop_down_black_24dp"
-                    android:contentDescription="@string/musiclibrary_sort_order" />
-            </LinearLayout>
         </LinearLayout>
         <androidx.coordinatorlayout.widget.CoordinatorLayout
+            android:id="@+id/musiclibrary_browse_content"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
@@ -305,7 +263,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
                 <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/musiclibrary_recyclerview"
+                    android:id="@+id/musiclibrary_browse_recyclerview"
                     android:visibility="visible"
                     android:layout_height="match_parent"
                     android:layout_width="0dp"
@@ -313,18 +271,39 @@
                     android:paddingTop="8dp"
                     android:clipToPadding="false"/>
                 <se.splushii.dancingbunnies.ui.FastScroller
-                    android:id="@+id/musiclibrary_fastscroller"
+                    android:id="@+id/musiclibrary_browse_fastscroller"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
                     android:background="@color/grey100"
                     android:layout_gravity="end" />
             </LinearLayout>
             <se.splushii.dancingbunnies.ui.FastScrollerBubble
-                android:id="@+id/musiclibrary_fastscroller_bubble"
+                android:id="@+id/musiclibrary_browse_fastscroller_bubble"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="30dp"
                 android:layout_gravity="end" />
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
+        <LinearLayout
+            android:id="@+id/musiclibrary_search_content"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/musiclibrary_search_recyclerview"
+                android:visibility="visible"
+                android:layout_height="match_parent"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:paddingTop="8dp"
+                android:clipToPadding="false"/>
+            <se.splushii.dancingbunnies.ui.FastScroller
+                android:id="@+id/musiclibrary_search_fastscroller"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:background="@color/grey100"
+                android:layout_gravity="end" />
+        </LinearLayout>
     </LinearLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

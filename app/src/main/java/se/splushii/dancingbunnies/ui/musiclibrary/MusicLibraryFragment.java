@@ -4,6 +4,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.ActionMode;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -16,10 +17,10 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TableLayout;
-import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -60,69 +61,80 @@ import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.AddToNewPlaylistDialogFragment;
+import se.splushii.dancingbunnies.ui.EntryTypeSelectionDialogFragment;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.FastScrollerBubble;
-import se.splushii.dancingbunnies.ui.SortDialogFragment;
 import se.splushii.dancingbunnies.ui.selection.LibraryEntryItemDetailsLookup;
+import se.splushii.dancingbunnies.ui.selection.RecyclerViewActionModeSelectionTracker;
 import se.splushii.dancingbunnies.util.Util;
 
 import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_PLAYLIST;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_QUEUE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULTIPLE_QUERIES;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE_QUERIES;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE_QUERIES;
 
-public class MusicLibraryFragment extends AudioBrowserFragment implements SortDialogFragment.ConfigHandler {
+public class MusicLibraryFragment extends AudioBrowserFragment implements EntryTypeSelectionDialogFragment.ConfigHandler {
     private static final String LC = Util.getLogContext(MusicLibraryFragment.class);
+    private static final int SORT_BY_HEADER_ID_VALUE = 1;
     private static final int SORT_BY_GROUP_ID_HEADER = 0;
     private static final int SORT_BY_GROUP_ID_CUSTOM = 1;
     private static final int SORT_BY_GROUP_ID_SINGLE = 2;
     private static final int SORT_BY_GROUP_ORDER_HEADER = Menu.FIRST;
-    private static final int SORT_BY_GROUP_ORDER_CUSTUM = Menu.FIRST + 1;
+    private static final int SORT_BY_GROUP_ORDER_CUSTOM = Menu.FIRST + 1;
     private static final int SORT_BY_GROUP_ORDER_SINGLE = Menu.FIRST + 2;
     private static final int SHOW_GROUP_ID_HEADER = 0;
     private static final int SHOW_GROUP_ID_SINGLE = 1;
     private static final int SHOW_GROUP_ORDER_HEADER = Menu.FIRST;
     private static final int SHOW_GROUP_ORDER_SINGLE = Menu.FIRST + 1;
 
-    private MusicLibraryAdapter recyclerViewAdapter;
-    private LinearLayoutManager recViewLayoutManager;
+    private View browseFilterView;
+    private ChipGroup browseFilterChips;
+    private View browseFilterEdit;
+    private TextView browseFilterEditType;
+    private MutableLiveData<String> browseFilterEditTypeValueLiveData;
+    private AutoCompleteTextView browseFilterEditInput;
+    private View browseFilterNew;
+    private Spinner browseFilterNewType;
+    private AutoCompleteTextView browseFilterNewInput;
+
+    private LinearLayout browseHeader;
+    private TextView browseHeaderShow;
+    private Menu browseHeaderShowMenu;
+    private LinearLayout browseHeaderSortedBy;
+    private Menu browseHeaderSortedByMenu;
+    private LinearLayout browseHeaderSortedByKeys;
+    private ImageView browseHeaderSortedByOrder;
+    private View browseHeaderNum;
+
+    private View browseContentView;
+    private RecyclerView browseRecyclerView;
+    private MusicLibraryAdapter browseRecyclerViewAdapter;
+    private LinearLayoutManager browseRecyclerViewLayoutManager;
+    private FastScroller browseFastScroller;
+    private FastScrollerBubble browseFastScrollerBubble;
+    private SelectionTracker<LibraryEntry> browseSelectionTracker;
+    private ActionMode browseActionMode;
 
     private View searchView;
     private TextView searchInfoText;
 
-    private View filterView;
-    private ChipGroup filterChips;
-    private View filterEdit;
-    private TextView filterEditType;
-    private MutableLiveData<String> filterEditTypeValueLiveData;
-    private AutoCompleteTextView filterEditInput;
-    private View filterNew;
-    private Spinner filterNewType;
-    private AutoCompleteTextView filterNewInput;
+    private View searchContentView;
+    private MusicLibrarySearchAdapter searchRecyclerViewAdapter;
+    private LinearLayoutManager searchRecyclerViewLayoutManager;
+    private RecyclerViewActionModeSelectionTracker
+            <EntryID, MusicLibrarySearchAdapter, MusicLibrarySearchAdapter.SongViewHolder>
+            searchSelectionTracker;
 
     private ArrayList<String> metaKeys;
     private ArrayAdapter<String> metaKeyAdapter;
-
-    private TextView headerShow;
-    private Menu headerShowMenu;
-    private View headerSortedByRoot;
-    private TextView headerSortedBy;
-    private Menu headerSortedByMenu;
-    private ImageButton headerSortedByOrder;
-    private TextView headerArtist;
-    private View headerNum;
-    private LinearLayout headerExtraSortedBy;
-    private LinearLayout headerExtraSortedByKeys;
-    private ImageButton headerExtraSortedByOrder;
-
-    private SelectionTracker<LibraryEntry> selectionTracker;
-    private ActionMode actionMode;
-
-    private FastScroller fastScroller;
-    private FastScrollerBubble fastScrollerBubble;
 
     private MusicLibraryFragmentModel model;
 
@@ -135,13 +147,14 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
             refreshView(state);
             model.query(mediaBrowser);
         });
-        recyclerViewAdapter.setModel(model);
+        browseRecyclerViewAdapter.setModel(model);
+        searchRecyclerViewAdapter.setModel(model);
     }
 
     @Override
     public void onStop() {
         Log.d(LC, "onStop");
-        model.updateUserState(recyclerViewAdapter.getCurrentPosition());
+        model.updateUserState(Util.getRecyclerViewPosition(browseRecyclerView));
         super.onStop();
     }
 
@@ -153,65 +166,64 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
         }
     }
 
+    @Override
+    protected void onSessionReady() {
+        if (model != null) {
+            model.setCurrentEntry(getCurrentEntry());
+            refreshView(model.getUserState().getValue());
+        }
+    }
+
+    @Override
+    protected void onCurrentEntryChanged(PlaybackEntry entry) {
+        model.setCurrentEntry(entry);
+    }
+
     private void refreshView(final MusicLibraryUserState newUserState) {
         if (newUserState == null) {
             return;
         }
-        recyclerViewAdapter.scrollWhenReady();
+        browseRecyclerViewAdapter.scrollWhenReady();
+        searchRecyclerViewAdapter.scrollWhenReady();
         String showField = getCurrentQuery().getShowField();
         String showDisplayField = Meta.getDisplayKey(showField);
         clearFilterView();
-        boolean browsable = isBrowsable(showField);
-        headerShow.setText(showDisplayField);
-        headerArtist.setVisibility(showHeaderArtist(isBrowsable(showField)) ? VISIBLE : GONE);
-        headerArtist.setLayoutParams(new TableRow.LayoutParams(
-                0,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                querySortedByShow() ? 1.5f : 1f)
-        );
-
-        headerNum.setVisibility(showHeaderNum(browsable) ? VISIBLE : GONE);
-        if (showSortedByHeader()) {
-            headerExtraSortedBy.setVisibility(GONE);
-            headerSortedBy.setText(getSortedByDisplayString(null, true, false));
-            headerSortedByRoot.setVisibility(VISIBLE);
-        } else if (showExtraSortedByHeader()) {
-            headerSortedByRoot.setVisibility(GONE);
-            addSortedByColumns(headerExtraSortedByKeys, null, true);
-            headerExtraSortedBy.setVisibility(VISIBLE);
-        } else {
-            headerSortedByRoot.setVisibility(GONE);
-            headerExtraSortedBy.setVisibility(GONE);
-        }
-        int sortOrderResource = isSortedAscending() ?
-                R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp;
-        headerSortedByOrder.setImageResource(sortOrderResource);
-        headerExtraSortedByOrder.setImageResource(sortOrderResource);
         if (isSearchQuery()) {
             Log.d(LC, "refreshView search");
-            headerShow.setEnabled(false);
-            filterView.setVisibility(GONE);
-            fastScroller.enableBubble(false);
+            browseContentView.setVisibility(GONE);
+            browseHeader.setVisibility(GONE);
+            browseFilterView.setVisibility(GONE);
+            browseFastScroller.enableBubble(false);
             searchInfoText.setText(newUserState.query.getSearchQuery());
             searchView.setVisibility(VISIBLE);
+            searchContentView.setVisibility(VISIBLE);
         } else {
             Log.d(LC, "refreshView query");
-            headerShow.setEnabled(true);
+            searchContentView.setVisibility(GONE);
             searchView.setVisibility(GONE);
-            fastScroller.enableBubble(true);
+            browseFastScroller.enableBubble(true);
+            browseHeaderShow.setText(showDisplayField);
             setShowMenuHeader(newUserState.query.getShowField());
             setSortByMenuHeader(getSortedByDisplayString(null, true, false));
-            Bundle b = newUserState.query.getQueryBundle();
-            for (String metaKey: b.keySet()) {
-                String filterValue = b.getString(metaKey);
+            boolean browsable = isBrowsable(showField);
+            browseHeaderNum.setVisibility(browsable ? VISIBLE : GONE);
+            addSortedByColumns(browseHeaderSortedBy, browseHeaderSortedByKeys, null, true);
+            int sortOrderResource = isSortedAscending() ?
+                    R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp;
+            browseHeaderSortedByOrder.setImageResource(sortOrderResource);
+            Bundle queryBundle = newUserState.query.getQueryBundle();
+            for (String metaKey: queryBundle.keySet()) {
+                String filterValue = queryBundle.getString(metaKey);
                 addFilterToView(metaKey, filterValue);
             }
-            filterView.setVisibility(VISIBLE);
+            browseFilterView.setVisibility(VISIBLE);
+            browseHeader.setVisibility(VISIBLE);
+            browseContentView.setVisibility(VISIBLE);
         }
-        if (filterChips.getChildCount() > 0) {
-            filterChips.setVisibility(VISIBLE);
+        if (browseFilterChips.getChildCount() > 0) {
+            browseFilterChips.setVisibility(VISIBLE);
         } else {
-            filterChips.setVisibility(GONE);
+            browseFilterChips.setVisibility(GONE);
         }
     }
 
@@ -246,30 +258,45 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
         return sb.toString();
     }
 
-    void addSortedByColumns(LinearLayout root, List<String> sortValues, boolean showKeys) {
-        root.removeAllViews();
+    void addSortedByColumns(LinearLayout root,
+                            LinearLayout columnRoot,
+                            List<String> sortValues,
+                            boolean isHeader) {
+        columnRoot.removeAllViews();
         String showKey = getCurrentQuery().getShowField();
         List<String> sortKeys = getCurrentQuery().getSortByFields();
-        TableLayout.LayoutParams layoutParams = new TableLayout.LayoutParams(
+        TableLayout.LayoutParams textViewLayoutParams = new TableLayout.LayoutParams(
                 0,
                 TableLayout.LayoutParams.MATCH_PARENT,
                 1f
         );
+        int columnCount = 0;
         for (int i = 0; i < sortKeys.size(); i++) {
             String key = sortKeys.get(i);
-            if (showKey.equals(key)) {
+            if (showKey.equals(key)
+                    || Meta.FIELD_SPECIAL_MEDIA_ID.equals(showKey) && Meta.FIELD_TITLE.equals(key)) {
                 continue;
             }
             TextView tv = new TextView(requireContext());
-            tv.setLayoutParams(layoutParams);
-            tv.setGravity(Gravity.CENTER_VERTICAL);
+            tv.setLayoutParams(textViewLayoutParams);
+            switch (Meta.getType(key)) {
+                default:
+                case STRING:
+                    tv.setGravity(Gravity.CENTER_VERTICAL);
+                    break;
+                case LONG:
+                case DOUBLE:
+                    tv.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+                    break;
+            }
             tv.setTextColor(ContextCompat.getColorStateList(
                     requireContext(),
                     R.color.primary_text_color
             ));
+            tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, isHeader ? 14 : 12);
             tv.setSingleLine();
             tv.setEllipsize(TextUtils.TruncateAt.END);
-            if (showKeys) {
+            if (isHeader) {
                 tv.setText(Meta.getDisplayKey(key));
             } else {
                 String value = sortValues == null || i >= sortValues.size() ?
@@ -277,10 +304,15 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
                 tv.setText(value == null ? "" : Meta.getDisplayValue(key, value));
             }
             int padding = Util.dpToPixels(requireContext(), 4);
-            tv.setPadding(padding, padding, padding, padding);
-            tv.setBackgroundResource(R.drawable.sorted_by_bg);
-            root.addView(tv);
+            tv.setPadding(padding, 0, padding, 0);
+            columnRoot.addView(tv);
+            columnCount++;
         }
+        LinearLayout.LayoutParams rootLayoutParams = (LinearLayout.LayoutParams) root.getLayoutParams();
+        rootLayoutParams.weight = columnCount;
+        rootLayoutParams.width = columnCount == 0 && isHeader ?
+                Util.dpToPixels(requireContext(), 32) : 0;
+        root.setLayoutParams(rootLayoutParams);
     }
 
     private boolean isBrowsable(String field) {
@@ -290,17 +322,17 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
     @Override
     public void onDestroyView() {
         Log.d(LC, "onDestroyView");
-        fastScroller.onDestroy();
-        fastScroller = null;
-        fastScrollerBubble = null;
+        browseFastScroller.onDestroy();
+        browseFastScroller = null;
+        browseFastScrollerBubble = null;
         super.onDestroyView();
     }
 
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
-        if (selectionTracker != null) {
-            selectionTracker.onSaveInstanceState(outState);
+        if (browseSelectionTracker != null) {
+            browseSelectionTracker.onSaveInstanceState(outState);
         }
     }
 
@@ -311,85 +343,168 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
                 false);
 
         searchView = rootView.findViewById(R.id.musiclibrary_search);
-        filterView = rootView.findViewById(R.id.musiclibrary_filter);
-        RecyclerView recyclerView = rootView.findViewById(R.id.musiclibrary_recyclerview);
-        recViewLayoutManager = new LinearLayoutManager(this.getContext());
-        recyclerView.setLayoutManager(recViewLayoutManager);
-        recyclerView.getRecycledViewPool().setMaxRecycledViews(0, 50);
 
-        fastScroller = rootView.findViewById(R.id.musiclibrary_fastscroller);
-        fastScroller.setRecyclerView(recyclerView);
-        fastScrollerBubble = rootView.findViewById(R.id.musiclibrary_fastscroller_bubble);
-        fastScroller.setBubble(fastScrollerBubble);
+        searchInfoText = rootView.findViewById(R.id.musiclibrary_search_info_query);
+        View searchInfoView = rootView.findViewById(R.id.musiclibrary_search_info);
+        searchInfoView.setOnClickListener(v -> {
+            clearSelection();
+            model.searchQueryClicked(searchInfoText.getText());
+        });
 
-        recyclerViewAdapter = new MusicLibraryAdapter(this, recyclerView, fastScrollerBubble);
-        recyclerView.setAdapter(recyclerViewAdapter);
-        recyclerView.setOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
-                super.onScrollStateChanged(recyclerView, newState);
-                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
-                    clearFocus();
+        searchContentView = rootView.findViewById(R.id.musiclibrary_search_content);
+        RecyclerView searchRecyclerView = rootView.findViewById(R.id.musiclibrary_search_recyclerview);
+        searchRecyclerViewLayoutManager = new LinearLayoutManager(requireContext());
+        searchRecyclerView.setLayoutManager(searchRecyclerViewLayoutManager);
+        searchRecyclerViewAdapter = new MusicLibrarySearchAdapter(this);
+        searchRecyclerView.setAdapter(searchRecyclerViewAdapter);
+        searchSelectionTracker = new RecyclerViewActionModeSelectionTracker<>(
+                requireActivity(),
+                MainActivity.SELECTION_ID_MUSICLIBRARY_SEARCH,
+                searchRecyclerView,
+                searchRecyclerViewAdapter,
+                StorageStrategy.createParcelableStorage(EntryID.class),
+                savedInstanceState
+        );
+        ActionModeCallback searchActionModeCallback = new ActionModeCallback(
+                this,
+                new ActionModeCallback.Callback() {
+                    @Override
+                    public List<EntryID> getEntryIDSelection() {
+                        return searchSelectionTracker.getSelection();
+                    }
+
+                    public List<PlaybackEntry> getPlaybackEntrySelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public List<PlaylistEntry> getPlaylistEntrySelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public List<Playlist> getPlaylistSelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public Bundle getQueryBundle() {
+                        return null;
+                    }
+
+                    @Override
+                    public PlaylistID getPlaylistID() {
+                        return null;
+                    }
+
+                    @Override
+                    public List<Bundle> getQueries() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public void onDestroyActionMode(ActionMode actionMode) {
+                        searchSelectionTracker.clearSelection();
+                    }
                 }
+        );
+        searchSelectionTracker.setActionModeCallback(searchActionModeCallback);
+        searchActionModeCallback.setActions(
+                new int[]{
+                        ACTION_ADD_MULTIPLE_TO_QUEUE,
+                        ACTION_ADD_MULTIPLE_TO_PLAYLIST
+                },
+                new int[]{
+                        ACTION_PLAY_MULTIPLE,
+                        ACTION_ADD_MULTIPLE_TO_QUEUE,
+                        ACTION_ADD_MULTIPLE_TO_PLAYLIST,
+                        ACTION_CACHE_MULTIPLE,
+                        ACTION_CACHE_DELETE_MULTIPLE
+                },
+                new int[0]
+        );
+        searchRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                clearFocus();
+            }
+        });
+
+        browseFilterView = rootView.findViewById(R.id.musiclibrary_browse_filter);
+
+        browseContentView = rootView.findViewById(R.id.musiclibrary_browse_content);
+        browseRecyclerView = rootView.findViewById(R.id.musiclibrary_browse_recyclerview);
+        browseRecyclerViewLayoutManager = new LinearLayoutManager(requireContext());
+        browseRecyclerView.setLayoutManager(browseRecyclerViewLayoutManager);
+        browseRecyclerView.getRecycledViewPool().setMaxRecycledViews(0, 50);
+
+        browseFastScroller = rootView.findViewById(R.id.musiclibrary_browse_fastscroller);
+        browseFastScroller.setRecyclerView(browseRecyclerView);
+        browseFastScrollerBubble = rootView.findViewById(R.id.musiclibrary_browse_fastscroller_bubble);
+        browseFastScroller.setBubble(browseFastScrollerBubble);
+
+        browseRecyclerViewAdapter = new MusicLibraryAdapter(this, browseRecyclerView, browseFastScrollerBubble);
+        browseRecyclerView.setAdapter(browseRecyclerViewAdapter);
+        browseRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                clearFocus();
             }
         });
 
         metaKeys = new ArrayList<>();
         List<String> displayedFields = new ArrayList<>();
 
-        headerShow = rootView.findViewById(R.id.musiclibrary_header_show);
-        final PopupMenu headerShowPopup = new PopupMenu(requireContext(), headerShow);
-        headerShowMenu = headerShowPopup.getMenu();
+        browseHeaderShow = rootView.findViewById(R.id.musiclibrary_browse_header_show);
+        final PopupMenu browseHeaderShowPopup = new PopupMenu(requireContext(), browseHeaderShow);
+        browseHeaderShowMenu = browseHeaderShowPopup.getMenu();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            headerShowMenu.setGroupDividerEnabled(true);
+            browseHeaderShowMenu.setGroupDividerEnabled(true);
         }
-        MenuPopupHelper headerShowPopupHelper = new MenuPopupHelper(
+        MenuPopupHelper browseHeaderShowPopupHelper = new MenuPopupHelper(
                 requireContext(),
-                (MenuBuilder) headerShowMenu,
-                headerShow
+                (MenuBuilder) browseHeaderShowMenu,
+                browseHeaderShow
         );
-        headerShowPopupHelper.setForceShowIcon(true);
-        headerShowPopup.setOnMenuItemClickListener(item -> onShowSelected(item, displayedFields));
-        headerShow.setOnClickListener(view -> headerShowPopupHelper.show());
-        headerSortedByRoot = rootView.findViewById(R.id.musiclibrary_header_sortedby_root);
-        headerSortedBy = rootView.findViewById(R.id.musiclibrary_header_sortedby);
-        final PopupMenu headerSortedByPopup = new PopupMenu(requireContext(), headerSortedBy);
-        headerSortedByMenu = headerSortedByPopup.getMenu();
+        browseHeaderShowPopupHelper.setForceShowIcon(true);
+        browseHeaderShowPopup.setOnMenuItemClickListener(item -> {
+            clearSelection();
+            return onShowSelected(item, displayedFields);
+        });
+        browseHeaderShow.setOnClickListener(view -> browseHeaderShowPopupHelper.show());
+        browseHeaderNum = rootView.findViewById(R.id.musiclibrary_browse_header_num);
+
+        browseHeaderSortedBy = rootView.findViewById(R.id.musiclibrary_browse_header_sortedby);
+        browseHeader = rootView.findViewById(R.id.musiclibrary_browse_header);
         setShowMenuHeader("");
-        headerSortedByMenu.add(SORT_BY_GROUP_ID_CUSTOM, Menu.NONE, SORT_BY_GROUP_ORDER_CUSTUM, "Custom sort")
-                .setIcon(R.drawable.ic_edit_black_24dp);
+        final PopupMenu browseHeaderSortedByPopup = new PopupMenu(requireContext(), browseHeaderSortedBy);
+        browseHeaderSortedByMenu = browseHeaderSortedByPopup.getMenu();
+        browseHeaderSortedByMenu.add(
+                SORT_BY_GROUP_ID_CUSTOM,
+                Menu.NONE,
+                SORT_BY_GROUP_ORDER_CUSTOM,
+                "Custom sort"
+        ).setIcon(R.drawable.ic_edit_black_24dp);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            headerSortedByMenu.setGroupDividerEnabled(true);
+            browseHeaderSortedByMenu.setGroupDividerEnabled(true);
         }
-        MenuPopupHelper headerSortedByPopupHelper = new MenuPopupHelper(
+        MenuPopupHelper browseHeaderSortedByPopupHelper = new MenuPopupHelper(
                 requireContext(),
-                (MenuBuilder) headerSortedByMenu,
-                headerSortedBy
+                (MenuBuilder) browseHeaderSortedByMenu,
+                browseHeaderSortedBy
         );
-        headerSortedByPopupHelper.setForceShowIcon(true);
-        headerSortedByPopup.setOnMenuItemClickListener(item -> onSortedBySelected(item, displayedFields));
-        headerSortedBy.setOnClickListener(view -> headerSortedByPopupHelper.show());
-        headerSortedByOrder = rootView.findViewById(R.id.musiclibrary_header_sortedby_order);
-        headerSortedByOrder.setOnClickListener(view -> setSortOrder(!isSortedAscending()));
+        browseHeaderSortedByPopupHelper.setForceShowIcon(true);
+        browseHeaderSortedByPopup.setOnMenuItemClickListener(item -> {
+            clearSelection();
+            return onSortedBySelected(item, displayedFields);
+        });
+        browseHeaderSortedByKeys = rootView.findViewById(R.id.musiclibrary_browse_header_sortedby_keys);
+        browseHeaderSortedByOrder = rootView.findViewById(R.id.musiclibrary_browse_header_sortedby_order);
+        browseHeaderSortedBy.setOnClickListener(view -> browseHeaderSortedByPopupHelper.show());
 
-        headerArtist = rootView.findViewById(R.id.musiclibrary_header_artist);
-        headerNum = rootView.findViewById(R.id.musiclibrary_header_num);
-
-        headerExtraSortedBy = rootView.findViewById(R.id.musiclibrary_header_extra_sortedby);
-        final PopupMenu headerExtraSortedByPopup = new PopupMenu(requireContext(), headerExtraSortedBy);
-        MenuPopupHelper headerExtraSortedByPopupHelper = new MenuPopupHelper(
-                requireContext(),
-                (MenuBuilder) headerSortedByMenu,
-                headerExtraSortedBy
-        );
-        headerExtraSortedByPopupHelper.setForceShowIcon(true);
-        headerExtraSortedByPopup.setOnMenuItemClickListener(item -> onSortedBySelected(item, displayedFields));
-        headerExtraSortedByKeys = rootView.findViewById(R.id.musiclibrary_header_extra_sortedby_keys);
-        headerExtraSortedByKeys.setOnClickListener(view -> headerExtraSortedByPopupHelper.show());
-        headerExtraSortedByOrder = rootView.findViewById(R.id.musiclibrary_header_extra_sortedby_order);
-        headerExtraSortedByOrder.setOnClickListener(view -> setSortOrder(!isSortedAscending()));
-
-        ActionModeCallback actionModeCallback = new ActionModeCallback(
+        ActionModeCallback browseActionModeCallback = new ActionModeCallback(
                 this,
                 new ActionModeCallback.Callback() {
                     @Override
@@ -429,12 +544,12 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
 
                     @Override
                     public void onDestroyActionMode(ActionMode actionMode) {
-                        selectionTracker.clearSelection();
-                        MusicLibraryFragment.this.actionMode = null;
+                        browseSelectionTracker.clearSelection();
+                        MusicLibraryFragment.this.browseActionMode = null;
                     }
                 }
         );
-        actionModeCallback.setActions(
+        browseActionModeCallback.setActions(
                 new int[]{
                         ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE,
                         ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST
@@ -449,16 +564,16 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
                 new int[0]
         );
 
-        selectionTracker = new SelectionTracker.Builder<>(
-                MainActivity.SELECTION_ID_MUSICLIBRARY,
-                recyclerView,
-                new MusicLibraryKeyProvider(recyclerViewAdapter),
-                new LibraryEntryItemDetailsLookup(recyclerView),
+        browseSelectionTracker = new SelectionTracker.Builder<>(
+                MainActivity.SELECTION_ID_MUSICLIBRARY_BROWSE,
+                browseRecyclerView,
+                new MusicLibraryKeyProvider(browseRecyclerViewAdapter),
+                new LibraryEntryItemDetailsLookup(browseRecyclerView),
                 StorageStrategy.createParcelableStorage(LibraryEntry.class)
         ).withSelectionPredicate(
                 SelectionPredicates.createSelectAnything()
         ).build();
-        selectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
+        browseSelectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
             @Override
             public void onItemStateChanged(@NonNull Object key, boolean selected) {}
 
@@ -467,56 +582,54 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
 
             @Override
             public void onSelectionChanged() {
-                if (selectionTracker.hasSelection() && actionMode == null) {
-                    actionMode = requireActivity().startActionMode(actionModeCallback);
+                if (browseSelectionTracker.hasSelection() && browseActionMode == null) {
+                    browseActionMode = requireActivity().startActionMode(browseActionModeCallback);
                 }
-                if (!selectionTracker.hasSelection() && actionMode != null) {
-                    actionMode.finish();
+                if (!browseSelectionTracker.hasSelection() && browseActionMode != null) {
+                    browseActionMode.finish();
                 }
-                if (actionMode != null && selectionTracker.hasSelection()) {
-                    actionMode.setTitle(selectionTracker.getSelection().size() + " sel.");
+                if (browseActionMode != null && browseSelectionTracker.hasSelection()) {
+                    browseActionMode.setTitle(browseSelectionTracker.getSelection().size() + " sel.");
                 }
             }
 
             @Override
             public void onSelectionRestored() {}
         });
-        recyclerViewAdapter.setSelectionTracker(selectionTracker);
+        browseRecyclerViewAdapter.setSelectionTracker(browseSelectionTracker);
         if (savedInstanceState != null) {
-            selectionTracker.onRestoreInstanceState(savedInstanceState);
+            browseSelectionTracker.onRestoreInstanceState(savedInstanceState);
         }
 
-        searchInfoText = rootView.findViewById(R.id.musiclibrary_search_info_query);
-        View searchInfoView = rootView.findViewById(R.id.musiclibrary_search_info);
-        searchInfoView.setOnClickListener(v -> model.searchQueryClicked(searchInfoText.getText()));
-
-        View filterHomeBtn = rootView.findViewById(R.id.musiclibrary_filter_home);
+        View browseHomeBtn = rootView.findViewById(R.id.musiclibrary_browse_home);
         View searchHomeBtn = rootView.findViewById(R.id.musiclibrary_search_home);
-        filterHomeBtn.setOnClickListener(v -> {
-            model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
+        browseHomeBtn.setOnClickListener(v -> {
+            clearSelection();
+            model.addBackStackHistory(Util.getRecyclerViewPosition(browseRecyclerView));
             model.reset();
         });
         searchHomeBtn.setOnClickListener(v -> {
-            model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
+            clearSelection();
+            model.addBackStackHistory(Util.getRecyclerViewPosition(searchRecyclerView));
             model.reset();
         });
 
-        filterNew = rootView.findViewById(R.id.musiclibrary_filter_new);
-        filterNewInput = rootView.findViewById(R.id.musiclibrary_filter_new_text);
-        filterNewType = rootView.findViewById(R.id.musiclibrary_filter_new_type);
+        browseFilterNew = rootView.findViewById(R.id.musiclibrary_browse_filter_new);
+        browseFilterNewInput = rootView.findViewById(R.id.musiclibrary_browe_filter_new_text);
+        browseFilterNewType = rootView.findViewById(R.id.musiclibrary_browse_filter_new_type);
         metaKeyAdapter = new ArrayAdapter<>(
                 requireContext(),
                 android.R.layout.simple_spinner_dropdown_item,
                 displayedFields
         );
-        filterNewType.setAdapter(metaKeyAdapter);
-        filterNewType.setSelection(0);
-        filterNewInput.setOnEditorActionListener((v, actionId, event) -> {
+        browseFilterNewType.setAdapter(metaKeyAdapter);
+        browseFilterNewType.setSelection(0);
+        browseFilterNewInput.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
-                int pos = filterNewType.getSelectedItemPosition();
+                int pos = browseFilterNewType.getSelectedItemPosition();
                 String field = metaKeys.get(pos);
                 String displayedField = displayedFields.get(pos);
-                String filterString = filterNewInput.getText().toString();
+                String filterString = browseFilterNewInput.getText().toString();
                 Log.d(LC, "Applying filter: " + displayedField + "(" + filterString + ")");
                 Toast.makeText(
                         this.requireContext(),
@@ -524,32 +637,32 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
                         Toast.LENGTH_SHORT
                 ).show();
                 filter(field, filterString);
-                filterNew.setVisibility(GONE);
-                Util.hideSoftInput(requireActivity(), filterNewInput);
+                browseFilterNew.setVisibility(GONE);
+                Util.hideSoftInput(requireActivity(), browseFilterNewInput);
                 return true;
             }
             return false;
         });
-        ArrayAdapter<String> filterNewTagValuesAdapter = new ArrayAdapter<>(
+        ArrayAdapter<String> browseFilterNewTagValuesAdapter = new ArrayAdapter<>(
                 requireContext(),
                 android.R.layout.simple_spinner_dropdown_item
         );
-        filterNewInput.setAdapter(filterNewTagValuesAdapter);
-        MutableLiveData<String> filterNewTagValuesLiveData = new MutableLiveData<>();
+        browseFilterNewInput.setAdapter(browseFilterNewTagValuesAdapter);
+        MutableLiveData<String> browseFilterNewTagValuesLiveData = new MutableLiveData<>();
         Transformations.switchMap(
-                filterNewTagValuesLiveData,
+                browseFilterNewTagValuesLiveData,
                 key -> MetaStorage.getInstance(requireContext()).getMetaValuesAsStrings(key)
         ).observe(getViewLifecycleOwner(), values -> {
-            filterNewTagValuesAdapter.clear();
-            filterNewTagValuesAdapter.addAll(values);
-            filterNewTagValuesAdapter.notifyDataSetChanged();
+            browseFilterNewTagValuesAdapter.clear();
+            browseFilterNewTagValuesAdapter.addAll(values);
+            browseFilterNewTagValuesAdapter.notifyDataSetChanged();
         });
-        filterNewType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        browseFilterNewType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                String filterNewKey = metaKeys.get(filterNewType.getSelectedItemPosition());
-                if (!filterNewKey.equals(filterNewTagValuesLiveData.getValue())) {
-                    filterNewTagValuesLiveData.setValue(filterNewKey);
+                String filterNewKey = metaKeys.get(browseFilterNewType.getSelectedItemPosition());
+                if (!filterNewKey.equals(browseFilterNewTagValuesLiveData.getValue())) {
+                    browseFilterNewTagValuesLiveData.setValue(filterNewKey);
                 }
             }
 
@@ -583,51 +696,61 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
                             .map(Meta::getDisplayKey)
                             .collect(Collectors.toList())
                     );
-                    headerShowMenu.removeGroup(SHOW_GROUP_ID_SINGLE);
+                    browseHeaderShowMenu.removeGroup(SHOW_GROUP_ID_SINGLE);
                     for (int i = 0; i < displayedFields.size(); i++) {
-                        headerShowMenu.add(SHOW_GROUP_ID_SINGLE, i, SHOW_GROUP_ORDER_SINGLE, displayedFields.get(i));
+                        browseHeaderShowMenu.add(
+                                SHOW_GROUP_ID_SINGLE,
+                                i,
+                                SHOW_GROUP_ORDER_SINGLE,
+                                displayedFields.get(i)
+                        );
                     }
-                    headerSortedByMenu.removeGroup(SORT_BY_GROUP_ID_SINGLE);
+                    browseHeaderSortedByMenu.removeGroup(SORT_BY_GROUP_ID_SINGLE);
                     for (int i = 0; i < displayedFields.size(); i++) {
-                        headerSortedByMenu.add(SORT_BY_GROUP_ID_SINGLE, i, SORT_BY_GROUP_ORDER_SINGLE, displayedFields.get(i));
+                        browseHeaderSortedByMenu.add(
+                                SORT_BY_GROUP_ID_SINGLE,
+                                i,
+                                SORT_BY_GROUP_ORDER_SINGLE,
+                                displayedFields.get(i)
+                        );
                     }
                     metaKeyAdapter.notifyDataSetChanged();
                 });
 
-        ImageButton saveQueryBtn = rootView.findViewById(R.id.musiclibrary_filter_save);
-        saveQueryBtn.setOnClickListener(v ->
+        ImageButton browseSaveBtn = rootView.findViewById(R.id.musiclibrary_browse_save);
+        browseSaveBtn.setOnClickListener(v ->
                 AddToNewPlaylistDialogFragment.showDialog(this, getCurrentQueryBundle())
         );
 
-        filterChips = rootView.findViewById(R.id.musiclibrary_filter_chips);
+        browseFilterChips = rootView.findViewById(R.id.musiclibrary_browse_filter_chips);
 
-        filterEdit = rootView.findViewById(R.id.musiclibrary_filter_edit);
-        filterEditType = rootView.findViewById(R.id.musiclibrary_filter_edit_type);
-        filterEditInput = rootView.findViewById(R.id.musiclibrary_filter_edit_input);
-        ArrayAdapter<String> filterEditTagValuesAdapter = new ArrayAdapter<>(
+        browseFilterEdit = rootView.findViewById(R.id.musiclibrary_browse_filter_edit);
+        browseFilterEditType = rootView.findViewById(R.id.musiclibrary_browse_filter_edit_type);
+        browseFilterEditInput = rootView.findViewById(R.id.musiclibrary_browse_filter_edit_input);
+        ArrayAdapter<String> browseFilterEditTagValuesAdapter = new ArrayAdapter<>(
                 requireContext(),
                 android.R.layout.simple_spinner_dropdown_item
         );
-        filterEditInput.setAdapter(filterEditTagValuesAdapter);
-        filterEditTypeValueLiveData = new MutableLiveData<>();
+        browseFilterEditInput.setAdapter(browseFilterEditTagValuesAdapter);
+        browseFilterEditTypeValueLiveData = new MutableLiveData<>();
         Transformations.switchMap(
-                filterEditTypeValueLiveData,
+                browseFilterEditTypeValueLiveData,
                 key -> MetaStorage.getInstance(requireContext()).getMetaValuesAsStrings(key)
         ).observe(getViewLifecycleOwner(), values -> {
-            filterEditTagValuesAdapter.clear();
-            filterEditTagValuesAdapter.addAll(values);
-            filterEditTagValuesAdapter.notifyDataSetChanged();
+            browseFilterEditTagValuesAdapter.clear();
+            browseFilterEditTagValuesAdapter.addAll(values);
+            browseFilterEditTagValuesAdapter.notifyDataSetChanged();
         });
 
-        rootView.findViewById(R.id.musiclibrary_filter_chip_new).setOnClickListener(view -> {
-            filterEdit.setVisibility(GONE);
-            if (filterNew.getVisibility() != VISIBLE) {
-                filterNew.setVisibility(VISIBLE);
-                filterNewInput.requestFocus();
-                Util.showSoftInput(requireActivity(), filterNewInput);
+        rootView.findViewById(R.id.musiclibrary_browse_filter_chip_new).setOnClickListener(view -> {
+            browseFilterEdit.setVisibility(GONE);
+            if (browseFilterNew.getVisibility() != VISIBLE) {
+                browseFilterNew.setVisibility(VISIBLE);
+                browseFilterNewInput.requestFocus();
+                Util.showSoftInput(requireActivity(), browseFilterNewInput);
             } else {
-                filterNew.setVisibility(GONE);
-                Util.hideSoftInput(requireActivity(), filterNewInput);
+                browseFilterNew.setVisibility(GONE);
+                Util.hideSoftInput(requireActivity(), browseFilterNewInput);
             }
         });
 
@@ -653,25 +776,44 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
     }
 
     private void setShowMenuHeader(String header) {
-        headerShowMenu.removeGroup(SHOW_GROUP_ID_HEADER);
-        headerShowMenu.add(SHOW_GROUP_ID_HEADER, Menu.NONE, SHOW_GROUP_ORDER_HEADER, "Showing entries of type:")
-                .setEnabled(false);
-        headerShowMenu.add(SHOW_GROUP_ID_HEADER, Menu.NONE, SHOW_GROUP_ORDER_HEADER, header)
-                .setEnabled(false);
+        browseHeaderShowMenu.removeGroup(SHOW_GROUP_ID_HEADER);
+        browseHeaderShowMenu.add(
+                SHOW_GROUP_ID_HEADER,
+                Menu.NONE,
+                SHOW_GROUP_ORDER_HEADER,
+                "Showing entries of type:"
+        ).setEnabled(false);
+        browseHeaderShowMenu.add(
+                SHOW_GROUP_ID_HEADER,
+                Menu.NONE,
+                SHOW_GROUP_ORDER_HEADER,
+                header
+        ).setEnabled(false);
     }
 
     private boolean onSortedBySelected(MenuItem item, List<String> displayedFields) {
         int groupId = item.getGroupId();
-        int position = item.getItemId();
+        int itemId = item.getItemId();
+        if (groupId == SORT_BY_GROUP_ID_HEADER && itemId == SORT_BY_HEADER_ID_VALUE) {
+            item.setIcon(!isSortedAscending() ?
+                    R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp
+            );
+            setSortOrder(!isSortedAscending());
+            return true;
+        }
         if (groupId == SORT_BY_GROUP_ID_CUSTOM) {
-            SortDialogFragment.showDialogForSortConfig(this);
+            MusicLibraryQuery query = getCurrentQuery();
+            EntryTypeSelectionDialogFragment.showDialogForSortConfig(
+                    this,
+                    query.getSortByFields()
+            );
             return true;
         }
         if (groupId != SORT_BY_GROUP_ID_SINGLE) {
             return false;
         }
-        String field = metaKeys.get(position);
-        String displayedField = displayedFields.get(position);
+        String field = metaKeys.get(itemId);
+        String displayedField = displayedFields.get(itemId);
         Log.d(LC, "Sorting by: " + displayedField);
         Toast.makeText(
                 requireContext(),
@@ -683,21 +825,32 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
     }
 
     private void setSortByMenuHeader(String header) {
-        headerSortedByMenu.removeGroup(SORT_BY_GROUP_ID_HEADER);
-        headerSortedByMenu.add(SORT_BY_GROUP_ID_HEADER, Menu.NONE, SORT_BY_GROUP_ORDER_HEADER, "Sort shown entries by:")
-                .setEnabled(false);
-        headerSortedByMenu.add(SORT_BY_GROUP_ID_HEADER, Menu.NONE, SORT_BY_GROUP_ORDER_HEADER, header)
-                .setEnabled(false);
+        browseHeaderSortedByMenu.removeGroup(SORT_BY_GROUP_ID_HEADER);
+        browseHeaderSortedByMenu.add(
+                SORT_BY_GROUP_ID_HEADER,
+                Menu.NONE,
+                SORT_BY_GROUP_ORDER_HEADER,
+                "Sorting shown entries by:"
+        ).setEnabled(false);
+        browseHeaderSortedByMenu.add(
+                SORT_BY_GROUP_ID_HEADER,
+                SORT_BY_HEADER_ID_VALUE,
+                SORT_BY_GROUP_ORDER_HEADER,
+                header
+        ).setIcon(isSortedAscending() ?
+                R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp
+        );
+
     }
 
     public boolean onBackPressed() {
         boolean actionPerformed = false;
-        if (filterEdit.getVisibility() == VISIBLE) {
-            filterEdit.setVisibility(GONE);
+        if (browseFilterEdit.getVisibility() == VISIBLE) {
+            browseFilterEdit.setVisibility(GONE);
             actionPerformed = true;
         }
-        if (filterNew.getVisibility() == VISIBLE) {
-            filterNew.setVisibility(GONE);
+        if (browseFilterNew.getVisibility() == VISIBLE) {
+            browseFilterNew.setVisibility(GONE);
             actionPerformed = true;
         }
         if (actionPerformed) {
@@ -707,30 +860,30 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
     }
 
     private void displayType(String displayType) {
-        model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
+        model.addBackStackHistory(Util.getRecyclerViewPosition(browseRecyclerView));
         model.displayType(displayType);
         model.sortBy(Collections.singletonList(displayType));
         model.setSortOrder(true);
     }
 
     private void sortBy(List<String> fields) {
-        model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
+        model.addBackStackHistory(Util.getRecyclerViewPosition(browseRecyclerView));
         model.sortBy(fields);
         model.setSortOrder(true);
     }
 
     private void setSortOrder(boolean ascending) {
-        model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
+        model.addBackStackHistory(Util.getRecyclerViewPosition(browseRecyclerView));
         model.setSortOrder(ascending);
     }
 
     private void filter(String filterType, String filter) {
-        model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
+        model.addBackStackHistory(Util.getRecyclerViewPosition(browseRecyclerView));
         model.filter(filterType, filter);
     }
 
     void addBackStackHistory() {
-        model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
+        model.addBackStackHistory(Util.getRecyclerViewPosition(browseRecyclerView));
     }
 
     void setQuery(MusicLibraryQuery query) {
@@ -738,26 +891,31 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
     }
 
     private void clearFilterView() {
-        filterChips.removeAllViews();
+        browseFilterChips.removeAllViews();
     }
 
     private void addFilterToView(String metaKey, String filter) {
-        String text = String.format("%s: %s", Meta.getDisplayKey(metaKey), Meta.getDisplayValue(metaKey, filter));
+        String text = String.format(
+                "%s: %s",
+                Meta.getDisplayKey(metaKey),
+                Meta.getDisplayValue(metaKey,filter)
+        );
         Chip newChip = new Chip(requireContext());
         newChip.setEllipsize(TextUtils.TruncateAt.END);
         newChip.setChipBackgroundColorResource(R.color.colorAccent);
         newChip.setTextColor(ContextCompat.getColor(requireContext(), R.color.white));
         newChip.setText(text);
         newChip.setOnClickListener(v -> {
-            filterNew.setVisibility(GONE);
-            if (metaKey.equals(filterEditTypeValueLiveData.getValue()) && filterEdit.getVisibility() == VISIBLE) {
-                filterEdit.setVisibility(GONE);
-                Util.hideSoftInput(requireActivity(), filterEditInput);
+            browseFilterNew.setVisibility(GONE);
+            if (metaKey.equals(browseFilterEditTypeValueLiveData.getValue())
+                    && browseFilterEdit.getVisibility() == VISIBLE) {
+                browseFilterEdit.setVisibility(GONE);
+                Util.hideSoftInput(requireActivity(), browseFilterEditInput);
             } else {
-                filterEditInput.setText(filter);
-                filterEditInput.setOnEditorActionListener((v1, actionId, event) -> {
+                browseFilterEditInput.setText(filter);
+                browseFilterEditInput.setOnEditorActionListener((v1, actionId, event) -> {
                     if (actionId == EditorInfo.IME_ACTION_DONE) {
-                        String filterString = filterEditInput.getText().toString();
+                        String filterString = browseFilterEditInput.getText().toString();
                         Log.d(LC, "Applying filter: " + metaKey + "(" + filterString + ")");
                         Toast.makeText(
                                 this.requireContext(),
@@ -765,40 +923,40 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
                                 Toast.LENGTH_SHORT
                         ).show();
                         filter(metaKey, filterString);
-                        filterEdit.setVisibility(GONE);
-                        Util.hideSoftInput(requireActivity(), filterEditInput);
+                        browseFilterEdit.setVisibility(GONE);
+                        Util.hideSoftInput(requireActivity(), browseFilterEditInput);
                         return true;
                     }
                     return false;
                 });
-                if (!metaKey.equals(filterEditTypeValueLiveData.getValue())) {
-                    filterEditTypeValueLiveData.setValue(metaKey);
+                if (!metaKey.equals(browseFilterEditTypeValueLiveData.getValue())) {
+                    browseFilterEditTypeValueLiveData.setValue(metaKey);
                 }
                 String filterEditTypeText = Meta.getDisplayKey(metaKey) + ':';
-                filterEditType.setText(filterEditTypeText);
-                filterEdit.setVisibility(VISIBLE);
-                filterEditInput.requestFocus();
-                Util.showSoftInput(requireActivity(), filterEditInput);
+                browseFilterEditType.setText(filterEditTypeText);
+                browseFilterEdit.setVisibility(VISIBLE);
+                browseFilterEditInput.requestFocus();
+                Util.showSoftInput(requireActivity(), browseFilterEditInput);
             }
         });
         newChip.setOnCloseIconClickListener(v -> clearFilter(metaKey));
         newChip.setCloseIconVisible(true);
-        filterChips.addView(newChip, filterChips.getChildCount());
+        browseFilterChips.addView(newChip, browseFilterChips.getChildCount());
     }
 
     private void clearFilter(String filterType) {
-        model.addBackStackHistory(recyclerViewAdapter.getCurrentPosition());
+        model.addBackStackHistory(Util.getRecyclerViewPosition(browseRecyclerView));
         model.clearFilter(filterType);
     }
 
     private ArrayList<Bundle> getSelectedBundleQueries() {
         MutableSelection<LibraryEntry> selection = new MutableSelection<>();
-        selectionTracker.copySelection(selection);
+        browseSelectionTracker.copySelection(selection);
         ArrayList<Bundle> bundleQueries = new ArrayList<>();
         List<String> sortedByKeys = querySortedByKeys();
         selection.forEach(libraryEntry -> {
             MusicLibraryQuery query = getCurrentQuery();
-            query.addToQuery(libraryEntry.entryID.type, libraryEntry.entryID.id);
+            query.addEntryIDToQuery(libraryEntry.entryID);
             query.addSortedByValuesToQuery(
                     sortedByKeys,
                     libraryEntry.sortedByValues()
@@ -813,7 +971,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
         return state == null ? null : new MusicLibraryQuery(state.query);
     }
 
-    Bundle getCurrentQueryBundle() {
+    private Bundle getCurrentQueryBundle() {
         MusicLibraryQuery query = getCurrentQuery();
         if (query == null) {
             return new Bundle();
@@ -833,15 +991,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
         return query.querySortedByShow();
     }
 
-    boolean sortedByMultipleFields() {
-        MusicLibraryQuery query = getCurrentQuery();
-        if (query == null) {
-            return false;
-        }
-        return query.sortedByMultipleFields();
-    }
-
-    boolean isSortedAscending() {
+    private boolean isSortedAscending() {
         MusicLibraryQuery query = getCurrentQuery();
         if (query == null) {
             return false;
@@ -858,16 +1008,26 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
     }
 
     public void clearSelection() {
-        if (selectionTracker != null) {
-            selectionTracker.clearSelection();
+        if (browseSelectionTracker != null) {
+            browseSelectionTracker.clearSelection();
         }
-        if (recyclerViewAdapter != null) {
-            recyclerViewAdapter.hideTrackItemActions();
+        if (searchSelectionTracker != null) {
+            searchSelectionTracker.clearSelection();
+        }
+        if (browseRecyclerViewAdapter != null) {
+            browseRecyclerViewAdapter.hideTrackItemActions();
+        }
+        if (searchRecyclerViewAdapter != null) {
+            searchRecyclerViewAdapter.hideTrackItemActions();
         }
     }
 
-    void scrollTo(int pos, int pad) {
-        recViewLayoutManager.scrollToPositionWithOffset(pos, pad);
+    void scrollBrowseTo(int pos, int pad) {
+        browseRecyclerViewLayoutManager.scrollToPositionWithOffset(pos, pad);
+    }
+
+    void scrollSearchTo(int pos, int pad) {
+        searchRecyclerViewLayoutManager.scrollToPositionWithOffset(pos, pad);
     }
 
     boolean showAllEntriesRow() {
@@ -875,52 +1035,32 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements SortDi
         return !query.isSearchQuery() && !Meta.FIELD_SPECIAL_MEDIA_ID.equals(query.getShowField());
     }
 
-    boolean showSortedByHeader() {
-        return !isSearchQuery() && !showExtraSortedByHeader();
-    }
-
-    boolean showExtraSortedByHeader() {
-        boolean extraNotNeeded = querySortedByKeys().size() == 2
-                && querySortedByKeys().contains(getCurrentQuery().getShowField());
-        return !isSearchQuery() && sortedByMultipleFields() && !extraNotNeeded;
-    }
-
     boolean isSearchQuery() {
         return getCurrentQuery().isSearchQuery();
     }
 
-    boolean showHeaderArtist(boolean browsable) {
-        MusicLibraryQuery query = getCurrentQuery();
-        List<String> sortByFields = query.getSortByFields();
-        if (sortByFields == null) {
-            sortByFields = new ArrayList<>();
-        }
-        return query.isSearchQuery() || !browsable && !sortByFields.contains(Meta.FIELD_ARTIST);
-    }
-
-    boolean showHeaderNum(boolean browsable) {
-        return !isSearchQuery() && browsable;
-    }
-
     public void clearFocus() {
-        if (recyclerViewAdapter != null) {
-            recyclerViewAdapter.hideTrackItemActions();
+        if (browseRecyclerViewAdapter != null) {
+            browseRecyclerViewAdapter.hideTrackItemActions();
         }
-        if (filterEdit != null && filterEdit.getVisibility() == VISIBLE) {
-            Util.hideSoftInput(requireActivity(), filterEditInput);
-            filterEdit.setVisibility(GONE);
+        if (searchRecyclerViewAdapter!= null) {
+            searchRecyclerViewAdapter.hideTrackItemActions();
         }
-        if (filterNew != null && filterNew.getVisibility() == VISIBLE) {
-            Util.hideSoftInput(requireActivity(), filterNewInput);
-            filterNew.setVisibility(GONE);
+        if (browseFilterEdit != null && browseFilterEdit.getVisibility() == VISIBLE) {
+            Util.hideSoftInput(requireActivity(), browseFilterEditInput);
+            browseFilterEdit.setVisibility(GONE);
+        }
+        if (browseFilterNew != null && browseFilterNew.getVisibility() == VISIBLE) {
+            Util.hideSoftInput(requireActivity(), browseFilterNewInput);
+            browseFilterNew.setVisibility(GONE);
         }
     }
 
     @Override
-    public void onSortConfig(List<String> sortBy) {
-        Log.d(LC, "onSortConfig: " + sortBy);
-        if (!sortBy.isEmpty()) {
-            sortBy(sortBy);
+    public void onEntryTypeSelection(List<String> keys) {
+        Log.d(LC, "onEntryTypeSelection: " + keys);
+        if (!keys.isEmpty()) {
+            sortBy(keys);
         }
     }
 }

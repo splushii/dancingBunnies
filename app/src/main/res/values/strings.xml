@@ -126,5 +126,9 @@
     <string name="metadata_add_title">Adding new tag</string>
     <string name="meta_key">Key</string>
     <string name="meta_value">Value</string>
+    <string name="entry_type_selection_selected_types_and_order">Selected types and order</string>
+    <string name="entry_type_selection_available_types">Available types</string>
     <string name="cancel">Cancel</string>
+    <string name="submit">Submit</string>
+    <string name="drag_handle">Drag handle</string>
 </resources>

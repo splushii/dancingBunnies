@@ -2,23 +2,14 @@ package se.splushii.dancingbunnies.ui.playlist;
 
 import android.content.Context;
 
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
-import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
-import se.splushii.dancingbunnies.storage.AudioStorage;
-import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.util.Util;
@@ -81,28 +72,6 @@ public class PlaylistFragmentModel extends ViewModel {
 
     LiveData<Playlist> getPlaylist(Context context, PlaylistID playlistID) {
         return PlaylistStorage.getInstance(context).getPlaylist(playlistID);
-    }
-
-    LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> getFetchState(Context context) {
-        return AudioStorage.getInstance(context).getFetchState();
-    }
-
-    LiveData<HashSet<EntryID>> getCachedEntries(Context context) {
-        MusicLibraryQuery query = new MusicLibraryQuery();
-        query.setShowField(Meta.FIELD_SPECIAL_MEDIA_ID);
-        query.setSortByField(Meta.FIELD_TITLE);
-        query.addToQuery(Meta.FIELD_LOCAL_CACHED, Meta.FIELD_LOCAL_CACHED_VALUE_YES);
-        return Transformations.map(
-                MetaStorage.getInstance(context).getEntries(
-                        query.getShowField(),
-                        query.getSortByFields(),
-                        query.isSortOrderAscending(),
-                        query.getQueryBundle()
-                ),
-                libraryEntries -> libraryEntries.stream()
-                        .map(EntryID::from)
-                        .collect(Collectors.toCollection(HashSet::new))
-        );
     }
 
     private synchronized MutableLiveData<PlaylistID> getMutableCurrentPlaylist() {

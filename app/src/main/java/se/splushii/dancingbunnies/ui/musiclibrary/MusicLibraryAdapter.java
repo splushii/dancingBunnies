@@ -12,7 +12,6 @@ import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
@@ -80,13 +79,17 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         initialScrolled = false;
         model.getDataSet().observe(fragment.getViewLifecycleOwner(), dataset -> {
             MusicLibraryUserState state = model.getUserState().getValue();
-            if(fragment.showAllEntriesRow()) {
-                dataset.add(
-                        0,
-                        new LibraryEntry(EntryID.UNKOWN, "All entries...", null)
-                );
+            if (state.query.isSearchQuery()) {
+                setDataset(new ArrayList<>());
+            } else {
+                if (fragment.showAllEntriesRow()) {
+                    dataset.add(
+                            0,
+                            new LibraryEntry(EntryID.UNKOWN, "All entries...", null)
+                    );
+                }
+                setDataset(dataset);
             }
-            setDataset(dataset);
             updateScrollPos(state, dataset);
         });
     }
@@ -94,7 +97,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     private void updateScrollPos(MusicLibraryUserState userState, List<LibraryEntry> entries) {
         if (!initialScrolled && !entries.isEmpty()) {
             initialScrolled = true;
-            fragment.scrollTo(userState.pos, userState.pad);
+            fragment.scrollBrowseTo(userState.pos, userState.pad);
         }
     }
 
@@ -120,9 +123,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     public class SongViewHolder extends RecyclerView.ViewHolder {
         private final View libraryEntry;
         private final TextView libraryEntryShow;
-        private final TextView libraryEntryArtist;
-        private final TextView libraryEntrySortedBy;
-        private final LinearLayout libraryEntryExtra;
+        private final LinearLayout libraryEntrySortedBy;
+        private final LinearLayout libraryEntrySortedByKeys;
         private final TrackItemActionsView actionsView;
         private final TextView libraryEntryNum;
         private LiveData<Integer> numSubEntriesLiveData;
@@ -149,10 +151,9 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             entryIDLiveData = new MutableLiveData<>();
             libraryEntry = view.findViewById(R.id.library_entry);
             libraryEntryShow = view.findViewById(R.id.library_entry_show);
-            libraryEntrySortedBy = view.findViewById(R.id.library_entry_sortedby);
-            libraryEntryArtist = view.findViewById(R.id.library_entry_artist);
             libraryEntryNum = view.findViewById(R.id.library_entry_num);
-            libraryEntryExtra = view.findViewById(R.id.library_entry_extra);
+            libraryEntrySortedBy = view.findViewById(R.id.library_entry_sortedby);
+            libraryEntrySortedByKeys = view.findViewById(R.id.library_entry_sortedby_keys);
             actionsView = view.findViewById(R.id.library_entry_actions);
         }
 
@@ -166,47 +167,12 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             }
         }
 
-        void setArtist(List<String> artistMeta) {
-            if (artistMeta == null) {
-                libraryEntryArtist.setText("");
-            } else {
-                String artist = Meta.getAsString(artistMeta);
-                libraryEntryArtist.setText(artist);
-            }
-        }
-
         void update(LibraryEntry libraryEntry, boolean browsable) {
             entry = libraryEntry;
             this.browsable = browsable;
-            if (fragment.showSortedByHeader()) {
-                libraryEntryExtra.setVisibility(View.GONE);
-                libraryEntryExtra.removeAllViews();
-                if (!fragment.querySortedByShow()) {
-                    libraryEntrySortedBy.setText(fragment.getSortedByDisplayString(
-                            entry.sortedByValues(),
-                            false,
-                            true
-                    ));
-                    libraryEntrySortedBy.setVisibility(View.VISIBLE);
-                } else {
-                    libraryEntrySortedBy.setVisibility(View.GONE);
-                }
-            } else if (fragment.showExtraSortedByHeader()){
-                libraryEntrySortedBy.setVisibility(View.GONE);
-                fragment.addSortedByColumns(libraryEntryExtra, entry.sortedByValues(), false);
-                libraryEntryExtra.setVisibility(View.VISIBLE);
-            } else {
-                libraryEntrySortedBy.setVisibility(View.GONE);
-                libraryEntryExtra.setVisibility(View.GONE);
-            }
+            fragment.addSortedByColumns(libraryEntrySortedBy, libraryEntrySortedByKeys, entry.sortedByValues(), false);
             libraryEntryShow.setText(fragment.isSearchQuery() ? "" : getShowDisplayValue(entry.name()));
-            libraryEntryArtist.setText("");
-            libraryEntryNum.setVisibility(fragment.showHeaderNum(browsable) ?
-                    View.VISIBLE : View.GONE
-            );
-            libraryEntryArtist.setVisibility(fragment.showHeaderArtist(browsable) ?
-                    View.VISIBLE : View.GONE
-            );
+            libraryEntryNum.setVisibility(browsable ? View.VISIBLE : View.GONE);
             entryIDLiveData.setValue(libraryEntry.entryID);
         }
 
@@ -233,18 +199,10 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 nullMeta.setValue(null);
                 return nullMeta;
             }
-            return MetaStorage.getInstance(fragment.requireContext()).getMetaString(entryID, Meta.FIELD_TITLE);
+            return MetaStorage.getInstance(fragment.requireContext())
+                    .getMetaString(entryID, Meta.FIELD_TITLE);
         });
         titleMetaLiveData.observe(fragment.getViewLifecycleOwner(), holder::setShowValue);
-        LiveData<List<String>> artistMetaLiveData = Transformations.switchMap(holder.entryIDLiveData, entryID -> {
-            if (!Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
-                MutableLiveData<List<String>> nullMeta = new MutableLiveData<>();
-                nullMeta.setValue(null);
-                return nullMeta;
-            }
-            return MetaStorage.getInstance(fragment.requireContext()).getMetaString(entryID, Meta.FIELD_ARTIST);
-        });
-        artistMetaLiveData.observe(fragment.getViewLifecycleOwner(), holder::setArtist);
         holder.numSubEntriesLiveData = Transformations.switchMap(holder.entryIDLiveData, e -> {
             if (!holder.isBrowsable()) {
                 MutableLiveData<Integer> ret = new MutableLiveData<>();
@@ -319,13 +277,16 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 String showField = Meta.FIELD_ARTIST.equals(entryID.type) ?
                         Meta.FIELD_ALBUM : Meta.FIELD_SPECIAL_MEDIA_ID;
                 query.setShowField(showField);
-                String sortField = Meta.FIELD_SPECIAL_MEDIA_ID.equals(showField) ?
-                        Meta.FIELD_TITLE : showField;
-                query.setSortByField(sortField);
-                query.setSortOrder(true);
-                if (!entryID.isUnknown()) {
-                    query.addToQuery(entryID.type, entryID.id);
+                ArrayList<String> sortFields = new ArrayList<>();
+                if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(showField)) {
+                    sortFields.add(Meta.FIELD_TITLE);
+                    sortFields.add(Meta.FIELD_ARTIST);
+                } else {
+                    sortFields.add(showField);
                 }
+                query.setSortByFields(sortFields);
+                query.setSortOrder(true);
+                query.addEntryIDToQuery(entryID);
                 fragment.setQuery(query);
             } else {
                 fragment.clearFocus();
@@ -361,11 +322,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             index++;
         }
         return RecyclerView.NO_POSITION;
-    }
-
-    Pair<Integer, Integer> getCurrentPosition() {
-        RecyclerView rv = fragment.getView().findViewById(R.id.musiclibrary_recyclerview);
-        return Util.getRecyclerViewPosition(rv);
     }
 
     @Override

@@ -13,6 +13,7 @@ import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
+import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
@@ -25,6 +26,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
     private LinkedList<MusicLibraryUserState> backStack;
     private String currentSubscriptionID;
     private MutableLiveData<List<LibraryEntry>> dataset;
+    private MutableLiveData<PlaybackEntry> currentEntry;
     private Consumer<CharSequence> setSearchQueryListener = s -> {};
 
     private static MusicLibraryUserState initialUserState() {
@@ -181,5 +183,20 @@ public class MusicLibraryFragmentModel extends ViewModel {
 
     void searchQueryClicked(CharSequence query) {
         setSearchQueryListener.accept(query);
+    }
+
+    private synchronized MutableLiveData<PlaybackEntry> getMutableCurrentEntry() {
+        if (currentEntry == null) {
+            currentEntry = new MutableLiveData<>();
+        }
+        return currentEntry;
+    }
+
+    void setCurrentEntry(PlaybackEntry entry) {
+        getMutableCurrentEntry().setValue(entry);
+    }
+
+    LiveData<PlaybackEntry> getCurrentEntry() {
+        return getMutableCurrentEntry();
     }
 }

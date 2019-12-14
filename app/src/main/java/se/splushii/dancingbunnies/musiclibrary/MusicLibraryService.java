@@ -17,8 +17,10 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
@@ -275,10 +277,15 @@ public class MusicLibraryService extends Service {
     }
 
     public LiveData<List<LibraryEntry>> getSubscriptionEntries(String showField,
-                                                               List<String> sortField,
+                                                               List<String> sortFields,
                                                                boolean sortOrderAscending,
                                                                Bundle query) {
-        return metaStorage.getEntries(showField, sortField, sortOrderAscending, query);
+        return metaStorage.getEntries(
+                showField,
+                sortFields,
+                sortOrderAscending,
+                query
+        );
     }
 
     public static CompletableFuture<List<EntryID>> getSongEntriesOnce(Context context,
@@ -310,6 +317,24 @@ public class MusicLibraryService extends Service {
             entries.add(EntryID.from(doc));
         }
         return entries;
+    }
+
+    public static LiveData<HashSet<EntryID>> getCachedEntries(Context context) {
+        MusicLibraryQuery query = new MusicLibraryQuery();
+        query.setShowField(Meta.FIELD_SPECIAL_MEDIA_ID);
+        query.setSortByField(Meta.FIELD_TITLE);
+        query.addToQuery(Meta.FIELD_LOCAL_CACHED, Meta.FIELD_LOCAL_CACHED_VALUE_YES);
+        return Transformations.map(
+                MetaStorage.getInstance(context).getEntries(
+                        query.getShowField(),
+                        query.getSortByFields(),
+                        query.isSortOrderAscending(),
+                        query.getQueryBundle()
+                ),
+                libraryEntries -> libraryEntries.stream()
+                        .map(EntryID::from)
+                        .collect(Collectors.toCollection(HashSet::new))
+        );
     }
 
     private boolean initializeSearcher() {
