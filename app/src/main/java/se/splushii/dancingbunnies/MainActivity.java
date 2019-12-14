@@ -12,11 +12,8 @@ import android.view.ViewGroup;
 import com.google.android.gms.cast.framework.CastButtonFactory;
 import com.google.android.material.tabs.TabLayout;
 
-import java.util.Objects;
-
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentPagerAdapter;
@@ -56,8 +53,6 @@ public final class MainActivity extends AppCompatActivity {
     public static final int REQUEST_CODE_ADD_TO_NEW_PLAYLIST_DIALOG = 1339;
     public static final int REQUEST_CODE_SORT_DIALOG = 1340;
 
-    private SearchView searchView;
-    private MenuItem searchMenuItem;
     private ViewPager mViewPager;
     private SectionsPagerAdapter mSectionsPagerAdapter;
 
@@ -69,11 +64,6 @@ public final class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity_layout);
         musicLibraryModel = ViewModelProviders.of(this).get(MusicLibraryFragmentModel.class);
-        musicLibraryModel.setSearchQueryClickedListener(s -> {
-            searchMenuItem.expandActionView();
-            searchView.setQuery(s, false);
-            searchView.requestFocus();
-        });
         playlistModel = ViewModelProviders.of(this).get(PlaylistFragmentModel.class);
 
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
@@ -144,24 +134,6 @@ public final class MainActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater menuInflater = getMenuInflater();
         menuInflater.inflate(R.menu.main_activity_menu, menu);
-        SearchManager searchManager = (SearchManager) getSystemService(SEARCH_SERVICE);
-        searchMenuItem = menu.findItem(R.id.action_search);
-        searchView = (SearchView) searchMenuItem.getActionView();
-        searchView.setSearchableInfo(Objects.requireNonNull(searchManager).getSearchableInfo(getComponentName()));
-        searchView.setIconifiedByDefault(false);
-        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-            @Override
-            public boolean onQueryTextSubmit(String query) {
-                searchView.clearFocus();
-                searchMenuItem.collapseActionView();
-                return false;
-            }
-
-            @Override
-            public boolean onQueryTextChange(String newText) {
-                return false;
-            }
-        });
         return true;
     }
 

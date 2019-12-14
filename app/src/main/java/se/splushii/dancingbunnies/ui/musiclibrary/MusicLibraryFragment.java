@@ -16,6 +16,7 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -26,6 +27,7 @@ import android.widget.Toast;
 
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -123,8 +125,9 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
     private SelectionTracker<LibraryEntry> browseSelectionTracker;
     private ActionMode browseActionMode;
 
-    private View searchView;
-    private TextView searchInfoText;
+    private LinearLayout searchView;
+    private EditText searchQueryEdit;
+    private FloatingActionButton searchFAB;
 
     private View searchContentView;
     private MusicLibrarySearchAdapter searchRecyclerViewAdapter;
@@ -194,7 +197,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
             browseHeader.setVisibility(GONE);
             browseFilterView.setVisibility(GONE);
             browseFastScroller.enableBubble(false);
-            searchInfoText.setText(newUserState.query.getSearchQuery());
+            searchQueryEdit.setText(newUserState.query.getSearchQuery());
             searchView.setVisibility(VISIBLE);
             searchContentView.setVisibility(VISIBLE);
         } else {
@@ -343,12 +346,34 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                 false);
 
         searchView = rootView.findViewById(R.id.musiclibrary_search);
+        searchQueryEdit = rootView.findViewById(R.id.musiclibrary_search_query);
 
-        searchInfoText = rootView.findViewById(R.id.musiclibrary_search_info_query);
-        View searchInfoView = rootView.findViewById(R.id.musiclibrary_search_info);
-        searchInfoView.setOnClickListener(v -> {
-            clearSelection();
-            model.searchQueryClicked(searchInfoText.getText());
+        searchFAB = rootView.findViewById(R.id.musiclibrary_search_fab);
+        rootView.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
+            if (newFocus == null) {
+                searchFAB.show();
+            } else {
+                searchFAB.hide();
+            }
+        });
+        searchFAB.setOnClickListener(v -> {
+            if (!getCurrentQuery().isSearchQuery()) {
+                model.search("");
+            } else {
+                searchQueryEdit.setText("");
+            }
+            searchView.setVisibility(VISIBLE);
+            searchQueryEdit.requestFocus();
+            Util.showSoftInput(requireActivity(), searchQueryEdit);
+        });
+        searchQueryEdit.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_DONE) {
+                String query = searchQueryEdit.getText().toString();
+                model.search(query);
+                clearFocus();
+                return true;
+            }
+            return false;
         });
 
         searchContentView = rootView.findViewById(R.id.musiclibrary_search_content);
@@ -425,10 +450,20 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         );
         searchRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
-            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                super.onScrolled(recyclerView, dx, dy);
-                clearFocus();
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    clearFocus();
+                }
             }
+        });
+
+        View searchHomeBtn = rootView.findViewById(R.id.musiclibrary_search_home);
+        searchHomeBtn.setOnClickListener(v -> {
+            clearSelection();
+            clearFocus();
+            model.addBackStackHistory(Util.getRecyclerViewPosition(searchRecyclerView));
+            model.reset();
         });
 
         browseFilterView = rootView.findViewById(R.id.musiclibrary_browse_filter);
@@ -448,9 +483,11 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         browseRecyclerView.setAdapter(browseRecyclerViewAdapter);
         browseRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
-            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                super.onScrolled(recyclerView, dx, dy);
-                clearFocus();
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    clearFocus();
+                }
             }
         });
 
@@ -602,15 +639,10 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         }
 
         View browseHomeBtn = rootView.findViewById(R.id.musiclibrary_browse_home);
-        View searchHomeBtn = rootView.findViewById(R.id.musiclibrary_search_home);
         browseHomeBtn.setOnClickListener(v -> {
             clearSelection();
+            clearFocus();
             model.addBackStackHistory(Util.getRecyclerViewPosition(browseRecyclerView));
-            model.reset();
-        });
-        searchHomeBtn.setOnClickListener(v -> {
-            clearSelection();
-            model.addBackStackHistory(Util.getRecyclerViewPosition(searchRecyclerView));
             model.reset();
         });
 
@@ -1053,6 +1085,10 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         if (browseFilterNew != null && browseFilterNew.getVisibility() == VISIBLE) {
             Util.hideSoftInput(requireActivity(), browseFilterNewInput);
             browseFilterNew.setVisibility(GONE);
+        }
+        if (searchQueryEdit != null && searchQueryEdit.hasFocus()) {
+            searchQueryEdit.clearFocus();
+            Util.hideSoftInput(requireActivity(), searchQueryEdit);
         }
     }
 

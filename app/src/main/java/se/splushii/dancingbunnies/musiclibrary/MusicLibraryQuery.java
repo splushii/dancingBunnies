@@ -215,8 +215,13 @@ public class MusicLibraryQuery {
     }
 
     private void search(MediaBrowserCompat mediaBrowser, MusicLibraryQueryCallback callback) {
+        if (searchQuery == null || searchQuery.isEmpty()) {
+            callback.onQueryResult(new ArrayList<>());
+            return;
+        }
         if (!mediaBrowser.isConnected()) {
             Log.w(LC, "Search: MediaBrowser not connected.");
+            callback.onQueryResult(new ArrayList<>());
             return;
         }
         mediaBrowser.search(searchQuery, null, new MediaBrowserCompat.SearchCallback() {

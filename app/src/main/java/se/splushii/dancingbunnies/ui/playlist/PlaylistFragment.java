@@ -428,7 +428,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
                     }
                 })
         );
-        playlistEntriesRecView.setOnScrollListener(new RecyclerView.OnScrollListener() {
+        playlistEntriesRecView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
@@ -535,16 +535,16 @@ public class PlaylistFragment extends AudioBrowserFragment {
         newPlaylistName = rootView.findViewById(R.id.playlist_new_playlist_name);
         newPlaylistFAB = rootView.findViewById(R.id.playlist_new_playlist_fab);
         rootView.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
-            if (newPlaylistView.getFocusedChild() == null) {
-                newPlaylistView.setVisibility(GONE);
+            if (newFocus == null && model.getUserStateValue().showPlaylists) {
                 newPlaylistFAB.show();
+            } else {
+                newPlaylistFAB.hide();
             }
         });
         newPlaylistFAB.setOnClickListener(v -> {
             newPlaylistView.setVisibility(VISIBLE);
             newPlaylistName.requestFocus();
             Util.showSoftInput(requireActivity(), newPlaylistName);
-            newPlaylistFAB.hide();
         });
         newPlaylistName.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {

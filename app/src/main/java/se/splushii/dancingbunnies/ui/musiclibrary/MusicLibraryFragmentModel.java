@@ -91,6 +91,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
     }
 
     void setQuery(MusicLibraryQuery query) {
+        resetDataSet();
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0 , 0));
     }
 
@@ -139,10 +140,17 @@ public class MusicLibraryFragmentModel extends ViewModel {
     }
 
     public void search(String query) {
-        addBackStackHistory(new Pair<>(0, 0));
+        if (!isEmptySearch()) {
+            addBackStackHistory(new Pair<>(0, 0));
+        }
         getMutableUserState().setValue(new MusicLibraryUserState(
                 new MusicLibraryQuery(query), 0, 0
         ));
+    }
+
+    private boolean isEmptySearch() {
+        return getMusicLibraryQuery().isSearchQuery()
+                && getMusicLibraryQuery().getSearchQuery().isEmpty();
     }
 
     private MutableLiveData<List<LibraryEntry>> getMutableDataSet() {
@@ -155,6 +163,10 @@ public class MusicLibraryFragmentModel extends ViewModel {
 
     LiveData<List<LibraryEntry>> getDataSet() {
         return getMutableDataSet();
+    }
+
+    private void resetDataSet() {
+        getMutableDataSet().setValue(new ArrayList<>());
     }
 
     void query(MediaBrowserCompat mediaBrowser) {
@@ -175,14 +187,6 @@ public class MusicLibraryFragmentModel extends ViewModel {
                 }
         );
         setCurrentSubscriptionID(currentSubscriptionID);
-    }
-
-    public void setSearchQueryClickedListener(Consumer<CharSequence> listener) {
-        setSearchQueryListener = listener;
-    }
-
-    void searchQueryClicked(CharSequence query) {
-        setSearchQueryListener.accept(query);
     }
 
     private synchronized MutableLiveData<PlaybackEntry> getMutableCurrentEntry() {

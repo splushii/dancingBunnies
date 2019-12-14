@@ -59,7 +59,7 @@ public class Util {
 
     public static void hideSoftInput(FragmentActivity activity, View v) {
         ((InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE))
-                .hideSoftInputFromWindow(v.getWindowToken(), InputMethodManager.HIDE_IMPLICIT_ONLY);
+                .hideSoftInputFromWindow(v.getWindowToken(), 0);
     }
 
     public static Pair<Integer, Integer> getRecyclerViewPosition(RecyclerView recView) {

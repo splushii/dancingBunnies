@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:layout_width="match_parent"
@@ -40,11 +41,16 @@
                         android:paddingBottom="8dp"
                         android:paddingStart="16dp"
                         android:paddingEnd="16dp"/>
-                    <TextView
-                        android:id="@+id/musiclibrary_search_info_query"
+                    <EditText
+                        android:id="@+id/musiclibrary_search_query"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center_vertical"
+                        android:background="@android:color/transparent"
+                        android:imeOptions="actionDone"
+                        android:hint="@string/musiclibrary_search_hint"
+                        android:inputType="text|textFilter"
+                        android:autofillHints=""
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:textColor="@color/bluegrey900"
@@ -269,6 +275,7 @@
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:paddingTop="8dp"
+                    android:paddingBottom="80dp"
                     android:clipToPadding="false"/>
                 <se.splushii.dancingbunnies.ui.FastScroller
                     android:id="@+id/musiclibrary_browse_fastscroller"
@@ -297,6 +304,7 @@
                 android:layout_width="0dp"
                 android:layout_weight="1"
                 android:paddingTop="8dp"
+                android:paddingBottom="80dp"
                 android:clipToPadding="false"/>
             <se.splushii.dancingbunnies.ui.FastScroller
                 android:id="@+id/musiclibrary_search_fastscroller"
@@ -306,4 +314,11 @@
                 android:layout_gravity="end" />
         </LinearLayout>
     </LinearLayout>
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/musiclibrary_search_fab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center"
+        android:layout_marginBottom="16dp"
+        android:src="@drawable/ic_search_white_24dp"/>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
