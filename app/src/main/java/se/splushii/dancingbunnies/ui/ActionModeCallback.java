@@ -1,6 +1,5 @@
 package se.splushii.dancingbunnies.ui;
 
-import android.os.Bundle;
 import android.view.ActionMode;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -13,6 +12,7 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
@@ -40,9 +40,9 @@ public class ActionModeCallback implements ActionMode.Callback {
         List<PlaybackEntry> getPlaybackEntrySelection();
         List<PlaylistEntry> getPlaylistEntrySelection();
         List<Playlist> getPlaylistSelection();
-        Bundle getQueryBundle();
         PlaylistID getPlaylistID();
-        List<Bundle> getQueries();
+        MusicLibraryQueryNode getQueryNode();
+        List<MusicLibraryQueryNode> getQueryNodes();
         void onDestroyActionMode(ActionMode actionMode);
     }
 
@@ -120,12 +120,12 @@ public class ActionModeCallback implements ActionMode.Callback {
                 itemId,
                 audioBrowserFragment,
                 callback::getEntryIDSelection,
-                callback::getQueryBundle,
+                callback::getQueryNode,
                 callback::getPlaybackEntrySelection,
                 callback::getPlaylistEntrySelection,
                 callback::getPlaylistID,
                 callback::getPlaylistSelection,
-                callback::getQueries
+                callback::getQueryNodes
         )) {
             return false;
         }

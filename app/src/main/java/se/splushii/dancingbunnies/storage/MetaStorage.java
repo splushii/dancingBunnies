@@ -1,7 +1,6 @@
 package se.splushii.dancingbunnies.storage;
 
 import android.content.Context;
-import android.os.Bundle;
 import android.util.Log;
 
 import java.util.ArrayList;
@@ -23,7 +22,9 @@ import androidx.sqlite.db.SimpleSQLiteQuery;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryLeaf;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryTree;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.storage.db.DB;
 import se.splushii.dancingbunnies.storage.db.MetaDao;
@@ -57,13 +58,15 @@ public class MetaStorage {
         Log.d(LC, "insertSongs finish. " + (System.currentTimeMillis() - start) + "ms");
     }
 
-    // TODO: rework bundleQuery and getEntries to support nested queries
     public LiveData<List<LibraryEntry>> getEntries(String primaryField,
                                                    List<String> sortFields,
                                                    boolean sortOrderAscending,
-                                                   Bundle bundleQuery) {
+                                                   MusicLibraryQueryNode queryNode) {
+        if (queryNode == null) {
+            queryNode = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND);
+        }
         HashMap<String, String> keyToTableAliasMap = new HashMap<>();
-        HashSet<String> uniqueQueryKeys = new HashSet<>(bundleQuery.keySet());
+        HashSet<String> uniqueQueryKeys = queryNode.getKeys();
         String primaryTypeKey = primaryField == null ? Meta.FIELD_SPECIAL_MEDIA_ID : primaryField;
         String primaryTypeTable = MetaDao.getTable(primaryTypeKey);
         String primaryTypeTableAlias = "meta_primary";
@@ -217,62 +220,13 @@ public class MetaStorage {
             queryArgs.add(primaryTypeKey);
         }
         // Add user query
-        boolean whereClauseEmpty = true;
-        for (String key: bundleQuery.keySet()) {
-            String typeTableAlias = keyToTableAliasMap.get(key);
-            if (typeTableAlias == null) {
-                Log.e(LC, "There is no type table"
-                        + " for bundleQuery key \"" + key + "\""
-                        + " with type " + Meta.getType(key));
-                continue;
-            }
-            switch (Meta.getType(key)) {
-                case LONG:
-                    String longValue = bundleQuery.getString(key);
-                    if (longValue == null) {
-                        Log.e(LC, "LONG value in bundle is null for key: " + key);
-                        break;
-                    }
-                    queryArgs.add(Long.parseLong(longValue));
-                    break;
-                case STRING:
-                    queryArgs.add(bundleQuery.getString(key));
-                    break;
-                case DOUBLE:
-                    String doubleValue = bundleQuery.getString(key);
-                    if (doubleValue == null) {
-                        Log.e(LC, "DOUBLE value in bundle is null for key: " + key);
-                        break;
-                    }
-                    queryArgs.add(Double.parseDouble(doubleValue));
-                    break;
-                default:
-                    Log.e(LC, "Unsupported bundleQuery type: " + Meta.getType(key).name());
-                    continue;
-            }
-            if (whereClauseEmpty) {
-                if (showMeta) {
-                    query.append(" AND ( ");
-                } else {
-                    query.append("\nWHERE (");
-                }
-                whereClauseEmpty = false;
-            } else {
-                query.append(" AND ");
-            }
-            query.append(typeTableAlias).append(".");
-            if (Meta.FIELD_SPECIAL_MEDIA_SRC.equals(key)) {
-                query.append(DB.COLUMN_API);
-            } else if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(key)) {
-                query.append(DB.COLUMN_ID);
-            } else {
-                query.append(DB.COLUMN_VALUE);
-            }
-            query.append(" = ?");
-        }
-        if (!whereClauseEmpty) {
-            query.append(" )");
-        }
+        addQueryNodeToQuery(
+                query,
+                queryArgs,
+                keyToTableAliasMap,
+                showMeta ? " AND" : "\nWHERE",
+                queryNode
+        );
         // Sort
         for (int i = 0; i < sortKeys.size(); i++) {
             if (i == 0) {
@@ -290,17 +244,17 @@ public class MetaStorage {
             );
         }
         SimpleSQLiteQuery sqlQuery = new SimpleSQLiteQuery(query.toString(), queryArgs.toArray());
-        Log.d(LC, "getEntries:"
-                + "\nquery: " + sqlQuery.getSql()
-                + "\nargs: "
-                + queryArgs.stream()
-                .map(Object::toString)
-                .collect(Collectors.joining(", "))
-                + "\naliases: "
-                + keyToTableAliasMap.entrySet().stream()
-                .map(e -> e.getKey() + ": " + e.getValue())
-                .collect(Collectors.joining(", "))
-        );
+//        Log.d(LC, "getEntries:"
+//                + "\nquery: " + sqlQuery.getSql()
+//                + "\nargs: "
+//                + queryArgs.stream()
+//                .map(Object::toString)
+//                .collect(Collectors.joining(", "))
+//                + "\naliases: "
+//                + keyToTableAliasMap.entrySet().stream()
+//                .map(e -> e.getKey() + ": " + e.getValue())
+//                .collect(Collectors.joining(", "))
+//        );
         return Transformations.map(
                 metaModel.getEntries(sqlQuery),
                 values -> values.stream().map(value -> {
@@ -347,6 +301,122 @@ public class MetaStorage {
         );
     }
 
+    private boolean addQueryNodeToQuery(StringBuilder query,
+                                        List<Object> queryArgs,
+                                        HashMap<String, String> keyToTableAliasMap,
+                                        String prefix,
+                                        MusicLibraryQueryNode queryNode) {
+        StringBuilder tmpQuery = new StringBuilder(prefix);
+        List<Object> tmpQueryArgs = new ArrayList<>();
+        boolean whereClauseEmpty = true;
+        if (queryNode instanceof MusicLibraryQueryLeaf) {
+            MusicLibraryQueryLeaf leaf = (MusicLibraryQueryLeaf) queryNode;
+            addQueryLeafToQuery(tmpQuery, tmpQueryArgs, keyToTableAliasMap, "", leaf);
+            whereClauseEmpty = false;
+        } else if (queryNode instanceof MusicLibraryQueryTree) {
+            MusicLibraryQueryTree tree = (MusicLibraryQueryTree) queryNode;
+            for (MusicLibraryQueryNode node: tree) {
+                String operatorString;
+                switch (tree.getOperator()) {
+                    default:
+                    case AND:
+                        operatorString = "AND";
+                        break;
+                    case OR:
+                        operatorString = "OR";
+                        break;
+                }
+                if (node instanceof MusicLibraryQueryTree) {
+                    String treeQueryPrefix;
+                    if (whereClauseEmpty) {
+                        treeQueryPrefix = " (";
+                    } else {
+                        treeQueryPrefix = " " + operatorString;
+                    }
+                    if (addQueryNodeToQuery(
+                            tmpQuery,
+                            tmpQueryArgs,
+                            keyToTableAliasMap,
+                            treeQueryPrefix,
+                            node
+                    )) {
+                        whereClauseEmpty = false;
+                    }
+                    continue;
+                }
+                MusicLibraryQueryLeaf leaf = (MusicLibraryQueryLeaf) node;
+                String leafQueryPrefix;
+                if (whereClauseEmpty) {
+                    leafQueryPrefix = " (";
+                } else {
+                    leafQueryPrefix = " " + operatorString;
+                }
+                if (addQueryLeafToQuery(
+                        tmpQuery,
+                        tmpQueryArgs,
+                        keyToTableAliasMap,
+                        leafQueryPrefix,
+                        leaf
+                )) {
+                    whereClauseEmpty = false;
+                }
+            }
+            if (!whereClauseEmpty) {
+                tmpQuery.append(" )");
+                query.append(tmpQuery);
+                queryArgs.addAll(tmpQueryArgs);
+            }
+        }
+        return !whereClauseEmpty;
+    }
+
+    private boolean addQueryLeafToQuery(
+            StringBuilder query,
+            List<Object> queryArgs,
+            HashMap<String, String> keyToTableAliasMap,
+            String prefix,
+            MusicLibraryQueryLeaf leaf
+    ) {
+        String key = leaf.getKey();
+        String value = leaf.getValue();
+        if (value == null) {
+            Log.e(LC, "value is null for key: " + key);
+            return false;
+        }
+        String typeTableAlias = keyToTableAliasMap.get(key);
+        if (typeTableAlias == null) {
+            Log.e(LC, "There is no type table"
+                    + " for bundleQuery key \"" + key + "\""
+                    + " with type " + Meta.getType(key));
+            return false;
+        }
+        switch (Meta.getType(key)) {
+            case LONG:
+                queryArgs.add(Long.parseLong(value));
+                break;
+            case STRING:
+                queryArgs.add(value);
+                break;
+            case DOUBLE:
+                queryArgs.add(Double.parseDouble(value));
+                break;
+            default:
+                Log.e(LC, "Unsupported bundleQuery type: " + Meta.getType(key).name());
+                return false;
+        }
+        query.append(prefix);
+        query.append(" ").append(typeTableAlias).append(".");
+        if (Meta.FIELD_SPECIAL_MEDIA_SRC.equals(key)) {
+            query.append(DB.COLUMN_API);
+        } else if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(key)) {
+            query.append(DB.COLUMN_ID);
+        } else {
+            query.append(DB.COLUMN_VALUE);
+        }
+        query.append(" = ?");
+        return true;
+    }
+
     private void addSortToQuery(StringBuilder query,
                                 String showTypeTableAlias,
                                 String key,
@@ -369,14 +439,11 @@ public class MetaStorage {
         query.append(sortOrderAscending ? " ASC" : " DESC");
     }
 
-    public LiveData<Integer> getNumSongEntries(List<EntryID> entryIDs, Bundle query) {
-        if (query == null) {
-            query = new Bundle();
-        }
+    public LiveData<Integer> getNumSongEntries(List<EntryID> entryIDs, MusicLibraryQueryNode queryNode) {
         MediatorLiveData<Integer> totalEntriesMediator = new MediatorLiveData<>();
         List<LiveData<Integer>> numSongEntryLiveDataList = new ArrayList<>();
         for (EntryID entryID: entryIDs) {
-            numSongEntryLiveDataList.add(getNumSongEntries(entryID, query));
+            numSongEntryLiveDataList.add(getNumSongEntries(entryID, queryNode));
         }
         for (LiveData<Integer> numSongEntryLiveData: numSongEntryLiveDataList) {
             totalEntriesMediator.addSource(
@@ -397,7 +464,7 @@ public class MetaStorage {
         return total;
     }
 
-    private LiveData<Integer> getNumSongEntries(EntryID entryID, Bundle bundleQuery) {
+    private LiveData<Integer> getNumSongEntries(EntryID entryID, MusicLibraryQueryNode queryNode) {
         String baseTableKey;
         String baseTableValue;
         String baseTableAlias = "base_table";
@@ -418,7 +485,7 @@ public class MetaStorage {
         HashMap<String, String> keyToTableAliasMap = new HashMap<>();
         keyToTableAliasMap.put(baseTableKey, baseTableAlias);
         // Other types (keys) which needs to be joined for the query
-        HashSet<String> uniqueQueryKeys = new HashSet<>(bundleQuery.keySet());
+        HashSet<String> uniqueQueryKeys = queryNode.getKeys();
         List<Object> queryArgs = new ArrayList<>();
         StringBuilder query = new StringBuilder("SELECT");
         query.append(" COUNT(*)");
@@ -462,77 +529,37 @@ public class MetaStorage {
             whereClauseEmpty = false;
         }
         // Add user query
-        for (String key: bundleQuery.keySet()) {
-            String typeTableAlias = keyToTableAliasMap.get(key);
-            if (typeTableAlias == null) {
-                Log.e(LC, "There is no type table"
-                        + " for bundleQuery key \"" + key + "\""
-                        + " with type " + Meta.getType(key));
-                continue;
-            }
-            switch (Meta.getType(key)) {
-                case LONG:
-                    String longValue = bundleQuery.getString(key);
-                    if (longValue == null) {
-                        Log.e(LC, "LONG value in bundle is null for key: " + key);
-                        break;
-                    }
-                    queryArgs.add(Long.parseLong(longValue));
-                    break;
-                case STRING:
-                    queryArgs.add(bundleQuery.getString(key));
-                    break;
-                case DOUBLE:
-                    String doubleValue = bundleQuery.getString(key);
-                    if (doubleValue == null) {
-                        Log.e(LC, "DOUBLE value in bundle is null for key: " + key);
-                        break;
-                    }
-                    queryArgs.add(Double.parseDouble(doubleValue));
-                    break;
-                default:
-                    Log.e(LC, "Unsupported bundleQuery type: " + Meta.getType(key).name());
-                    continue;
-            }
-            if (whereClauseEmpty) {
-                query.append("\nWHERE (");
-                whereClauseEmpty = false;
-            } else {
-                query.append(" AND ");
-            }
-            query.append(typeTableAlias).append(".");
-            if (Meta.FIELD_SPECIAL_MEDIA_SRC.equals(key)) {
-                query.append(DB.COLUMN_API);
-            } else if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(key)) {
-                query.append(DB.COLUMN_ID);
-            } else {
-                query.append(DB.COLUMN_VALUE);
-            }
-            query.append(" = ?");
-        }
-        if (!whereClauseEmpty) {
+        addQueryNodeToQuery(
+                query,
+                queryArgs,
+                keyToTableAliasMap,
+                whereClauseEmpty ? "\nWHERE" : " AND",
+                queryNode
+        );
+        if (!baseQuery.isEmpty()) {
             query.append(" )");
         }
         SimpleSQLiteQuery sqlQuery = new SimpleSQLiteQuery(query.toString(), queryArgs.toArray());
 //        Log.d(LC, "getNumSongEntries:"
 //                + "\nquery: " + sqlQuery.getSql()
 //                + "\nargs: "
-//                + String.join(", ", queryArgs.stream()
+//                + queryArgs.stream()
 //                .map(Object::toString)
-//                .collect(Collectors.toList()))
+//                .collect(Collectors.joining(", "))
 //                + "\naliases: "
-//                + String.join(", ", keyToTableAliasMap.entrySet().stream()
+//                + keyToTableAliasMap.entrySet().stream()
 //                .map(e -> e.getKey() + ": " + e.getValue())
-//                .collect(Collectors.toList()))
+//                .collect(Collectors.joining(", "))
 //        );
         return metaModel.getNumEntries(sqlQuery);
     }
 
-    public LiveData<List<EntryID>> getSongEntries(List<EntryID> entryIDs, Bundle query) {
+    public LiveData<List<EntryID>> getSongEntries(List<EntryID> entryIDs,
+                                                  MusicLibraryQueryNode queryNode) {
         MediatorLiveData<List<EntryID>> allEntriesMediator = new MediatorLiveData<>();
         List<LiveData<List<EntryID>>> songEntryLiveDataList = new ArrayList<>();
         for (EntryID entryID: entryIDs) {
-            songEntryLiveDataList.add(getSongEntries(entryID, query));
+            songEntryLiveDataList.add(getSongEntries(entryID, queryNode));
         }
         for (LiveData<List<EntryID>> songEntryLiveData: songEntryLiveDataList) {
             allEntriesMediator.addSource(
@@ -553,14 +580,14 @@ public class MetaStorage {
         return allEntries;
     }
 
-    private LiveData<List<EntryID>> getSongEntries(EntryID entryID, Bundle query) {
-        Bundle queryBundle = MusicLibraryQuery.toQueryBundle(entryID, query);
+    private LiveData<List<EntryID>> getSongEntries(EntryID entryID,
+                                                   MusicLibraryQueryNode queryNode) {
         return Transformations.map(
                 getEntries(
                         Meta.FIELD_SPECIAL_MEDIA_ID,
                         Collections.singletonList(Meta.FIELD_TITLE),
                         true,
-                        queryBundle
+                        queryNode.withEntryID(entryID)
                 ),
                 libraryEntries -> libraryEntries.stream()
                         .map(libraryEntry -> libraryEntry.entryID)
@@ -569,15 +596,17 @@ public class MetaStorage {
     }
 
     public CompletableFuture<List<EntryID>> getSongEntriesOnce(List<EntryID> entryIDs,
-                                                               Bundle query) {
-        return getSongEntriesOnce(MusicLibraryQuery.toQueryBundles(entryIDs, query));
+                                                               MusicLibraryQueryNode queryNode) {
+        return getSongEntriesOnce(queryNode.withEntryIDs(entryIDs));
     }
 
-    public CompletableFuture<List<EntryID>> getSongEntriesOnce(ArrayList<Bundle> queryBundles) {
+    public CompletableFuture<List<EntryID>> getSongEntriesOnce(
+            List<MusicLibraryQueryNode> queryNodes
+    ) {
         List<CompletableFuture<List<EntryID>>> futureEntryLists = new ArrayList<>();
-        for (Bundle query: queryBundles) {
+        for (MusicLibraryQueryNode queryNode: queryNodes) {
             CompletableFuture<List<EntryID>> songEntries;
-            songEntries = getSongEntriesOnce(query);
+            songEntries = getSongEntriesOnce(queryNode);
             futureEntryLists.add(songEntries);
         }
         return CompletableFuture.allOf(futureEntryLists.toArray(new CompletableFuture[0]))
@@ -594,12 +623,12 @@ public class MetaStorage {
                         .collect(Collectors.toList()));
     }
 
-    private CompletableFuture<List<EntryID>> getSongEntriesOnce(Bundle query) {
+    private CompletableFuture<List<EntryID>> getSongEntriesOnce(MusicLibraryQueryNode queryNode) {
         LiveData<List<LibraryEntry>> liveData = getEntries(
                 Meta.FIELD_SPECIAL_MEDIA_ID,
                 Collections.singletonList(Meta.FIELD_TITLE),
                 true,
-                query
+                queryNode
         );
         CompletableFuture<List<EntryID>> ret = new CompletableFuture<>();
         liveData.observeForever(new Observer<List<LibraryEntry>>() {

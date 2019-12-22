@@ -48,6 +48,7 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackController;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.MetaStorage;
@@ -165,7 +166,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                     }
 
                     @Override
-                    public Bundle getQueryBundle() {
+                    public MusicLibraryQueryNode getQueryNode() {
                         return null;
                     }
 
@@ -175,7 +176,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                     }
 
                     @Override
-                    public List<Bundle> getQueries() {
+                    public List<MusicLibraryQueryNode> getQueryNodes() {
                         return Collections.emptyList();
                     }
 
@@ -367,7 +368,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                     }
 
                     @Override
-                    public Bundle getQueryBundle() {
+                    public MusicLibraryQueryNode getQueryNode() {
                         return null;
                     }
 
@@ -377,7 +378,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                     }
 
                     @Override
-                    public List<Bundle> getQueries() {
+                    public List<MusicLibraryQueryNode> getQueryNodes() {
                         return Collections.emptyList();
                     }
 

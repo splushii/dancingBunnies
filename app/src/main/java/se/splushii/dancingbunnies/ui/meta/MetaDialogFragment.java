@@ -191,10 +191,10 @@ public class MetaDialogFragment extends DialogFragment {
         });
 
         addBtn.setOnClickListener(v -> {
-            addBtn.animate().rotation(45f).setInterpolator(new AccelerateDecelerateInterpolator());
             boolean showAddView = addView.getVisibility() != View.VISIBLE;
             title.setText(showAddView ? R.string.metadata_context_add : R.string.metadata);
             if (showAddView) {
+                addBtn.animate().rotation(45f).setInterpolator(new AccelerateDecelerateInterpolator());
                 addKeyEditText.requestFocus();
                 Util.showSoftInput(requireActivity(), addKeyEditText);
                 addView.setVisibility(View.VISIBLE);

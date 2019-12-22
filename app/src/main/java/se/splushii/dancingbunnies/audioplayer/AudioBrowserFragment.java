@@ -11,13 +11,13 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import androidx.fragment.app.Fragment;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.util.Util;
@@ -67,11 +67,11 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.getTransportControls().playFromMediaId(entryID.id, entryID.toBundle());
     }
 
-    public CompletableFuture<Boolean> play(List<EntryID> entryIDs, Bundle query) {
+    public CompletableFuture<Boolean> play(List<EntryID> entryIDs, MusicLibraryQueryNode queryNode) {
         return AudioPlayerService.play(
                 mediaController,
                 entryIDs,
-                query
+                queryNode
         ).thenApply(success -> {
             if (!success) {
                 Log.e(LC, "play entryIDs failed");
@@ -80,10 +80,10 @@ public abstract class AudioBrowserFragment extends Fragment {
         });
     }
 
-    public CompletableFuture<Boolean> playQueryBundles(List<Bundle> queryBundles) {
+    public CompletableFuture<Boolean> playQueries(List<MusicLibraryQueryNode> queryNodes) {
         return AudioPlayerService.playQueryBundles(
                 mediaController,
-                queryBundles
+                queryNodes
         ).thenApply(success -> {
             if (!success) {
                 Log.e(LC, "play queries failed");
@@ -108,11 +108,12 @@ public abstract class AudioBrowserFragment extends Fragment {
         mediaController.addQueueItem(entryID.toMediaDescriptionCompat());
     }
 
-    public CompletableFuture<Boolean> queue(List<EntryID> entryIDs, Bundle query) {
+    public CompletableFuture<Boolean> queue(List<EntryID> entryIDs,
+                                            MusicLibraryQueryNode queryNode) {
         return AudioPlayerService.queue(
                 mediaController,
                 entryIDs,
-                query
+                queryNode
         ).thenApply(success -> {
             if (!success) {
                 Log.e(LC, "queue entryIDs failed");
@@ -121,10 +122,10 @@ public abstract class AudioBrowserFragment extends Fragment {
         });
     }
 
-    public CompletableFuture<Boolean> queueQueryBundles(List<Bundle> queryBundles) {
+    public CompletableFuture<Boolean> queueQueryBundles(List<MusicLibraryQueryNode> queryNodes) {
         return AudioPlayerService.queueQueryBundles(
                 mediaController,
-                queryBundles
+                queryNodes
         ).thenApply(success -> {
             if (!success) {
                 Log.e(LC, "queue queries failed");
@@ -318,8 +319,8 @@ public abstract class AudioBrowserFragment extends Fragment {
         }
     }
 
-    public void downloadAudioData(ArrayList<Bundle> queryBundles, int priority) {
-        MusicLibraryService.downloadAudioData(requireContext(), queryBundles, priority);
+    public void downloadAudioData(List<MusicLibraryQueryNode> queryNodes, int priority) {
+        MusicLibraryService.downloadAudioData(requireContext(), queryNodes, priority);
     }
 
     private final MediaBrowserCompat.ConnectionCallback mediaBrowserConnectionCallback =

@@ -2,7 +2,6 @@ package se.splushii.dancingbunnies.ui;
 
 import android.content.Context;
 import android.content.Intent;
-import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.View;
@@ -25,7 +24,7 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
@@ -159,17 +158,11 @@ public class MenuActions {
         } else if (action == ACTION_ADD_TO_PLAYLIST) {
             AddToPlaylistDialogFragment.showDialog(
                     audioBrowserFragment,
-                    MusicLibraryQuery.toQueryBundles(
-                            Collections.singletonList(entryIDSupplier.get()),
-                            null
-                    )
+                    Collections.singletonList(MusicLibraryQueryNode.fromEntryID(entryIDSupplier.get()))
             );
         } else if (action == ACTION_CACHE) {
             audioBrowserFragment.downloadAudioData(
-                    MusicLibraryQuery.toQueryBundles(
-                            Collections.singletonList(entryIDSupplier.get()),
-                            null
-                    ),
+                    Collections.singletonList(MusicLibraryQueryNode.fromEntryID(entryIDSupplier.get())),
                     AudioStorage.DOWNLOAD_PRIO_LOW
             );
         } else if (action == ACTION_CACHE_DELETE) {
@@ -220,59 +213,50 @@ public class MenuActions {
     static boolean doSelectionAction(int action,
                                      AudioBrowserFragment audioBrowserFragment,
                                      Supplier<List<EntryID>> entryIDSupplier,
-                                     Supplier<Bundle> queryBundleSupplier,
+                                     Supplier<MusicLibraryQueryNode> queryNodeSupplier,
                                      Supplier<List<PlaybackEntry>> playbackEntrySupplier,
                                      Supplier<List<PlaylistEntry>> playlistEntrySupplier,
                                      Supplier<PlaylistID> playlistIDSupplier,
                                      Supplier<List<Playlist>> playlistSupplier,
-                                     Supplier<List<Bundle>> queryBundlesSupplier
+                                     Supplier<List<MusicLibraryQueryNode>> queryNodesSupplier
     ) {
         if (action == ACTION_PLAY_MULTIPLE) {
-            audioBrowserFragment.play(entryIDSupplier.get(), queryBundleSupplier.get());
+            audioBrowserFragment.play(entryIDSupplier.get(), queryNodeSupplier.get());
         } else if (action == ACTION_PLAY_MULTIPLE_QUERIES) {
-            audioBrowserFragment.playQueryBundles(queryBundlesSupplier.get());
+            audioBrowserFragment.playQueries(queryNodesSupplier.get());
         } else if (action == ACTION_ADD_MULTIPLE_TO_QUEUE) {
-            audioBrowserFragment.queue(entryIDSupplier.get(), queryBundleSupplier.get());
+            audioBrowserFragment.queue(entryIDSupplier.get(), queryNodeSupplier.get());
         } else if (action == ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE) {
-            audioBrowserFragment.queueQueryBundles(queryBundlesSupplier.get());
+            audioBrowserFragment.queueQueryBundles(queryNodesSupplier.get());
         } else if (action == ACTION_ADD_MULTIPLE_TO_PLAYLIST) {
             AddToPlaylistDialogFragment.showDialog(
                     audioBrowserFragment,
-                    MusicLibraryQuery.toQueryBundles(
-                            entryIDSupplier.get(),
-                            queryBundleSupplier.get()
-                    )
+                    queryNodeSupplier.get().withEntryIDs(entryIDSupplier.get())
             );
         } else if (action == ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST) {
             AddToPlaylistDialogFragment.showDialog(
                     audioBrowserFragment,
-                    queryBundlesSupplier.get()
+                    queryNodesSupplier.get()
             );
         } else if (action == ACTION_CACHE_MULTIPLE) {
             audioBrowserFragment.downloadAudioData(
-                    MusicLibraryQuery.toQueryBundles(
-                            entryIDSupplier.get(),
-                            queryBundleSupplier.get()
-                    ),
+                    new ArrayList<>(queryNodeSupplier.get().withEntryIDs(entryIDSupplier.get())),
                     AudioStorage.DOWNLOAD_PRIO_LOW
             );
         } else if (action == ACTION_CACHE_MULTIPLE_QUERIES) {
             audioBrowserFragment.downloadAudioData(
-                    new ArrayList<>(queryBundlesSupplier.get()),
+                    new ArrayList<>(queryNodesSupplier.get()),
                     AudioStorage.DOWNLOAD_PRIO_LOW
             );
         } else if (action == ACTION_CACHE_DELETE_MULTIPLE) {
             MusicLibraryService.deleteAudioData(
                     audioBrowserFragment.requireContext(),
-                    MusicLibraryQuery.toQueryBundles(
-                            entryIDSupplier.get(),
-                            queryBundleSupplier.get()
-                    )
+                    new ArrayList<>(queryNodeSupplier.get().withEntryIDs(entryIDSupplier.get()))
             );
         } else if (action == ACTION_CACHE_DELETE_MULTIPLE_QUERIES) {
             MusicLibraryService.deleteAudioData(
                     audioBrowserFragment.requireContext(),
-                    new ArrayList<>(queryBundlesSupplier.get())
+                    new ArrayList<>(queryNodesSupplier.get())
             );
         } else if (action == ACTION_REMOVE_MULTIPLE_FROM_QUEUE) {
             audioBrowserFragment.dequeue(playbackEntrySupplier.get());

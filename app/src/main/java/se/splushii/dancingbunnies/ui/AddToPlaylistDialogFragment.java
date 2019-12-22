@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.MetaStorage;
@@ -37,22 +38,22 @@ public class AddToPlaylistDialogFragment
     private static final String LC = Util.getLogContext(AddToPlaylistDialogFragment.class);
 
     private static final String TAG = "dancingbunnies.splushii.se.fragment_tag.add_to_playlist_dialog";
-    private static final String BUNDLE_KEY_QUERY_BUNDLES = "dancingbunnies.bundle.key.addtoplaylistdialog.query_bundles";
+    private static final String BUNDLE_KEY_QUERY_NODES = "dancingbunnies.bundle.key.addtoplaylistdialog.query_nodes";
 
     private TextView numEntriesTextView;
 
     private PlaylistFragmentModel model;
     private PlaylistAdapter recViewAdapter;
 
-    private ArrayList<Bundle> queryBundles;
+    private ArrayList<MusicLibraryQueryNode> queryNodes;
     private CompletableFuture<List<EntryID>> songEntries;
 
-    static void showDialog(Fragment fragment, List<Bundle> queryBundles) {
-        if (queryBundles == null || queryBundles.isEmpty()) {
+    static void showDialog(Fragment fragment, List<MusicLibraryQueryNode> queryNodes) {
+        if (queryNodes == null || queryNodes.isEmpty()) {
             return;
         }
         Bundle args = new Bundle();
-        args.putParcelableArrayList(BUNDLE_KEY_QUERY_BUNDLES, new ArrayList<>(queryBundles));
+        args.putParcelableArrayList(BUNDLE_KEY_QUERY_NODES, new ArrayList<>(queryNodes));
         showDialog(fragment, args);
     }
 
@@ -79,7 +80,7 @@ public class AddToPlaylistDialogFragment
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         Bundle args = getArguments();
-        queryBundles = args.getParcelableArrayList(BUNDLE_KEY_QUERY_BUNDLES);
+        queryNodes = args.getParcelableArrayList(BUNDLE_KEY_QUERY_NODES);
         super.onCreate(savedInstanceState);
     }
 
@@ -92,7 +93,7 @@ public class AddToPlaylistDialogFragment
         LinearLayoutManager recViewLayoutManager = new LinearLayoutManager(requireContext());
         recyclerView.setLayoutManager(recViewLayoutManager);
         recViewAdapter = new PlaylistAdapter(this);
-        songEntries = MetaStorage.getInstance(requireContext()).getSongEntriesOnce(queryBundles);
+        songEntries = MetaStorage.getInstance(requireContext()).getSongEntriesOnce(queryNodes);
         songEntries.thenAccept(songEntries -> filterPlaylists(model, songEntries));
         recViewAdapter.setOnItemClickListener(playlist ->
                 songEntries.thenAccept(songEntryIDs ->
@@ -103,7 +104,7 @@ public class AddToPlaylistDialogFragment
         recyclerView.setAdapter(recViewAdapter);
         View addToNewPlaylistView = rootView.findViewById(R.id.add_to_playlist_dialog_new);
         addToNewPlaylistView.setOnClickListener(v ->
-                AddToNewPlaylistDialogFragment.showDialog(this, queryBundles)
+                AddToNewPlaylistDialogFragment.showDialog(this, queryNodes)
         );
         return rootView;
     }

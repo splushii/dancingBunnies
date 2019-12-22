@@ -210,10 +210,10 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 return ret;
             }
             MusicLibraryQuery query = fragment.getCurrentQuery();
-            addSortedByToQuery(query, holder);
+            andSortedByToQuery(query, holder);
             return MetaStorage.getInstance(fragment.requireContext()).getNumSongEntries(
                     Collections.singletonList(e),
-                    query.getQueryBundle()
+                    query.getQueryTree()
             );
         });
         holder.numSubEntriesLiveData.observe(fragment.getViewLifecycleOwner(), numSubEntries ->
@@ -240,11 +240,11 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         return holder;
     }
 
-    private void addSortedByToQuery(MusicLibraryQuery query, SongViewHolder holder) {
+    private void andSortedByToQuery(MusicLibraryQuery query, SongViewHolder holder) {
         if (holder.isBrowsable() && !fragment.querySortedByShow()) {
             // If the entries are sorted by a key (other than the entries' type),
             // then add it to the query
-            query.addSortedByValuesToQuery(
+            query.andSortedByValuesToQuery(
                     fragment.querySortedByKeys(),
                     holder.entry.sortedByValues()
             );
@@ -273,7 +273,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 fragment.clearFocus();
                 EntryID entryID = holder.entryIDLiveData.getValue();
                 MusicLibraryQuery query = fragment.getCurrentQuery();
-                addSortedByToQuery(query, holder);
+                andSortedByToQuery(query, holder);
                 String showField = Meta.FIELD_ARTIST.equals(entryID.type) ?
                         Meta.FIELD_ALBUM : Meta.FIELD_SPECIAL_MEDIA_ID;
                 query.setShowField(showField);
@@ -286,7 +286,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 }
                 query.setSortByFields(sortFields);
                 query.setSortOrder(true);
-                query.addEntryIDToQuery(entryID);
+                query.andEntryIDToQuery(entryID);
                 fragment.setQuery(query);
             } else {
                 fragment.clearFocus();

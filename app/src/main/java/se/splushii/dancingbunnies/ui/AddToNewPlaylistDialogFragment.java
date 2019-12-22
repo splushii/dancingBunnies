@@ -19,6 +19,7 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.SmartPlaylist;
 import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
@@ -36,19 +37,19 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
     private static final String BUNDLE_KEY_QUERY_BUNDLES =
             "dancingbunnies.bundle.key.add_to_new_playlist_dialog.entryids";
 
-    private Bundle query;
-    private ArrayList<Bundle> queryBundles;
+    private MusicLibraryQueryNode query;
+    private ArrayList<MusicLibraryQueryNode> queries;
     private EditText addToNewPlaylistEditText;
 
-    public static void showDialog(Fragment fragment, Bundle query) {
+    public static void showDialog(Fragment fragment, MusicLibraryQueryNode queryTree) {
         Bundle args = new Bundle();
-        args.putBundle(BUNDLE_KEY_QUERY, query);
+        args.putParcelable(BUNDLE_KEY_QUERY, queryTree);
         _showDialog(fragment, args);
     }
 
-    static void showDialog(Fragment fragment, List<Bundle> bundleQueries) {
+    static void showDialog(Fragment fragment, List<MusicLibraryQueryNode> queryTrees) {
         Bundle args = new Bundle();
-        args.putParcelableArrayList(BUNDLE_KEY_QUERY_BUNDLES, new ArrayList<>(bundleQueries));
+        args.putParcelableArrayList(BUNDLE_KEY_QUERY_BUNDLES, new ArrayList<>(queryTrees));
         _showDialog(fragment, args);
     }
 
@@ -68,8 +69,8 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         Bundle args = getArguments();
-        this.queryBundles = args.getParcelableArrayList(BUNDLE_KEY_QUERY_BUNDLES);
-        this.query = args.getBundle(BUNDLE_KEY_QUERY);
+        this.queries = args.getParcelableArrayList(BUNDLE_KEY_QUERY_BUNDLES);
+        this.query = args.getParcelable(BUNDLE_KEY_QUERY);
         super.onCreate(savedInstanceState);
     }
 
@@ -91,10 +92,10 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
 
     private void createPlaylist(String name) {
         CompletableFuture<Void> completableFuture;
-        if (queryBundles != null) {
+        if (queries != null) {
             // Create a StupidPlaylist
             completableFuture = MetaStorage.getInstance(requireContext())
-                    .getSongEntriesOnce(queryBundles)
+                    .getSongEntriesOnce(queries)
                     .thenCompose(songEntryIDs ->
                             PlaylistStorage.getInstance(requireContext()).insertPlaylists(
                                     0,

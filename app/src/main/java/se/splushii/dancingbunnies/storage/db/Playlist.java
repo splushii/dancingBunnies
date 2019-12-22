@@ -90,7 +90,7 @@ public class Playlist implements Parcelable {
 
     public static Playlist from(SmartPlaylist playlist, int pos) {
         Playlist roomPlaylist = from((se.splushii.dancingbunnies.musiclibrary.Playlist) playlist, pos);
-        roomPlaylist.query = playlist.getJSONQuery();
+        roomPlaylist.query = playlist.getJSONQueryString();
         return roomPlaylist;
     }
 

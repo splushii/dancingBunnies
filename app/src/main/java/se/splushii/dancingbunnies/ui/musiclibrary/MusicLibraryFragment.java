@@ -13,20 +13,15 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.Spinner;
 import android.widget.TableLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.material.chip.Chip;
-import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.ArrayList;
@@ -57,6 +52,9 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryLeaf;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryTree;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
@@ -97,15 +95,13 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
     private static final int SHOW_GROUP_ORDER_HEADER = Menu.FIRST;
     private static final int SHOW_GROUP_ORDER_SINGLE = Menu.FIRST + 1;
 
-    private View browseFilterView;
-    private ChipGroup browseFilterChips;
-    private View browseFilterEdit;
-    private TextView browseFilterEditType;
+    private LinearLayout browseQueryView;
     private MutableLiveData<String> browseFilterEditTypeValueLiveData;
-    private AutoCompleteTextView browseFilterEditInput;
-    private View browseFilterNew;
-    private Spinner browseFilterNewType;
-    private AutoCompleteTextView browseFilterNewInput;
+    private ArrayAdapter<String> browseFilterEditTagValuesAdapter;
+    private ArrayAdapter<String> browseFilterNewTypeAdapter;
+    private ArrayList<String> browseFilterNewTypeValues;
+    private MutableLiveData<String> browseFilterNewTagValuesLiveData;
+    private ArrayAdapter<String> browseFilterNewTagValuesAdapter;
 
     private LinearLayout browseHeader;
     private TextView browseHeaderShow;
@@ -137,7 +133,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
             searchSelectionTracker;
 
     private ArrayList<String> metaKeys;
-    private ArrayAdapter<String> metaKeyAdapter;
+    private ArrayList<String> metaKeysForDisplay;
 
     private MusicLibraryFragmentModel model;
 
@@ -190,18 +186,14 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         searchRecyclerViewAdapter.scrollWhenReady();
         String showField = getCurrentQuery().getShowField();
         String showDisplayField = Meta.getDisplayKey(showField);
-        clearFilterView();
         if (isSearchQuery()) {
-            Log.d(LC, "refreshView search");
             browseContentView.setVisibility(GONE);
             browseHeader.setVisibility(GONE);
-            browseFilterView.setVisibility(GONE);
             browseFastScroller.enableBubble(false);
             searchQueryEdit.setText(newUserState.query.getSearchQuery());
             searchView.setVisibility(VISIBLE);
             searchContentView.setVisibility(VISIBLE);
         } else {
-            Log.d(LC, "refreshView query");
             searchContentView.setVisibility(GONE);
             searchView.setVisibility(GONE);
             browseFastScroller.enableBubble(true);
@@ -214,20 +206,173 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
             int sortOrderResource = isSortedAscending() ?
                     R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp;
             browseHeaderSortedByOrder.setImageResource(sortOrderResource);
-            Bundle queryBundle = newUserState.query.getQueryBundle();
-            for (String metaKey: queryBundle.keySet()) {
-                String filterValue = queryBundle.getString(metaKey);
-                addFilterToView(metaKey, filterValue);
-            }
-            browseFilterView.setVisibility(VISIBLE);
+
+            browseQueryView.removeAllViews();
+            MusicLibraryQueryTree queryTree = newUserState.query.getQueryTree();
+            addFilterGroupToView(browseQueryView, queryTree, 1);
+
             browseHeader.setVisibility(VISIBLE);
             browseContentView.setVisibility(VISIBLE);
         }
-        if (browseFilterChips.getChildCount() > 0) {
-            browseFilterChips.setVisibility(VISIBLE);
-        } else {
-            browseFilterChips.setVisibility(GONE);
+    }
+
+    private void addFilterGroupToView(LinearLayout browseQueryView,
+                                      MusicLibraryQueryTree queryTree,
+                                      int depth) {
+        MusicLibraryFilterGroup filterGroup = new MusicLibraryFilterGroup(requireContext());
+        filterGroup.setOperator(queryTree.getOperator());
+        filterGroup.setOnOperatorChanged(op -> {
+            model.addBackStackHistory(
+                    Util.getRecyclerViewPosition(browseRecyclerView),
+                    getCurrentQueryTree()
+            );
+            queryTree.setOperator(op);
+            setQuery(getCurrentQuery());
+        });
+        filterGroup.setNew(
+                browseFilterNewTagValuesAdapter,
+                browseFilterNewTypeAdapter,
+                0,
+                () -> {
+                    trimQueryTreeSelection(depth - 1);
+                    setQueryDepth(depth);
+                },
+                pos -> {
+                    String filterNewKey = metaKeys.get(pos);
+                    if (!filterNewKey.equals(browseFilterNewTagValuesLiveData.getValue())) {
+                        browseFilterNewTagValuesLiveData.setValue(filterNewKey);
+                    }
+                },
+                (pos, input) -> {
+                    if (pos >= metaKeys.size() || pos >= metaKeysForDisplay.size()) {
+                        return;
+                    }
+                    String field = metaKeys.get(pos);
+                    String displayedField = metaKeysForDisplay.get(pos);
+                    Log.d(LC, "Applying filter: " + displayedField + "(" + input + ")");
+                    Toast.makeText(
+                            getContext(),
+                            "Applying filter: " + displayedField + "(" + input + ")",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                    model.addBackStackHistory(
+                            Util.getRecyclerViewPosition(browseRecyclerView),
+                            getCurrentQueryTree()
+                    );
+                    queryTree.addChild(new MusicLibraryQueryLeaf(field, input));
+                    setQuery(getCurrentQuery());
+                },
+                op -> {
+                    model.addBackStackHistory(
+                            Util.getRecyclerViewPosition(browseRecyclerView),
+                            getCurrentQueryTree()
+                    );
+                    queryTree.addChild(new MusicLibraryQueryTree(op));
+                    setQuery(getCurrentQuery());
+                }
+        );
+        setQueryDepth(depth);
+        browseQueryView.addView(filterGroup);
+        List<Integer> queryTreeSelection = model.getQueryTreeSelection();
+        int selectedIndex = depth > queryTreeSelection.size() ? -1 : queryTreeSelection.get(depth - 1);
+        int index = 0;
+        for (MusicLibraryQueryNode node: queryTree) {
+            final int nodeIndex = index;
+            if (node instanceof MusicLibraryQueryLeaf) {
+                MusicLibraryQueryLeaf leaf = (MusicLibraryQueryLeaf) node;
+                String key = leaf.getKey();
+                String value = leaf.getValue();
+                filterGroup.addLeafFilter(
+                        key,
+                        value,
+                        browseFilterEditTagValuesAdapter,
+                        () -> {
+                            setQueryTreeSelection(nodeIndex, depth);
+                            if (!key.equals(browseFilterEditTypeValueLiveData.getValue())) {
+                                browseFilterEditTypeValueLiveData.setValue(key);
+                            }
+                        },
+                        () -> {},
+                        filterString -> {
+                            model.addBackStackHistory(
+                                    Util.getRecyclerViewPosition(browseRecyclerView),
+                                    getCurrentQueryTree()
+                            );
+                            leaf.setValue(filterString);
+                            setQuery(getCurrentQuery());
+                        },
+                        () -> {
+                            model.addBackStackHistory(
+                                    Util.getRecyclerViewPosition(browseRecyclerView),
+                                    getCurrentQueryTree()
+                            );
+                            queryTree.removeChild(node);
+                            setQuery(getCurrentQuery());
+                        }
+                );
+            } else if (node instanceof MusicLibraryQueryTree) {
+                MusicLibraryQueryTree tree = (MusicLibraryQueryTree) node;
+                filterGroup.addTreeFilter(
+                        tree.getOperator(),
+                        () -> {
+                            setQueryTreeSelection(nodeIndex, depth);
+                            setQueryDepth(depth);
+                            addFilterGroupToView(browseQueryView, tree, depth + 1);
+                        },
+                        () -> {
+                            setQueryDepth(depth);
+                        },
+                        () -> {
+                            model.addBackStackHistory(
+                                    Util.getRecyclerViewPosition(browseRecyclerView),
+                                    getCurrentQueryTree()
+                            );
+                            queryTree.removeChild(node);
+                            setQuery(getCurrentQuery());
+                        }
+                );
+                if (selectedIndex >= 0 && selectedIndex == index) {
+                    filterGroup.activate(index);
+                    addFilterGroupToView(browseQueryView, tree, depth + 1);
+                }
+            }
+            index++;
         }
+    }
+
+    private boolean trimQueryTreeSelection(int depth) {
+        if (model == null) {
+            return false;
+        }
+        if (model.getQueryTreeSelection().size() <= depth) {
+            return false;
+        }
+        List<Integer> selection = model.getQueryTreeSelection().stream()
+                .limit(depth)
+                .collect(Collectors.toList());
+        model.setQueryTreeSelection(selection);
+        return true;
+    }
+
+    private void setQueryTreeSelection(int nodeIndex, int trimToDepth) {
+        List<Integer> selection = model.getQueryTreeSelection().stream()
+                .limit(trimToDepth - 1)
+                .collect(Collectors.toList());
+        selection.add(nodeIndex);
+        setQueryDepth(trimToDepth);
+        model.setQueryTreeSelection(selection);
+    }
+
+    private boolean setQueryDepth(int depth) {
+        if (browseQueryView == null) {
+            return false;
+        }
+        boolean removedViews = false;
+        while (browseQueryView.getChildCount() > depth) {
+            browseQueryView.removeViewAt(browseQueryView.getChildCount() - 1);
+            removedViews = true;
+        }
+        return removedViews;
     }
 
     String getSortedByDisplayString(List<String> sortValues,
@@ -413,7 +558,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                     }
 
                     @Override
-                    public Bundle getQueryBundle() {
+                    public MusicLibraryQueryNode getQueryNode() {
                         return null;
                     }
 
@@ -423,7 +568,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                     }
 
                     @Override
-                    public List<Bundle> getQueries() {
+                    public List<MusicLibraryQueryNode> getQueryNodes() {
                         return Collections.emptyList();
                     }
 
@@ -466,8 +611,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
             model.reset();
         });
 
-        browseFilterView = rootView.findViewById(R.id.musiclibrary_browse_filter);
-
         browseContentView = rootView.findViewById(R.id.musiclibrary_browse_content);
         browseRecyclerView = rootView.findViewById(R.id.musiclibrary_browse_recyclerview);
         browseRecyclerViewLayoutManager = new LinearLayoutManager(requireContext());
@@ -492,7 +635,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         });
 
         metaKeys = new ArrayList<>();
-        List<String> displayedFields = new ArrayList<>();
+        metaKeysForDisplay = new ArrayList<>();
 
         browseHeaderShow = rootView.findViewById(R.id.musiclibrary_browse_header_show);
         final PopupMenu browseHeaderShowPopup = new PopupMenu(requireContext(), browseHeaderShow);
@@ -508,7 +651,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         browseHeaderShowPopupHelper.setForceShowIcon(true);
         browseHeaderShowPopup.setOnMenuItemClickListener(item -> {
             clearSelection();
-            return onShowSelected(item, displayedFields);
+            return onShowSelected(item, metaKeysForDisplay);
         });
         browseHeaderShow.setOnClickListener(view -> browseHeaderShowPopupHelper.show());
         browseHeaderNum = rootView.findViewById(R.id.musiclibrary_browse_header_num);
@@ -535,7 +678,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         browseHeaderSortedByPopupHelper.setForceShowIcon(true);
         browseHeaderSortedByPopup.setOnMenuItemClickListener(item -> {
             clearSelection();
-            return onSortedBySelected(item, displayedFields);
+            return onSortedBySelected(item, metaKeysForDisplay);
         });
         browseHeaderSortedByKeys = rootView.findViewById(R.id.musiclibrary_browse_header_sortedby_keys);
         browseHeaderSortedByOrder = rootView.findViewById(R.id.musiclibrary_browse_header_sortedby_order);
@@ -565,8 +708,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                     }
 
                     @Override
-                    public Bundle getQueryBundle() {
-                        return getCurrentQueryBundle();
+                    public MusicLibraryQueryNode getQueryNode() {
+                        return getCurrentQueryTree();
                     }
 
                     @Override
@@ -575,8 +718,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                     }
 
                     @Override
-                    public List<Bundle> getQueries() {
-                        return getSelectedBundleQueries();
+                    public List<MusicLibraryQueryNode> getQueryNodes() {
+                        return getSelectedQueryTrees();
                     }
 
                     @Override
@@ -646,41 +789,17 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
             model.reset();
         });
 
-        browseFilterNew = rootView.findViewById(R.id.musiclibrary_browse_filter_new);
-        browseFilterNewInput = rootView.findViewById(R.id.musiclibrary_browe_filter_new_text);
-        browseFilterNewType = rootView.findViewById(R.id.musiclibrary_browse_filter_new_type);
-        metaKeyAdapter = new ArrayAdapter<>(
+        browseFilterNewTypeValues = new ArrayList<>();
+        browseFilterNewTypeAdapter = new ArrayAdapter<>(
                 requireContext(),
                 android.R.layout.simple_spinner_dropdown_item,
-                displayedFields
+                browseFilterNewTypeValues
         );
-        browseFilterNewType.setAdapter(metaKeyAdapter);
-        browseFilterNewType.setSelection(0);
-        browseFilterNewInput.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_DONE) {
-                int pos = browseFilterNewType.getSelectedItemPosition();
-                String field = metaKeys.get(pos);
-                String displayedField = displayedFields.get(pos);
-                String filterString = browseFilterNewInput.getText().toString();
-                Log.d(LC, "Applying filter: " + displayedField + "(" + filterString + ")");
-                Toast.makeText(
-                        this.requireContext(),
-                        "Applying filter: " + displayedField + "(" + filterString + ")",
-                        Toast.LENGTH_SHORT
-                ).show();
-                filter(field, filterString);
-                browseFilterNew.setVisibility(GONE);
-                Util.hideSoftInput(requireActivity(), browseFilterNewInput);
-                return true;
-            }
-            return false;
-        });
-        ArrayAdapter<String> browseFilterNewTagValuesAdapter = new ArrayAdapter<>(
+        browseFilterNewTagValuesAdapter = new ArrayAdapter<>(
                 requireContext(),
                 android.R.layout.simple_spinner_dropdown_item
         );
-        browseFilterNewInput.setAdapter(browseFilterNewTagValuesAdapter);
-        MutableLiveData<String> browseFilterNewTagValuesLiveData = new MutableLiveData<>();
+        browseFilterNewTagValuesLiveData = new MutableLiveData<>();
         Transformations.switchMap(
                 browseFilterNewTagValuesLiveData,
                 key -> MetaStorage.getInstance(requireContext()).getMetaValuesAsStrings(key)
@@ -688,18 +807,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
             browseFilterNewTagValuesAdapter.clear();
             browseFilterNewTagValuesAdapter.addAll(values);
             browseFilterNewTagValuesAdapter.notifyDataSetChanged();
-        });
-        browseFilterNewType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-                String filterNewKey = metaKeys.get(browseFilterNewType.getSelectedItemPosition());
-                if (!filterNewKey.equals(browseFilterNewTagValuesLiveData.getValue())) {
-                    browseFilterNewTagValuesLiveData.setValue(filterNewKey);
-                }
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> adapterView) {}
         });
 
         MetaStorage.getInstance(requireContext())
@@ -723,47 +830,45 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                     });
                     metaKeys.clear();
                     metaKeys.addAll(newFields);
-                    displayedFields.clear();
-                    displayedFields.addAll(newFields.stream()
+                    metaKeysForDisplay.clear();
+                    metaKeysForDisplay.addAll(newFields.stream()
                             .map(Meta::getDisplayKey)
                             .collect(Collectors.toList())
                     );
+                    browseFilterNewTypeValues.clear();
+                    browseFilterNewTypeValues.addAll(metaKeysForDisplay);
                     browseHeaderShowMenu.removeGroup(SHOW_GROUP_ID_SINGLE);
-                    for (int i = 0; i < displayedFields.size(); i++) {
+                    for (int i = 0; i < metaKeysForDisplay.size(); i++) {
                         browseHeaderShowMenu.add(
                                 SHOW_GROUP_ID_SINGLE,
                                 i,
                                 SHOW_GROUP_ORDER_SINGLE,
-                                displayedFields.get(i)
+                                metaKeysForDisplay.get(i)
                         );
                     }
                     browseHeaderSortedByMenu.removeGroup(SORT_BY_GROUP_ID_SINGLE);
-                    for (int i = 0; i < displayedFields.size(); i++) {
+                    for (int i = 0; i < metaKeysForDisplay.size(); i++) {
                         browseHeaderSortedByMenu.add(
                                 SORT_BY_GROUP_ID_SINGLE,
                                 i,
                                 SORT_BY_GROUP_ORDER_SINGLE,
-                                displayedFields.get(i)
+                                metaKeysForDisplay.get(i)
                         );
                     }
-                    metaKeyAdapter.notifyDataSetChanged();
+                    browseFilterNewTypeAdapter.notifyDataSetChanged();
                 });
 
         ImageButton browseSaveBtn = rootView.findViewById(R.id.musiclibrary_browse_save);
         browseSaveBtn.setOnClickListener(v ->
-                AddToNewPlaylistDialogFragment.showDialog(this, getCurrentQueryBundle())
+                AddToNewPlaylistDialogFragment.showDialog(this, getCurrentQueryTree())
         );
 
-        browseFilterChips = rootView.findViewById(R.id.musiclibrary_browse_filter_chips);
+        browseQueryView = rootView.findViewById(R.id.musiclibrary_browse_query);
 
-        browseFilterEdit = rootView.findViewById(R.id.musiclibrary_browse_filter_edit);
-        browseFilterEditType = rootView.findViewById(R.id.musiclibrary_browse_filter_edit_type);
-        browseFilterEditInput = rootView.findViewById(R.id.musiclibrary_browse_filter_edit_input);
-        ArrayAdapter<String> browseFilterEditTagValuesAdapter = new ArrayAdapter<>(
+        browseFilterEditTagValuesAdapter = new ArrayAdapter<>(
                 requireContext(),
                 android.R.layout.simple_spinner_dropdown_item
         );
-        browseFilterEditInput.setAdapter(browseFilterEditTagValuesAdapter);
         browseFilterEditTypeValueLiveData = new MutableLiveData<>();
         Transformations.switchMap(
                 browseFilterEditTypeValueLiveData,
@@ -772,18 +877,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
             browseFilterEditTagValuesAdapter.clear();
             browseFilterEditTagValuesAdapter.addAll(values);
             browseFilterEditTagValuesAdapter.notifyDataSetChanged();
-        });
-
-        rootView.findViewById(R.id.musiclibrary_browse_filter_chip_new).setOnClickListener(view -> {
-            browseFilterEdit.setVisibility(GONE);
-            if (browseFilterNew.getVisibility() != VISIBLE) {
-                browseFilterNew.setVisibility(VISIBLE);
-                browseFilterNewInput.requestFocus();
-                Util.showSoftInput(requireActivity(), browseFilterNewInput);
-            } else {
-                browseFilterNew.setVisibility(GONE);
-                Util.hideSoftInput(requireActivity(), browseFilterNewInput);
-            }
         });
 
         return rootView;
@@ -876,18 +969,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
     }
 
     public boolean onBackPressed() {
-        boolean actionPerformed = false;
-        if (browseFilterEdit.getVisibility() == VISIBLE) {
-            browseFilterEdit.setVisibility(GONE);
-            actionPerformed = true;
-        }
-        if (browseFilterNew.getVisibility() == VISIBLE) {
-            browseFilterNew.setVisibility(GONE);
-            actionPerformed = true;
-        }
-        if (actionPerformed) {
-            return true;
-        }
         return model.popBackStack();
     }
 
@@ -909,11 +990,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         model.setSortOrder(ascending);
     }
 
-    private void filter(String filterType, String filter) {
-        model.addBackStackHistory(Util.getRecyclerViewPosition(browseRecyclerView));
-        model.filter(filterType, filter);
-    }
-
     void addBackStackHistory() {
         model.addBackStackHistory(Util.getRecyclerViewPosition(browseRecyclerView));
     }
@@ -922,97 +998,32 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         model.setQuery(query);
     }
 
-    private void clearFilterView() {
-        browseFilterChips.removeAllViews();
-    }
-
-    private void addFilterToView(String metaKey, String filter) {
-        String text = String.format(
-                "%s: %s",
-                Meta.getDisplayKey(metaKey),
-                Meta.getDisplayValue(metaKey,filter)
-        );
-        Chip newChip = new Chip(requireContext());
-        newChip.setEllipsize(TextUtils.TruncateAt.END);
-        newChip.setChipBackgroundColorResource(R.color.colorAccent);
-        newChip.setTextColor(ContextCompat.getColor(requireContext(), R.color.white));
-        newChip.setText(text);
-        newChip.setOnClickListener(v -> {
-            browseFilterNew.setVisibility(GONE);
-            if (metaKey.equals(browseFilterEditTypeValueLiveData.getValue())
-                    && browseFilterEdit.getVisibility() == VISIBLE) {
-                browseFilterEdit.setVisibility(GONE);
-                Util.hideSoftInput(requireActivity(), browseFilterEditInput);
-            } else {
-                browseFilterEditInput.setText(filter);
-                browseFilterEditInput.setOnEditorActionListener((v1, actionId, event) -> {
-                    if (actionId == EditorInfo.IME_ACTION_DONE) {
-                        String filterString = browseFilterEditInput.getText().toString();
-                        Log.d(LC, "Applying filter: " + metaKey + "(" + filterString + ")");
-                        Toast.makeText(
-                                this.requireContext(),
-                                "Applying filter: " + metaKey + "(" + filterString + ")",
-                                Toast.LENGTH_SHORT
-                        ).show();
-                        filter(metaKey, filterString);
-                        browseFilterEdit.setVisibility(GONE);
-                        Util.hideSoftInput(requireActivity(), browseFilterEditInput);
-                        return true;
-                    }
-                    return false;
-                });
-                if (!metaKey.equals(browseFilterEditTypeValueLiveData.getValue())) {
-                    browseFilterEditTypeValueLiveData.setValue(metaKey);
-                }
-                String filterEditTypeText = Meta.getDisplayKey(metaKey) + ':';
-                browseFilterEditType.setText(filterEditTypeText);
-                browseFilterEdit.setVisibility(VISIBLE);
-                browseFilterEditInput.requestFocus();
-                Util.showSoftInput(requireActivity(), browseFilterEditInput);
-            }
-        });
-        newChip.setOnCloseIconClickListener(v -> clearFilter(metaKey));
-        newChip.setCloseIconVisible(true);
-        browseFilterChips.addView(newChip, browseFilterChips.getChildCount());
-    }
-
-    private void clearFilter(String filterType) {
-        model.addBackStackHistory(Util.getRecyclerViewPosition(browseRecyclerView));
-        model.clearFilter(filterType);
-    }
-
-    private ArrayList<Bundle> getSelectedBundleQueries() {
+    private ArrayList<MusicLibraryQueryNode> getSelectedQueryTrees() {
         MutableSelection<LibraryEntry> selection = new MutableSelection<>();
         browseSelectionTracker.copySelection(selection);
-        ArrayList<Bundle> bundleQueries = new ArrayList<>();
+        ArrayList<MusicLibraryQueryNode> queryTrees = new ArrayList<>();
         List<String> sortedByKeys = querySortedByKeys();
         selection.forEach(libraryEntry -> {
             MusicLibraryQuery query = getCurrentQuery();
-            query.addEntryIDToQuery(libraryEntry.entryID);
-            query.addSortedByValuesToQuery(
-                    sortedByKeys,
-                    libraryEntry.sortedByValues()
-            );
-            bundleQueries.add(query.getQueryBundle());
+            query.andEntryIDToQuery(libraryEntry.entryID);
+            query.andSortedByValuesToQuery(sortedByKeys, libraryEntry.sortedByValues());
+            queryTrees.add(query.getQueryTree());
         });
-        return bundleQueries;
+        return queryTrees;
     }
 
     MusicLibraryQuery getCurrentQuery() {
         MusicLibraryUserState state = model.getUserState().getValue();
         return state == null ? null : new MusicLibraryQuery(state.query);
     }
-
-    private Bundle getCurrentQueryBundle() {
+    
+    private MusicLibraryQueryTree getCurrentQueryTree() {
         MusicLibraryQuery query = getCurrentQuery();
         if (query == null) {
-            return new Bundle();
+            return null;
         }
-        Bundle b = query.getQueryBundle();
-        if (b == null) {
-            return new Bundle();
-        }
-        return new Bundle(query.getQueryBundle());
+        MusicLibraryQueryTree queryTree = query.getQueryTree();
+        return queryTree.deepCopy();
     }
 
     boolean querySortedByShow() {
@@ -1078,17 +1089,14 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         if (searchRecyclerViewAdapter!= null) {
             searchRecyclerViewAdapter.hideTrackItemActions();
         }
-        if (browseFilterEdit != null && browseFilterEdit.getVisibility() == VISIBLE) {
-            Util.hideSoftInput(requireActivity(), browseFilterEditInput);
-            browseFilterEdit.setVisibility(GONE);
-        }
-        if (browseFilterNew != null && browseFilterNew.getVisibility() == VISIBLE) {
-            Util.hideSoftInput(requireActivity(), browseFilterNewInput);
-            browseFilterNew.setVisibility(GONE);
-        }
         if (searchQueryEdit != null && searchQueryEdit.hasFocus()) {
             searchQueryEdit.clearFocus();
             Util.hideSoftInput(requireActivity(), searchQueryEdit);
+        }
+        boolean needRefresh = setQueryDepth(1);
+        needRefresh = trimQueryTreeSelection(0) || needRefresh;
+        if (needRefresh && model != null) {
+            refreshView(model.getUserState().getValue());
         }
     }
 

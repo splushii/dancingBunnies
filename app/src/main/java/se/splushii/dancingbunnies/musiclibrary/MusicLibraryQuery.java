@@ -7,7 +7,6 @@ import android.util.Log;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import se.splushii.dancingbunnies.util.Util;
@@ -18,7 +17,7 @@ public class MusicLibraryQuery {
     public static final ArrayList<String> DEFAULT_SORT_FIELDS = new ArrayList<>(Collections.singletonList(Meta.FIELD_ARTIST));
     public static final String BUNDLE_KEY_SHOW = "dancingbunnies.bundle.key.musiclibraryquery.show";
     public static final String BUNDLE_KEY_SORT = "dancingbunnies.bundle.key.musiclibraryquery.sort";
-    public static final String BUNDLE_KEY_QUERY = "dancingbunnies.bundle.key.musiclibraryquery.query";
+    public static final String BUNDLE_KEY_QUERY_TREE = "dancingbunnies.bundle.key.musiclibraryquery.query_tree";
     public static final String BUNDLE_KEY_SORT_ORDER = "dancingbunnies.bundle.key.musiclibraryquery.sort_order";
 
     public enum MusicLibraryQueryType {
@@ -26,7 +25,7 @@ public class MusicLibraryQuery {
         SEARCH
     }
     private final MusicLibraryQueryType type;
-    private Bundle subQuery;
+    private MusicLibraryQueryTree queryTree;
     private String searchQuery;
     private String showField;
     private ArrayList<String> sortByFields;
@@ -43,10 +42,10 @@ public class MusicLibraryQuery {
             init();
             return;
         }
-        if (query.subQuery == null) {
-            subQuery = new Bundle();
+        if (query.queryTree == null) {
+            this.queryTree = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND);
         } else {
-            this.subQuery = query.subQuery.deepCopy();
+            this.queryTree = query.queryTree.deepCopy();
         }
         if (query.showField == null) {
             showField = DEFAULT_SHOW_FIELD;
@@ -69,10 +68,18 @@ public class MusicLibraryQuery {
     }
 
     private void init() {
-        this.subQuery = new Bundle();
+        this.queryTree = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND);
         this.showField = DEFAULT_SHOW_FIELD;
         this.sortByFields = DEFAULT_SORT_FIELDS;
         this.sortOrderAscending = true;
+    }
+
+    public MusicLibraryQueryTree getQueryTree() {
+        return queryTree;
+    }
+
+    public void setQueryTree(MusicLibraryQueryTree queryTree) {
+        this.queryTree = queryTree;
     }
 
     public void setShowField(String field) {
@@ -81,10 +88,6 @@ public class MusicLibraryQuery {
 
     public String getShowField() {
         return showField;
-    }
-
-    public void setSortByField(String field) {
-        this.sortByFields = new ArrayList<>(Collections.singletonList(field));
     }
 
     public void setSortByFields(ArrayList<String> field) {
@@ -114,21 +117,26 @@ public class MusicLibraryQuery {
                 || Meta.FIELD_SPECIAL_MEDIA_ID.equals(showField) && Meta.FIELD_TITLE.equals(sortByField);
     }
 
-    public void addEntryIDToQuery(EntryID entryID) {
+    public void andEntryIDToQuery(EntryID entryID) {
         if (entryID != null && !entryID.isUnknown()) {
-            addToQuery(entryID.type, entryID.id);
+            and(entryID.type, entryID.id);
         }
     }
 
-    public void addToQuery(String key, String value) {
+    public void and(String key, String value) {
         if (type != MusicLibraryQueryType.SUBSCRIPTION) {
-            Log.e(LC, "addToQuery on type: " + type.name());
+            Log.e(LC, "and on type: " + type.name());
             return;
         }
-        subQuery.putString(key, value);
+        if (queryTree.getOperator() != MusicLibraryQueryTree.Op.AND) {
+            MusicLibraryQueryTree newRoot = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND);
+            newRoot.addChild(queryTree);
+            queryTree = newRoot;
+        }
+        queryTree.addChild(new MusicLibraryQueryLeaf(key, value));
     }
 
-    public void addSortedByValuesToQuery(List<String> sortedByKeys,
+    public void andSortedByValuesToQuery(List<String> sortedByKeys,
                                          ArrayList<String> sortedByValues) {
         for (int i = 0; i < sortedByKeys.size(); i++) {
             String key = sortedByKeys.get(i);
@@ -138,20 +146,8 @@ public class MusicLibraryQuery {
             if (value == null) {
                 continue;
             }
-            addToQuery(key, value);
+            and(key, value);
         }
-    }
-
-    public Bundle getQueryBundle() {
-        return subQuery;
-    }
-
-    public void removeFromQuery(String key) {
-        if (type != MusicLibraryQueryType.SUBSCRIPTION) {
-            Log.e(LC, "removeFromQuery on type: " + type.name());
-            return;
-        }
-        subQuery.remove(key);
     }
 
     private Bundle toSubscriptionBundle() {
@@ -159,7 +155,7 @@ public class MusicLibraryQuery {
         b.putString(BUNDLE_KEY_SHOW, showField);
         b.putStringArrayList(BUNDLE_KEY_SORT, sortByFields);
         b.putBoolean(BUNDLE_KEY_SORT_ORDER, sortOrderAscending);
-        b.putBundle(BUNDLE_KEY_QUERY, subQuery);
+        b.putParcelable(BUNDLE_KEY_QUERY_TREE, queryTree);
         return b;
     }
 
@@ -176,7 +172,7 @@ public class MusicLibraryQuery {
     }
 
     private String subscriptionID() {
-        return subQuery.toString();
+        return queryTree.toJSON().toString();
     }
 
     public String query(MediaBrowserCompat mediaBrowser,
@@ -241,22 +237,5 @@ public class MusicLibraryQuery {
 
     public static abstract class MusicLibraryQueryCallback {
         public abstract void onQueryResult(@NonNull List<MediaBrowserCompat.MediaItem> items);
-    }
-
-    public static ArrayList<Bundle> toQueryBundles(List<EntryID> entryIDs, Bundle query) {
-        return entryIDs.stream()
-                .map(entryID -> toQueryBundle(entryID, query))
-                .collect(Collectors.toCollection(ArrayList::new));
-    }
-
-    public static Bundle toQueryBundle(EntryID entryID, Bundle query) {
-        Bundle b = new Bundle();
-        if (query != null) {
-            b.putAll(query);
-        }
-        if (!entryID.isUnknown()) {
-            b.putString(entryID.type, entryID.id);
-        }
-        return b;
     }
 }

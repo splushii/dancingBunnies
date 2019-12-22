@@ -50,6 +50,7 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
@@ -168,12 +169,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         String showField = options.getString(MusicLibraryQuery.BUNDLE_KEY_SHOW);
         List<String> sortFields = options.getStringArrayList(MusicLibraryQuery.BUNDLE_KEY_SORT);
         boolean sortOrderAscending = options.getBoolean(MusicLibraryQuery.BUNDLE_KEY_SORT_ORDER);
-        Bundle query = options.getBundle(MusicLibraryQuery.BUNDLE_KEY_QUERY);
+        MusicLibraryQueryNode queryNode = options.getParcelable(MusicLibraryQuery.BUNDLE_KEY_QUERY_TREE);
         LiveData<List<LibraryEntry>> entries = musicLibraryService.getSubscriptionEntries(
                 showField,
                 sortFields,
                 sortOrderAscending,
-                query
+                queryNode
         );
         subscriptionLiveData.put(id, entries);
         Observer<List<LibraryEntry>> observer = libraryEntries -> {
@@ -721,10 +722,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     public static CompletableFuture<Boolean> play(MediaControllerCompat mediaController,
                                                   List<EntryID> entryIDs,
-                                                  Bundle query) {
+                                                  MusicLibraryQueryNode queryNode) {
         Bundle params = new Bundle();
         params.putParcelableArrayList("entryids", new ArrayList<>(entryIDs));
-        params.putBundle("query", query);
+        params.putParcelable("query", queryNode);
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
                 COMMAND_PLAY_ENTRYIDS,
@@ -741,13 +742,13 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void play(ResultReceiver cb, Bundle b) {
         ArrayList<EntryID> entryIDs = b.getParcelableArrayList("entryids");
-        Bundle query = b.getBundle("query");
+        MusicLibraryQueryNode queryNode = b.getParcelable("query");
         if (entryIDs == null || entryIDs.isEmpty()) {
             cb.send(-1, null);
             return;
         }
-        Log.d(LC, "play() " + entryIDs.size() + " entryIDs, query: " + query);
-        MusicLibraryService.getSongEntriesOnce(musicLibraryService, entryIDs, query)
+        Log.d(LC, "play() " + entryIDs.size() + " entryIDs, query: " + queryNode);
+        MusicLibraryService.getSongEntriesOnce(musicLibraryService, entryIDs, queryNode)
                 .thenComposeAsync(songEntryIDs -> {
                     Log.d(LC, "play() total song entries: " + songEntryIDs.size());
                     return playbackController.playNow(songEntryIDs);
@@ -760,9 +761,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     public static CompletableFuture<Boolean> playQueryBundles(MediaControllerCompat mediaController,
-                                                              List<Bundle> queryBundles) {
+                                                              List<MusicLibraryQueryNode> queryNodes) {
         Bundle params = new Bundle();
-        params.putParcelableArrayList("queryBundles", new ArrayList<>(queryBundles));
+        params.putParcelableArrayList("queryNodes", new ArrayList<>(queryNodes));
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
                 COMMAND_PLAY_QUERY_BUNDLES,
@@ -778,13 +779,13 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void playQueryBundles(ResultReceiver cb, Bundle b) {
-        ArrayList<Bundle> queryBundles = b.getParcelableArrayList("queryBundles");
-        if (queryBundles == null || queryBundles.isEmpty()) {
+        ArrayList<MusicLibraryQueryNode> queryNodes = b.getParcelableArrayList("queryNodes");
+        if (queryNodes == null || queryNodes.isEmpty()) {
             cb.send(-1, null);
             return;
         }
-        Log.d(LC, "play() " + queryBundles.size() + " queries");
-        MusicLibraryService.getSongEntriesOnce(musicLibraryService, queryBundles)
+        Log.d(LC, "play() " + queryNodes.size() + " queries");
+        MusicLibraryService.getSongEntriesOnce(musicLibraryService, queryNodes)
                 .thenComposeAsync(songEntryIDs -> {
                     Log.d(LC, "play() total song entries: " + songEntryIDs.size());
                     return playbackController.playNow(songEntryIDs);
@@ -798,10 +799,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     public static CompletableFuture<Boolean> queue(MediaControllerCompat mediaController,
                                                    List<EntryID> entryIDs,
-                                                   Bundle query) {
+                                                   MusicLibraryQueryNode queryNode) {
         Bundle params = new Bundle();
         params.putParcelableArrayList("entryids", new ArrayList<>(entryIDs));
-        params.putBundle("query", query);
+        params.putParcelable("query", queryNode);
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
                 COMMAND_QUEUE_ENTRYIDS,
@@ -818,13 +819,13 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void queue(ResultReceiver cb, Bundle b) {
         ArrayList<EntryID> entryIDs = b.getParcelableArrayList("entryids");
-        Bundle query = b.getBundle("query");
+        MusicLibraryQueryNode queryNode = b.getParcelable("query");
         if (entryIDs == null || entryIDs.isEmpty()) {
             cb.send(-1, null);
             return;
         }
         Log.d(LC, "queue() adding " + entryIDs.size() + " entryIDs");
-        MusicLibraryService.getSongEntriesOnce(musicLibraryService, entryIDs, query)
+        MusicLibraryService.getSongEntriesOnce(musicLibraryService, entryIDs, queryNode)
                 .thenComposeAsync(songEntryIDs -> {
                     Log.d(LC, "queue() total song entries: " + songEntryIDs.size());
                     return playbackController.queue(songEntryIDs);
@@ -838,10 +839,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     public static CompletableFuture<Boolean> queueQueryBundles(
             MediaControllerCompat mediaController,
-            List<Bundle> queryBundles
+            List<MusicLibraryQueryNode> queryNodes
     ) {
         Bundle params = new Bundle();
-        params.putParcelableArrayList("queryBundles", new ArrayList<>(queryBundles));
+        params.putParcelableArrayList("queryNodes", new ArrayList<>(queryNodes));
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
                 COMMAND_QUEUE_QUERY_BUNDLES,
@@ -857,13 +858,13 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void queueQueryBundles(ResultReceiver cb, Bundle b) {
-        ArrayList<Bundle> queryBundles = b.getParcelableArrayList("queryBundles");
-        if (queryBundles == null || queryBundles.isEmpty()) {
+        ArrayList<MusicLibraryQueryNode> queryNodes = b.getParcelableArrayList("queryNodes");
+        if (queryNodes == null || queryNodes.isEmpty()) {
             cb.send(-1, null);
             return;
         }
-        Log.d(LC, "queue() " + queryBundles.size() + " queries");
-        MusicLibraryService.getSongEntriesOnce(musicLibraryService, queryBundles)
+        Log.d(LC, "queue() " + queryNodes.size() + " queries");
+        MusicLibraryService.getSongEntriesOnce(musicLibraryService, queryNodes)
                 .thenComposeAsync(songEntryIDs -> {
                     Log.d(LC, "queue() total song entries: " + songEntryIDs.size());
                     return playbackController.queue(songEntryIDs);

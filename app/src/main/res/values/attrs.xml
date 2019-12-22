@@ -1,4 +1,5 @@
 <resources>
     <declare-styleable name="TrackItemActionsView" />
     <declare-styleable name="TrackItemView" />
+    <declare-styleable name="MusicLibraryFilterGroup" />
 </resources>

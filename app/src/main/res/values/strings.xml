@@ -104,8 +104,8 @@
     <string name="preload_status">Preload status</string>
     <string name="cached">Cached</string>
     <string name="add_to_playlist">Add to playlist</string>
-    <string name="add_to_new_playlist">Add to new playlist</string>
     <string name="add_to_new_playlist_name">New playlist name</string>
+    <string name="save_to_new_playlist">Save to new playlist</string>
     <string name="playlist_select">Active</string>
     <string name="playlist_show_playback_order">Playback order</string>
     <string name="playlist_deselect">Deselect playlist</string>

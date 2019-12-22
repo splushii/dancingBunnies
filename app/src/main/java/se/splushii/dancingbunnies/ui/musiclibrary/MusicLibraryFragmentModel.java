@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
-import androidx.core.util.Consumer;
 import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
@@ -17,6 +16,7 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryTree;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryFragmentModel extends ViewModel {
@@ -27,7 +27,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
     private String currentSubscriptionID;
     private MutableLiveData<List<LibraryEntry>> dataset;
     private MutableLiveData<PlaybackEntry> currentEntry;
-    private Consumer<CharSequence> setSearchQueryListener = s -> {};
+    private List<Integer> queryTreeSelection;
 
     private static MusicLibraryUserState initialUserState() {
         return new MusicLibraryUserState(new MusicLibraryQuery(), 0, 0);
@@ -72,6 +72,13 @@ public class MusicLibraryFragmentModel extends ViewModel {
         getBackStack().push(new MusicLibraryUserState(getMusicLibraryQuery(), currentPosition));
     }
 
+    public void addBackStackHistory(Pair<Integer, Integer> currentPosition,
+                                    MusicLibraryQueryTree queryTree) {
+        MusicLibraryQuery query = getMusicLibraryQuery();
+        query.setQueryTree(queryTree);
+        getBackStack().push(new MusicLibraryUserState(query, currentPosition));
+    }
+
     boolean popBackStack() {
         if (getBackStack().size() > 0) {
             getMutableUserState().setValue(getBackStack().pop());
@@ -82,12 +89,6 @@ public class MusicLibraryFragmentModel extends ViewModel {
 
     void reset() {
         getMutableUserState().setValue(initialUserState());
-    }
-
-    void filter(String filterType, String filter) {
-        MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
-        query.addToQuery(filterType, filter);
-        getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 
     void setQuery(MusicLibraryQuery query) {
@@ -113,18 +114,24 @@ public class MusicLibraryFragmentModel extends ViewModel {
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 
-    void clearFilter(String filterType) {
-        MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
-        query.removeFromQuery(filterType);
-        getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
-    }
-
     private void setCurrentSubscriptionID(String currentSubscriptionID) {
         this.currentSubscriptionID = currentSubscriptionID;
     }
 
     private String getCurrentSubscriptionID() {
         return currentSubscriptionID;
+    }
+
+    public void setQueryTreeSelection(List<Integer> queryTreeSelection) {
+        this.queryTreeSelection.clear();
+        this.queryTreeSelection.addAll(queryTreeSelection);
+    }
+
+    public List<Integer> getQueryTreeSelection() {
+        if (queryTreeSelection == null) {
+            queryTreeSelection = new ArrayList<>();
+        }
+        return queryTreeSelection;
     }
 
     public void query(String filterType, String filter) {
@@ -135,7 +142,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
 
     private void showOnly(String filterType, String filter) {
         MusicLibraryQuery query = new MusicLibraryQuery();
-        query.addToQuery(filterType, filter);
+        query.and(filterType, filter);
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 

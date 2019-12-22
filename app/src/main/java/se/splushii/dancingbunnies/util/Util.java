@@ -16,7 +16,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
 import androidx.core.util.Pair;
-import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -52,13 +51,13 @@ public class Util {
         return String.format("%0" + (in.length * 2) + "x", new BigInteger(1, in));
     }
 
-    public static void showSoftInput(FragmentActivity activity, View v) {
-        ((InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE))
+    public static void showSoftInput(Context context, View v) {
+        ((InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE))
                 .showSoftInput(v, InputMethodManager.SHOW_IMPLICIT);
     }
 
-    public static void hideSoftInput(FragmentActivity activity, View v) {
-        ((InputMethodManager) activity.getSystemService(Context.INPUT_METHOD_SERVICE))
+    public static void hideSoftInput(Context context, View v) {
+        ((InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE))
                 .hideSoftInputFromWindow(v.getWindowToken(), 0);
     }
 

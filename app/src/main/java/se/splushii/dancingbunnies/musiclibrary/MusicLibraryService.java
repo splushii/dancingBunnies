@@ -4,7 +4,6 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
-import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
@@ -119,7 +118,7 @@ public class MusicLibraryService extends Service {
                                         Meta.FIELD_SPECIAL_MEDIA_ID,
                                         Collections.singletonList(Meta.FIELD_TITLE),
                                         true,
-                                        SmartPlaylist.jsonQueryToBundle(playlist.query)
+                                        MusicLibraryQueryNode.fromJSON(playlist.query)
                                 )
                 ),
                 libraryEntries -> {
@@ -221,10 +220,12 @@ public class MusicLibraryService extends Service {
         return audioDataSource == null ? null : audioDataSource.getURL();
     }
 
-    public static CompletableFuture<Void> downloadAudioData(Context context,
-                                                            ArrayList<Bundle> queryBundles,
-                                                            int priority) {
-        return getSongEntriesOnce(context, queryBundles)
+    public static CompletableFuture<Void> downloadAudioData(
+            Context context,
+            List<MusicLibraryQueryNode> queryNodes,
+            int priority
+    ) {
+        return getSongEntriesOnce(context, queryNodes)
                 .thenAccept(songEntryIDs -> songEntryIDs.forEach(songEntryID ->
                         downloadAudioData(context, songEntryID, priority)
                 ));
@@ -244,9 +245,9 @@ public class MusicLibraryService extends Service {
 
     public static synchronized CompletableFuture<Void> deleteAudioData(
             Context context,
-            ArrayList<Bundle> queryBundles
+            ArrayList<MusicLibraryQueryNode> queryNodes
     ) {
-        return getSongEntriesOnce(context, queryBundles)
+        return getSongEntriesOnce(context, queryNodes)
                 .thenAccept(songEntryIDs -> songEntryIDs.forEach(songEntryID ->
                         deleteAudioData(context, songEntryID)
                 ));
@@ -279,26 +280,28 @@ public class MusicLibraryService extends Service {
     public LiveData<List<LibraryEntry>> getSubscriptionEntries(String showField,
                                                                List<String> sortFields,
                                                                boolean sortOrderAscending,
-                                                               Bundle query) {
+                                                               MusicLibraryQueryNode queryNode) {
         return metaStorage.getEntries(
                 showField,
                 sortFields,
                 sortOrderAscending,
-                query
+                queryNode
         );
-    }
-
-    public static CompletableFuture<List<EntryID>> getSongEntriesOnce(Context context,
-                                                                      List<EntryID> entryIDs,
-                                                                      Bundle query) {
-        return MetaStorage.getInstance(context).getSongEntriesOnce(entryIDs, query);
     }
 
     public static CompletableFuture<List<EntryID>> getSongEntriesOnce(
             Context context,
-            ArrayList<Bundle> queryBundles
+            List<EntryID> entryIDs,
+            MusicLibraryQueryNode queryNode
     ) {
-        return MetaStorage.getInstance(context).getSongEntriesOnce(queryBundles);
+        return MetaStorage.getInstance(context).getSongEntriesOnce(entryIDs, queryNode);
+    }
+
+    public static CompletableFuture<List<EntryID>> getSongEntriesOnce(
+            Context context,
+            List<MusicLibraryQueryNode> queryNodes
+    ) {
+        return MetaStorage.getInstance(context).getSongEntriesOnce(queryNodes);
     }
 
     public List<EntryID> getSearchEntries(String query) {
@@ -322,14 +325,14 @@ public class MusicLibraryService extends Service {
     public static LiveData<HashSet<EntryID>> getCachedEntries(Context context) {
         MusicLibraryQuery query = new MusicLibraryQuery();
         query.setShowField(Meta.FIELD_SPECIAL_MEDIA_ID);
-        query.setSortByField(Meta.FIELD_TITLE);
-        query.addToQuery(Meta.FIELD_LOCAL_CACHED, Meta.FIELD_LOCAL_CACHED_VALUE_YES);
+        query.setSortByFields(new ArrayList<>(Collections.singletonList(Meta.FIELD_TITLE)));
+        query.and(Meta.FIELD_LOCAL_CACHED, Meta.FIELD_LOCAL_CACHED_VALUE_YES);
         return Transformations.map(
                 MetaStorage.getInstance(context).getEntries(
                         query.getShowField(),
                         query.getSortByFields(),
                         query.isSortOrderAscending(),
-                        query.getQueryBundle()
+                        query.getQueryTree()
                 ),
                 libraryEntries -> libraryEntries.stream()
                         .map(EntryID::from)
