@@ -7,7 +7,6 @@ import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -38,18 +37,21 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
             "dancingbunnies.bundle.key.add_to_new_playlist_dialog.entryids";
 
     private MusicLibraryQueryNode query;
-    private ArrayList<MusicLibraryQueryNode> queries;
+    private List<MusicLibraryQueryNode> queries;
     private EditText addToNewPlaylistEditText;
 
     public static void showDialog(Fragment fragment, MusicLibraryQueryNode queryTree) {
         Bundle args = new Bundle();
-        args.putParcelable(BUNDLE_KEY_QUERY, queryTree);
+        args.putString(BUNDLE_KEY_QUERY, queryTree.toJSON().toString());
         _showDialog(fragment, args);
     }
 
     static void showDialog(Fragment fragment, List<MusicLibraryQueryNode> queryTrees) {
         Bundle args = new Bundle();
-        args.putParcelableArrayList(BUNDLE_KEY_QUERY_BUNDLES, new ArrayList<>(queryTrees));
+        args.putStringArray(
+                BUNDLE_KEY_QUERY_BUNDLES,
+                MusicLibraryQueryNode.toJSONStringArray(queryTrees)
+        );
         _showDialog(fragment, args);
     }
 
@@ -69,7 +71,7 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         Bundle args = getArguments();
-        this.queries = args.getParcelableArrayList(BUNDLE_KEY_QUERY_BUNDLES);
+        this.queries = MusicLibraryQueryNode.fromJSONStringArray(args.getStringArray(BUNDLE_KEY_QUERY_BUNDLES));
         this.query = args.getParcelable(BUNDLE_KEY_QUERY);
         super.onCreate(savedInstanceState);
     }

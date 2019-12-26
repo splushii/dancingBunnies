@@ -155,7 +155,7 @@ public class MusicLibraryQuery {
         b.putString(BUNDLE_KEY_SHOW, showField);
         b.putStringArrayList(BUNDLE_KEY_SORT, sortByFields);
         b.putBoolean(BUNDLE_KEY_SORT_ORDER, sortOrderAscending);
-        b.putParcelable(BUNDLE_KEY_QUERY_TREE, queryTree);
+        b.putString(BUNDLE_KEY_QUERY_TREE, queryTree.toJSON().toString());
         return b;
     }
 

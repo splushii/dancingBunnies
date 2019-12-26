@@ -45,7 +45,7 @@ public class AddToPlaylistDialogFragment
     private PlaylistFragmentModel model;
     private PlaylistAdapter recViewAdapter;
 
-    private ArrayList<MusicLibraryQueryNode> queryNodes;
+    private List<MusicLibraryQueryNode> queryNodes;
     private CompletableFuture<List<EntryID>> songEntries;
 
     static void showDialog(Fragment fragment, List<MusicLibraryQueryNode> queryNodes) {
@@ -53,7 +53,7 @@ public class AddToPlaylistDialogFragment
             return;
         }
         Bundle args = new Bundle();
-        args.putParcelableArrayList(BUNDLE_KEY_QUERY_NODES, new ArrayList<>(queryNodes));
+        args.putStringArray(BUNDLE_KEY_QUERY_NODES, MusicLibraryQueryNode.toJSONStringArray(queryNodes));
         showDialog(fragment, args);
     }
 
@@ -80,7 +80,9 @@ public class AddToPlaylistDialogFragment
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         Bundle args = getArguments();
-        queryNodes = args.getParcelableArrayList(BUNDLE_KEY_QUERY_NODES);
+        queryNodes = MusicLibraryQueryNode.fromJSONStringArray(
+                args.getStringArray(BUNDLE_KEY_QUERY_NODES)
+        );
         super.onCreate(savedInstanceState);
     }
 

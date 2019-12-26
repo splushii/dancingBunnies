@@ -1,20 +1,26 @@
 package se.splushii.dancingbunnies.musiclibrary;
 
-import android.os.Parcel;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
     private static final String JSON_KEY_KEY = "key";
     private static final String JSON_KEY_OP = "op";
     static final String JSON_KEY_VALUE = "value";
 
-    enum Op {
-        EQUALS
+    public enum Op {
+        EQUALS,
+        LIKE,
+        LESS,
+        LESS_OR_EQUALS,
+        GREATER,
+        GREATER_OR_EQUALS
     }
     private String key;
     private Op operator;
@@ -23,6 +29,12 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
     public MusicLibraryQueryLeaf(String key, String value) {
         this.key = key;
         operator = Op.EQUALS;
+        this.value = value;
+    }
+
+    public MusicLibraryQueryLeaf(String key, Op operator, String value) {
+        this.key = key;
+        this.operator = operator;
         this.value = value;
     }
 
@@ -36,29 +48,12 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
         }
     }
 
-    protected MusicLibraryQueryLeaf(Parcel in) {
-        super(in);
-        key = in.readString();
-        operator = Op.valueOf(in.readString());
-        value = in.readString();
-    }
-
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    @Override
-    public void writeToParcel(Parcel parcel, int i) {
-        parcel.writeInt(MusicLibraryQueryNode.CLASS_TYPE_LEAF);
-        super.writeToParcel(parcel, i);
-        parcel.writeString(key);
-        parcel.writeString(operator.name());
-        parcel.writeString(value);
-    }
-
     public void setOperator(Op op) {
         operator = op;
+    }
+
+    public Op getOperator() {
+        return operator;
     }
 
     public String getKey() {
@@ -107,5 +102,68 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
     @Override
     public HashSet<String> getKeys() {
         return new HashSet<>(Collections.singleton(key));
+    }
+
+    public String getSQLOp() {
+        switch (operator) {
+            case EQUALS:
+                return "==";
+            case LIKE:
+                return "LIKE";
+            case LESS:
+                return "<";
+            case LESS_OR_EQUALS:
+                return "<=";
+            case GREATER:
+                return ">";
+            case GREATER_OR_EQUALS:
+                return ">=";
+            default:
+                return null;
+        }
+    }
+
+    public static String getDisplayableOp(Op op) {
+        switch (op) {
+            default:
+            case EQUALS:
+                return "=";
+            case LIKE:
+                return "~";
+            case LESS:
+                return "<";
+            case LESS_OR_EQUALS:
+                return "<=";
+            case GREATER:
+                return ">";
+            case GREATER_OR_EQUALS:
+                return ">=";
+        }
+    }
+
+    public static List<String> getDisplayableOps(String key) {
+        return getOps(key).stream()
+                .map(MusicLibraryQueryLeaf::getDisplayableOp)
+                .collect(Collectors.toList());
+    }
+
+    public static List<Op> getOps(String key) {
+        switch (Meta.getType(key)) {
+            default:
+            case STRING:
+                return Arrays.asList(
+                        Op.EQUALS,
+                        Op.LIKE
+                );
+            case DOUBLE:
+            case LONG:
+                return Arrays.asList(
+                        Op.EQUALS,
+                        Op.LESS,
+                        Op.LESS_OR_EQUALS,
+                        Op.GREATER,
+                        Op.GREATER_OR_EQUALS
+                );
+        }
     }
 }

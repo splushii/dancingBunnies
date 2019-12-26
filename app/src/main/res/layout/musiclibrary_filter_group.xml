@@ -98,6 +98,11 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"/>
+        <Spinner
+            android:id="@+id/musiclibrary_filter_group_new_operator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"/>
         <AutoCompleteTextView
             android:id="@+id/musiclibrary_filter_group_new_text"
             android:layout_width="0dp"
@@ -133,6 +138,11 @@
             android:paddingBottom="4sp"
             android:paddingStart="16sp"
             android:paddingEnd="2dp"/>
+        <Spinner
+            android:id="@+id/musiclibrary_filter_group_edit_operator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"/>
         <AutoCompleteTextView
             android:id="@+id/musiclibrary_filter_group_edit_input"
             android:layout_width="0dp"

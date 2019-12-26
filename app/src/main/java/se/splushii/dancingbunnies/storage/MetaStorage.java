@@ -311,11 +311,14 @@ public class MetaStorage {
         boolean whereClauseEmpty = true;
         if (queryNode instanceof MusicLibraryQueryLeaf) {
             MusicLibraryQueryLeaf leaf = (MusicLibraryQueryLeaf) queryNode;
-            addQueryLeafToQuery(tmpQuery, tmpQueryArgs, keyToTableAliasMap, "", leaf);
+            addQueryLeafToQuery(tmpQuery, tmpQueryArgs, keyToTableAliasMap, " (", leaf);
             whereClauseEmpty = false;
         } else if (queryNode instanceof MusicLibraryQueryTree) {
             MusicLibraryQueryTree tree = (MusicLibraryQueryTree) queryNode;
             for (MusicLibraryQueryNode node: tree) {
+                if (node == null) {
+                    continue;
+                }
                 String operatorString;
                 switch (tree.getOperator()) {
                     default:
@@ -361,11 +364,11 @@ public class MetaStorage {
                     whereClauseEmpty = false;
                 }
             }
-            if (!whereClauseEmpty) {
-                tmpQuery.append(" )");
-                query.append(tmpQuery);
-                queryArgs.addAll(tmpQueryArgs);
-            }
+        }
+        if (!whereClauseEmpty) {
+            tmpQuery.append(" )");
+            query.append(tmpQuery);
+            queryArgs.addAll(tmpQueryArgs);
         }
         return !whereClauseEmpty;
     }
@@ -379,15 +382,20 @@ public class MetaStorage {
     ) {
         String key = leaf.getKey();
         String value = leaf.getValue();
-        if (value == null) {
-            Log.e(LC, "value is null for key: " + key);
-            return false;
-        }
+        String sqlOp = leaf.getSQLOp();
         String typeTableAlias = keyToTableAliasMap.get(key);
         if (typeTableAlias == null) {
             Log.e(LC, "There is no type table"
                     + " for bundleQuery key \"" + key + "\""
                     + " with type " + Meta.getType(key));
+            return false;
+        }
+        if (value == null) {
+            Log.e(LC, "value is null for key: " + key);
+            return false;
+        }
+        if (sqlOp == null) {
+            Log.e(LC, "op is null for key: " + key);
             return false;
         }
         switch (Meta.getType(key)) {
@@ -413,7 +421,7 @@ public class MetaStorage {
         } else {
             query.append(DB.COLUMN_VALUE);
         }
-        query.append(" = ?");
+        query.append(" ").append(sqlOp).append(" ?");
         return true;
     }
 

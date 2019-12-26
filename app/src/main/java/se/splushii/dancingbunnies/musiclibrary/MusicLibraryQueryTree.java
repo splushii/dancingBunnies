@@ -1,7 +1,5 @@
 package se.splushii.dancingbunnies.musiclibrary;
 
-import android.os.Parcel;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -50,25 +48,6 @@ public class MusicLibraryQueryTree extends MusicLibraryQueryNode implements Iter
         }
     }
 
-    protected MusicLibraryQueryTree(Parcel in) {
-        super(in);
-        operator = Op.valueOf(in.readString());
-        children = in.createTypedArrayList(MusicLibraryQueryNode.CREATOR);
-    }
-
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    @Override
-    public void writeToParcel(Parcel parcel, int i) {
-        parcel.writeInt(MusicLibraryQueryNode.CLASS_TYPE_TREE);
-        super.writeToParcel(parcel, i);
-        parcel.writeString(operator.name());
-        parcel.writeList(children);
-    }
-
     public void addChild(MusicLibraryQueryNode node) {
         children.add(node);
     }
@@ -100,7 +79,9 @@ public class MusicLibraryQueryTree extends MusicLibraryQueryNode implements Iter
             jsonRoot.put(JSON_KEY_OP, operator.name());
             JSONArray jsonChildren = new JSONArray();
             for (MusicLibraryQueryNode node: children) {
-                jsonChildren.put(node.toJSON());
+                if (node != null) {
+                    jsonChildren.put(node.toJSON());
+                }
             }
             jsonRoot.put(JSON_KEY_CHILDREN, jsonChildren);
         } catch (JSONException e) {
@@ -129,7 +110,9 @@ public class MusicLibraryQueryTree extends MusicLibraryQueryNode implements Iter
     public HashSet<String> getKeys() {
         HashSet<String> keys = new HashSet<>();
         for (MusicLibraryQueryNode node: children) {
-            keys.addAll(node.getKeys());
+            if (node != null) {
+                keys.addAll(node.getKeys());
+            }
         }
         return keys;
     }

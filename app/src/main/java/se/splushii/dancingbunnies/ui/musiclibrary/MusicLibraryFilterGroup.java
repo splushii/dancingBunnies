@@ -4,7 +4,6 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.text.TextUtils;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.inputmethod.EditorInfo;
@@ -14,18 +13,17 @@ import android.widget.AutoCompleteTextView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryLeaf;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryTree;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -37,22 +35,18 @@ public class MusicLibraryFilterGroup extends LinearLayout {
     private Chip activeChip;
 
     private View newSelectionView;
-    private View newSelectionAll;
-    private View newSelectionAny;
-    private View newSelectionFilter;
 
     private View newView;
     private Spinner newType;
+    private Spinner newOp;
     private AutoCompleteTextView newInput;
     private View editView;
     private TextView editType;
+    private Spinner editOp;
     private AutoCompleteTextView editInput;
 
-    private Runnable onNewActivatedCb;
-    private Consumer<Integer> onNewItemSelectedCb;
-    private BiConsumer<Integer, String> onNewItemActionDoneCb;
+    private NewListener newListener;
     private Consumer<MusicLibraryQueryTree.Op> onOpChangedCb;
-    private Consumer<MusicLibraryQueryTree.Op> onNewSubQueryCb;
 
     private MusicLibraryQueryTree.Op operator;
 
@@ -85,14 +79,16 @@ public class MusicLibraryFilterGroup extends LinearLayout {
         newBtn = findViewById(R.id.musiclibrary_filter_group_new_btn);
         filters = findViewById(R.id.musiclibrary_filter_group_filters);
         newSelectionView = findViewById(R.id.musiclibrary_filter_group_new_selection);
-        newSelectionAll = findViewById(R.id.musiclibrary_filter_group_new_selection_all);
-        newSelectionAny = findViewById(R.id.musiclibrary_filter_group_new_selection_any);
-        newSelectionFilter = findViewById(R.id.musiclibrary_filter_group_new_selection_filter);
+        View newSelectionAll = findViewById(R.id.musiclibrary_filter_group_new_selection_all);
+        View newSelectionAny = findViewById(R.id.musiclibrary_filter_group_new_selection_any);
+        View newSelectionFilter = findViewById(R.id.musiclibrary_filter_group_new_selection_filter);
         newView = findViewById(R.id.musiclibrary_filter_group_new);
         newType = findViewById(R.id.musiclibrary_filter_group_new_type);
+        newOp = findViewById(R.id.musiclibrary_filter_group_new_operator);
         newInput = findViewById(R.id.musiclibrary_filter_group_new_text);
         editView = findViewById(R.id.musiclibrary_filter_group_edit);
         editType = findViewById(R.id.musiclibrary_filter_group_edit_type);
+        editOp = findViewById(R.id.musiclibrary_filter_group_edit_operator);
         editInput = findViewById(R.id.musiclibrary_filter_group_edit_input);
 
         operatorView.setOnClickListener(view -> {
@@ -108,19 +104,19 @@ public class MusicLibraryFilterGroup extends LinearLayout {
             if (newView.getVisibility() != VISIBLE
                      && newSelectionView.getVisibility() != VISIBLE) {
                 newSelectionView.setVisibility(VISIBLE);
-                onNewActivatedCb.run();
+                newListener.onActivated();
             } else {
                 deactivate();
             }
         });
 
         newSelectionAll.setOnClickListener(view -> {
-            onNewSubQueryCb.accept(MusicLibraryQueryTree.Op.AND);
+            newListener.onSubQuerySubmit(MusicLibraryQueryTree.Op.AND);
             deactivate();
         });
 
         newSelectionAny.setOnClickListener(view -> {
-            onNewSubQueryCb.accept(MusicLibraryQueryTree.Op.OR);
+            newListener.onSubQuerySubmit(MusicLibraryQueryTree.Op.OR);
             deactivate();
         });
 
@@ -135,7 +131,8 @@ public class MusicLibraryFilterGroup extends LinearLayout {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
                 int pos = newType.getSelectedItemPosition();
-                MusicLibraryFilterGroup.this.onNewTypeSelected(pos);
+                String key = MusicLibraryFilterGroup.this.onNewTypeSelected(pos);
+                newInput.setInputType(Meta.getInputType(key));
             }
 
             @Override
@@ -144,8 +141,10 @@ public class MusicLibraryFilterGroup extends LinearLayout {
 
         newInput.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
-                int pos = newType.getSelectedItemPosition();
-                onNewItemActionDoneCb.accept(pos, newInput.getText().toString());
+                int typePos = newType.getSelectedItemPosition();
+                int opPos = newOp.getSelectedItemPosition();
+                String input = newInput.getText().toString();
+                newListener.onFilterSubmit(typePos, opPos, input);
                 deactivate();
                 return true;
             }
@@ -169,33 +168,29 @@ public class MusicLibraryFilterGroup extends LinearLayout {
     }
 
     public void addLeafFilter(String key,
+                              MusicLibraryQueryLeaf.Op op,
                               String value,
-                              ArrayAdapter<String> valuesAdapter,
-                              Runnable onActivate,
-                              Runnable onDeactivate,
-                              Consumer<String> onEditDone,
-                              Runnable onClose) {
-        editInput.setAdapter(valuesAdapter);
+                              ArrayAdapter<String> autoCompleteValuesAdapter,
+                              LeafFilterListener listener) {
+        editInput.setAdapter(autoCompleteValuesAdapter);
         Chip newChip = addChip(String.format(
-                "%s: %s",
+                "%s %s %s",
                 Meta.getDisplayKey(key),
+                MusicLibraryQueryLeaf.getDisplayableOp(op),
                 Meta.getDisplayValue(key, value)
         ), R.drawable.ic_filter_tilt_shift_black_24dp);
         newChip.setOnClickListener(v -> {
             deactivate(true, true, false, true, false);
             if (toggleFilterChip(newChip)) {
+                editOp.setSelection(MusicLibraryQueryLeaf.getOps(key).indexOf(op));
                 editInput.setText(value);
+                editInput.setInputType(Meta.getInputType(key));
                 editInput.setOnEditorActionListener((v1, actionId, event) -> {
                     if (actionId == EditorInfo.IME_ACTION_DONE) {
                         String filterString = editInput.getText().toString();
-                        Log.d(LC, "Applying filter: " + key + "(" + filterString + ")");
-                        Toast.makeText(
-                                getContext(),
-                                "Applying filter: " + key + "(" + filterString + ")",
-                                Toast.LENGTH_SHORT
-                        ).show();
+                        int opPos = editOp.getSelectedItemPosition();
                         deactivate();
-                        onEditDone.accept(filterString);
+                        listener.onSubmit(opPos, filterString);
                         return true;
                     }
                     return false;
@@ -205,22 +200,20 @@ public class MusicLibraryFilterGroup extends LinearLayout {
                 editView.setVisibility(VISIBLE);
                 editInput.requestFocus();
                 Util.showSoftInput(getContext(), editInput);
-                onActivate.run();
+                listener.onActivated();
             } else {
                 deactivate();
-                onDeactivate.run();
+                listener.onDeactivated();
             }
         });
         newChip.setOnCloseIconClickListener(v -> {
             deactivate();
-            onClose.run();
+            listener.onClose();
         });
     }
 
     public void addTreeFilter(MusicLibraryQueryTree.Op operator,
-                              Runnable onActivate,
-                              Runnable onDeactivate,
-                              Runnable onClose) {
+                              TreeFilterListener listener) {
         Chip newChip = addChip(
                 operator == MusicLibraryQueryTree.Op.AND ? "All of" : "Any of",
                 operator == MusicLibraryQueryTree.Op.AND ?
@@ -230,15 +223,15 @@ public class MusicLibraryFilterGroup extends LinearLayout {
         newChip.setOnClickListener(v -> {
             deactivate(true, true, true, true, false);
             if (toggleFilterChip(newChip)) {
-                onActivate.run();
+                listener.onActivated();
             } else {
                 deactivate();
-                onDeactivate.run();
+                listener.onDeactivated();
             }
         });
         newChip.setOnCloseIconClickListener(v -> {
             deactivate();
-            onClose.run();
+            listener.onClosed();
         });
     }
 
@@ -309,25 +302,46 @@ public class MusicLibraryFilterGroup extends LinearLayout {
         onOpChangedCb = onOpChanged;
     }
 
-    public void setNew(ArrayAdapter<String> valuesAdapter,
-                       ArrayAdapter<String> newFilterTypeAdapter,
-                       int initialPos,
-                       Runnable onNewActivated,
-                       Consumer<Integer> onItemSelected,
-                       BiConsumer<Integer, String> onActionDone,
-                       Consumer<MusicLibraryQueryTree.Op> onNewSubQuery) {
-        newInput.setAdapter(valuesAdapter);
-        newType.setAdapter(newFilterTypeAdapter);
-        newType.setSelection(initialPos);
-        onNewActivatedCb = onNewActivated;
-        onNewItemSelectedCb = onItemSelected;
-        onNewItemActionDoneCb = onActionDone;
-        onNewSubQueryCb = onNewSubQuery;
+    public void setAdapters(ArrayAdapter<String> autoCompleteValuesAdapter,
+                            ArrayAdapter<String> typeAdapter,
+                            ArrayAdapter<String> operatorAdapter) {
+        newInput.setAdapter(autoCompleteValuesAdapter);
+        newType.setAdapter(typeAdapter);
+        newType.setSelection(0);
+        newOp.setAdapter(operatorAdapter);
+        newOp.setSelection(0);
+        editOp.setAdapter(operatorAdapter);
+        editOp.setSelection(0);
     }
 
-    private void onNewTypeSelected(int pos) {
-        if (onNewItemSelectedCb != null) {
-            onNewItemSelectedCb.accept(pos);
+    public void setNewListener(NewListener listener) {
+        newListener = listener;
+    }
+
+    private String onNewTypeSelected(int pos) {
+        if (newListener != null) {
+            return newListener.onTypeSelected(pos);
         }
+        return null;
+    }
+
+    public interface NewListener {
+        void onActivated();
+        String onTypeSelected(int typePos);
+        void onFilterSubmit(int typePos, int opPos, String input);
+        void onSubQuerySubmit(MusicLibraryQueryTree.Op op);
+    }
+
+    public interface LeafFilterListener {
+        void onActivated();
+        void onDeactivated();
+        void onSubmit(int opPos, String input);
+        void onClose();
+    }
+
+    public interface TreeFilterListener {
+        void onActivated();
+        void onDeactivated();
+        void onClosed();
     }
 }

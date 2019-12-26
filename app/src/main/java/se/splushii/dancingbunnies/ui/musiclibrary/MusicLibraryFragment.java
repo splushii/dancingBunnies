@@ -97,12 +97,10 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
 
     private View browseView;
     private LinearLayout browseQueryView;
-    private MutableLiveData<String> browseFilterEditTypeValueLiveData;
-    private ArrayAdapter<String> browseFilterEditTagValuesAdapter;
-    private ArrayAdapter<String> browseFilterNewTypeAdapter;
-    private ArrayList<String> browseFilterNewTypeValues;
-    private MutableLiveData<String> browseFilterNewTagValuesLiveData;
-    private ArrayAdapter<String> browseFilterNewTagValuesAdapter;
+    private ArrayAdapter<String> browseFilterTypeAdapter;
+    private ArrayAdapter<String> browseFilterOperatorAdapter;
+    private ArrayAdapter<String> browseFilterAutoCompleteValuesAdapter;
+    private MutableLiveData<String> browseFilterSelectedKeyLiveData;
 
     private LinearLayout browseHeader;
     private TextView browseHeaderShow;
@@ -232,46 +230,60 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
             queryTree.setOperator(op);
             setQuery(getCurrentQuery());
         });
-        filterGroup.setNew(
-                browseFilterNewTagValuesAdapter,
-                browseFilterNewTypeAdapter,
-                0,
-                () -> {
-                    trimQueryTreeSelection(depth - 1);
-                    setQueryDepth(depth);
-                },
-                pos -> {
-                    String filterNewKey = metaKeys.get(pos);
-                    if (!filterNewKey.equals(browseFilterNewTagValuesLiveData.getValue())) {
-                        browseFilterNewTagValuesLiveData.setValue(filterNewKey);
+        filterGroup.setAdapters(
+                browseFilterAutoCompleteValuesAdapter,
+                browseFilterTypeAdapter,
+                browseFilterOperatorAdapter
+        );
+        filterGroup.setNewListener(
+                new MusicLibraryFilterGroup.NewListener() {
+                    @Override
+                    public void onActivated() {
+                        trimQueryTreeSelection(depth - 1);
+                        setQueryDepth(depth);
                     }
-                },
-                (pos, input) -> {
-                    if (pos >= metaKeys.size() || pos >= metaKeysForDisplay.size()) {
-                        return;
+
+                    @Override
+                    public String onTypeSelected(int typePos) {
+                        String filterNewKey = metaKeys.get(typePos);
+                        if (!filterNewKey.equals(browseFilterSelectedKeyLiveData.getValue())) {
+                            browseFilterSelectedKeyLiveData.setValue(filterNewKey);
+                        }
+                        return filterNewKey;
                     }
-                    String field = metaKeys.get(pos);
-                    String displayedField = metaKeysForDisplay.get(pos);
-                    Log.d(LC, "Applying filter: " + displayedField + "(" + input + ")");
-                    Toast.makeText(
-                            getContext(),
-                            "Applying filter: " + displayedField + "(" + input + ")",
-                            Toast.LENGTH_SHORT
-                    ).show();
-                    model.addBackStackHistory(
-                            Util.getRecyclerViewPosition(browseRecyclerView),
-                            getCurrentQueryTree()
-                    );
-                    queryTree.addChild(new MusicLibraryQueryLeaf(field, input));
-                    setQuery(getCurrentQuery());
-                },
-                op -> {
-                    model.addBackStackHistory(
-                            Util.getRecyclerViewPosition(browseRecyclerView),
-                            getCurrentQueryTree()
-                    );
-                    queryTree.addChild(new MusicLibraryQueryTree(op));
-                    setQuery(getCurrentQuery());
+
+                    @Override
+                    public void onFilterSubmit(int typePos, int opPos, String input) {
+                        if (typePos >= metaKeys.size() || typePos >= metaKeysForDisplay.size()) {
+                            return;
+                        }
+                        String field = metaKeys.get(typePos);
+                        String displayedField = metaKeysForDisplay.get(typePos);
+                        MusicLibraryQueryLeaf.Op op = MusicLibraryQueryLeaf.getOps(field).get(opPos);
+                        String displayedOp = MusicLibraryQueryLeaf.getDisplayableOps(field).get(opPos);
+                        Log.d(LC, "Applying filter: " + displayedField + " " + displayedOp + " " + input);
+                        Toast.makeText(
+                                getContext(),
+                                "Applying filter: " + displayedField + " " + displayedOp + " " + input,
+                                Toast.LENGTH_SHORT
+                        ).show();
+                        model.addBackStackHistory(
+                                Util.getRecyclerViewPosition(browseRecyclerView),
+                                getCurrentQueryTree()
+                        );
+                        queryTree.addChild(new MusicLibraryQueryLeaf(field, op, input));
+                        setQuery(getCurrentQuery());
+                    }
+
+                    @Override
+                    public void onSubQuerySubmit(MusicLibraryQueryTree.Op op) {
+                        model.addBackStackHistory(
+                                Util.getRecyclerViewPosition(browseRecyclerView),
+                                getCurrentQueryTree()
+                        );
+                        queryTree.addChild(new MusicLibraryQueryTree(op));
+                        setQuery(getCurrentQuery());
+                    }
                 }
         );
         setQueryDepth(depth);
@@ -285,53 +297,81 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                 MusicLibraryQueryLeaf leaf = (MusicLibraryQueryLeaf) node;
                 String key = leaf.getKey();
                 String value = leaf.getValue();
+                MusicLibraryQueryLeaf.Op op = leaf.getOperator();
                 filterGroup.addLeafFilter(
                         key,
+                        op,
                         value,
-                        browseFilterEditTagValuesAdapter,
-                        () -> {
-                            setQueryTreeSelection(nodeIndex, depth);
-                            if (!key.equals(browseFilterEditTypeValueLiveData.getValue())) {
-                                browseFilterEditTypeValueLiveData.setValue(key);
+                        browseFilterAutoCompleteValuesAdapter,
+                        new MusicLibraryFilterGroup.LeafFilterListener() {
+                            @Override
+                            public void onActivated() {
+                                setQueryTreeSelection(nodeIndex, depth);
+                                if (!key.equals(browseFilterSelectedKeyLiveData.getValue())) {
+                                    browseFilterSelectedKeyLiveData.setValue(key);
+                                }
                             }
-                        },
-                        () -> {},
-                        filterString -> {
-                            model.addBackStackHistory(
-                                    Util.getRecyclerViewPosition(browseRecyclerView),
-                                    getCurrentQueryTree()
-                            );
-                            leaf.setValue(filterString);
-                            setQuery(getCurrentQuery());
-                        },
-                        () -> {
-                            model.addBackStackHistory(
-                                    Util.getRecyclerViewPosition(browseRecyclerView),
-                                    getCurrentQueryTree()
-                            );
-                            queryTree.removeChild(node);
-                            setQuery(getCurrentQuery());
+
+                            @Override
+                            public void onDeactivated() {}
+
+                            @Override
+                            public void onSubmit(int opPos, String input) {
+                                MusicLibraryQueryLeaf.Op op = MusicLibraryQueryLeaf.getOps(key).get(opPos);
+                                String displayedField = Meta.getDisplayKey(key);
+                                String displayedOp = MusicLibraryQueryLeaf.getDisplayableOps(key).get(opPos);
+                                Log.d(LC, "Applying filter: " + displayedField + " " + displayedOp + " " + input);
+                                Toast.makeText(
+                                        getContext(),
+                                        "Applying filter: " + displayedField + " " + displayedOp + " " + input,
+                                        Toast.LENGTH_SHORT
+                                ).show();
+                                model.addBackStackHistory(
+                                        Util.getRecyclerViewPosition(browseRecyclerView),
+                                        getCurrentQueryTree()
+                                );
+                                leaf.setOperator(op);
+                                leaf.setValue(input);
+                                setQuery(getCurrentQuery());
+                            }
+
+                            @Override
+                            public void onClose() {
+                                model.addBackStackHistory(
+                                        Util.getRecyclerViewPosition(browseRecyclerView),
+                                        getCurrentQueryTree()
+                                );
+                                queryTree.removeChild(node);
+                                setQuery(getCurrentQuery());
+                            }
                         }
                 );
             } else if (node instanceof MusicLibraryQueryTree) {
                 MusicLibraryQueryTree tree = (MusicLibraryQueryTree) node;
                 filterGroup.addTreeFilter(
                         tree.getOperator(),
-                        () -> {
-                            setQueryTreeSelection(nodeIndex, depth);
-                            setQueryDepth(depth);
-                            addFilterGroupToView(browseQueryView, tree, depth + 1);
-                        },
-                        () -> {
-                            setQueryDepth(depth);
-                        },
-                        () -> {
-                            model.addBackStackHistory(
-                                    Util.getRecyclerViewPosition(browseRecyclerView),
-                                    getCurrentQueryTree()
-                            );
-                            queryTree.removeChild(node);
-                            setQuery(getCurrentQuery());
+                        new MusicLibraryFilterGroup.TreeFilterListener() {
+                            @Override
+                            public void onActivated() {
+                                setQueryTreeSelection(nodeIndex, depth);
+                                setQueryDepth(depth);
+                                addFilterGroupToView(browseQueryView, tree, depth + 1);
+                            }
+
+                            @Override
+                            public void onDeactivated() {
+                                setQueryDepth(depth);
+                            }
+
+                            @Override
+                            public void onClosed() {
+                                model.addBackStackHistory(
+                                        Util.getRecyclerViewPosition(browseRecyclerView),
+                                        getCurrentQueryTree()
+                                );
+                                queryTree.removeChild(node);
+                                setQuery(getCurrentQuery());
+                            }
                         }
                 );
                 if (selectedIndex >= 0 && selectedIndex == index) {
@@ -796,24 +836,31 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
             model.reset();
         });
 
-        browseFilterNewTypeValues = new ArrayList<>();
-        browseFilterNewTypeAdapter = new ArrayAdapter<>(
-                requireContext(),
-                android.R.layout.simple_spinner_dropdown_item,
-                browseFilterNewTypeValues
-        );
-        browseFilterNewTagValuesAdapter = new ArrayAdapter<>(
+        browseFilterTypeAdapter = new ArrayAdapter<>(
                 requireContext(),
                 android.R.layout.simple_spinner_dropdown_item
         );
-        browseFilterNewTagValuesLiveData = new MutableLiveData<>();
+        browseFilterOperatorAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_spinner_dropdown_item
+        );
+        browseFilterAutoCompleteValuesAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_spinner_dropdown_item
+        );
+        browseFilterSelectedKeyLiveData = new MutableLiveData<>();
         Transformations.switchMap(
-                browseFilterNewTagValuesLiveData,
+                browseFilterSelectedKeyLiveData,
                 key -> MetaStorage.getInstance(requireContext()).getMetaValuesAsStrings(key)
         ).observe(getViewLifecycleOwner(), values -> {
-            browseFilterNewTagValuesAdapter.clear();
-            browseFilterNewTagValuesAdapter.addAll(values);
-            browseFilterNewTagValuesAdapter.notifyDataSetChanged();
+            browseFilterAutoCompleteValuesAdapter.clear();
+            browseFilterAutoCompleteValuesAdapter.addAll(values);
+            browseFilterAutoCompleteValuesAdapter.notifyDataSetChanged();
+        });
+        browseFilterSelectedKeyLiveData.observe(getViewLifecycleOwner(), key -> {
+            browseFilterOperatorAdapter.clear();
+            browseFilterOperatorAdapter.addAll(MusicLibraryQueryLeaf.getDisplayableOps(key));
+            browseFilterOperatorAdapter.notifyDataSetChanged();
         });
 
         MetaStorage.getInstance(requireContext())
@@ -842,8 +889,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                             .map(Meta::getDisplayKey)
                             .collect(Collectors.toList())
                     );
-                    browseFilterNewTypeValues.clear();
-                    browseFilterNewTypeValues.addAll(metaKeysForDisplay);
+                    browseFilterTypeAdapter.clear();
+                    browseFilterTypeAdapter.addAll(metaKeysForDisplay);
                     browseHeaderShowMenu.removeGroup(SHOW_GROUP_ID_SINGLE);
                     for (int i = 0; i < metaKeysForDisplay.size(); i++) {
                         browseHeaderShowMenu.add(
@@ -862,7 +909,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                                 metaKeysForDisplay.get(i)
                         );
                     }
-                    browseFilterNewTypeAdapter.notifyDataSetChanged();
+                    browseFilterTypeAdapter.notifyDataSetChanged();
                 });
 
         browseView = rootView.findViewById(R.id.musiclibrary_browse);
@@ -872,20 +919,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         );
 
         browseQueryView = rootView.findViewById(R.id.musiclibrary_browse_query);
-
-        browseFilterEditTagValuesAdapter = new ArrayAdapter<>(
-                requireContext(),
-                android.R.layout.simple_spinner_dropdown_item
-        );
-        browseFilterEditTypeValueLiveData = new MutableLiveData<>();
-        Transformations.switchMap(
-                browseFilterEditTypeValueLiveData,
-                key -> MetaStorage.getInstance(requireContext()).getMetaValuesAsStrings(key)
-        ).observe(getViewLifecycleOwner(), values -> {
-            browseFilterEditTagValuesAdapter.clear();
-            browseFilterEditTagValuesAdapter.addAll(values);
-            browseFilterEditTagValuesAdapter.notifyDataSetChanged();
-        });
 
         return rootView;
     }

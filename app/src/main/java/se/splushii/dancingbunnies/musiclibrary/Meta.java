@@ -3,6 +3,7 @@ package se.splushii.dancingbunnies.musiclibrary;
 import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.support.v4.media.MediaMetadataCompat;
+import android.text.InputType;
 
 import com.google.android.gms.cast.MediaMetadata;
 
@@ -193,6 +194,21 @@ public class Meta {
             }
         }
         return typeMap.getOrDefault(key, STRING);
+    }
+
+    public static int getInputType(String key) {
+        switch (Meta.getType(key)) {
+            default:
+            case STRING:
+                return InputType.TYPE_CLASS_TEXT;
+            case LONG:
+                return InputType.TYPE_CLASS_NUMBER |
+                        InputType.TYPE_NUMBER_FLAG_SIGNED;
+            case DOUBLE:
+                return InputType.TYPE_CLASS_NUMBER |
+                        InputType.TYPE_NUMBER_FLAG_DECIMAL |
+                        InputType.TYPE_NUMBER_FLAG_SIGNED;
+        }
     }
 
     public enum Type {

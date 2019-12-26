@@ -1,54 +1,19 @@
 package se.splushii.dancingbunnies.musiclibrary;
 
-import android.os.Parcel;
-import android.os.Parcelable;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public abstract class MusicLibraryQueryNode implements Parcelable {
-    static final int CLASS_TYPE_LEAF = 0;
-    static final int CLASS_TYPE_TREE = 1;
+import androidx.annotation.NonNull;
+
+public abstract class MusicLibraryQueryNode {
 
     MusicLibraryQueryNode() {}
-
-    protected MusicLibraryQueryNode(Parcel in) {}
-
-    @Override
-    public void writeToParcel(Parcel dest, int flags) {
-    }
-
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    public static final Creator<MusicLibraryQueryNode> CREATOR = new Creator<MusicLibraryQueryNode>() {
-        @Override
-        public MusicLibraryQueryNode createFromParcel(Parcel in) {
-            return getImplementation(in);
-        }
-
-        @Override
-        public MusicLibraryQueryNode[] newArray(int size) {
-            return new MusicLibraryQueryNode[size];
-        }
-    };
-
-    private static MusicLibraryQueryNode getImplementation(Parcel in) {
-        switch (in.readInt()) {
-            case CLASS_TYPE_LEAF:
-                return new MusicLibraryQueryLeaf(in);
-            case CLASS_TYPE_TREE:
-                return new MusicLibraryQueryTree(in);
-            default:
-                return null;
-        }
-    }
 
     public static MusicLibraryQueryNode fromJSON(String query) {
         try {
@@ -77,10 +42,31 @@ public abstract class MusicLibraryQueryNode implements Parcelable {
         return new MusicLibraryQueryLeaf(entryID.type, entryID.id);
     }
 
+    public static String[] toJSONStringArray(List<MusicLibraryQueryNode> queryNodes) {
+        return queryNodes.stream()
+                .map(queryNode -> queryNode.toJSON().toString())
+                .toArray(String[]::new);
+    }
+
+    public static List<MusicLibraryQueryNode> fromJSONStringArray(String[] queryNodeJSONs) {
+        if (queryNodeJSONs == null || queryNodeJSONs.length <= 0) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(queryNodeJSONs)
+                .map(MusicLibraryQueryNode::fromJSON)
+                .collect(Collectors.toList());
+    }
+
     public List<MusicLibraryQueryNode> withEntryIDs(List<EntryID> entryIDs) {
         return entryIDs.stream()
                 .map(this::withEntryID)
                 .collect(Collectors.toList());
+    }
+
+    @NonNull
+    @Override
+    public String toString() {
+        return toJSON().toString();
     }
 
     public abstract MusicLibraryQueryNode deepCopy();

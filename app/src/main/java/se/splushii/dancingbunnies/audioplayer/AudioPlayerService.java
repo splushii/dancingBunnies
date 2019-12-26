@@ -169,7 +169,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         String showField = options.getString(MusicLibraryQuery.BUNDLE_KEY_SHOW);
         List<String> sortFields = options.getStringArrayList(MusicLibraryQuery.BUNDLE_KEY_SORT);
         boolean sortOrderAscending = options.getBoolean(MusicLibraryQuery.BUNDLE_KEY_SORT_ORDER);
-        MusicLibraryQueryNode queryNode = options.getParcelable(MusicLibraryQuery.BUNDLE_KEY_QUERY_TREE);
+        MusicLibraryQueryNode queryNode = MusicLibraryQueryNode.fromJSON(
+                options.getString(MusicLibraryQuery.BUNDLE_KEY_QUERY_TREE)
+        );
         LiveData<List<LibraryEntry>> entries = musicLibraryService.getSubscriptionEntries(
                 showField,
                 sortFields,
@@ -725,7 +727,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                                                   MusicLibraryQueryNode queryNode) {
         Bundle params = new Bundle();
         params.putParcelableArrayList("entryids", new ArrayList<>(entryIDs));
-        params.putParcelable("query", queryNode);
+        params.putString("queryJSON", queryNode.toJSON().toString());
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
                 COMMAND_PLAY_ENTRYIDS,
@@ -742,7 +744,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void play(ResultReceiver cb, Bundle b) {
         ArrayList<EntryID> entryIDs = b.getParcelableArrayList("entryids");
-        MusicLibraryQueryNode queryNode = b.getParcelable("query");
+        MusicLibraryQueryNode queryNode = MusicLibraryQueryNode.fromJSON(b.getString("queryJSON"));
         if (entryIDs == null || entryIDs.isEmpty()) {
             cb.send(-1, null);
             return;
@@ -763,7 +765,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public static CompletableFuture<Boolean> playQueryBundles(MediaControllerCompat mediaController,
                                                               List<MusicLibraryQueryNode> queryNodes) {
         Bundle params = new Bundle();
-        params.putParcelableArrayList("queryNodes", new ArrayList<>(queryNodes));
+        putQueryNodesToBundle(params, queryNodes);
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
                 COMMAND_PLAY_QUERY_BUNDLES,
@@ -779,7 +781,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void playQueryBundles(ResultReceiver cb, Bundle b) {
-        ArrayList<MusicLibraryQueryNode> queryNodes = b.getParcelableArrayList("queryNodes");
+        List<MusicLibraryQueryNode> queryNodes = getQueryNodesFromBundle(b);
         if (queryNodes == null || queryNodes.isEmpty()) {
             cb.send(-1, null);
             return;
@@ -802,7 +804,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                                                    MusicLibraryQueryNode queryNode) {
         Bundle params = new Bundle();
         params.putParcelableArrayList("entryids", new ArrayList<>(entryIDs));
-        params.putParcelable("query", queryNode);
+        params.putString("queryJSON", queryNode.toJSON().toString());
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
                 COMMAND_QUEUE_ENTRYIDS,
@@ -819,7 +821,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void queue(ResultReceiver cb, Bundle b) {
         ArrayList<EntryID> entryIDs = b.getParcelableArrayList("entryids");
-        MusicLibraryQueryNode queryNode = b.getParcelable("query");
+        MusicLibraryQueryNode queryNode = MusicLibraryQueryNode.fromJSON(b.getString("queryJSON"));
         if (entryIDs == null || entryIDs.isEmpty()) {
             cb.send(-1, null);
             return;
@@ -842,7 +844,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             List<MusicLibraryQueryNode> queryNodes
     ) {
         Bundle params = new Bundle();
-        params.putParcelableArrayList("queryNodes", new ArrayList<>(queryNodes));
+        putQueryNodesToBundle(params, queryNodes);
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(
                 COMMAND_QUEUE_QUERY_BUNDLES,
@@ -857,8 +859,20 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         return future;
     }
 
+    private static void putQueryNodesToBundle(Bundle bundle,
+                                              List<MusicLibraryQueryNode> queryNodes) {
+        bundle.putStringArray(
+                "queryNodeJSONs",
+                MusicLibraryQueryNode.toJSONStringArray(queryNodes)
+        );
+    }
+
+    private List<MusicLibraryQueryNode> getQueryNodesFromBundle(Bundle b) {
+        return MusicLibraryQueryNode.fromJSONStringArray(b.getStringArray("queryNodeJSONs"));
+    }
+
     private void queueQueryBundles(ResultReceiver cb, Bundle b) {
-        ArrayList<MusicLibraryQueryNode> queryNodes = b.getParcelableArrayList("queryNodes");
+        List<MusicLibraryQueryNode> queryNodes = getQueryNodesFromBundle(b);
         if (queryNodes == null || queryNodes.isEmpty()) {
             cb.send(-1, null);
             return;
