@@ -194,8 +194,8 @@ public class MusicLibraryFilterGroup extends LinearLayout {
                                 "Applying filter: " + key + "(" + filterString + ")",
                                 Toast.LENGTH_SHORT
                         ).show();
-                        onEditDone.accept(filterString);
                         deactivate();
+                        onEditDone.accept(filterString);
                         return true;
                     }
                     return false;

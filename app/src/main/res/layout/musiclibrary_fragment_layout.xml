@@ -68,7 +68,7 @@
                     android:contentDescription="@string/musiclibrary_home" />
             </LinearLayout>
             <LinearLayout
-                android:id="@+id/musiclibrary_browse_filter"
+                android:id="@+id/musiclibrary_browse"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:animateLayoutChanges="true"
