@@ -38,6 +38,9 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.mediarouter.app.MediaRouteButton;
+import androidx.mediarouter.media.MediaControlIntent;
+import androidx.mediarouter.media.MediaRouteSelector;
+import androidx.mediarouter.media.MediaRouter;
 import androidx.recyclerview.selection.StorageStrategy;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -114,6 +117,8 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private View currentPlaylistView;
     private WaveformSeekBar waveformSeekBar;
     private MediaRouteButton mediaRouteButton;
+    private ImageView mediaRouteIcon;
+    private MediaRouter mediaRouter;
 
     public NowPlayingFragment() {
         entryIDLiveData = new MutableLiveData<>();
@@ -126,6 +131,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 false);
 
         mediaRouteButton = rootView.findViewById(R.id.nowlaying_mediaroutebutton);
+        mediaRouteIcon = rootView.findViewById(R.id.nowlaying_mediaroute);
 
         RecyclerView recView = rootView.findViewById(R.id.nowplaying_recyclerview);
         LinearLayoutManager recViewLayoutManager = new LinearLayoutManager(this.getContext());
@@ -471,6 +477,45 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                 requireContext(),
                 mediaRouteButton
         );
+    }
+
+    @Override
+    public void onResume() {
+        mediaRouter = MediaRouter.getInstance(requireContext());
+        mediaRouter.addCallback(
+                new MediaRouteSelector.Builder()
+                        .addControlCategory(MediaControlIntent.CATEGORY_LIVE_AUDIO)
+                        .addControlCategory(MediaControlIntent.CATEGORY_REMOTE_PLAYBACK)
+                        .build(),
+                mediaRouterCallback
+        );
+        setSelectedMediaRoute(mediaRouter.getSelectedRoute());
+        super.onResume();
+    }
+
+    private void setSelectedMediaRoute(MediaRouter.RouteInfo selectedRoute) {
+        Log.d(LC, "media route selected: " + selectedRoute.getName());
+        if (selectedRoute.isBluetooth()) {
+            mediaRouteIcon.setImageResource(R.drawable.ic_bluetooth_black_24dp);
+        } else if (selectedRoute.isDefault()) {
+            mediaRouteIcon.setImageResource(R.drawable.ic_phone_android_black_24dp);
+        } else {
+            mediaRouteIcon.setImageResource(0);
+        }
+    }
+
+    private MediaRouter.Callback mediaRouterCallback = new MediaRouter.Callback() {
+        @Override
+        public void onRouteSelected(MediaRouter router, MediaRouter.RouteInfo route) {
+            setSelectedMediaRoute(route);
+        }
+    };
+
+    @Override
+    public void onPause() {
+        mediaRouter.removeCallback(mediaRouterCallback);
+        mediaRouter = null;
+        super.onPause();
     }
 
     @Override

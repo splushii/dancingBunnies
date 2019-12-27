@@ -243,16 +243,23 @@
             android:gravity="center_vertical"
             android:layout_gravity="center_horizontal">
             <View
-                android:layout_width="36dp"
-                android:layout_height="match_parent" />
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1" />
             <androidx.mediarouter.app.MediaRouteButton
                 android:id="@+id/nowlaying_mediaroutebutton"
                 android:layout_width="36dp"
                 android:layout_height="36dp" />
+            <ImageView
+                android:id="@+id/nowlaying_mediaroute"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginStart="8dp"
+                android:tint="@color/grey700"
+                android:contentDescription="@string/selected_media_route" />
             <View
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1" />
+                android:layout_width="10dp"
+                android:layout_height="match_parent" />
             <ImageButton
                 android:id="@+id/nowplaying_history_btn"
                 android:layout_width="64dp"
