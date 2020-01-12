@@ -7,6 +7,7 @@ import android.util.LongSparseArray;
 import android.util.SparseArray;
 
 import com.google.android.gms.cast.CastStatusCodes;
+import com.google.android.gms.cast.MediaError;
 import com.google.android.gms.cast.MediaInfo;
 import com.google.android.gms.cast.MediaMetadata;
 import com.google.android.gms.cast.MediaQueueItem;
@@ -689,13 +690,18 @@ public class CastAudioPlayer implements AudioPlayer {
             String msg = code + ": "
                     + result.getStatus().toString() + " "
                     + result.getStatus().getStatusMessage();
-            Log.e(LC, msg);
+            MediaError mediaError = result.getMediaError();
+            if (mediaError != null) {
+                msg += "\nmedia error (" + mediaError.getDetailedErrorCode() + ")"
+                        + ": " + mediaError.getReason();
+            }
             if (remoteMediaClient != null) {
-                Log.e(LC, "state: " + getStateString(
+                msg += "\nstate: " + getStateString(
                         remoteMediaClient.getPlayerState(),
                         remoteMediaClient.getIdleReason()
-                ));
+                );
             }
+            Log.e(LC, msg);
             logCurrentQueue();
         }
     }

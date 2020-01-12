@@ -25,7 +25,7 @@ class LocalAudioPlayer implements AudioPlayer {
     private final PlaybackControllerStorage storage;
 
     private MediaPlayerInstance player;
-    private boolean playWhenReady = false;
+    private boolean playWhenReady;
     private final Context context;
     private final LinkedList<MediaPlayerInstance> preloadPlayers;
     private final LinkedList<PlaybackEntry> historyPlaybackEntries;
