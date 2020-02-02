@@ -346,11 +346,9 @@ class LocalAudioPlayer implements AudioPlayer {
             return;
         }
         MediaPlayerInstance nextPlayer = preloadPlayers.peek();
-        if (nextPlayer == null) {
-            player.setNext(null);
-            return;
+        if (nextPlayer != null) {
+            nextPlayer.getReady();
         }
-        nextPlayer.getReady();
         player.setNext(nextPlayer);
     }
 

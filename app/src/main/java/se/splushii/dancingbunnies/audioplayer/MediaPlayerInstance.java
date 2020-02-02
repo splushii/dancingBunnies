@@ -261,11 +261,13 @@ class MediaPlayerInstance {
                 return;
         }
         if (nextPlayer == null) {
+            Log.d(LC, "setNext to non-existant player. nextMediaPlayer unset");
             mediaPlayer.setNextMediaPlayer(null);
             return;
         }
         if (!nextPlayer.isPrepared()) {
-            Log.d(LC, "setNext to non-prepared player. nextMediaPlayer not set");
+            Log.d(LC, "setNext to non-prepared player. nextMediaPlayer unset");
+            mediaPlayer.setNextMediaPlayer(null);
             return;
         }
         mediaPlayer.setNextMediaPlayer(nextPlayer.mediaPlayer);
