@@ -31,7 +31,6 @@ public class Meta {
     private static final HashMap<String, Type> typeMap = new HashMap<>();
     private static final HashSet<String> localOriginSet = new HashSet<>();
 
-
     private static final String FIELD_DANCINGBUNNIES_PREFIX = "se.splushii.dancingbunnies.meta.field.";
     public static final String FIELD_SPECIAL_MEDIA_ID = FIELD_DANCINGBUNNIES_PREFIX + "media.id";
     public static final String FIELD_SPECIAL_MEDIA_SRC = FIELD_DANCINGBUNNIES_PREFIX + "media.src";
@@ -221,12 +220,14 @@ public class Meta {
     private final HashMap<String, List<String>> stringMap;
     private final HashMap<String, List<Long>> longMap;
     private final HashMap<String, List<Double>> doubleMap;
+    private String tagDelimiter;
 
     public Meta(EntryID entryID) {
         this.entryID = entryID;
         stringMap = new HashMap<>();
         longMap = new HashMap<>();
         doubleMap = new HashMap<>();
+        tagDelimiter = null;
     }
 
     @SuppressWarnings("unchecked")
@@ -235,6 +236,7 @@ public class Meta {
         stringMap = (HashMap<String, List<String>>) b.getSerializable(BUNDLE_KEY_STRINGS);
         longMap = (HashMap<String, List<Long>>) b.getSerializable(BUNDLE_KEY_LONGS);
         doubleMap = (HashMap<String, List<Double>>) b.getSerializable(BUNDLE_KEY_DOUBLES);
+        tagDelimiter = null;
     }
 
     public boolean has(String key) {
@@ -247,6 +249,10 @@ public class Meta {
                 return doubleMap.containsKey(key);
         }
         return false;
+    }
+
+    public void setTagDelimiter(String tagDelimiter) {
+        this.tagDelimiter = tagDelimiter;
     }
 
     public void addLong(String key, long value) {
@@ -268,8 +274,16 @@ public class Meta {
     }
 
     public void addString(String key, String value) {
+        addString(key, value, tagDelimiter);
+    }
+
+    public void addString(String key, String value, String delimiter) {
         List<String> strings = stringMap.getOrDefault(key, new ArrayList<>());
-        strings.add(value);
+        if (delimiter != null && !delimiter.isEmpty() && Util.isValidRegex(delimiter)) {
+            strings.addAll(Arrays.asList(value.split(delimiter)));
+        } else {
+            strings.add(value);
+        }
         stringMap.put(key, strings);
     }
 

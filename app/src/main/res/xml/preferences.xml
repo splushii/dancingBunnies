@@ -26,6 +26,11 @@
             android:inputType="textPassword"
             android:key="@string/pref_key_subsonic_pwd"
             android:title="@string/pref_subsonic_pwd" />
+        <EditTextPreference
+            app:iconSpaceReserved="false"
+            android:dependency="@string/pref_key_subsonic"
+            android:key="@string/pref_key_subsonic_tag_delim"
+            android:title="@string/pref_subsonic_tag_delim" />
         <CheckBoxPreference
             app:iconSpaceReserved="false"
             android:dependency="@string/pref_key_subsonic"

@@ -14,6 +14,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import androidx.core.util.Pair;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -72,6 +74,18 @@ public class Util {
     public static int dpToPixels(Context context, int dp) {
         float density = context.getResources().getDisplayMetrics().density;
         return (int) (density * dp);
+    }
+
+    public static boolean isValidRegex(String regex) {
+        if (regex == null) {
+            return false;
+        }
+        try {
+            Pattern.compile(regex);
+        } catch (PatternSyntaxException e) {
+            return false;
+        }
+        return true;
     }
 
     public static class FutureException extends Throwable {

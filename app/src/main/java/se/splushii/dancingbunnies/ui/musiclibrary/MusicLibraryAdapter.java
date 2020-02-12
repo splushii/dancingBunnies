@@ -8,7 +8,9 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -302,9 +304,40 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     }
 
     private void setDataset(List<LibraryEntry> items) {
-        boolean changed = !dataset.equals(items);
+        String showKey = fragment.getCurrentQuery().getShowField();
+        List<LibraryEntry> newItems;
+        if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(showKey)) {
+            HashMap<EntryID, ArrayList<String>> newSet = new HashMap<>();
+            newItems = new ArrayList<>();
+            for (LibraryEntry libraryEntry: items) {
+                ArrayList<String> sortByValues = newSet.get(libraryEntry.entryID);
+                if (sortByValues == null) {
+                    sortByValues = new ArrayList<>(libraryEntry.sortedByValues());
+                    LibraryEntry newLibraryEntry = new LibraryEntry(
+                            libraryEntry.entryID,
+                            libraryEntry.name(),
+                            sortByValues
+                    );
+                    newSet.put(newLibraryEntry.entryID, sortByValues);
+                    newItems.add(newLibraryEntry);
+                } else {
+                    List<String> newSortByValues = libraryEntry.sortedByValues();
+                    for (int i = 0; i < sortByValues.size() && i < newSortByValues.size(); i++) {
+                        sortByValues.set(i, String.format(
+                                Locale.getDefault(),
+                                "%s, %s",
+                                sortByValues.get(i),
+                                newSortByValues.get(i)
+                        ));
+                    }
+                }
+            }
+        } else {
+            newItems = items;
+        }
+        boolean changed = !dataset.equals(newItems);
         if (changed) {
-            this.dataset = items;
+            this.dataset = newItems;
             notifyDataSetChanged();
         }
     }

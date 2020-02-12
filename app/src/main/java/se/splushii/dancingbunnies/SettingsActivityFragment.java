@@ -90,6 +90,10 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                 .getString(R.string.pref_key_subsonic_pwd)) ?
                 "********" : ""
         );
+        EditTextPreference SSTagDelim = findPreference(getResources()
+                .getString(R.string.pref_key_subsonic_tag_delim));
+        String SSTagDelimValue = settings.getString(getResources().getString(R.string.pref_key_subsonic_tag_delim), "");
+        SSTagDelim.setSummary(Util.isValidRegex(SSTagDelimValue) ? SSTagDelimValue : "(Not a valid regular expression!)");
         SSrefresh = findPreference(getResources()
                 .getString(R.string.pref_key_subsonic_refresh));
         SSrefresh.setOnPreferenceClickListener(preference -> {
@@ -152,7 +156,8 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
     public void onSharedPreferenceChanged(SharedPreferences sp, String key) {
         if (key.equals(getResources().getString(R.string.pref_key_subsonic_url))
                 || key.equals(getResources().getString(R.string.pref_key_subsonic_usr))
-                || key.equals(getResources().getString(R.string.pref_key_subsonic_pwd))) {
+                || key.equals(getResources().getString(R.string.pref_key_subsonic_pwd))
+                || key.equals(getResources().getString(R.string.pref_key_subsonic_tag_delim))) {
             EditTextPreference etp = findPreference(key);
             etp.setSummary(sp.getString(key, ""));
             etp.setText(sp.getString(key, ""));

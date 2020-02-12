@@ -95,6 +95,7 @@ public class SubsonicAPIClient extends APIClient {
     private String username = "";
     private String password = "";
     private String baseURL = "";
+    private String tagDelimiter = null;
     private static final String VERSION = "1.15.0";
     private static final String[] SUPPORTED_VERSIONS = {"1.15.0", "1.16.0"};
     private static final String CLIENT_ID = "dancingbunnies";
@@ -346,6 +347,7 @@ public class SubsonicAPIClient extends APIClient {
                 Meta.FIELD_SPECIAL_MEDIA_ID
         );
         Meta meta = new Meta(entryID);
+        meta.setTagDelimiter(tagDelimiter);
         meta.addString(Meta.FIELD_MEDIA_ROOT, musicFolder);
         meta.addString(Meta.FIELD_TITLE, title);
         // Optional attributes
@@ -692,6 +694,7 @@ public class SubsonicAPIClient extends APIClient {
             String pwd = settings.getString(context.getResources()
                     .getString(R.string.pref_key_subsonic_pwd), "");
             String pwdPublic = pwd.isEmpty() ? "" : "********";
+            tagDelimiter = settings.getString(context.getResources().getString(R.string.pref_key_subsonic_tag_delim), null);
             Log.d(LC, "Subsonic backend enabled.\nbaseURL: " + url + "\nusr: " + usr
                     + "\npwd: " + pwdPublic + "\n");
             baseURL = url + API_BASE_URL;
