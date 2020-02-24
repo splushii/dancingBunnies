@@ -221,13 +221,14 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                                       MusicLibraryQueryTree queryTree,
                                       int depth) {
         MusicLibraryFilterGroup filterGroup = new MusicLibraryFilterGroup(requireContext());
-        filterGroup.setOperator(queryTree.getOperator());
-        filterGroup.setOnOperatorChanged(op -> {
+        filterGroup.setOperator(queryTree.getOperator(), queryTree.isNegated());
+        filterGroup.setOnOperatorChanged((op, negated) -> {
             model.addBackStackHistory(
                     Util.getRecyclerViewPosition(browseRecyclerView),
                     getCurrentQueryTree()
             );
             queryTree.setOperator(op);
+            queryTree.negate(negated);
             setQuery(getCurrentQuery());
         });
         filterGroup.setAdapters(
@@ -245,15 +246,21 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
 
                     @Override
                     public String onTypeSelected(int typePos) {
-                        String filterNewKey = metaKeys.get(typePos);
-                        if (!filterNewKey.equals(browseFilterSelectedKeyLiveData.getValue())) {
-                            browseFilterSelectedKeyLiveData.setValue(filterNewKey);
+                        String typeValue = metaKeys.get(typePos);
+                        if (!typeValue.equals(browseFilterSelectedKeyLiveData.getValue())) {
+                            browseFilterSelectedKeyLiveData.setValue(typeValue);
                         }
-                        return filterNewKey;
+                        return typeValue;
                     }
 
                     @Override
-                    public void onFilterSubmit(int typePos, int opPos, String input) {
+                    public MusicLibraryQueryLeaf.Op onOpSelected(int typePos, int pos) {
+                        String typeValue = metaKeys.get(typePos);
+                        return MusicLibraryQueryLeaf.getOps(typeValue).get(pos);
+                    }
+
+                    @Override
+                    public void onFilterSubmit(int typePos, int opPos, String input, boolean negate) {
                         if (typePos >= metaKeys.size() || typePos >= metaKeysForDisplay.size()) {
                             return;
                         }
@@ -271,17 +278,17 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                                 Util.getRecyclerViewPosition(browseRecyclerView),
                                 getCurrentQueryTree()
                         );
-                        queryTree.addChild(new MusicLibraryQueryLeaf(field, op, input));
+                        queryTree.addChild(new MusicLibraryQueryLeaf(field, op, input, negate));
                         setQuery(getCurrentQuery());
                     }
 
                     @Override
-                    public void onSubQuerySubmit(MusicLibraryQueryTree.Op op) {
+                    public void onSubQuerySubmit(MusicLibraryQueryTree.Op op, boolean negate) {
                         model.addBackStackHistory(
                                 Util.getRecyclerViewPosition(browseRecyclerView),
                                 getCurrentQueryTree()
                         );
-                        queryTree.addChild(new MusicLibraryQueryTree(op));
+                        queryTree.addChild(new MusicLibraryQueryTree(op, negate));
                         setQuery(getCurrentQuery());
                     }
                 }
@@ -295,6 +302,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
             final int nodeIndex = index;
             if (node instanceof MusicLibraryQueryLeaf) {
                 MusicLibraryQueryLeaf leaf = (MusicLibraryQueryLeaf) node;
+                boolean negated = leaf.isNegated();
                 String key = leaf.getKey();
                 String value = leaf.getValue();
                 MusicLibraryQueryLeaf.Op op = leaf.getOperator();
@@ -302,6 +310,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                         key,
                         op,
                         value,
+                        negated,
                         browseFilterAutoCompleteValuesAdapter,
                         new MusicLibraryFilterGroup.LeafFilterListener() {
                             @Override
@@ -316,22 +325,22 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                             public void onDeactivated() {}
 
                             @Override
-                            public void onSubmit(int opPos, String input) {
+                            public void onSubmit(int opPos, String input, boolean negated) {
                                 MusicLibraryQueryLeaf.Op op = MusicLibraryQueryLeaf.getOps(key).get(opPos);
                                 String displayedField = Meta.getDisplayKey(key);
                                 String displayedOp = MusicLibraryQueryLeaf.getDisplayableOps(key).get(opPos);
-                                Log.d(LC, "Applying filter: " + displayedField + " " + displayedOp + " " + input);
-                                Toast.makeText(
-                                        getContext(),
-                                        "Applying filter: " + displayedField + " " + displayedOp + " " + input,
-                                        Toast.LENGTH_SHORT
-                                ).show();
+                                String msg = "Applying filter: "
+                                        + (negated ? "! " : "")
+                                        + displayedField + " " + displayedOp + " " + input;
+                                Log.d(LC, msg);
+                                Toast.makeText(getContext(), msg, Toast.LENGTH_SHORT).show();
                                 model.addBackStackHistory(
                                         Util.getRecyclerViewPosition(browseRecyclerView),
                                         getCurrentQueryTree()
                                 );
                                 leaf.setOperator(op);
                                 leaf.setValue(input);
+                                leaf.negate(negated);
                                 setQuery(getCurrentQuery());
                             }
 
@@ -350,6 +359,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                 MusicLibraryQueryTree tree = (MusicLibraryQueryTree) node;
                 filterGroup.addTreeFilter(
                         tree.getOperator(),
+                        tree.isNegated(),
                         new MusicLibraryFilterGroup.TreeFilterListener() {
                             @Override
                             public void onActivated() {
@@ -713,7 +723,11 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                 Menu.NONE,
                 SORT_BY_GROUP_ORDER_CUSTOM,
                 "Custom sort"
-        ).setIcon(R.drawable.ic_edit_black_24dp);
+        ).setIcon(
+                R.drawable.ic_edit_black_24dp
+        ).setIconTintList(
+                ContextCompat.getColorStateList(requireContext(), R.color.primary_text_color)
+        );
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             browseHeaderSortedByMenu.setGroupDividerEnabled(true);
         }
@@ -963,6 +977,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         if (groupId == SORT_BY_GROUP_ID_HEADER && itemId == SORT_BY_HEADER_ID_VALUE) {
             item.setIcon(!isSortedAscending() ?
                     R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp
+            ).setIconTintList(
+                    ContextCompat.getColorStateList(requireContext(), R.color.primary_text_color)
             );
             setSortOrder(!isSortedAscending());
             return true;
@@ -1005,6 +1021,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                 header
         ).setIcon(isSortedAscending() ?
                 R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp
+        ).setIconTintList(
+                ContextCompat.getColorStateList(requireContext(), R.color.primary_text_color)
         );
 
     }

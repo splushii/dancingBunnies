@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#087f23</color>
+    <color name="colorPrimaryDark">#005100</color>
+    <color name="colorPrimaryLight">#4caf50</color>
+    <color name="colorPrimaryAlmostWindowBackground">#002800</color>
+    <color name="colorAccent">#007ac1</color>
+    <color name="colorAccentDark">#004f90</color>
+    <color name="colorAccentLight">#59a9f4</color>
+    <color name="colorAccentAlmostWindowBackground">#002862</color>
+
+    <color name="colorPrimaryText">@color/grey100</color>
+
+    <color name="colorTextOnPrimary">@color/black</color>
+    <color name="colorTextOnPrimaryDynamic">@color/grey_active_black</color>
+    <color name="colorIconOnPrimary">@color/black</color>
+    <color name="colorIconOnPrimaryDisabled">@color/colorPrimaryLight</color>
+
+    <color name="colorTextOnSecondary">@color/white</color>
+    <color name="colorTextOnSecondarySecondary">@color/grey400</color>
+    <color name="colorIconOnSecondary">@color/black</color>
+    <color name="colorIconOnSecondaryDisabled">@color/colorAccentLight</color>
+
+    <color name="colorIcon">@color/white</color>
+    <color name="colorIconDisabled">@color/grey500</color>
+
+    <color name="windowBackground">@color/grey950</color>
+    <color name="windowBackgroundAlternate">@color/grey900</color>
+    <color name="windowBackgroundLight">@color/grey800</color>
+    <color name="popupBackground">@color/grey800</color>
+    <color name="overlayBackground">@color/grey850</color>
+
+    <color name="waveFormRMS">@color/grey500</color>
+    <color name="waveFormPeak">@color/grey700</color>
+    <color name="waveFormRMSProgress">@color/colorAccentLight</color>
+    <color name="waveFormPeakProgress">@color/colorAccentDark</color>
+</resources>

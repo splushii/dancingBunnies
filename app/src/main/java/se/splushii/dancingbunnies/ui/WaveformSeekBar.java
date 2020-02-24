@@ -63,8 +63,8 @@ public class WaveformSeekBar extends androidx.appcompat.widget.AppCompatSeekBar 
                 FRAME_WIDTH,
                 numFrames,
                 lastProgressFrame,
-                R.color.colorAccentDark,
-                R.color.grey500
+                R.color.waveFormPeakProgress,
+                R.color.waveFormPeak
         );
         drawFrames(
                 canvas,
@@ -73,8 +73,8 @@ public class WaveformSeekBar extends androidx.appcompat.widget.AppCompatSeekBar 
                 FRAME_WIDTH,
                 numFrames,
                 lastProgressFrame,
-                R.color.colorAccentLight,
-                R.color.colorAccentExtraLight
+                R.color.waveFormRMSProgress,
+                R.color.waveFormRMS
         );
     }
 

@@ -97,6 +97,12 @@
     <string name="musiclibrary_item_more_actions">Music library item more actions</string>
     <string name="musiclibrary_query">Query:</string>
     <string name="musiclibrary_query_save">Save query</string>
+    <string name="musiclibrary_query_filter">Filter</string>
+    <string name="musiclibrary_query_all">All</string>
+    <string name="musiclibrary_query_any">Any</string>
+    <string name="musiclibrary_query_notall">Not all</string>
+    <string name="musiclibrary_query_none">None</string>
+    <string name="musiclibrary_query_negate_filter">Negate filter</string>
     <string name="musiclibrary_search">Search:</string>
     <string name="musiclibrary_search_hint">search query</string>
     <string name="queue_item_more_actions">Queue item more actions</string>

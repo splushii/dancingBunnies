@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 
@@ -72,7 +73,7 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         Bundle args = getArguments();
         this.queries = MusicLibraryQueryNode.fromJSONStringArray(args.getStringArray(BUNDLE_KEY_QUERY_BUNDLES));
-        this.query = args.getParcelable(BUNDLE_KEY_QUERY);
+        this.query = MusicLibraryQueryNode.fromJSON(args.getString(BUNDLE_KEY_QUERY));
         super.onCreate(savedInstanceState);
     }
 
@@ -92,9 +93,22 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
         return rootView;
     }
 
+    @Override
+    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
+        getDialog().getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+        super.onActivityCreated(savedInstanceState);
+    }
+
+    @Override
+    public void onResume() {
+        addToNewPlaylistEditText.requestFocus();
+        Util.showSoftInput(requireContext(), addToNewPlaylistEditText);
+        super.onResume();
+    }
+
     private void createPlaylist(String name) {
         CompletableFuture<Void> completableFuture;
-        if (queries != null) {
+        if (queries != null && !queries.isEmpty()) {
             // Create a StupidPlaylist
             completableFuture = MetaStorage.getInstance(requireContext())
                     .getSongEntriesOnce(queries)
@@ -107,7 +121,7 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
                                             songEntryIDs
                                     ))
                             ));
-        } else {
+        } else if (query != null) {
             // Create a SmartPlaylist
             completableFuture = PlaylistStorage.getInstance(requireContext()).insertPlaylists(
                     0,
@@ -116,18 +130,25 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
                             name,
                             query
                     )));
+        } else {
+            completableFuture = CompletableFuture.completedFuture(null);
         }
         completableFuture
                 .thenRunAsync(this::dismiss, Util.getMainThreadExecutor())
                 .thenRun(this::finish);
-
     }
 
     private void finish() {
+        clearFocus();
         Fragment fragment = getTargetFragment();
         if (fragment instanceof AddToNewPlaylistDialogFragment.Handler) {
             ((AddToNewPlaylistDialogFragment.Handler) fragment).onNewPlaylistCreated();
         }
+    }
+
+    private void clearFocus() {
+        addToNewPlaylistEditText.clearFocus();
+        Util.hideSoftInput(requireContext(), addToNewPlaylistEditText);
     }
 
     interface Handler {

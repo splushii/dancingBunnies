@@ -10,43 +10,47 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
         android:padding="16dp"
-        android:background="@android:color/black"
-        android:textColor="@color/grey"
+        android:background="@color/colorAccentDark"
+        android:textColor="@color/colorTextOnSecondary"
         android:fontFamily="sans-serif"
-        android:textSize="16sp"
+        android:textSize="18sp"
         android:text="@string/sort_entries"/>
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="8dp"
-        android:textColor="@color/white"
+        android:background="@color/windowBackgroundLight"
+        android:textColor="@color/primary_text_color"
         android:textSize="16sp"
-        android:text="@string/entry_type_selection_selected_types_and_order"
-        android:background="@color/grey700"/>
+        android:text="@string/entry_type_selection_selected_types_and_order"/>
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/entry_type_selection_dialog_selected_items"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_weight="1"
+        android:background="@color/windowBackground"/>
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="8dp"
-        android:textColor="@color/white"
+        android:background="@color/windowBackgroundLight"
+        android:textColor="@color/primary_text_color"
         android:textSize="16sp"
-        android:text="@string/entry_type_selection_available_types"
-        android:background="@color/grey700"/>
+        android:text="@string/entry_type_selection_available_types"/>
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/entry_type_selection_dialog_available_items"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_weight="1"
+        android:background="@color/windowBackground"/>
     <ImageButton
         android:id="@+id/entry_type_selection_dialog_submit"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="8dp"
         android:src="@drawable/ic_checked_checkbox"
-        android:tint="@color/colorPrimary"
+        android:tint="@color/icon_on_background"
+        android:background="@color/windowBackgroundLight"
+        android:foreground="?android:selectableItemBackground"
         android:contentDescription="@string/submit"/>
 </LinearLayout>

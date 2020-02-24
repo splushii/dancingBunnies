@@ -64,7 +64,7 @@
                     android:id="@+id/playlist_fastscroller"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
-                    android:background="@color/grey100"
+                    android:background="@color/windowBackgroundLight"
                     android:layout_gravity="end" />
             </LinearLayout>
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
@@ -97,6 +97,7 @@
                     android:layout_height="match_parent"
                     android:padding="8dp"
                     android:src="@drawable/ic_arrow_back_black_24dp"
+                    android:tint="@color/colorIcon"
                     android:contentDescription="@string/go_back_to_playlists" />
                 <TextView
                     android:id="@+id/playlist_content_info_name"
@@ -169,7 +170,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:src="@drawable/ic_sort_black_24dp"
-                            android:tint="@color/black_active_accent"
+                            android:tint="@color/icon_active_accent"
                             android:layout_marginStart="8dp"
                             android:layout_gravity="center_vertical"
                             android:contentDescription="@string/playlist_sort"/>
@@ -193,7 +194,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:src="@drawable/ic_shuffle_black_24dp"
-                            android:tint="@color/black_active_accent"
+                            android:tint="@color/icon_active_accent"
                             android:layout_marginStart="8dp"
                             android:layout_gravity="center_vertical"
                             android:contentDescription="@string/playlist_shuffle"/>
@@ -217,7 +218,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:src="@drawable/ic_gesture_black_24dp"
-                            android:tint="@color/black_active_accent"
+                            android:tint="@color/icon_active_accent"
                             android:layout_marginStart="8dp"
                             android:layout_gravity="center_vertical"
                             android:contentDescription="@string/playlist_random"/>
@@ -247,7 +248,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:src="@drawable/ic_repeat_black_24dp"
-                            android:tint="@color/black_active_accent"
+                            android:tint="@color/icon_active_accent"
                             android:layout_marginStart="8dp"
                             android:layout_gravity="center_vertical"
                             android:contentDescription="@string/playlist_repeat"/>
@@ -275,7 +276,7 @@
                     android:id="@+id/playlist_entries_fastscroller"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
-                    android:background="@color/grey100"
+                    android:background="@color/windowBackgroundLight"
                     android:layout_gravity="end" />
             </LinearLayout>
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
@@ -300,7 +301,7 @@
                     android:id="@+id/playlist_playback_entries_fastscroller"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
-                    android:background="@color/grey100"
+                    android:background="@color/windowBackgroundLight"
                     android:layout_gravity="end" />
             </LinearLayout>
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
@@ -310,7 +311,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_marginEnd="16dp"
+        android:layout_marginEnd="32dp"
         android:layout_marginBottom="16dp"
         android:src="@drawable/ic_add_white_24dp"/>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

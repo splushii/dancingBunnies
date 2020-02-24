@@ -291,8 +291,8 @@ public class NowPlayingEntriesAdapter extends
         PlaybackEntry entry = queueEntries.get(position);
         holder.playbackEntry = entry;
         boolean isQueueEntry = PlaybackEntry.USER_TYPE_QUEUE.equals(entry.playbackType);
-        holder.item.setBackgroundResource(position % 2 == 1 ?
-                R.color.white_active_accent : R.color.gray50_active_accent
+        holder.item.setBackgroundResource(position % 2 == 0 ?
+                R.color.background_active_accent : R.color.backgroundalternate_active_accent
         );
         int[] disabledActions;
         if (isQueueEntry) {

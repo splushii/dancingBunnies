@@ -3,24 +3,29 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white">
+    android:background="@color/windowBackground">
     <TextView
         android:id="@+id/add_to_new_playlist_dialog_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
         android:padding="16dp"
-        android:background="@android:color/black"
-        android:textColor="@color/grey"
+        android:background="@color/colorAccentDark"
+        android:textColor="@color/colorTextOnSecondary"
         android:fontFamily="sans-serif"
-        android:textSize="16sp"
+        android:textSize="18sp"
         android:text="@string/save_to_new_playlist"/>
     <EditText
         android:id="@+id/add_to_new_playlist_dialog_input"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        android:background="@color/windowBackground"
+        android:padding="8dp"
         android:hint="@string/add_to_new_playlist_name"
         android:imeOptions="actionDone"
         android:inputType="text"
+        android:textSize="14sp"
+        android:textStyle="bold"
         android:autofillHints="" />
 </LinearLayout>

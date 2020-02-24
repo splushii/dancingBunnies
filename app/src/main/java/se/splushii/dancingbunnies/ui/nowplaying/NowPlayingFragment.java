@@ -87,6 +87,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private static final long PROGRESS_UPDATE_INITIAL_INTERVAL = 100;
     private static final long PROGRESS_UPDATE_INTERNAL = 50;
 
+    private View nowPlaying;
     private TextView nowPlayingTitle;
     private TextView nowPlayingArtist;
     private TextView nowPlayingAlbum;
@@ -98,7 +99,6 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     private TextView mediaInfoText;
     private View bufferingView;
     private TextView sizeText;
-    private View moreView;
     private MutableLiveData<EntryID> entryIDLiveData;
     private LiveData<Meta> metaLiveData;
 
@@ -206,6 +206,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
         fastScroller.setRecyclerView(recView);
         fastScroller.setReversed(true);
 
+        nowPlaying = rootView.findViewById(R.id.nowplaying_current);
         nowPlayingTitle = rootView.findViewById(R.id.nowplaying_title);
         nowPlayingArtist = rootView.findViewById(R.id.nowplaying_artist);
         nowPlayingAlbum = rootView.findViewById(R.id.nowplaying_album);
@@ -299,8 +300,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
                         )
                 )
         );
-        moreView = rootView.findViewById(R.id.nowplaying_current_more);
-        moreView.setOnClickListener(v ->
+        nowPlaying.setOnClickListener(v ->
                 MenuActions.showPopupMenu(
                         getContext(),
                         v,
@@ -633,7 +633,7 @@ public class NowPlayingFragment extends AudioBrowserFragment {
     }
 
     private void updateMeta(Meta meta) {
-        moreView.setVisibility(meta.entryID.isUnknown() ? INVISIBLE : VISIBLE);
+        nowPlaying.setEnabled(!meta.entryID.isUnknown());
         updateDescription(meta);
         updateMediaInfo(meta);
         updateDuration(meta);

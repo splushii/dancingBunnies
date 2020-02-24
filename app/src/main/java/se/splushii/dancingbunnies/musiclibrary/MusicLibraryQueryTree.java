@@ -21,7 +21,6 @@ public class MusicLibraryQueryTree extends MusicLibraryQueryNode implements Iter
         return Collections.unmodifiableList(children).iterator();
     }
 
-    // TODO: Add NOT as a separate boolean, both for Tree and for Leaf
     public enum Op {
         AND,
         OR
@@ -29,12 +28,23 @@ public class MusicLibraryQueryTree extends MusicLibraryQueryNode implements Iter
     private Op operator;
     private final ArrayList<MusicLibraryQueryNode> children;
 
-    public MusicLibraryQueryTree(Op operator) {
+    private MusicLibraryQueryTree(MusicLibraryQueryTree source) {
+        super(source);
+        this.operator = source.operator;
+        children = new ArrayList<>();
+        for (MusicLibraryQueryNode child: source.children) {
+            addChild(child.deepCopy());
+        }
+    }
+
+    public MusicLibraryQueryTree(Op operator, boolean negate) {
+        super(MusicLibraryQueryNode.JSON_VALUE_NODE_TYPE_TREE, negate);
         this.operator = operator;
         children = new ArrayList<>();
     }
 
-    public MusicLibraryQueryTree(JSONObject jsonRoot) {
+    MusicLibraryQueryTree(JSONObject jsonRoot) {
+        super(jsonRoot);
         operator = Op.AND;
         children = new ArrayList<>();
         try {
@@ -65,16 +75,12 @@ public class MusicLibraryQueryTree extends MusicLibraryQueryNode implements Iter
     }
 
     public MusicLibraryQueryTree deepCopy() {
-        MusicLibraryQueryTree copy = new MusicLibraryQueryTree(operator);
-        for (MusicLibraryQueryNode child: children) {
-            copy.addChild(child.deepCopy());
-        }
-        return copy;
+        return new MusicLibraryQueryTree(this);
     }
 
     @Override
     public JSONObject toJSON() {
-        JSONObject jsonRoot = new JSONObject();
+        JSONObject jsonRoot = super.toJSON();
         try {
             jsonRoot.put(JSON_KEY_OP, operator.name());
             JSONArray jsonChildren = new JSONArray();
@@ -99,7 +105,7 @@ public class MusicLibraryQueryTree extends MusicLibraryQueryNode implements Iter
         if (operator == Op.AND) {
             queryTree = this;
         } else {
-            queryTree = new MusicLibraryQueryTree(Op.AND);
+            queryTree = new MusicLibraryQueryTree(Op.AND, false);
             queryTree.addChild(this);
         }
         queryTree.addChild(new MusicLibraryQueryLeaf(entryID.type, entryID.id));

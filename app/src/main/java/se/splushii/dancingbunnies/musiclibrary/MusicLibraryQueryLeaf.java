@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
 public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
     private static final String JSON_KEY_KEY = "key";
     private static final String JSON_KEY_OP = "op";
-    static final String JSON_KEY_VALUE = "value";
+    private static final String JSON_KEY_VALUE = "value";
 
     public enum Op {
         EQUALS,
@@ -20,36 +20,57 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
         LESS,
         LESS_OR_EQUALS,
         GREATER,
-        GREATER_OR_EQUALS
+        GREATER_OR_EQUALS,
+        EXISTS
     }
     private String key;
     private Op operator;
     private String value;
 
-    public MusicLibraryQueryLeaf(String key, String value) {
-        this.key = key;
-        operator = Op.EQUALS;
-        this.value = value;
+    private MusicLibraryQueryLeaf(MusicLibraryQueryLeaf source) {
+        super(source);
+        init(source.key, source.operator, source.value);
     }
 
-    public MusicLibraryQueryLeaf(String key, Op operator, String value) {
-        this.key = key;
-        this.operator = operator;
-        this.value = value;
+    MusicLibraryQueryLeaf(String key, String value) {
+        super(MusicLibraryQueryNode.JSON_VALUE_NODE_TYPE_LEAF, false);
+        init(key, Op.EQUALS, value);
     }
 
-    public MusicLibraryQueryLeaf(JSONObject jsonRoot) {
+    public MusicLibraryQueryLeaf(String key, Op operator, String value, boolean negate) {
+        super(MusicLibraryQueryNode.JSON_VALUE_NODE_TYPE_LEAF, negate);
+        init(key, operator, value);
+    }
+
+    private void init(String key, Op op, String value) {
+        this.key = key;
+        setOperatorAndValue(op, value);
+    }
+
+    MusicLibraryQueryLeaf(JSONObject jsonRoot) {
+        super(jsonRoot);
         try {
             key = jsonRoot.getString(JSON_KEY_KEY);
-            operator = Op.valueOf(jsonRoot.getString(JSON_KEY_OP));
-            value = jsonRoot.getString(JSON_KEY_VALUE);
+            setOperatorAndValue(
+                    Op.valueOf(jsonRoot.getString(JSON_KEY_OP)),
+                    jsonRoot.has(JSON_KEY_VALUE) ? jsonRoot.getString(JSON_KEY_VALUE) : null
+            );
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
 
+    private void setOperatorAndValue(Op operator, String value) {
+        this.operator = operator;
+        if (Op.EXISTS.equals(operator)) {
+            this.value = null;
+            return;
+        }
+        this.value = value;
+    }
+
     public void setOperator(Op op) {
-        operator = op;
+        setOperatorAndValue(op, value);
     }
 
     public Op getOperator() {
@@ -61,7 +82,7 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
     }
 
     public void setValue(String value) {
-        this.value = value;
+        setOperatorAndValue(operator, value);
     }
 
     public String getValue() {
@@ -70,14 +91,12 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
 
     @Override
     public MusicLibraryQueryLeaf deepCopy() {
-        MusicLibraryQueryLeaf copy = new MusicLibraryQueryLeaf(key, value);
-        copy.setOperator(operator);
-        return copy;
+        return new MusicLibraryQueryLeaf(this);
     }
 
     @Override
     public JSONObject toJSON() {
-        JSONObject jsonRoot = new JSONObject();
+        JSONObject jsonRoot = super.toJSON();
         try {
             jsonRoot.put(JSON_KEY_KEY, key);
             jsonRoot.put(JSON_KEY_OP, operator.name());
@@ -93,7 +112,10 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
         if (entryID.isUnknown()) {
             return this;
         }
-        MusicLibraryQueryTree queryTree = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND);
+        MusicLibraryQueryTree queryTree = new MusicLibraryQueryTree(
+                MusicLibraryQueryTree.Op.AND,
+                false
+        );
         queryTree.addChild(this);
         queryTree.addChild(new MusicLibraryQueryLeaf(entryID.type, entryID.id));
         return queryTree;
@@ -118,6 +140,8 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
                 return ">";
             case GREATER_OR_EQUALS:
                 return ">=";
+            case EXISTS:
+                return "IS NOT"; // IS NOT NULL
             default:
                 return null;
         }
@@ -138,6 +162,8 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
                 return ">";
             case GREATER_OR_EQUALS:
                 return ">=";
+            case EXISTS:
+                return "exists";
         }
     }
 
@@ -153,7 +179,8 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
             case STRING:
                 return Arrays.asList(
                         Op.EQUALS,
-                        Op.LIKE
+                        Op.LIKE,
+                        Op.EXISTS
                 );
             case DOUBLE:
             case LONG:
@@ -162,7 +189,8 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
                         Op.LESS,
                         Op.LESS_OR_EQUALS,
                         Op.GREATER,
-                        Op.GREATER_OR_EQUALS
+                        Op.GREATER_OR_EQUALS,
+                        Op.EXISTS
                 );
         }
     }

@@ -205,6 +205,9 @@ public class PlaylistFragment extends AudioBrowserFragment {
 
     @Override
     protected void onCurrentEntryChanged(PlaybackEntry entry) {
+        if (model == null) {
+            return;
+        }
         model.setCurrentEntry(entry);
     }
 

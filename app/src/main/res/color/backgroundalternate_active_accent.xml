@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:color="@color/colorAccent" android:drawable="@color/colorAccent" android:state_activated="true" />
-    <item android:color="@color/grey50" android:drawable="@color/grey50"/>
+    <item android:color="@color/windowBackgroundAlternate" android:drawable="@color/windowBackgroundAlternate"/>
 </selector>

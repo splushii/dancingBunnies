@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -100,7 +101,7 @@
                     android:id="@+id/nowplaying_fastscroller"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
-                    android:background="@color/grey100"
+                    android:background="@color/windowBackgroundLight"
                     android:layout_gravity="end" />
             </LinearLayout>
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
@@ -113,8 +114,10 @@
             android:elevation="4dp"
             android:orientation="vertical">
             <LinearLayout
+                android:id="@+id/nowplaying_current"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="?android:selectableItemBackground"
                 android:gravity="center_vertical">
                 <ProgressBar
                     android:id="@+id/nowplaying_buffering"
@@ -124,7 +127,6 @@
                     android:indeterminate="true" />
                 <LinearLayout
                     android:id="@+id/nowplaying_info"
-                    android:background="?android:selectableItemBackground"
                     android:layout_height="wrap_content"
                     android:layout_width="0dp"
                     android:layout_weight="1"
@@ -154,12 +156,9 @@
                         android:paddingTop="2dp"
                         android:gravity="center_horizontal"/>
                 </LinearLayout>
-                <ImageButton
-                    android:id="@+id/nowplaying_current_more"
+                <View
                     android:layout_width="36dp"
-                    android:layout_height="match_parent"
-                    android:src="@drawable/ic_more_vert_black_24dp"
-                    android:contentDescription="@string/item_action_more" />
+                    android:layout_height="match_parent"/>
             </LinearLayout>
             <se.splushii.dancingbunnies.ui.WaveformSeekBar
                 android:id="@+id/waveformSeekBar"
@@ -229,7 +228,7 @@
                     android:id="@+id/nowplaying_history_fastscroller"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
-                    android:background="@color/grey100"
+                    android:background="@color/windowBackgroundLight"
                     android:layout_gravity="end" />
             </LinearLayout>
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
@@ -248,6 +247,7 @@
                 android:layout_weight="1" />
             <androidx.mediarouter.app.MediaRouteButton
                 android:id="@+id/nowlaying_mediaroutebutton"
+                app:mediaRouteButtonTint="@color/colorPrimaryText"
                 android:layout_width="36dp"
                 android:layout_height="36dp" />
             <ImageView
@@ -278,6 +278,7 @@
                 android:adjustViewBounds="true"
                 style="?android:buttonBarButtonStyle"
                 android:src="@drawable/ic_play_arrow_black_24dp"
+                android:tint="@color/colorPrimaryText"
                 android:contentDescription="@string/nowplaying_play_pause_contentdesc" />
             <ImageButton
                 android:id="@+id/nowplaying_next"

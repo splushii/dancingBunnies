@@ -4,15 +4,9 @@
     </style>
 
     <style name="ToolbarTheme" parent="Widget.MaterialComponents.Toolbar">
-        <item name="titleTextColor">@color/white</item>
-        <item name="subtitleTextColor">@color/white</item>
-        <item name="collapseIcon">@drawable/ic_arrow_back_white_24dp</item>
-    </style>
-
-    <style name="SearchViewTheme" parent="Widget.AppCompat.SearchView">
-        <item name="queryBackground">@color/colorPrimary</item>
-        <item name="searchIcon">@drawable/ic_search_white_24dp</item>
-        <item name="closeIcon">@drawable/ic_dialog_close_dark</item>
+        <item name="android:background">@color/colorPrimary</item>
+        <item name="titleTextColor">@color/colorTextOnPrimary</item>
+        <item name="subtitleTextColor">@color/colorTextOnPrimary</item>
     </style>
 
     <style name="ActionModeTheme" parent="Widget.AppCompat.ActionMode">
@@ -21,16 +15,16 @@
     </style>
 
     <style name="ActionModeTheme.Title" parent="TextAppearance.AppCompat.Widget.ActionMode.Title">
-        <item name="android:textColor">@color/white</item>
+        <item name="android:textColor">@color/colorTextOnPrimary</item>
     </style>
 
     <style name="ActionModeTheme.Close" parent="Widget.AppCompat.ActionButton.CloseMode">
-        <item name="android:tint">@color/white</item>
+        <item name="android:tint">@color/colorTextOnPrimary</item>
     </style>
 
     <style name="SpinnerDropDownItemTheme" parent="Widget.AppCompat.Light.DropDownItem.Spinner">
         <item name="android:textColor">@color/primary_text_color</item>
-        <item name="android:background">@color/grey100</item>
+        <item name="android:popupBackground">@color/popupBackground</item>
     </style>
 
     <style name="ImageButtonStyle" parent="Widget.AppCompat.ImageButton">
@@ -39,32 +33,28 @@
     </style>
 
     <style name="PopupMenuTheme" parent="Widget.AppCompat.Light.PopupMenu">
-        <item name="android:popupBackground">@color/white</item>
+        <item name="android:popupBackground">@color/popupBackground</item>
     </style>
 
-    <style name="MediaRouteTheme" parent="Theme.MediaRouter.Light">
-    </style>
-
-    <style name="AppTheme.Base" parent="Theme.MaterialComponents.NoActionBar">
-        <item name="android:windowBackground">@color/white</item>
+    <style name="AppTheme.Base" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/windowBackground</item>
         <item name="android:textColorPrimary">@color/primary_text_color</item>
         <item name="android:textColorSecondary">@color/secondary_text_color</item>
         <item name="android:textColorHint">@color/grey500</item>
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorOnPrimary">@color/icon_on_primary</item>
         <item name="colorSecondary">@color/colorAccent</item>
+        <item name="colorOnSecondary">@color/icon_on_secondary</item>
+        <item name="colorControlHighlight">@color/colorAccentLight</item>
         <item name="windowActionModeOverlay">true</item>
         <item name="toolbarStyle">@style/ToolbarTheme</item>
         <item name="actionModeCloseDrawable">@drawable/ic_arrow_back_white_24dp</item>
         <item name="actionModeStyle">@style/ActionModeTheme</item>
         <item name="tabStyle">@style/TabTheme</item>
-        <item name="searchViewStyle">@style/SearchViewTheme</item>
-        <item name="colorControlHighlight">@color/colorAccentLight</item>
         <item name="android:spinnerDropDownItemStyle">@style/SpinnerDropDownItemTheme</item>
         <item name="imageButtonStyle">@style/ImageButtonStyle</item>
         <item name="popupMenuStyle">@style/PopupMenuTheme</item>
-        <item name="mediaRouteTheme">@style/MediaRouteTheme</item>
-        <item name="android:colorForeground">@color/grey500</item>
     </style>
 
     <style name="AppTheme" parent="AppTheme.Base">

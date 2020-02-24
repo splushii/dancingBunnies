@@ -63,7 +63,7 @@ public class MetaStorage {
                                                    boolean sortOrderAscending,
                                                    MusicLibraryQueryNode queryNode) {
         if (queryNode == null) {
-            queryNode = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND);
+            queryNode = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND, false);
         }
         HashMap<String, String> keyToTableAliasMap = new HashMap<>();
         HashSet<String> uniqueQueryKeys = queryNode.getKeys();
@@ -248,7 +248,7 @@ public class MetaStorage {
 //                + "\nquery: " + sqlQuery.getSql()
 //                + "\nargs: "
 //                + queryArgs.stream()
-//                .map(Object::toString)
+//                .map(v -> v == null ? null : v.toString())
 //                .collect(Collectors.joining(", "))
 //                + "\naliases: "
 //                + keyToTableAliasMap.entrySet().stream()
@@ -329,10 +329,11 @@ public class MetaStorage {
                         operatorString = "OR";
                         break;
                 }
+                String negateString = tree.isNegated() ? " NOT" : "";
                 if (node instanceof MusicLibraryQueryTree) {
                     String treeQueryPrefix;
                     if (whereClauseEmpty) {
-                        treeQueryPrefix = " (";
+                        treeQueryPrefix = negateString + " (";
                     } else {
                         treeQueryPrefix = " " + operatorString;
                     }
@@ -350,7 +351,7 @@ public class MetaStorage {
                 MusicLibraryQueryLeaf leaf = (MusicLibraryQueryLeaf) node;
                 String leafQueryPrefix;
                 if (whereClauseEmpty) {
-                    leafQueryPrefix = " (";
+                    leafQueryPrefix = negateString + " (";
                 } else {
                     leafQueryPrefix = " " + operatorString;
                 }
@@ -383,15 +384,12 @@ public class MetaStorage {
         String key = leaf.getKey();
         String value = leaf.getValue();
         String sqlOp = leaf.getSQLOp();
+        boolean negated = leaf.isNegated();
         String typeTableAlias = keyToTableAliasMap.get(key);
         if (typeTableAlias == null) {
             Log.e(LC, "There is no type table"
                     + " for bundleQuery key \"" + key + "\""
                     + " with type " + Meta.getType(key));
-            return false;
-        }
-        if (value == null) {
-            Log.e(LC, "value is null for key: " + key);
             return false;
         }
         if (sqlOp == null) {
@@ -413,6 +411,9 @@ public class MetaStorage {
                 return false;
         }
         query.append(prefix);
+        if (negated) {
+            query.append(" NOT");
+        }
         query.append(" ").append(typeTableAlias).append(".");
         if (Meta.FIELD_SPECIAL_MEDIA_SRC.equals(key)) {
             query.append(DB.COLUMN_API);
@@ -552,7 +553,7 @@ public class MetaStorage {
 //                + "\nquery: " + sqlQuery.getSql()
 //                + "\nargs: "
 //                + queryArgs.stream()
-//                .map(Object::toString)
+//                .map(v -> v == null ? null : v.toString())
 //                .collect(Collectors.joining(", "))
 //                + "\naliases: "
 //                + keyToTableAliasMap.entrySet().stream()

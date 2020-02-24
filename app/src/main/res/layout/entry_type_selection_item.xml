@@ -3,7 +3,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@color/white">
+    android:background="@color/windowBackground">
     <LinearLayout
         android:id="@+id/sort_item"
         android:layout_width="match_parent"
@@ -23,6 +23,7 @@
             android:layout_height="wrap_content"
             android:padding="8dp"
             android:src="@drawable/ic_drag_handle_black_24dp"
+            android:tint="@color/icon_on_background"
             android:contentDescription="@string/drag_handle" />
     </LinearLayout>
 </LinearLayout>

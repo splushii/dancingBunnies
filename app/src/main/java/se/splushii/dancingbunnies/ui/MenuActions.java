@@ -25,6 +25,7 @@ import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryTree;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
@@ -127,7 +128,7 @@ public class MenuActions {
                     menu,
                     i,
                     moreActions[i],
-                    R.color.icon_on_white,
+                    R.color.icon_on_background,
                     !disabled.contains(moreActions[i])
             );
         }
@@ -229,9 +230,12 @@ public class MenuActions {
         } else if (action == ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE) {
             audioBrowserFragment.queueQueryBundles(queryNodesSupplier.get());
         } else if (action == ACTION_ADD_MULTIPLE_TO_PLAYLIST) {
+            MusicLibraryQueryNode query = queryNodeSupplier.get();
+            query = query == null ?
+                    new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND, false) : query;
             AddToPlaylistDialogFragment.showDialog(
                     audioBrowserFragment,
-                    queryNodeSupplier.get().withEntryIDs(entryIDSupplier.get())
+                    query.withEntryIDs(entryIDSupplier.get())
             );
         } else if (action == ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST) {
             AddToPlaylistDialogFragment.showDialog(

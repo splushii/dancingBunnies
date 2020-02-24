@@ -3,7 +3,7 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white">
+    android:background="@color/windowBackground">
     <TextView
         android:id="@+id/meta_dialog_title"
         android:layout_width="match_parent"
@@ -12,9 +12,9 @@
         android:elevation="4dp"
         android:background="@color/colorAccentDark"
         android:padding="16dp"
-        android:textColor="@color/icon_on_secondary"
+        android:textColor="@color/primary_text_color"
         android:fontFamily="sans-serif"
-        android:textSize="20sp"
+        android:textSize="18sp"
         android:text="@string/metadata"/>
     <LinearLayout
         android:id="@+id/meta_dialog_add_view"
@@ -96,7 +96,7 @@
         android:layout_height="0dp"
         android:layout_weight="1"/>
     <LinearLayout
-        android:background="@color/colorAccentDark"
+        android:background="@color/windowBackgroundLight"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:elevation="4dp"
@@ -107,7 +107,7 @@
             android:layout_height="match_parent"
             android:padding="8dp"
             android:src="@drawable/ic_add_black_24dp"
-            android:tint="@color/icon_on_secondary"
+            android:tint="@color/colorPrimaryText"
             android:contentDescription="@string/metadata_add" />
     </LinearLayout>
 </LinearLayout>

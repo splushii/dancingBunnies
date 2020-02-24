@@ -43,7 +43,7 @@ public class MusicLibraryQuery {
             return;
         }
         if (query.queryTree == null) {
-            this.queryTree = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND);
+            this.queryTree = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND, false);
         } else {
             this.queryTree = query.queryTree.deepCopy();
         }
@@ -68,7 +68,7 @@ public class MusicLibraryQuery {
     }
 
     private void init() {
-        this.queryTree = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND);
+        this.queryTree = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND, false);
         this.showField = DEFAULT_SHOW_FIELD;
         this.sortByFields = DEFAULT_SORT_FIELDS;
         this.sortOrderAscending = true;
@@ -129,7 +129,10 @@ public class MusicLibraryQuery {
             return;
         }
         if (queryTree.getOperator() != MusicLibraryQueryTree.Op.AND) {
-            MusicLibraryQueryTree newRoot = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND);
+            MusicLibraryQueryTree newRoot = new MusicLibraryQueryTree(
+                    MusicLibraryQueryTree.Op.AND,
+                    false
+            );
             newRoot.addChild(queryTree);
             queryTree = newRoot;
         }

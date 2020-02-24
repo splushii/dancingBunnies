@@ -243,8 +243,8 @@ public class NowPlayingHistoryEntriesAdapter extends
         holder.actionsView.initialize();
         PlaybackEntry entry = historyEntries.get(position);
         holder.playbackEntry = entry;
-        holder.item.setBackgroundResource(position % 2 == 1 ?
-                R.color.white_active_accent : R.color.gray50_active_accent
+        holder.item.setBackgroundResource(position % 2 == 0 ?
+                R.color.background_active_accent : R.color.backgroundalternate_active_accent
         );
         holder.itemContent.setEntryID(entry.entryID);
         holder.itemContent.setPreloaded(entry.isPreloaded());

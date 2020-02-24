@@ -256,7 +256,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     @Override
     public void onBindViewHolder(@NonNull final SongViewHolder holder, int position) {
         holder.libraryEntry.setBackgroundResource(position % 2 == 0 ?
-                R.color.white_active_accent : R.color.gray50_active_accent
+                R.color.background_active_accent : R.color.backgroundalternate_active_accent
         );
         LibraryEntry libraryEntry = dataset.get(position);
         final boolean browsable = libraryEntry.isBrowsable();

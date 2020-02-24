@@ -3,7 +3,7 @@
     android:id="@+id/library_entry"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@color/white_active_accent">
+    android:background="@color/background_active_accent">
     <LinearLayout
         android:background="?android:selectableItemBackground"
         android:layout_width="match_parent"
