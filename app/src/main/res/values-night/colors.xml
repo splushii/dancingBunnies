@@ -11,9 +11,9 @@
 
     <color name="colorPrimaryText">@color/grey100</color>
 
-    <color name="colorTextOnPrimary">@color/black</color>
+    <color name="colorTextOnPrimary">@color/white</color>
     <color name="colorTextOnPrimaryDynamic">@color/grey_active_black</color>
-    <color name="colorIconOnPrimary">@color/black</color>
+    <color name="colorIconOnPrimary">@color/white</color>
     <color name="colorIconOnPrimaryDisabled">@color/colorPrimaryLight</color>
 
     <color name="colorTextOnSecondary">@color/white</color>

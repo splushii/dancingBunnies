@@ -72,7 +72,6 @@
                 android:id="@+id/nowplaying_current_playlist_deselect"
                 android:layout_width="wrap_content"
                 android:layout_height="match_parent"
-                android:background="?android:selectableItemBackground"
                 android:src="@drawable/ic_cancel_red_24dp"
                 android:paddingTop="4dp"
                 android:paddingBottom="4dp"

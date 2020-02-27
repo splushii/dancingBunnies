@@ -17,6 +17,8 @@
     <color name="bluegrey900">#263238</color>
     <color name="black">#000000</color>
     <color name="red">#F44336</color>
+    
+    <color name="colorLogo">#ccf2ff</color>
 
     <color name="colorPrimary">#4CAF50</color>
     <color name="colorPrimaryDark">#087f23</color>

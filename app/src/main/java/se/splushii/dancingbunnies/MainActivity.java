@@ -4,10 +4,8 @@ import android.app.SearchManager;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 
 import com.google.android.gms.cast.framework.CastButtonFactory;
 import com.google.android.material.tabs.TabLayout;
@@ -56,6 +54,8 @@ public final class MainActivity extends AppCompatActivity {
     private ViewPager mViewPager;
     private SectionsPagerAdapter mSectionsPagerAdapter;
 
+    private ImageButton settingsBtn;
+
     private MusicLibraryFragmentModel musicLibraryModel;
     private PlaylistFragmentModel playlistModel;
 
@@ -71,7 +71,8 @@ public final class MainActivity extends AppCompatActivity {
         mViewPager = findViewById(R.id.main_container);
         mViewPager.setAdapter(mSectionsPagerAdapter);
 
-        setSupportActionBar(findViewById(R.id.main_toolbar));
+        settingsBtn = findViewById(R.id.main_settings);
+        settingsBtn.setOnClickListener(view -> showSettings());
 
         TabLayout tabLayout = findViewById(R.id.main_tabs);
         tabLayout.setupWithViewPager(mViewPager);
@@ -130,13 +131,6 @@ public final class MainActivity extends AppCompatActivity {
         super.onStop();
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater menuInflater = getMenuInflater();
-        menuInflater.inflate(R.menu.main_activity_menu, menu);
-        return true;
-    }
-
     private void showSettings() {
         Intent intent = new Intent(this, SettingsActivity.class);
         startActivityForResult(intent, SETTINGS_INTENT_REQUEST);
@@ -151,17 +145,6 @@ public final class MainActivity extends AppCompatActivity {
             default:
                 Log.d(LC, "Unhandled intent code: " + requestCode);
                 break;
-        }
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.action_settings:
-                showSettings();
-                return true;
-            default:
-                return super.onOptionsItemSelected(item);
         }
     }
 
@@ -253,7 +236,7 @@ public final class MainActivity extends AppCompatActivity {
             switch (position) {
                 default:
                 case PAGER_MUSICLIBRARY:
-                    return "MusicLibrary";
+                    return "Library";
                 case PAGER_NOWPLAYING:
                     return "Now Playing";
                 case PAGER_PLAYLIST:

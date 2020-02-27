@@ -142,4 +142,5 @@
     <string name="submit">Submit</string>
     <string name="drag_handle">Drag handle</string>
     <string name="selected_media_route">Selected media route</string>
+    <string name="logo_dB">dB</string>
 </resources>
