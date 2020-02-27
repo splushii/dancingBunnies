@@ -3,7 +3,9 @@ package se.splushii.dancingbunnies.ui;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
+import android.animation.ArgbEvaluator;
 import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.util.AttributeSet;
@@ -13,6 +15,8 @@ import android.widget.LinearLayout;
 
 import java.util.ArrayList;
 
+import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
@@ -21,12 +25,14 @@ import se.splushii.dancingbunnies.util.Util;
 public class FastScroller extends LinearLayout {
     private static final String LC = Util.getLogContext(FastScroller.class);
 
-    private View handle;
     private RecyclerView.OnScrollListener scrollListener;
     private RecyclerView recyclerView;
-    private ViewHider handleHider;
+    private View handle;
+    private ViewColorer handleEnabler;
+    private ViewColorer handleDisabler;
     private FastScrollerBubble bubble;
-    private ViewHider bubbleHider;
+    private ViewAnimator bubbleEnabler;
+    private ViewAnimator bubbleDisabler;
 
     private static final int ANIMATION_DURATION = 100;
     private static final int VIEW_HIDE_DELAY = 1000;
@@ -53,19 +59,32 @@ public class FastScroller extends LinearLayout {
         setClipChildren(false);
         inflate(context, R.layout.fastscroller, this);
         handle = findViewById(R.id.fastscroller_handle);
-        handleHider = new ViewHider(handle, AnimationType.FADE);
-        hideView(handle, AnimationType.FADE);
+        handleEnabler = new ViewColorer(handle, R.color.colorPrimary, R.color.colorPrimary, 0);
+        handleDisabler = new ViewColorer(handle, R.color.colorPrimary, R.color.grey500, 200);
+        handleDisabler.run();
+        handle.setVisibility(INVISIBLE);
     }
 
     public void setRecyclerView(RecyclerView recyclerView) {
         this.recyclerView = recyclerView;
         scrollListener = new ScrollListener();
         recyclerView.addOnScrollListener(scrollListener);
+        recyclerView.getAdapter().registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
+            @Override
+            public void onChanged() {
+                if (hideIfNotNeeded()) {
+                    return;
+                }
+                animateEnable(handle, handleEnabler, handleDisabler);
+                animateDisable(handle, handleDisabler, VIEW_HIDE_DELAY);
+            }
+        });
     }
 
     public void setBubble(FastScrollerBubble bubble) {
         this.bubble = bubble;
-        this.bubbleHider = new ViewHider(bubble, AnimationType.SCALE);
+        this.bubbleDisabler = new ViewAnimator(bubble, AnimationType.SCALE, true);
+        this.bubbleEnabler = new ViewAnimator(bubble, AnimationType.SCALE, false);
         hideView(bubble, AnimationType.SCALE);
     }
 
@@ -77,7 +96,7 @@ public class FastScroller extends LinearLayout {
     public void enableBubble(boolean enabled) {
         bubbleEnabled = enabled;
         if (!enabled) {
-            animateHide(bubbleHider, VIEW_HIDE_DELAY);
+            animateDisable(bubble, bubbleDisabler, VIEW_HIDE_DELAY);
         }
     }
 
@@ -113,7 +132,6 @@ public class FastScroller extends LinearLayout {
     }
 
     private void hideView(View v, AnimationType animationType) {
-        int visibility = fastscrollerNeeded() ? INVISIBLE : INVISIBLE;
         AnimatorSet animatorSet = new AnimatorSet();
         v.setPivotX(v.getWidth());
         v.setPivotY(v.getHeight());
@@ -129,23 +147,34 @@ public class FastScroller extends LinearLayout {
                 animators.add(ObjectAnimator.ofFloat(v, ALPHA, 1f, 0f)
                         .setDuration(ANIMATION_DURATION));
                 break;
-
         }
         animatorSet.playTogether(animators);
         animatorSet.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
                 super.onAnimationEnd(animation);
-                v.setVisibility(visibility);
+                v.setVisibility(INVISIBLE);
             }
 
             @Override
             public void onAnimationCancel(Animator animation) {
                 super.onAnimationCancel(animation);
-                v.setVisibility(visibility);
+                v.setVisibility(INVISIBLE);
             }
         });
         animatorSet.start();
+    }
+
+    private void colorView(View v, int startColorResource, int endColorResource, long delay) {
+        ValueAnimator colorAnim = ObjectAnimator.ofInt(
+                v.getBackground(),
+                "tint",
+                ContextCompat.getColor(getContext(), startColorResource),
+                ContextCompat.getColor(getContext(), endColorResource)
+        );
+        colorAnim.setDuration(delay);
+        colorAnim.setEvaluator(new ArgbEvaluator());
+        colorAnim.start();
     }
 
     private void setPosition(float position) {
@@ -168,15 +197,21 @@ public class FastScroller extends LinearLayout {
         return Math.min(minimum, max);
     }
 
-    private boolean fastscrollerNeeded() {
-        boolean needed = false;
+    private boolean hideIfNotNeeded() {
+        boolean hide = true;
         if (recyclerView != null) {
             RecyclerView.Adapter adapter = recyclerView.getAdapter();
             if (adapter != null && adapter.getItemCount() > 50) {
-                needed = true;
+                hide = false;
             }
         }
-        return needed;
+        if (hide) {
+            handle.setVisibility(INVISIBLE);
+            if (bubble != null) {
+                hideView(bubble, AnimationType.SCALE);
+            }
+        }
+        return hide;
     }
 
     /**
@@ -184,30 +219,43 @@ public class FastScroller extends LinearLayout {
      */
     private class ScrollListener extends RecyclerView.OnScrollListener {
         int lastPos = 0;
+        boolean draggingOrSettling = false;
+
         @Override
-        public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-            if (!fastscrollerNeeded()) {
-                hideView(handle, AnimationType.FADE);
-                if (bubble != null) {
-                    hideView(bubble, AnimationType.SCALE);
-                }
+        public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+            if (hideIfNotNeeded()) {
                 return;
             }
+            switch (newState) {
+                default:
+                case RecyclerView.SCROLL_STATE_IDLE:
+                    animateDisable(handle, handleDisabler, VIEW_HIDE_DELAY);
+                    if (bubble != null) {
+                        animateDisable(bubble, bubbleDisabler, VIEW_HIDE_DELAY);
+                    }
+                    draggingOrSettling = false;
+                    break;
+                case RecyclerView.SCROLL_STATE_DRAGGING:
+                case RecyclerView.SCROLL_STATE_SETTLING:
+                    if (!draggingOrSettling) {
+                        draggingOrSettling = true;
+                        animateEnable(handle, handleEnabler, handleDisabler);
+                    }
+                    break;
+            }
+            super.onScrollStateChanged(recyclerView, newState);
+        }
+
+        @Override
+        public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
             if (bubble != null) {
                 int pos = ((LinearLayoutManager) recyclerView.getLayoutManager()).findFirstCompletelyVisibleItemPosition();
                 if (pos != lastPos) {
-                    pos = pos >= 0 ? pos : 0;
+                    pos = Math.max(pos, 0);
                     lastPos = pos;
                     bubble.update(pos);
                 }
             }
-
-            animateShow(handle, handleHider, AnimationType.FADE);
-            animateHide(handleHider, VIEW_HIDE_DELAY);
-            if (bubble != null) {
-                animateHide(bubbleHider, VIEW_HIDE_DELAY);
-            }
-
             if (!touching) {
                 int scrollOffset = recyclerView.computeVerticalScrollOffset();
                 int scrollRange = recyclerView.computeVerticalScrollRange();
@@ -227,56 +275,30 @@ public class FastScroller extends LinearLayout {
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (!fastscrollerNeeded()) {
-            hideView(handle, AnimationType.FADE);
-            if (bubble != null) {
-                hideView(bubble, AnimationType.SCALE);
-            }
+        if (hideIfNotNeeded()) {
             return super.onTouchEvent(event);
         }
         int action = event.getAction();
+        if (action == MotionEvent.ACTION_DOWN) {
+            animateEnable(handle, handleEnabler, handleDisabler);
+            if (bubble != null && bubbleEnabled) {
+                animateEnable(bubble, bubbleEnabler, bubbleDisabler);
+            }
+        }
         if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
             touching = true;
             setPosition(event.getY());
-            animateShow(handle, handleHider, AnimationType.FADE);
-            if (bubble != null && bubbleEnabled) {
-                animateShow(bubble, bubbleHider, AnimationType.SCALE);
-            }
             setRecyclerViewPosition();
             return true;
         } else if (event.getAction() == MotionEvent.ACTION_UP) {
             touching = false;
-            animateHide(handleHider, VIEW_HIDE_DELAY);
+            animateDisable(handle, handleDisabler, VIEW_HIDE_DELAY);
             if (bubble != null) {
-                animateHide(bubbleHider, VIEW_HIDE_DELAY);
+                animateDisable(bubble, bubbleDisabler, VIEW_HIDE_DELAY);
             }
             return true;
         }
         return super.onTouchEvent(event);
-    }
-
-    private void animateHide(ViewHider viewHider, int hideDelay) {
-        getHandler().postDelayed(viewHider, hideDelay);
-    }
-
-    private void animateShow(View v, ViewHider viewHider, AnimationType animationType) {
-        getHandler().removeCallbacks(viewHider);
-        if (v.getVisibility() != VISIBLE) {
-            showView(v, animationType);
-        }
-    }
-
-    private class ViewHider implements Runnable {
-        private final View view;
-        private final AnimationType animationType;
-        ViewHider(View v, AnimationType animationType) {
-            this.view = v;
-            this.animationType = animationType;
-        }
-        @Override
-        public void run() {
-            hideView(view, animationType);
-        }
     }
 
     private void setRecyclerViewPosition() {
@@ -307,6 +329,54 @@ public class FastScroller extends LinearLayout {
             }
             LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
             linearLayoutManager.scrollToPositionWithOffset(position, 0);
+        }
+    }
+
+    private void animateDisable(View v, Runnable viewDisableAnimator, int hideDelay) {
+        getHandler().postDelayed(viewDisableAnimator, hideDelay);
+    }
+
+    private void animateEnable(View v, Runnable viewEnableAnimator, Runnable viewDisableAnimator) {
+        getHandler().removeCallbacks(viewDisableAnimator);
+        viewEnableAnimator.run();
+    }
+
+    private class ViewAnimator implements Runnable {
+        private final View view;
+        private final AnimationType animationType;
+        private final boolean hide;
+        ViewAnimator(View v, AnimationType animationType, boolean hide) {
+            this.view = v;
+            this.animationType = animationType;
+            this.hide = hide;
+        }
+        @Override
+        public void run() {
+            if (hide) {
+                hideView(view, animationType);
+            } else {
+                showView(view, animationType);
+            }
+        }
+    }
+
+    private class ViewColorer implements Runnable {
+        private final View view;
+        private final int fromColorResource;
+        private final int toColorResource;
+        private final long delay;
+        ViewColorer(View v, int fromColorResource, int toColorResource, long delay) {
+            this.view = v;
+            this.fromColorResource = fromColorResource;
+            this.toColorResource = toColorResource;
+            this.delay = delay;
+        }
+        @Override
+        public void run() {
+            if (view.getVisibility() != VISIBLE) {
+                view.setVisibility(VISIBLE);
+            }
+            colorView(view, fromColorResource, toColorResource, delay);
         }
     }
 }

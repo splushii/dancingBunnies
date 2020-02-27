@@ -674,12 +674,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         browseRecyclerView.setLayoutManager(browseRecyclerViewLayoutManager);
         browseRecyclerView.getRecycledViewPool().setMaxRecycledViews(0, 50);
 
-        browseFastScroller = rootView.findViewById(R.id.musiclibrary_browse_fastscroller);
-        browseFastScroller.setRecyclerView(browseRecyclerView);
-        browseFastScrollerBubble = rootView.findViewById(R.id.musiclibrary_browse_fastscroller_bubble);
-        browseFastScroller.setBubble(browseFastScrollerBubble);
-
-        browseRecyclerViewAdapter = new MusicLibraryAdapter(this, browseRecyclerView, browseFastScrollerBubble);
+        browseRecyclerViewAdapter = new MusicLibraryAdapter(this, browseRecyclerView);
         browseRecyclerView.setAdapter(browseRecyclerViewAdapter);
         browseRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -690,6 +685,12 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                 }
             }
         });
+
+        browseFastScroller = rootView.findViewById(R.id.musiclibrary_browse_fastscroller);
+        browseFastScroller.setRecyclerView(browseRecyclerView);
+        browseFastScrollerBubble = rootView.findViewById(R.id.musiclibrary_browse_fastscroller_bubble);
+        browseFastScroller.setBubble(browseFastScrollerBubble);
+        browseRecyclerViewAdapter.setFastScrollerBubble(browseFastScrollerBubble);
 
         metaKeys = new ArrayList<>();
         metaKeysForDisplay = new ArrayList<>();

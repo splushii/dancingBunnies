@@ -40,18 +40,20 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY;
 public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapter.SongViewHolder> {
     private static final String LC = Util.getLogContext(MusicLibraryAdapter.class);
     private final MusicLibraryFragment fragment;
+    private final RecyclerView recyclerView;
     private SongViewHolder currentFastScrollerHolder;
     private List<LibraryEntry> dataset;
     private TrackItemActionsView selectedActionView;
     private SelectionTracker<LibraryEntry> selectionTracker;
     private boolean initialScrolled;
 
-    MusicLibraryAdapter(MusicLibraryFragment fragment,
-                        RecyclerView recyclerView,
-                        FastScrollerBubble fastScrollerBubble
-    ) {
+    MusicLibraryAdapter(MusicLibraryFragment fragment, RecyclerView recyclerView) {
         this.dataset = new ArrayList<>();
         this.fragment = fragment;
+        this.recyclerView = recyclerView;
+    }
+
+    public void setFastScrollerBubble(FastScrollerBubble fastScrollerBubble) {
         fastScrollerBubble.setUpdateCallback(pos -> {
             currentFastScrollerHolder =
                     (SongViewHolder) recyclerView.findViewHolderForLayoutPosition(pos);
