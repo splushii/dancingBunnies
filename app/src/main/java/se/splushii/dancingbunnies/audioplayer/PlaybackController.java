@@ -687,7 +687,6 @@ public class PlaybackController {
                     currentRandomSeed
             );
             long currentPlaylistPlaybackPosition = getCurrentPlaylistPlaybackPosition();
-            long expectedPlaylistPosition = currentPlaylistPlaybackEntries.get((int) expectedPlaylistPlaybackPosition).playlistPos;
             if (currentPlaylistPlaybackPosition != expectedPlaylistPlaybackPosition) {
                 if (!repeatMode
                         && expectedPlaylistPlaybackPosition < currentPlaylistPlaybackPosition) {
@@ -699,6 +698,15 @@ public class PlaybackController {
                         + " (" + currentPlaylistPlaybackPosition + ")"
                         + " to expected playlist playback pos: "
                         + expectedPlaylistPlaybackPosition);
+                PlaybackEntry expectedPlaylistPlaybackEntry =
+                        currentPlaylistPlaybackEntries.get((int) expectedPlaylistPlaybackPosition);
+                if (expectedPlaylistPlaybackEntry == null) {
+                    submitCompletableFuture(this::updateState);
+                    return Util.futureResult(
+                            "syncPlaylistEntries: Could not get expected playlist playbackentry."
+                    );
+                }
+                long expectedPlaylistPosition = expectedPlaylistPlaybackEntry.playlistPos;
                 setCurrentPlaylistPosition(
                         expectedPlaylistPosition,
                         expectedPlaylistPlaybackPosition
@@ -1487,7 +1495,7 @@ public class PlaybackController {
         CompletableFuture<Void> ret = new CompletableFuture<>();
         executor.submit(() -> {
             try {
-                futureSupplier.get().get();
+                futureSupplier.get().handle(Util::printFutureError).get();
                 ret.complete(null);
             } catch (ExecutionException | InterruptedException e) {
                 e.printStackTrace();

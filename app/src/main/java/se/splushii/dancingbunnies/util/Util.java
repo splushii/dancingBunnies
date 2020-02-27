@@ -115,6 +115,12 @@ public class Util {
         return futureResult(error, null);
     }
 
+    public static <T> T printFutureError(T result, Throwable t) {
+        if (t != null) {
+            Log.e(LC, Log.getStackTraceString(t));
+        }
+        return result;
+    }
     public static Executor getMainThreadExecutor() {
         return mainThreadExecutor;
     }
