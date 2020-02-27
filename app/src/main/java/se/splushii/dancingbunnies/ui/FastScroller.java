@@ -8,6 +8,7 @@ import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.os.Handler;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -75,8 +76,8 @@ public class FastScroller extends LinearLayout {
                 if (hideIfNotNeeded()) {
                     return;
                 }
-                animateEnable(handle, handleEnabler, handleDisabler);
-                animateDisable(handle, handleDisabler, VIEW_HIDE_DELAY);
+                animateEnable(handleEnabler, handleDisabler);
+                animateDisable(handleDisabler, VIEW_HIDE_DELAY);
             }
         });
     }
@@ -96,7 +97,7 @@ public class FastScroller extends LinearLayout {
     public void enableBubble(boolean enabled) {
         bubbleEnabled = enabled;
         if (!enabled) {
-            animateDisable(bubble, bubbleDisabler, VIEW_HIDE_DELAY);
+            animateDisable(bubbleDisabler, VIEW_HIDE_DELAY);
         }
     }
 
@@ -229,9 +230,9 @@ public class FastScroller extends LinearLayout {
             switch (newState) {
                 default:
                 case RecyclerView.SCROLL_STATE_IDLE:
-                    animateDisable(handle, handleDisabler, VIEW_HIDE_DELAY);
+                    animateDisable(handleDisabler, VIEW_HIDE_DELAY);
                     if (bubble != null) {
-                        animateDisable(bubble, bubbleDisabler, VIEW_HIDE_DELAY);
+                        animateDisable(bubbleDisabler, VIEW_HIDE_DELAY);
                     }
                     draggingOrSettling = false;
                     break;
@@ -239,7 +240,7 @@ public class FastScroller extends LinearLayout {
                 case RecyclerView.SCROLL_STATE_SETTLING:
                     if (!draggingOrSettling) {
                         draggingOrSettling = true;
-                        animateEnable(handle, handleEnabler, handleDisabler);
+                        animateEnable(handleEnabler, handleDisabler);
                     }
                     break;
             }
@@ -280,9 +281,9 @@ public class FastScroller extends LinearLayout {
         }
         int action = event.getAction();
         if (action == MotionEvent.ACTION_DOWN) {
-            animateEnable(handle, handleEnabler, handleDisabler);
+            animateEnable(handleEnabler, handleDisabler);
             if (bubble != null && bubbleEnabled) {
-                animateEnable(bubble, bubbleEnabler, bubbleDisabler);
+                animateEnable(bubbleEnabler, bubbleDisabler);
             }
         }
         if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_MOVE) {
@@ -292,9 +293,9 @@ public class FastScroller extends LinearLayout {
             return true;
         } else if (event.getAction() == MotionEvent.ACTION_UP) {
             touching = false;
-            animateDisable(handle, handleDisabler, VIEW_HIDE_DELAY);
+            animateDisable(handleDisabler, VIEW_HIDE_DELAY);
             if (bubble != null) {
-                animateDisable(bubble, bubbleDisabler, VIEW_HIDE_DELAY);
+                animateDisable(bubbleDisabler, VIEW_HIDE_DELAY);
             }
             return true;
         }
@@ -332,12 +333,20 @@ public class FastScroller extends LinearLayout {
         }
     }
 
-    private void animateDisable(View v, Runnable viewDisableAnimator, int hideDelay) {
+    private void animateDisable(Runnable viewDisableAnimator, int hideDelay) {
+        Handler handler = getHandler();
+        if (handler == null) {
+            return;
+        }
         getHandler().postDelayed(viewDisableAnimator, hideDelay);
     }
 
-    private void animateEnable(View v, Runnable viewEnableAnimator, Runnable viewDisableAnimator) {
-        getHandler().removeCallbacks(viewDisableAnimator);
+    private void animateEnable(Runnable viewEnableAnimator, Runnable viewDisableAnimator) {
+        Handler handler = getHandler();
+        if (handler == null) {
+            return;
+        }
+        handler.removeCallbacks(viewDisableAnimator);
         viewEnableAnimator.run();
     }
 
