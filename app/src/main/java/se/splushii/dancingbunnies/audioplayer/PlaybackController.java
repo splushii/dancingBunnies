@@ -420,14 +420,18 @@ public class PlaybackController {
     }
 
     private PlaybackEntry getLastPlaylistPlaybackEntry() {
-        // TODO: A more stable way would probably be to search history for the last
-        // TODO: playback entry (with correct type and selection id), instead of only
-        // TODO: checking the current entry (because it could for example be a queue entry).
         PlaybackEntry currentEntry = audioPlayer.getCurrentEntry();
         if (currentEntry != null
                 && PlaybackEntry.USER_TYPE_PLAYLIST.equals(currentEntry.playbackType)
                 && currentEntry.playlistSelectionID == getCurrentPlaylistSelectionID()) {
             return currentEntry;
+        }
+        for (PlaybackEntry entry: history.getEntries()) {
+            if (entry != null
+                    && PlaybackEntry.USER_TYPE_PLAYLIST.equals(entry.playbackType)
+                    && entry.playlistSelectionID == getCurrentPlaylistSelectionID()) {
+                return entry;
+            }
         }
         Log.w(LC, "getLastPlaylistPlaybackEntry: Not found");
         return null;
@@ -693,11 +697,6 @@ public class PlaybackController {
                     Log.d(LC, "syncPlaylistEntries: End of playlist playback reached.");
                     endOfPlaylistPlayback = true;
                 }
-                Log.d(LC, "syncPlaylistEntries:"
-                        + " Setting current playlist playback pos"
-                        + " (" + currentPlaylistPlaybackPosition + ")"
-                        + " to expected playlist playback pos: "
-                        + expectedPlaylistPlaybackPosition);
                 PlaybackEntry expectedPlaylistPlaybackEntry =
                         currentPlaylistPlaybackEntries.get((int) expectedPlaylistPlaybackPosition);
                 if (expectedPlaylistPlaybackEntry == null) {
@@ -707,6 +706,11 @@ public class PlaybackController {
                     );
                 }
                 long expectedPlaylistPosition = expectedPlaylistPlaybackEntry.playlistPos;
+                Log.d(LC, "syncPlaylistEntries:"
+                        + " Setting current playlist playback pos"
+                        + " (" + currentPlaylistPlaybackPosition + ")"
+                        + " to expected playlist playback pos: "
+                        + expectedPlaylistPlaybackPosition);
                 setCurrentPlaylistPosition(
                         expectedPlaylistPosition,
                         expectedPlaylistPlaybackPosition
