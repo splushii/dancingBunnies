@@ -128,20 +128,20 @@ public class MusicLibraryFilterGroup extends LinearLayout {
         });
 
         newSelectionAll.setOnClickListener(view -> {
-            newListener.onSubQuerySubmit(MusicLibraryQueryTree.Op.AND, false);
             deactivate();
+            newListener.onSubQuerySubmit(MusicLibraryQueryTree.Op.AND, false);
         });
         newSelectionAny.setOnClickListener(view -> {
-            newListener.onSubQuerySubmit(MusicLibraryQueryTree.Op.OR, false);
             deactivate();
+            newListener.onSubQuerySubmit(MusicLibraryQueryTree.Op.OR, false);
         });
         newSelectionNotAll.setOnClickListener(view -> {
-            newListener.onSubQuerySubmit(MusicLibraryQueryTree.Op.AND, true);
             deactivate();
+            newListener.onSubQuerySubmit(MusicLibraryQueryTree.Op.AND, true);
         });
         newSelectionNone.setOnClickListener(view -> {
-            newListener.onSubQuerySubmit(MusicLibraryQueryTree.Op.OR, true);
             deactivate();
+            newListener.onSubQuerySubmit(MusicLibraryQueryTree.Op.OR, true);
         });
 
         newSelectionFilter.setOnClickListener(view -> {
@@ -173,8 +173,8 @@ public class MusicLibraryFilterGroup extends LinearLayout {
                 boolean negate = newNegate.isActivated();
                 MusicLibraryQueryLeaf.Op op = MusicLibraryFilterGroup.this.onNewOpSelected(typePos, pos);
                 if (MusicLibraryQueryLeaf.Op.EXISTS.equals(op)) {
-                    newListener.onFilterSubmit(typePos, pos, null, negate);
                     deactivate();
+                    newListener.onFilterSubmit(typePos, pos, null, negate);
                 }
             }
 
@@ -188,8 +188,8 @@ public class MusicLibraryFilterGroup extends LinearLayout {
                 int opPos = newOp.getSelectedItemPosition();
                 boolean negate = newNegate.isActivated();
                 String input = newInput.getText().toString();
-                newListener.onFilterSubmit(typePos, opPos, input, negate);
                 deactivate();
+                newListener.onFilterSubmit(typePos, opPos, input, negate);
                 return true;
             }
             return false;
