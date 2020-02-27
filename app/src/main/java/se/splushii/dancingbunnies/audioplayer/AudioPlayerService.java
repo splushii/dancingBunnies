@@ -51,6 +51,7 @@ import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryTree;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
@@ -804,6 +805,9 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                                                    MusicLibraryQueryNode queryNode) {
         Bundle params = new Bundle();
         params.putParcelableArrayList("entryids", new ArrayList<>(entryIDs));
+        if (queryNode == null) {
+            queryNode = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND, false);
+        }
         params.putString("queryJSON", queryNode.toJSON().toString());
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         mediaController.sendCommand(

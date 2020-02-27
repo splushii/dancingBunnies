@@ -230,12 +230,11 @@ public class MenuActions {
         } else if (action == ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE) {
             audioBrowserFragment.queueQueryBundles(queryNodesSupplier.get());
         } else if (action == ACTION_ADD_MULTIPLE_TO_PLAYLIST) {
-            MusicLibraryQueryNode query = queryNodeSupplier.get();
-            query = query == null ?
-                    new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND, false) : query;
             AddToPlaylistDialogFragment.showDialog(
                     audioBrowserFragment,
-                    query.withEntryIDs(entryIDSupplier.get())
+                    getQueryNodeOrDefault(
+                            queryNodeSupplier.get()).withEntryIDs(entryIDSupplier.get()
+                    )
             );
         } else if (action == ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST) {
             AddToPlaylistDialogFragment.showDialog(
@@ -244,7 +243,10 @@ public class MenuActions {
             );
         } else if (action == ACTION_CACHE_MULTIPLE) {
             audioBrowserFragment.downloadAudioData(
-                    new ArrayList<>(queryNodeSupplier.get().withEntryIDs(entryIDSupplier.get())),
+                    new ArrayList<>(
+                            getQueryNodeOrDefault(queryNodeSupplier.get())
+                                    .withEntryIDs(entryIDSupplier.get())
+                    ),
                     AudioStorage.DOWNLOAD_PRIO_LOW
             );
         } else if (action == ACTION_CACHE_MULTIPLE_QUERIES) {
@@ -255,7 +257,10 @@ public class MenuActions {
         } else if (action == ACTION_CACHE_DELETE_MULTIPLE) {
             MusicLibraryService.deleteAudioData(
                     audioBrowserFragment.requireContext(),
-                    new ArrayList<>(queryNodeSupplier.get().withEntryIDs(entryIDSupplier.get()))
+                    new ArrayList<>(
+                            getQueryNodeOrDefault(queryNodeSupplier.get())
+                                    .withEntryIDs(entryIDSupplier.get())
+                    )
             );
         } else if (action == ACTION_CACHE_DELETE_MULTIPLE_QUERIES) {
             MusicLibraryService.deleteAudioData(
@@ -302,6 +307,11 @@ public class MenuActions {
             return false;
         }
         return true;
+    }
+
+    private static MusicLibraryQueryNode getQueryNodeOrDefault(MusicLibraryQueryNode queryNode) {
+        return queryNode == null ?
+                new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND, false) : queryNode;
     }
 
     private static int getStringResource(int action) {
