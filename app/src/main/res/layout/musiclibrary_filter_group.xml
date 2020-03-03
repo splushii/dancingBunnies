@@ -17,7 +17,7 @@
             android:paddingStart="8dp"
             android:paddingEnd="8dp"
             android:background="?android:selectableItemBackground"
-            android:textColor="@color/primary_text_color"/>
+            android:textColor="@color/text_primary_color"/>
         <com.google.android.material.chip.Chip
             android:id="@+id/musiclibrary_filter_group_new_btn"
             android:layout_width="wrap_content"
@@ -183,7 +183,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
-            android:textColor="@color/secondary_text_color"
+            android:textColor="@color/text_secondary_color"
             android:paddingTop="4sp"
             android:paddingBottom="4sp"
             android:paddingStart="16sp"
@@ -199,7 +199,7 @@
             android:layout_weight="1"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
-            android:textColor="@color/primary_text_color"
+            android:textColor="@color/text_primary_color"
             android:background="@android:color/transparent"
             android:imeOptions="actionDone"
             android:hint="@string/enter_filter"

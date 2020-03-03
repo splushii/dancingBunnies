@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -9,301 +9,33 @@
         android:layout_height="match_parent"
         android:animateLayoutChanges="true"
         android:orientation="vertical">
+        <include layout="@layout/nowplaying_fragment_current_playlist_layout" />
         <LinearLayout
-            android:id="@+id/nowplaying_current_playlist"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:elevation="4dp"
-            android:background="@color/overlayBackground"
-            android:orientation="horizontal">
-            <LinearLayout
-                android:id="@+id/nowplaying_current_playlist_info_layout"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:paddingEnd="8dp"
-                android:clickable="true"
-                android:background="?android:selectableItemBackground"
-                android:orientation="horizontal">
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="4dp"
-                    android:orientation="vertical">
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Playing from:"
-                        android:textColor="@color/colorSecondaryText"/>
-                    <TextView
-                        android:id="@+id/nowplaying_current_playlist_name"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="24sp"
-                        android:textColor="@color/colorPrimaryText"/>
-                </LinearLayout>
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:orientation="vertical"
-                    android:gravity="center_vertical">
-                    <ImageView
-                        android:id="@+id/nowplaying_current_order"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:src="@drawable/ic_gesture_black_24dp"
-                        android:tint="@color/colorAccent"
-                        android:contentDescription="@string/playlist_random"/>
-                    <ImageView
-                        android:id="@+id/nowplaying_current_repeat"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:src="@drawable/ic_repeat_black_24dp"
-                        android:tint="@color/colorAccent"
-                        android:contentDescription="@string/playlist_repeat"/>
-                </LinearLayout>
-            </LinearLayout>
-            <ImageButton
-                android:id="@+id/nowplaying_current_playlist_deselect"
-                android:layout_width="wrap_content"
-                android:layout_height="match_parent"
-                android:src="@drawable/ic_cancel_red_24dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:layout_gravity="center_vertical"
-                android:contentDescription="@string/playlist_deselect"/>
-        </LinearLayout>
-        <androidx.coordinatorlayout.widget.CoordinatorLayout
             android:id="@+id/nowplaying_queue_root"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:orientation="horizontal">
-            <LinearLayout
+            >
+            <include
+                layout="@layout/nowplaying_fragment_queue_layout"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent">
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/nowplaying_recyclerview"
-                    android:layout_height="match_parent"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:paddingTop="8dp"
-                    android:clipToPadding="false"/>
-                <se.splushii.dancingbunnies.ui.FastScroller
-                    android:id="@+id/nowplaying_fastscroller"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:background="@color/windowBackgroundLight"
-                    android:layout_gravity="end" />
-            </LinearLayout>
-        </androidx.coordinatorlayout.widget.CoordinatorLayout>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@color/overlayBackground"
-            android:paddingTop="8dp"
-            android:paddingBottom="8dp"
-            android:elevation="4dp"
-            android:orientation="vertical">
-            <LinearLayout
-                android:id="@+id/nowplaying_current"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="?android:selectableItemBackground"
-                android:gravity="center_vertical">
-                <ProgressBar
-                    android:id="@+id/nowplaying_buffering"
-                    android:layout_marginStart="8dp"
-                    android:layout_width="28dp"
-                    android:layout_height="36dp"
-                    android:indeterminate="true" />
-                <LinearLayout
-                    android:id="@+id/nowplaying_info"
-                    android:layout_height="wrap_content"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:gravity="center_horizontal"
-                    android:orientation="vertical"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp">
-                    <TextView
-                        android:id="@+id/nowplaying_artist"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/colorSecondaryText"
-                        android:textSize="16sp"
-                        android:gravity="center_horizontal"/>
-                    <TextView
-                        android:id="@+id/nowplaying_title"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/colorPrimaryText"
-                        android:textSize="24sp"
-                        android:gravity="center_horizontal"/>
-                    <TextView
-                        android:id="@+id/nowplaying_album"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/colorSecondaryText"
-                        android:paddingTop="2dp"
-                        android:gravity="center_horizontal"/>
-                </LinearLayout>
-                <View
-                    android:layout_width="36dp"
-                    android:layout_height="match_parent"/>
-            </LinearLayout>
-            <se.splushii.dancingbunnies.ui.WaveformSeekBar
-                android:id="@+id/waveformSeekBar"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp"/>
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-                <TextView
-                    android:id="@+id/nowplaying_position"
-                    android:layout_width="32dp"
-                    android:layout_height="wrap_content"
-                    android:gravity="start"
-                    android:textColor="@color/colorSecondaryText"
-                    android:layout_marginStart="16dp"/>
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1" />
-                <TextView
-                    android:id="@+id/nowplaying_media_info"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/colorSecondaryText"
-                    android:layout_marginStart="16dp"/>
-                <TextView
-                    android:id="@+id/nowplaying_size"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/colorSecondaryText"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginEnd="16dp"/>
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1" />
-                <TextView
-                    android:id="@+id/nowplaying_duration"
-                    android:layout_width="32dp"
-                    android:layout_height="wrap_content"
-                    android:gravity="end"
-                    android:textColor="@color/colorSecondaryText"
-                    android:layout_marginEnd="16dp"/>
-            </LinearLayout>
+                android:layout_height="match_parent"
+                />
         </LinearLayout>
-        <androidx.coordinatorlayout.widget.CoordinatorLayout
+        <include layout="@layout/nowplaying_fragment_current_entry_layout" />
+        <LinearLayout
             android:id="@+id/nowplaying_history_root"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="3"
             android:visibility="gone"
-            android:orientation="horizontal">
-            <LinearLayout
+            >
+            <include
+                layout="@layout/nowplaying_fragment_history_layout"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent">
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/nowplaying_history_recyclerview"
-                    android:layout_height="match_parent"
-                    android:layout_width="0dp"
-                    android:layout_weight="1"
-                    android:paddingTop="8dp"
-                    android:clipToPadding="false"/>
-                <se.splushii.dancingbunnies.ui.FastScroller
-                    android:id="@+id/nowplaying_history_fastscroller"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:background="@color/windowBackgroundLight"
-                    android:layout_gravity="end" />
-            </LinearLayout>
-        </androidx.coordinatorlayout.widget.CoordinatorLayout>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@color/overlayBackground"
-            android:elevation="4dp"
-            android:orientation="horizontal"
-            android:paddingBottom="4dp"
-            android:gravity="center_vertical"
-            android:layout_gravity="center_horizontal">
-            <View
-                android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="1" />
-            <androidx.mediarouter.app.MediaRouteButton
-                android:id="@+id/nowlaying_mediaroutebutton"
-                app:mediaRouteButtonTint="@color/colorPrimaryText"
-                android:layout_width="36dp"
-                android:layout_height="36dp" />
-            <ImageView
-                android:id="@+id/nowlaying_mediaroute"
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:layout_marginStart="8dp"
-                android:tint="@color/grey700"
-                android:contentDescription="@string/selected_media_route" />
-            <View
-                android:layout_width="10dp"
-                android:layout_height="match_parent" />
-            <ImageButton
-                android:id="@+id/nowplaying_history_btn"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:scaleType="fitCenter"
-                android:adjustViewBounds="true"
-                style="?android:buttonBarButtonStyle"
-                android:src="@drawable/ic_history_black_24dp"
-                android:tint="@color/secondary_text_color"
-                android:contentDescription="@string/nowplaying_previous_contentdesc" />
-            <ImageButton
-                android:id="@+id/nowplaying_play_pause"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:scaleType="fitCenter"
-                android:adjustViewBounds="true"
-                style="?android:buttonBarButtonStyle"
-                android:src="@drawable/ic_play_arrow_black_24dp"
-                android:tint="@color/colorPrimaryText"
-                android:contentDescription="@string/nowplaying_play_pause_contentdesc" />
-            <ImageButton
-                android:id="@+id/nowplaying_next"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:scaleType="fitCenter"
-                android:adjustViewBounds="true"
-                style="?android:buttonBarButtonStyle"
-                android:src="@drawable/ic_skip_next_black_24dp"
-                android:tint="@color/colorPrimaryText"
-                android:contentDescription="@string/nowplaying_next_contentdesc" />
-            <View
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1" />
-            <View
-                android:layout_width="36dp"
-                android:layout_height="match_parent" />
-            <ImageButton
-                android:id="@+id/nowplaying_actions"
-                android:layout_width="36dp"
-                android:layout_height="match_parent"
-                android:layout_gravity="end"
-                android:src="@drawable/ic_more_vert_black_24dp"
-                android:tint="@color/grey500"
-                android:contentDescription="@string/nowplaying_actions" />
+                />
         </LinearLayout>
+        <include layout="@layout/nowplaying_fragment_playback_layout" />
     </LinearLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

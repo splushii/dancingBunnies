@@ -12,7 +12,7 @@
         android:elevation="4dp"
         android:background="@color/colorAccentDark"
         android:padding="16dp"
-        android:textColor="@color/primary_text_color"
+        android:textColor="@color/text_primary_color"
         android:fontFamily="sans-serif"
         android:textSize="18sp"
         android:text="@string/metadata"/>
@@ -39,13 +39,13 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="@string/metadata_add_title"
-                android:textColor="@color/primary_text_color"
+                android:textColor="@color/text_primary_color"
                 />
             <androidx.appcompat.widget.SwitchCompat
                 android:id="@+id/meta_dialog_add_local_switch"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/primary_text_color"
+                android:textColor="@color/text_primary_color"
                 android:text="@string/metadata_add_local"
                 android:layout_marginEnd="8dp"/>
         </LinearLayout>

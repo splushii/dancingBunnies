@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/playlist_playback_entries_root"
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:visibility="gone"
+    android:orientation="horizontal">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/playlist_content_playback_entries_recyclerview"
+            android:layout_height="match_parent"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:paddingTop="8dp"
+            android:clipToPadding="false"/>
+        <se.splushii.dancingbunnies.ui.FastScroller
+            android:id="@+id/playlist_playback_entries_fastscroller"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/windowBackgroundLight"
+            android:layout_gravity="end" />
+    </LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

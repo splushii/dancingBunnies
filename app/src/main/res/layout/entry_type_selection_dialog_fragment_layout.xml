@@ -20,7 +20,7 @@
         android:layout_height="wrap_content"
         android:padding="8dp"
         android:background="@color/windowBackgroundLight"
-        android:textColor="@color/primary_text_color"
+        android:textColor="@color/text_primary_color"
         android:textSize="16sp"
         android:text="@string/entry_type_selection_selected_types_and_order"/>
     <androidx.recyclerview.widget.RecyclerView
@@ -34,7 +34,7 @@
         android:layout_height="wrap_content"
         android:padding="8dp"
         android:background="@color/windowBackgroundLight"
-        android:textColor="@color/primary_text_color"
+        android:textColor="@color/text_primary_color"
         android:textSize="16sp"
         android:text="@string/entry_type_selection_available_types"/>
     <androidx.recyclerview.widget.RecyclerView

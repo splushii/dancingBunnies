@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/playlist_content_info_switches"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="end"
+    android:gravity="end"
+    android:orientation="vertical">
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/playlist_select_switch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text_primary_color"
+        android:text="@string/playlist_select"/>
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/playlist_show_playback_order_switch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="invisible"
+        android:textColor="@color/text_primary_color"
+        android:text="@string/playlist_show_playback_order"/>
+</LinearLayout>

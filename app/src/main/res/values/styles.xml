@@ -23,13 +23,13 @@
     </style>
 
     <style name="SpinnerDropDownItemTheme" parent="Widget.AppCompat.Light.DropDownItem.Spinner">
-        <item name="android:textColor">@color/primary_text_color</item>
+        <item name="android:textColor">@color/text_primary_color</item>
         <item name="android:popupBackground">@color/popupBackground</item>
     </style>
 
     <style name="ImageButtonStyle" parent="Widget.AppCompat.ImageButton">
         <item name="android:background">?android:selectableItemBackgroundBorderless</item>
-        <item name="android:textColor">@color/primary_text_color</item>
+        <item name="android:textColor">@color/text_primary_color</item>
     </style>
 
     <style name="PopupMenuTheme" parent="Widget.AppCompat.Light.PopupMenu">
@@ -38,8 +38,8 @@
 
     <style name="AppTheme.Base" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:windowBackground">@color/windowBackground</item>
-        <item name="android:textColorPrimary">@color/primary_text_color</item>
-        <item name="android:textColorSecondary">@color/secondary_text_color</item>
+        <item name="android:textColorPrimary">@color/text_primary_color</item>
+        <item name="android:textColorSecondary">@color/text_secondary_color</item>
         <item name="android:textColorHint">@color/grey500</item>
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>

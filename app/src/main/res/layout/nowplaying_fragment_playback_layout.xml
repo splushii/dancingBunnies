@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nowplaying_playback"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/overlayBackground"
+    android:elevation="4dp"
+    android:orientation="horizontal"
+    android:paddingBottom="4dp"
+    android:gravity="center_vertical">
+    <ImageButton
+        android:id="@+id/nowplaying_history_btn"
+        android:layout_marginStart="8dp"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:scaleType="fitCenter"
+        android:adjustViewBounds="true"
+        style="?android:buttonBarButtonStyle"
+        android:src="@drawable/ic_history_black_24dp"
+        android:tint="@color/text_secondary_color"
+        android:contentDescription="@string/nowplaying_previous_contentdesc" />
+    <View
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1" />
+    <androidx.mediarouter.app.MediaRouteButton
+        android:id="@+id/nowlaying_mediaroutebutton"
+        app:mediaRouteButtonTint="@color/icon_secondary"
+        android:layout_width="36dp"
+        android:layout_height="36dp" />
+    <ImageView
+        android:id="@+id/nowlaying_mediaroute"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:tint="@color/icon_secondary"
+        android:contentDescription="@string/selected_media_route" />
+    <ImageButton
+        android:id="@+id/nowplaying_play_pause"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:scaleType="fitCenter"
+        android:adjustViewBounds="true"
+        style="?android:buttonBarButtonStyle"
+        android:src="@drawable/ic_play_arrow_black_24dp"
+        android:tint="@color/colorPrimaryText"
+        android:contentDescription="@string/nowplaying_play_pause_contentdesc" />
+    <ImageButton
+        android:id="@+id/nowplaying_next"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:scaleType="fitCenter"
+        android:adjustViewBounds="true"
+        style="?android:buttonBarButtonStyle"
+        android:src="@drawable/ic_skip_next_black_24dp"
+        android:tint="@color/colorPrimaryText"
+        android:contentDescription="@string/nowplaying_next_contentdesc" />
+    <View
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1" />
+    <View
+        android:layout_width="34dp"
+        android:layout_height="match_parent" />
+    <ImageButton
+        android:id="@+id/nowplaying_actions"
+        android:layout_width="36dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:src="@drawable/ic_more_vert_black_24dp"
+        android:tint="@color/grey500"
+        android:contentDescription="@string/nowplaying_actions" />
+</LinearLayout>

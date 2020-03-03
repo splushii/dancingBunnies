@@ -15,7 +15,6 @@ import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 public class PlaybackEntry implements Parcelable {
     public static final String USER_TYPE_PLAYLIST = "playlist";
     public static final String USER_TYPE_QUEUE = "queue";
-    public static final String USER_TYPE_HISTORY = "history";
     public static final String USER_TYPE_EXTERNAL = "external";
     private static final String BUNDLE_KEY_PLAYBACKID = "dancingbunnies.bundle.key.playbackentry.playbackID";
     private static final String BUNDLE_KEY_PLAYBACKTYPE = "dancingbunnies.bundle.key.playbackentry.playbackType";

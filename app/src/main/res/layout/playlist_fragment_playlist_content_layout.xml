@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/playlist_content_rootview"
+    android:visibility="gone"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+    <include layout="@layout/playlist_fragment_playlist_content_info_layout" />
+    <include layout="@layout/playlist_fragment_playlist_content_playlist_entries_layout" />
+    <include layout="@layout/playlist_fragment_playlist_content_playback_entries_layout" />
+</LinearLayout>

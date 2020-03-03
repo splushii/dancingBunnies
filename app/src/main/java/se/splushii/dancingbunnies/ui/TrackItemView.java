@@ -245,7 +245,7 @@ public class TrackItemView extends LinearLayout {
             TypedValue value = new TypedValue();
             getContext().getTheme().resolveAttribute(android.R.color.transparent, value, true);
             posView.setBackgroundResource(value.resourceId);
-            posView.setTextColor(ContextCompat.getColorStateList(getContext(), R.color.secondary_text_color));
+            posView.setTextColor(ContextCompat.getColorStateList(getContext(), R.color.text_secondary_color));
         }
         updatePosViewVisibility();
     }

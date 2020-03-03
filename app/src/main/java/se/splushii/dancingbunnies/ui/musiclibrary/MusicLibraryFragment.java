@@ -96,7 +96,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
     private static final int SHOW_GROUP_ORDER_SINGLE = Menu.FIRST + 1;
 
     private View browseView;
-    private LinearLayout browseQueryView;
+    private View browseQueryBtn;
+    private LinearLayout queryRootView;
     private ArrayAdapter<String> browseFilterTypeAdapter;
     private ArrayAdapter<String> browseFilterOperatorAdapter;
     private ArrayAdapter<String> browseFilterAutoCompleteValuesAdapter;
@@ -174,7 +175,9 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
 
     @Override
     protected void onCurrentEntryChanged(PlaybackEntry entry) {
-        model.setCurrentEntry(entry);
+        if (model != null) {
+            model.setCurrentEntry(entry);
+        }
     }
 
     private void refreshView(final MusicLibraryUserState newUserState) {
@@ -207,9 +210,9 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                     R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp;
             browseHeaderSortedByOrder.setImageResource(sortOrderResource);
 
-            browseQueryView.removeAllViews();
+            queryRootView.removeAllViews();
             MusicLibraryQueryTree queryTree = newUserState.query.getQueryTree();
-            addFilterGroupToView(browseQueryView, queryTree, 1);
+            addFilterGroupToView(queryRootView, queryTree, 1);
 
             browseView.setVisibility(VISIBLE);
             browseHeader.setVisibility(VISIBLE);
@@ -417,16 +420,16 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
     }
 
     private boolean setQueryDepth(int depth) {
-        if (browseQueryView == null) {
+        if (queryRootView == null) {
             return false;
         }
         boolean removedViews = false;
-        while (browseQueryView.getChildCount() > depth) {
-            int index = browseQueryView.getChildCount() - 1;
+        while (queryRootView.getChildCount() > depth) {
+            int index = queryRootView.getChildCount() - 1;
             MusicLibraryFilterGroup filterGroup =
-                    (MusicLibraryFilterGroup) browseQueryView.getChildAt(index);
+                    (MusicLibraryFilterGroup) queryRootView.getChildAt(index);
             filterGroup.deactivate();
-            browseQueryView.removeView(filterGroup);
+            queryRootView.removeView(filterGroup);
             removedViews = true;
         }
         return removedViews;
@@ -496,7 +499,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
             }
             tv.setTextColor(ContextCompat.getColorStateList(
                     requireContext(),
-                    R.color.primary_text_color
+                    R.color.text_primary_color
             ));
             tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, isHeader ? 14 : 12);
             tv.setSingleLine();
@@ -727,7 +730,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         ).setIcon(
                 R.drawable.ic_edit_black_24dp
         ).setIconTintList(
-                ContextCompat.getColorStateList(requireContext(), R.color.primary_text_color)
+                ContextCompat.getColorStateList(requireContext(), R.color.text_primary_color)
         );
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             browseHeaderSortedByMenu.setGroupDividerEnabled(true);
@@ -928,12 +931,19 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                 });
 
         browseView = rootView.findViewById(R.id.musiclibrary_browse);
-        ImageButton browseSaveBtn = rootView.findViewById(R.id.musiclibrary_browse_save);
-        browseSaveBtn.setOnClickListener(v ->
+        rootView.findViewById(R.id.musiclibrary_browse_save).setOnClickListener(v ->
                 AddToNewPlaylistDialogFragment.showDialog(this, getCurrentQueryTree())
         );
 
-        browseQueryView = rootView.findViewById(R.id.musiclibrary_browse_query);
+        browseQueryBtn = rootView.findViewById(R.id.musiclibrary_browse_query);
+        browseQueryBtn.setOnClickListener(
+                view -> {
+                    boolean enable = queryRootView.getVisibility() != VISIBLE;
+                    queryRootView.setVisibility(enable ? VISIBLE : GONE);
+                    browseQueryBtn.setActivated(enable);
+                }
+        );
+        queryRootView = rootView.findViewById(R.id.musiclibrary_query_root);
 
         return rootView;
     }
@@ -979,7 +989,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
             item.setIcon(!isSortedAscending() ?
                     R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp
             ).setIconTintList(
-                    ContextCompat.getColorStateList(requireContext(), R.color.primary_text_color)
+                    ContextCompat.getColorStateList(requireContext(), R.color.text_primary_color)
             );
             setSortOrder(!isSortedAscending());
             return true;
@@ -1023,7 +1033,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         ).setIcon(isSortedAscending() ?
                 R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp
         ).setIconTintList(
-                ContextCompat.getColorStateList(requireContext(), R.color.primary_text_color)
+                ContextCompat.getColorStateList(requireContext(), R.color.text_primary_color)
         );
 
     }
@@ -1153,6 +1163,10 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
             searchQueryEdit.clearFocus();
             Util.hideSoftInput(requireActivity(), searchQueryEdit);
         }
+        if (browseQueryBtn != null && queryRootView != null && queryRootView.getVisibility() == VISIBLE) {
+            queryRootView.setVisibility(GONE);
+            browseQueryBtn.setActivated(false);
+        }
         boolean needRefresh = setQueryDepth(1);
         clearBrowseQueryFocus();
         needRefresh = trimQueryTreeSelection(0) || needRefresh;
@@ -1162,12 +1176,12 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
     }
 
     private void clearBrowseQueryFocus() {
-        if (browseQueryView == null) {
+        if (queryRootView == null) {
             return;
         }
-        for (int i = 0; i < browseQueryView.getChildCount(); i++) {
+        for (int i = 0; i < queryRootView.getChildCount(); i++) {
             MusicLibraryFilterGroup filterGroup =
-                    (MusicLibraryFilterGroup) browseQueryView.getChildAt(i);
+                    (MusicLibraryFilterGroup) queryRootView.getChildAt(i);
             filterGroup.deactivate();
         }
     }

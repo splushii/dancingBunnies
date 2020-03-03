@@ -23,6 +23,8 @@
 
     <color name="colorIcon">@color/white</color>
     <color name="colorIconDisabled">@color/grey500</color>
+    <color name="colorIconSecondary">@color/grey500</color>
+    <color name="colorIconSecondaryDisabled">@color/grey600</color>
 
     <color name="windowBackground">@color/grey950</color>
     <color name="windowBackgroundAlternate">@color/grey900</color>

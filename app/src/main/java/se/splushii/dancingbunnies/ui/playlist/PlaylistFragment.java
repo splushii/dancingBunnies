@@ -94,6 +94,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
     private View playlistRepeatActionView;
 
     private FloatingActionButton newPlaylistFAB;
+    private View newPlaylistView;
     private EditText newPlaylistName;
 
     private PlaylistFragmentModel model;
@@ -344,6 +345,16 @@ public class PlaylistFragment extends AudioBrowserFragment {
                 })
         );
 
+        playlistRecView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    clearFocus();
+                }
+            }
+        });
+
         playlistFastScroller = rootView.findViewById(R.id.playlist_fastscroller);
         playlistFastScroller.setRecyclerView(playlistRecView);
 
@@ -522,7 +533,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         );
         playlistPlaybackEntriesSelectionTracker.setActionModeCallback(playlistPlaybackActionModeCallback);
 
-        playlistPlaybackEntriesRecView.setOnScrollListener(new RecyclerView.OnScrollListener() {
+        playlistPlaybackEntriesRecView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
                 super.onScrollStateChanged(recyclerView, newState);
@@ -535,7 +546,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         playlistPlaybackEntriesFastScroller.setRecyclerView(playlistPlaybackEntriesRecView);
 
 
-        ViewGroup newPlaylistView = rootView.findViewById(R.id.playlist_new_playlist);
+        newPlaylistView = rootView.findViewById(R.id.playlist_new_playlist);
         newPlaylistName = rootView.findViewById(R.id.playlist_new_playlist_name);
         newPlaylistFAB = rootView.findViewById(R.id.playlist_new_playlist_fab);
         rootView.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
@@ -564,6 +575,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
                 newPlaylistName.setText("");
                 newPlaylistName.clearFocus();
                 Util.hideSoftInput(requireActivity(), newPlaylistName);
+                newPlaylistView.setVisibility(GONE);
                 return true;
             }
             return false;
@@ -615,6 +627,7 @@ public class PlaylistFragment extends AudioBrowserFragment {
         if (newPlaylistName != null && newPlaylistName.hasFocus()) {
             newPlaylistName.clearFocus();
             Util.hideSoftInput(requireActivity(), newPlaylistName);
+            newPlaylistView.setVisibility(GONE);
             return true;
         }
         return false;

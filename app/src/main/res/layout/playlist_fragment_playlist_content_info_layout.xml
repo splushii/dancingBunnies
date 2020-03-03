@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/playlist_content_info"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/overlayBackground"
+    android:elevation="4dp"
+    android:visibility="gone"
+    android:animateLayoutChanges="true"
+    android:orientation="vertical">
+    <LinearLayout
+        android:id="@+id/playlist_content_info_main"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?android:selectableItemBackground"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <include layout="@layout/playlist_fragment_playlist_content_main_top_layout" />
+        <include layout="@layout/playlist_fragment_playlist_content_main_switches_layout" />
+    </LinearLayout>
+    <LinearLayout
+        android:id="@+id/playlist_content_info_extra"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:orientation="vertical"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp">
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/grey500"/>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <include layout="@layout/playlist_fragment_playlist_content_playback_sort_layout" />
+            <include layout="@layout/playlist_fragment_playlist_content_playback_shuffle_layout" />
+            <include layout="@layout/playlist_fragment_playlist_content_playback_random_layout" />
+            <View
+                android:layout_width="1dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="4dp"
+                android:layout_height="match_parent"
+                android:background="@color/grey500" />
+            <include layout="@layout/playlist_fragment_playlist_content_playback_repeat_layout" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

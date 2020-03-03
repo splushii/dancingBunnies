@@ -32,7 +32,7 @@
                 android:layout_gravity="center_vertical"
                 android:singleLine="true"
                 android:gravity="center_vertical"
-                android:textColor="@color/primary_text_color"
+                android:textColor="@color/text_primary_color"
                 android:fontFamily="sans-serif"
                 android:textSize="18sp" />
             <LinearLayout
@@ -45,12 +45,12 @@
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="4dp"
-                    android:textColor="@color/secondary_text_color" />
+                    android:textColor="@color/text_secondary_color" />
                 <TextView
                     android:id="@+id/playlist_num_entries"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/secondary_text_color" />
+                    android:textColor="@color/text_secondary_color" />
             </LinearLayout>
         </LinearLayout>
         <ImageView
