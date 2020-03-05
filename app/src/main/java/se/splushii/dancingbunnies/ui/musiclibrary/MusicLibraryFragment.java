@@ -15,7 +15,6 @@ import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TableLayout;
@@ -978,7 +977,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                 SHOW_GROUP_ID_HEADER,
                 Menu.NONE,
                 SHOW_GROUP_ORDER_HEADER,
-                header
+                Meta.getDisplayKey(header)
         ).setEnabled(false);
     }
 
