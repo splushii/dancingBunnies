@@ -76,6 +76,7 @@ public class FastScroller extends LinearLayout {
                 if (hideIfNotNeeded()) {
                     return;
                 }
+                setPosition(getPositionFromRecyclerView(recyclerView));
                 animateEnable(handleEnabler, handleDisabler);
                 animateDisable(handleDisabler, VIEW_HIDE_DELAY);
             }
@@ -258,16 +259,19 @@ public class FastScroller extends LinearLayout {
                 }
             }
             if (!touching) {
-                int scrollOffset = recyclerView.computeVerticalScrollOffset();
-                int scrollRange = recyclerView.computeVerticalScrollRange();
-                int visibleScrollRange = recyclerView.getHeight();
-                int invisibleScrollRange = scrollRange - visibleScrollRange;
-                float proportion = scrollOffset / (float) invisibleScrollRange;
-                int height = getHeight();
-                float handlePos = proportion * height;
-                setPosition(handlePos);
+                setPosition(getPositionFromRecyclerView(recyclerView));
             }
         }
+    }
+
+    private float getPositionFromRecyclerView(RecyclerView recyclerView) {
+        int scrollOffset = recyclerView.computeVerticalScrollOffset();
+        int scrollRange = recyclerView.computeVerticalScrollRange();
+        int visibleScrollRange = recyclerView.getHeight();
+        int invisibleScrollRange = scrollRange - visibleScrollRange;
+        float proportion = scrollOffset / (float) invisibleScrollRange;
+        int height = getHeight();
+        return proportion * height;
     }
 
     /**
