@@ -76,10 +76,19 @@ public class NowPlayingEntriesAdapter extends
                 queueEntries.stream()
                         .filter(p -> !PlaybackEntry.USER_TYPE_PLAYLIST.equals(p.playbackType))
                         .collect(Collectors.toList());
-        boolean changed = !this.queueEntries.equals(entries);
-        this.queueEntries = entries;
-        if (changed) {
+        Util.Diff diff = Util.calculateDiff(this.queueEntries, entries);
+        if (diff.changed) {
+            if (hasSelection() && !diff.deleted.isEmpty()) {
+                removeSelection(
+                        diff.deleted.stream()
+                                .map(queueEntries::get)
+                                .collect(Collectors.toList())
+                );
+            }
+            this.queueEntries.clear();
+            this.queueEntries.addAll(entries);
             notifyDataSetChanged();
+            recalculateSelection();
         }
     }
 
@@ -111,18 +120,22 @@ public class NowPlayingEntriesAdapter extends
                                 PlaybackEntry idAfterTargetPos) {
         long beforePlaybackID = idAfterTargetPos == null ?
                 PlaybackEntry.PLAYBACK_ID_INVALID : idAfterTargetPos.playbackID;
-        fragment.moveQueueItems(new ArrayList<>(selection), beforePlaybackID);
+        fragment.getRemote().moveQueueItems(new ArrayList<>(selection), beforePlaybackID);
     }
 
     @Override
     public void onUseViewHolderForDrag(ViewHolder dragViewHolder,
                                        Collection<PlaybackEntry> selection) {
-        dragViewHolder.itemContent.setDragTitle(selection.size() + " entries");
+        if (selection.size() == 1) {
+            dragViewHolder.itemContent.resetFromDrag();
+            return;
+        }
+        dragViewHolder.itemContent.useForDrag(selection.size() + " entries");
     }
 
     @Override
     public void onResetDragViewHolder(ViewHolder dragViewHolder) {
-        dragViewHolder.itemContent.reset();
+        dragViewHolder.itemContent.resetFromDrag();
     }
 
     private void updateActionModeView(ActionModeCallback actionModeCallback, Selection<PlaybackEntry> selection) {
@@ -175,12 +188,17 @@ public class NowPlayingEntriesAdapter extends
     public void onActionModeEnding(ActionModeCallback actionModeCallback) {}
 
     @Override
-    public boolean onDragInitiated(Selection<PlaybackEntry> selection) {
+    public boolean validDrag(Selection<PlaybackEntry> selection) {
         for (PlaybackEntry entry: selection) {
             if (!PlaybackEntry.USER_TYPE_QUEUE.equals(entry.playbackType)) {
                 return false;
             }
         }
+        return true;
+    }
+
+    @Override
+    public boolean validSelect(PlaybackEntry key) {
         return true;
     }
 
@@ -242,18 +260,13 @@ public class NowPlayingEntriesAdapter extends
         }
 
         @Override
-        protected int getPositionOf() {
-            return getAdapterPosition();
-        }
-
-        @Override
         protected PlaybackEntry getSelectionKeyOf() {
-            return queueEntries.get(getPositionOf());
+            return queueEntries.get(getPos());
         }
 
         void updateHighlight(NowPlayingState state) {
             itemContent.setPosHighlight(state != null
-                    && isFirstPlaylistEntry(getPositionOf())
+                    && isFirstPlaylistEntry(getPos())
                     && playbackEntry != null
                     && PlaybackEntry.USER_TYPE_PLAYLIST.equals(playbackEntry.playbackType)
                     && state.currentPlaylistPos == playbackEntry.playlistPos);
@@ -277,17 +290,19 @@ public class NowPlayingEntriesAdapter extends
         holder.itemContent.observeMeta(fragment.getViewLifecycleOwner());
         holder.itemContent.observeCachedLiveData(cachedEntriesLiveData, fragment.getViewLifecycleOwner());
         holder.itemContent.observeFetchStateLiveData(fetchStateLiveData, fragment.getViewLifecycleOwner());
-        holder.actionsView.setAudioBrowserFragment(fragment);
+        holder.itemContent.setDragHandleListener(() -> startDrag(holder));
+        holder.actionsView.setAudioBrowser(fragment.getRemote());
+        holder.actionsView.setFragmentManager(fragment.requireActivity().getSupportFragmentManager());
         holder.actionsView.setEntryIDSupplier(() -> holder.playbackEntry.entryID);
         holder.actionsView.setPlaybackEntrySupplier(() -> holder.playbackEntry);
         holder.actionsView.setPlaylistPositionSupplier(() -> holder.playbackEntry.playlistPos);
-        holder.actionsView.setPlaylistIDSupplier(fragment::getCurrentPlaylist);
+        holder.actionsView.setPlaylistIDSupplier(() -> fragment.getRemote().getCurrentPlaylist());
+        holder.actionsView.initialize();
         return holder;
     }
 
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, int position) {
-        holder.actionsView.initialize();
         PlaybackEntry entry = queueEntries.get(position);
         holder.playbackEntry = entry;
         boolean isQueueEntry = PlaybackEntry.USER_TYPE_QUEUE.equals(entry.playbackType);
@@ -296,13 +311,15 @@ public class NowPlayingEntriesAdapter extends
         );
         int[] disabledActions;
         if (isQueueEntry) {
-            holder.itemContent.resetPos();
+            holder.itemContent.setPos(-1);
             disabledActions = new int[] { ACTION_SET_CURRENT_PLAYLIST };
             holder.updateHighlight(null);
+            holder.itemContent.setDragHandleListener(() -> startDrag(holder));
         } else {
             holder.itemContent.setPos(entry.playlistPos);
             disabledActions = new int[] { ACTION_REMOVE_FROM_QUEUE };
             holder.updateHighlight(nowPlayingStateLiveData.getValue());
+            holder.itemContent.setDragHandleListener(null);
         }
         holder.itemContent.setEntryID(entry.entryID);
         holder.itemContent.setPreloaded(entry.isPreloaded());
@@ -325,6 +342,9 @@ public class NowPlayingEntriesAdapter extends
                 },
                 disabledActions
         );
+        if (isDragViewHolder(holder)) {
+            onUseViewHolderForDrag(holder, getSelection());
+        }
     }
 
     private boolean isFirstPlaylistEntry(int position) {

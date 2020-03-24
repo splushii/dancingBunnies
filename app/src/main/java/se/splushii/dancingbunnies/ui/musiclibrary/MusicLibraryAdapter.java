@@ -223,7 +223,8 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         holder.numSubEntriesLiveData.observe(fragment.getViewLifecycleOwner(), numSubEntries ->
                 holder.libraryEntryNum.setText(String.valueOf(numSubEntries))
         );
-        holder.actionsView.setAudioBrowserFragment(fragment);
+        holder.actionsView.setAudioBrowser(fragment.getRemote());
+        holder.actionsView.setFragmentManager(fragment.requireActivity().getSupportFragmentManager());
         holder.actionsView.setEntryIDSupplier(() -> holder.entry.entryID);
         holder.actionsView.setActions(
                 new int[] {
@@ -241,6 +242,7 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 },
                 new int[] {}
         );
+        holder.actionsView.initialize();
         return holder;
     }
 
@@ -262,7 +264,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         );
         LibraryEntry libraryEntry = dataset.get(position);
         final boolean browsable = libraryEntry.isBrowsable();
-        holder.actionsView.initialize();
         holder.libraryEntryNum.setText("");
         holder.update(libraryEntry, browsable);
         boolean selected = selectionTracker != null

@@ -16,6 +16,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 import se.splushii.dancingbunnies.R;
+import se.splushii.dancingbunnies.audioplayer.AudioPlayer;
 import se.splushii.dancingbunnies.audioplayer.PlaybackController;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -40,6 +41,7 @@ public class PlaybackControllerStorage {
 
     private final PlaybackControllerEntryDao entryModel;
     private final SharedPreferences preferences;
+    private final String player_key;
     private final String play_when_ready_key;
     private final String playback_id_counter_key;
     private final String playlist_selection_id_counter_key;
@@ -70,6 +72,7 @@ public class PlaybackControllerStorage {
         this.context = context;
         entryModel = DB.getDB(context).playbackControllerEntryModel();
         preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        player_key = context.getResources().getString(R.string.pref_key_playbackcontroller_player);
         play_when_ready_key = context.getResources().getString(R.string.pref_key_playbackcontroller_play_when_ready);
         playback_id_counter_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playback_id_counter);
         playlist_selection_id_counter_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_selection_id_counter);
@@ -315,6 +318,16 @@ public class PlaybackControllerStorage {
                 .putString(playlist_id_key, id)
                 .putInt(playlist_type_key, type)
                 .apply();
+    }
+
+    public void setCurrentPlayerType(AudioPlayer.Type currentPlayer) {
+        preferences.edit()
+                .putString(player_key, currentPlayer.name())
+                .apply();
+    }
+
+    public AudioPlayer.Type getCurrentPlayerType() {
+        return AudioPlayer.Type.valueOf(preferences.getString(player_key, AudioPlayer.Type.LOCAL.name()));
     }
 
     public void setPlayWhenReady(boolean playWhenReady) {

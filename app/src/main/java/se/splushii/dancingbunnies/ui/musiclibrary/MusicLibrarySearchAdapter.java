@@ -159,8 +159,13 @@ public class MusicLibrarySearchAdapter extends SelectionRecyclerViewAdapter<Entr
     public void onActionModeEnding(ActionModeCallback actionModeCallback) {}
 
     @Override
-    public boolean onDragInitiated(Selection<EntryID> selection) {
+    public boolean validDrag(Selection<EntryID> selection) {
         return false;
+    }
+
+    @Override
+    public boolean validSelect(EntryID key) {
+        return true;
     }
 
     @Override
@@ -200,11 +205,6 @@ public class MusicLibrarySearchAdapter extends SelectionRecyclerViewAdapter<Entr
         }
 
         @Override
-        protected int getPositionOf() {
-            return getAdapterPosition();
-        }
-
-        @Override
         protected EntryID getSelectionKeyOf() {
             return entryIDLiveData.getValue();
         }
@@ -238,7 +238,8 @@ public class MusicLibrarySearchAdapter extends SelectionRecyclerViewAdapter<Entr
                 fetchStateLiveData,
                 fragment.getViewLifecycleOwner()
         );
-        holder.actionsView.setAudioBrowserFragment(fragment);
+        holder.actionsView.setAudioBrowser(fragment.getRemote());
+        holder.actionsView.setFragmentManager(fragment.requireActivity().getSupportFragmentManager());
         holder.actionsView.setEntryIDSupplier(() -> holder.entryIDLiveData.getValue());
         holder.actionsView.setActions(
                 new int[] {
@@ -256,12 +257,12 @@ public class MusicLibrarySearchAdapter extends SelectionRecyclerViewAdapter<Entr
                 },
                 new int[] {}
         );
+        holder.actionsView.initialize();
         return holder;
     }
 
     @Override
     public void onBindViewHolder(@NonNull final SongViewHolder holder, int position) {
-        holder.actionsView.initialize();
         holder.item.setBackgroundResource(position % 2 == 0 ?
                 R.color.background_active_accent : R.color.backgroundalternate_active_accent
         );

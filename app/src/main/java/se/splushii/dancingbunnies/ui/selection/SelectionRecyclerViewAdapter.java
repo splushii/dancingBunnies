@@ -15,10 +15,13 @@ import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.util.Util;
 
-public abstract class SelectionRecyclerViewAdapter<ID, ViewHolder extends RecyclerView.ViewHolder>
+public abstract class SelectionRecyclerViewAdapter<ID, ViewHolder extends ItemDetailsViewHolder<ID>>
         extends RecyclerView.Adapter<ViewHolder> {
     private static final String LC = Util.getLogContext(SelectionRecyclerViewAdapter.class);
-    private SelectionTracker<ID> selectionTracker;
+
+    private RecyclerViewActionModeSelectionTracker
+            <ID, ViewHolder, ? extends SelectionRecyclerViewAdapter<ID, ViewHolder>>
+            selectionTracker;
 
     protected abstract void moveItemInDataset(int from, int to);
     void moveItem(int from, int to) {
@@ -38,8 +41,10 @@ public abstract class SelectionRecyclerViewAdapter<ID, ViewHolder extends Recycl
         List<Integer> positionsToRemove = new ArrayList<>();
         for (ID item: items) {
             int pos = getPosition(item);
-            positionsToRemove.add(pos);
-            removedItemsMap.put(pos, item);
+            if (pos >= 0) {
+                positionsToRemove.add(pos);
+                removedItemsMap.put(pos, item);
+            }
         }
         // Remove in reverse order preserve higher positions
         Collections.sort(positionsToRemove, Collections.reverseOrder());
@@ -50,7 +55,15 @@ public abstract class SelectionRecyclerViewAdapter<ID, ViewHolder extends Recycl
         return removedItemsMap;
     }
 
-    void setSelectionTracker(SelectionTracker<ID> selectionTracker) {
+    protected void recalculateSelection() {
+        selectionTracker.recalculateSelection();
+    }
+
+    void setSelectionTracker(
+            RecyclerViewActionModeSelectionTracker
+                    <ID, ViewHolder, ? extends SelectionRecyclerViewAdapter<ID, ViewHolder>>
+                    selectionTracker
+    ) {
         this.selectionTracker = selectionTracker;
         selectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
             @Override
@@ -63,9 +76,25 @@ public abstract class SelectionRecyclerViewAdapter<ID, ViewHolder extends Recycl
     protected boolean hasSelection() {
         return selectionTracker != null && selectionTracker.hasSelection();
     }
+    protected List<ID> getSelection() {
+        return selectionTracker == null
+                ? Collections.emptyList()
+                : selectionTracker.getSelection();
+    }
     protected boolean isSelected(ID key) {
         return selectionTracker != null && selectionTracker.isSelected(key);
     }
+    protected void removeSelection(List<ID> keys) {
+        if (selectionTracker == null) {
+            return;
+        }
+        selectionTracker.setItemsSelected(keys, false);
+    }
+
+    protected void startDrag(ViewHolder viewHolder) {
+        selectionTracker.startDrag(viewHolder);
+    }
+
     final ItemKeyProvider<ID> keyProvider = new ItemKeyProvider<ID>(ItemKeyProvider.SCOPE_MAPPED) {
         @Nullable
         @Override
@@ -85,10 +114,14 @@ public abstract class SelectionRecyclerViewAdapter<ID, ViewHolder extends Recycl
                                          ID idAfterTargetPos);
     public abstract void onUseViewHolderForDrag(ViewHolder dragViewHolder, Collection<ID> selection);
     public abstract void onResetDragViewHolder(ViewHolder dragViewHolder);
+    protected boolean isDragViewHolder(ViewHolder viewHolder) {
+        return selectionTracker.isDragViewHolder(viewHolder);
+    }
     public abstract void onActionModeStarted(ActionModeCallback actionModeCallback, Selection<ID> selection);
     public abstract void onActionModeSelectionChanged(ActionModeCallback actionModeCallback, Selection<ID> selection);
     public abstract void onActionModeEnding(ActionModeCallback actionModeCallback);
-    public abstract boolean onDragInitiated(Selection<ID> selection);
+    public abstract boolean validSelect(ID key);
     public abstract boolean validMove(ViewHolder current, ViewHolder target);
     public abstract boolean validDrag(ViewHolder viewHolder);
+    public abstract boolean validDrag(Selection<ID> selection);
 }

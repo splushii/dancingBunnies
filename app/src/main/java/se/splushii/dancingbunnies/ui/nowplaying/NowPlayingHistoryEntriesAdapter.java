@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -66,6 +67,21 @@ public class NowPlayingHistoryEntriesAdapter extends
         if (changed) {
             historyEntries = entries;
             notifyDataSetChanged();
+        }
+
+        Util.Diff diff = Util.calculateDiff(historyEntries, entries);
+        if (diff.changed) {
+            if (hasSelection() && !diff.deleted.isEmpty()) {
+                removeSelection(
+                        diff.deleted.stream()
+                                .map(historyEntries::get)
+                                .collect(Collectors.toList())
+                );
+            }
+            historyEntries.clear();
+            historyEntries.addAll(entries);
+            notifyDataSetChanged();
+            recalculateSelection();
         }
     }
 
@@ -129,8 +145,13 @@ public class NowPlayingHistoryEntriesAdapter extends
     public void onActionModeEnding(ActionModeCallback actionModeCallback) {}
 
     @Override
-    public boolean onDragInitiated(Selection<PlaybackEntry> selection) {
+    public boolean validDrag(Selection<PlaybackEntry> selection) {
         return false;
+    }
+
+    @Override
+    public boolean validSelect(PlaybackEntry key) {
+        return true;
     }
 
     @Override
@@ -191,13 +212,8 @@ public class NowPlayingHistoryEntriesAdapter extends
         }
 
         @Override
-        protected int getPositionOf() {
-            return getAdapterPosition();
-        }
-
-        @Override
         protected PlaybackEntry getSelectionKeyOf() {
-            return historyEntries.get(getPositionOf());
+            return historyEntries.get(getPos());
         }
     }
 
@@ -215,7 +231,8 @@ public class NowPlayingHistoryEntriesAdapter extends
         holder.itemContent.observeMeta(fragment.getViewLifecycleOwner());
         holder.itemContent.observeCachedLiveData(cachedEntriesLiveData, fragment.getViewLifecycleOwner());
         holder.itemContent.observeFetchStateLiveData(fetchStateLiveData, fragment.getViewLifecycleOwner());
-        holder.actionsView.setAudioBrowserFragment(fragment);
+        holder.actionsView.setAudioBrowser(fragment.getRemote());
+        holder.actionsView.setFragmentManager(fragment.requireActivity().getSupportFragmentManager());
         holder.actionsView.setEntryIDSupplier(() -> holder.playbackEntry.entryID);
         holder.actionsView.setPlaybackEntrySupplier(() -> holder.playbackEntry);
         holder.actionsView.setActions(
@@ -235,12 +252,12 @@ public class NowPlayingHistoryEntriesAdapter extends
                 },
                 new int[0]
         );
+        holder.actionsView.initialize();
         return holder;
     }
 
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, int position) {
-        holder.actionsView.initialize();
         PlaybackEntry entry = historyEntries.get(position);
         holder.playbackEntry = entry;
         holder.item.setBackgroundResource(position % 2 == 0 ?

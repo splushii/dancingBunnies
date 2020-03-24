@@ -12,11 +12,16 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
+import androidx.annotation.NonNull;
 import androidx.core.util.Pair;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -86,6 +91,88 @@ public class Util {
             return false;
         }
         return true;
+    }
+
+    public static <T> Diff calculateDiff(List<T> currentEntries, List<T> newEntries) {
+        HashMap<T, List<Integer>> oldMap = new HashMap<>();
+        for (int i = 0; i < currentEntries.size(); i++) {
+            T entry = currentEntries.get(i);
+            List<Integer> indices = oldMap.getOrDefault(entry, new ArrayList<>());
+            indices.add(i);
+            oldMap.put(entry, indices);
+        }
+        HashMap<T, List<Integer>> newMap = new HashMap<>();
+        for (int i = 0; i < newEntries.size(); i++) {
+            T entry = newEntries.get(i);
+            List<Integer> indices = newMap.getOrDefault(entry, new ArrayList<>());
+            indices.add(i);
+            newMap.put(entry, indices);
+        }
+        // Find unchanged, deleted and moved
+        List<Integer> deletedPositions = new ArrayList<>();
+        List<Integer> addedPositions = new ArrayList<>();
+        List<Pair<Integer, Integer>> movedPositions = new ArrayList<>();
+        for (T entry: oldMap.keySet()) {
+            List<Integer> oldPositions = oldMap.get(entry);
+            List<Integer> newPositions = newMap.getOrDefault(entry, Collections.emptyList());
+            // Find unchanged
+            nextOldPos:
+            for (int oldPosIndex = 0; oldPosIndex < oldPositions.size(); oldPosIndex++) {
+                int oldPos = oldPositions.get(oldPosIndex);
+                for (int newPosIndex = 0; newPosIndex < newPositions.size(); newPosIndex++) {
+                    int newPosition = newPositions.get(newPosIndex);
+                    if (oldPos == newPosition) {
+                        oldPositions.remove(oldPosIndex);
+                        oldPosIndex--;
+                        newPositions.remove(newPosIndex);
+                        continue nextOldPos;
+                    }
+                }
+            }
+            // Find deleted
+            while (oldPositions.size() > newPositions.size()) {
+                int oldPos = oldPositions.remove(oldPositions.size() - 1);
+                deletedPositions.add(oldPos);
+            }
+            // Find moved
+            while (!oldPositions.isEmpty()) {
+                int oldPos = oldPositions.remove(oldPositions.size() - 1);
+                int newPos = newPositions.remove(newPositions.size() - 1);
+                movedPositions.add(new Pair<>(oldPos, newPos));
+            }
+        }
+        // Find added
+        for (T entry: newMap.keySet()) {
+            List<Integer> newPositions = newMap.getOrDefault(entry, Collections.emptyList());
+            addedPositions.addAll(newPositions);
+        }
+        Collections.sort(deletedPositions);
+        Collections.sort(addedPositions);
+        return new Diff(deletedPositions, addedPositions, movedPositions);
+    }
+
+    public static class Diff {
+        public final boolean changed;
+        public final List<Integer> deleted;
+        public final List<Integer> added;
+        public final List<Pair<Integer, Integer>> moved;
+        Diff(List<Integer> deleted,
+             List<Integer> added,
+             List<Pair<Integer, Integer>> moved) {
+            this.deleted = deleted;
+            this.added = added;
+            this.moved = moved;
+            changed = !(deleted.isEmpty() && added.isEmpty() && moved.isEmpty());
+        }
+
+        @NonNull
+        @Override
+        public String toString() {
+            return "changed: " + changed
+                    + " deleted: " + deleted.size()
+                    + " added: " + added.size()
+                    + " moved: " + moved.size();
+        }
     }
 
     public static class FutureException extends Throwable {

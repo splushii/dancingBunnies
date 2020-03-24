@@ -2,23 +2,32 @@ package se.splushii.dancingbunnies;
 
 import android.app.SearchManager;
 import android.content.Intent;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 
 import com.google.android.gms.cast.framework.CastButtonFactory;
 import com.google.android.material.tabs.TabLayout;
 
+import java.util.List;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentPagerAdapter;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.mediarouter.app.MediaRouteButton;
 import androidx.viewpager.widget.ViewPager;
+import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.storage.AudioStorage;
+import se.splushii.dancingbunnies.storage.DownloadEntry;
+import se.splushii.dancingbunnies.ui.downloads.DownloadsDialogFragment;
 import se.splushii.dancingbunnies.ui.musiclibrary.MusicLibraryFragment;
 import se.splushii.dancingbunnies.ui.musiclibrary.MusicLibraryFragmentModel;
 import se.splushii.dancingbunnies.ui.nowplaying.NowPlayingFragment;
@@ -46,6 +55,7 @@ public final class MainActivity extends AppCompatActivity {
     public static final String SELECTION_ID_PLAYLIST_ENTRIES = "dancingbunnies.selection_id.playlist_entries";
     public static final String SELECTION_ID_PLAYLIST_PLAYBACK_ENTRIES = "dancingbunnies.selection_id.playlist_entries";
     public static final String SELECTION_ID_META_DIALOG = "dancingbunnies.selection_id.meta_dialog";
+    public static final String SELECTION_ID_DOWNLOADS_DIALOG = "dancingbunnies.selection_id.downloads_dialog";
     public static final int REQUEST_CODE_META_DIALOG = 1337;
     public static final int REQUEST_CODE_ADD_TO_PLAYLIST_DIALOG = 1338;
     public static final int REQUEST_CODE_ADD_TO_NEW_PLAYLIST_DIALOG = 1339;
@@ -54,24 +64,29 @@ public final class MainActivity extends AppCompatActivity {
     private ViewPager mViewPager;
     private SectionsPagerAdapter mSectionsPagerAdapter;
 
-    private ImageButton settingsBtn;
+    private AudioBrowser audioBrowser;
 
     private MusicLibraryFragmentModel musicLibraryModel;
     private PlaylistFragmentModel playlistModel;
 
+    private View logoDLImg;
+    private LiveData<List<DownloadEntry>> downloadQueueLiveData;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        Log.d(LC, "onCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main_activity_layout);
-        musicLibraryModel = ViewModelProviders.of(this).get(MusicLibraryFragmentModel.class);
-        playlistModel = ViewModelProviders.of(this).get(PlaylistFragmentModel.class);
+        ViewModelProvider viewModelProvider = new ViewModelProvider(this);
+        musicLibraryModel = viewModelProvider.get(MusicLibraryFragmentModel.class);
+        playlistModel = viewModelProvider.get(PlaylistFragmentModel.class);
 
         mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
 
         mViewPager = findViewById(R.id.main_container);
         mViewPager.setAdapter(mSectionsPagerAdapter);
 
-        settingsBtn = findViewById(R.id.main_settings);
+        ImageButton settingsBtn = findViewById(R.id.main_settings);
         settingsBtn.setOnClickListener(view -> showSettings());
 
         TabLayout tabLayout = findViewById(R.id.main_tabs);
@@ -79,6 +94,18 @@ public final class MainActivity extends AppCompatActivity {
 
         MediaRouteButton mediaRouteButton = findViewById(R.id.media_route_button);
         CastButtonFactory.setUpMediaRouteButton(getApplicationContext(), mediaRouteButton);
+
+        View logoView = findViewById(R.id.main_appbar_logo);
+        logoView.setOnClickListener(view -> {
+            DownloadsDialogFragment.showDialog(this);
+        });
+        logoDLImg = findViewById(R.id.main_appbar_logo_dl);
+        downloadQueueLiveData = AudioStorage.getInstance(this).getDownloads();
+        downloadQueueLiveData.observe(this, downloadQueue -> {
+            logoDLImg.setVisibility(downloadQueue.isEmpty() ? View.GONE : View.VISIBLE);
+        });
+
+        audioBrowser = AudioBrowser.getInstance(this);
 
         handleIntent(getIntent());
     }
@@ -122,13 +149,29 @@ public final class MainActivity extends AppCompatActivity {
 
     @Override
     public void onStart() {
+        Log.d(LC, "onStart");
         super.onStart();
+        audioBrowser.connect();
+    }
+
+    @Override
+    protected void onResume() {
+        Log.d(LC, "onResume");
+        super.onResume();
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
     }
 
     @Override
     protected void onStop() {
         Log.d(LC, "onStop");
         super.onStop();
+        audioBrowser.disconnect();
+    }
+
+    @Override
+    protected void onDestroy() {
+        Log.d(LC, "onDestroy");
+        super.onDestroy();
     }
 
     private void showSettings() {

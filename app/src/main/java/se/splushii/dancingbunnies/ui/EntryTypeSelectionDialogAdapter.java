@@ -134,11 +134,13 @@ public class EntryTypeSelectionDialogAdapter extends RecyclerView.Adapter<EntryT
     }
 
     class ViewHolder extends RecyclerView.ViewHolder {
+        final View root;
         final TextView value;
         final View handle;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
+            root = itemView.findViewById(R.id.entry_type_selection_item);
             value = itemView.findViewById(R.id.entry_type_selection_item_value);
             handle = itemView.findViewById(R.id.entry_type_selection_item_handle);
             handle.setVisibility(withHandle ? View.VISIBLE : View.GONE);

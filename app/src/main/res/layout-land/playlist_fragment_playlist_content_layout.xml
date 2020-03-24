@@ -12,6 +12,10 @@
         android:layout_height="match_parent"
         android:layout_weight="1"
         />
+    <View
+        android:layout_width="2dp"
+        android:layout_height="match_parent"
+        android:background="@color/colorIconSecondary"/>
     <include
         layout="@layout/playlist_fragment_playlist_content_playlist_entries_layout"
         android:layout_width="0dp"

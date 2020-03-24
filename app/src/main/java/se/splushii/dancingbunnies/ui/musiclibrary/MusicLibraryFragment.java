@@ -2,6 +2,7 @@ package se.splushii.dancingbunnies.ui.musiclibrary;
 
 import android.os.Build;
 import android.os.Bundle;
+import android.support.v4.media.session.PlaybackStateCompat;
 import android.text.TextUtils;
 import android.util.Log;
 import android.util.TypedValue;
@@ -34,9 +35,10 @@ import androidx.appcompat.view.menu.MenuBuilder;
 import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.selection.MutableSelection;
 import androidx.recyclerview.selection.SelectionPredicates;
 import androidx.recyclerview.selection.SelectionTracker;
@@ -45,7 +47,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
+import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
+import se.splushii.dancingbunnies.audioplayer.AudioBrowserCallback;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
@@ -80,7 +83,9 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE_QU
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE_QUERIES;
 
-public class MusicLibraryFragment extends AudioBrowserFragment implements EntryTypeSelectionDialogFragment.ConfigHandler {
+public class MusicLibraryFragment
+        extends Fragment
+        implements AudioBrowserCallback, EntryTypeSelectionDialogFragment.ConfigHandler {
     private static final String LC = Util.getLogContext(MusicLibraryFragment.class);
     private static final int SORT_BY_HEADER_ID_VALUE = 1;
     private static final int SORT_BY_GROUP_ID_HEADER = 0;
@@ -93,6 +98,8 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
     private static final int SHOW_GROUP_ID_SINGLE = 1;
     private static final int SHOW_GROUP_ORDER_HEADER = Menu.FIRST;
     private static final int SHOW_GROUP_ORDER_SINGLE = Menu.FIRST + 1;
+
+    private AudioBrowser remote;
 
     private View browseView;
     private View browseQueryBtn;
@@ -128,7 +135,7 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
     private MusicLibrarySearchAdapter searchRecyclerViewAdapter;
     private LinearLayoutManager searchRecyclerViewLayoutManager;
     private RecyclerViewActionModeSelectionTracker
-            <EntryID, MusicLibrarySearchAdapter, MusicLibrarySearchAdapter.SongViewHolder>
+            <EntryID, MusicLibrarySearchAdapter.SongViewHolder, MusicLibrarySearchAdapter>
             searchSelectionTracker;
 
     private ArrayList<String> metaKeys;
@@ -140,44 +147,224 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         Log.d(LC, "onActivityCreated");
         super.onActivityCreated(savedInstanceState);
-        model = ViewModelProviders.of(requireActivity()).get(MusicLibraryFragmentModel.class);
+        remote = AudioBrowser.getInstance(requireActivity());
+
+        ActionModeCallback searchActionModeCallback = new ActionModeCallback(
+                requireActivity(),
+                remote,
+                new ActionModeCallback.Callback() {
+                    @Override
+                    public List<EntryID> getEntryIDSelection() {
+                        return searchSelectionTracker.getSelection();
+                    }
+
+                    public List<PlaybackEntry> getPlaybackEntrySelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public List<PlaylistEntry> getPlaylistEntrySelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public List<Playlist> getPlaylistSelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public MusicLibraryQueryNode getQueryNode() {
+                        return null;
+                    }
+
+                    @Override
+                    public PlaylistID getPlaylistID() {
+                        return null;
+                    }
+
+                    @Override
+                    public List<MusicLibraryQueryNode> getQueryNodes() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public void onDestroyActionMode(ActionMode actionMode) {
+                        searchSelectionTracker.clearSelection();
+                    }
+                }
+        );
+        searchActionModeCallback.setActions(
+                new int[]{
+                        ACTION_ADD_MULTIPLE_TO_QUEUE,
+                        ACTION_ADD_MULTIPLE_TO_PLAYLIST
+                },
+                new int[]{
+                        ACTION_PLAY_MULTIPLE,
+                        ACTION_ADD_MULTIPLE_TO_QUEUE,
+                        ACTION_ADD_MULTIPLE_TO_PLAYLIST,
+                        ACTION_CACHE_MULTIPLE,
+                        ACTION_CACHE_DELETE_MULTIPLE
+                },
+                new int[0]
+        );
+        searchSelectionTracker.setActionModeCallback(
+                ActionMode.TYPE_PRIMARY,
+                searchActionModeCallback
+        );
+        ActionModeCallback browseActionModeCallback = new ActionModeCallback(
+                requireActivity(),
+                remote,
+                new ActionModeCallback.Callback() {
+                    @Override
+                    public List<EntryID> getEntryIDSelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public List<PlaybackEntry> getPlaybackEntrySelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public List<PlaylistEntry> getPlaylistEntrySelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public List<Playlist> getPlaylistSelection() {
+                        return Collections.emptyList();
+                    }
+
+                    @Override
+                    public MusicLibraryQueryNode getQueryNode() {
+                        return getCurrentQueryTree();
+                    }
+
+                    @Override
+                    public PlaylistID getPlaylistID() {
+                        return null;
+                    }
+
+                    @Override
+                    public List<MusicLibraryQueryNode> getQueryNodes() {
+                        return getSelectedQueryTrees();
+                    }
+
+                    @Override
+                    public void onDestroyActionMode(ActionMode actionMode) {
+                        browseSelectionTracker.clearSelection();
+                        MusicLibraryFragment.this.browseActionMode = null;
+                    }
+                }
+        );
+        browseActionModeCallback.setActions(
+                new int[]{
+                        ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE,
+                        ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST
+                },
+                new int[]{
+                        ACTION_PLAY_MULTIPLE_QUERIES,
+                        ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE,
+                        ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST,
+                        ACTION_CACHE_MULTIPLE_QUERIES,
+                        ACTION_CACHE_DELETE_MULTIPLE_QUERIES
+                },
+                new int[0]
+        );
+        browseSelectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
+            @Override
+            public void onItemStateChanged(@NonNull Object key, boolean selected) {}
+
+            @Override
+            public void onSelectionRefresh() {}
+
+            @Override
+            public void onSelectionChanged() {
+                if (browseSelectionTracker.hasSelection() && browseActionMode == null) {
+                    browseActionMode = requireActivity().startActionMode(browseActionModeCallback);
+                }
+                if (!browseSelectionTracker.hasSelection() && browseActionMode != null) {
+                    browseActionMode.finish();
+                }
+                if (browseActionMode != null && browseSelectionTracker.hasSelection()) {
+                    browseActionMode.setTitle(browseSelectionTracker.getSelection().size() + " sel.");
+                }
+            }
+
+            @Override
+            public void onSelectionRestored() {}
+        });
+
+        model = new ViewModelProvider(requireActivity()).get(MusicLibraryFragmentModel.class);
         model.getUserState().observe(getViewLifecycleOwner(), state -> {
             refreshView(state);
-            model.query(mediaBrowser);
+            model.query(remote);
         });
         browseRecyclerViewAdapter.setModel(model);
         searchRecyclerViewAdapter.setModel(model);
+    }
+
+    AudioBrowser getRemote() {
+        return remote;
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        remote.registerCallback(requireActivity(), this);
     }
 
     @Override
     public void onStop() {
         Log.d(LC, "onStop");
         model.updateUserState(Util.getRecyclerViewPosition(browseRecyclerView));
+        remote.unregisterCallback(requireActivity(), this);
         super.onStop();
     }
 
     @Override
-    protected void onMediaBrowserConnected() {
+    public void onMediaBrowserConnected() {
         if (model != null) {
             refreshView(model.getUserState().getValue());
-            model.query(mediaBrowser);
+            model.query(remote);
         }
     }
 
     @Override
-    protected void onSessionReady() {
+    public void onPlaybackStateChanged(PlaybackStateCompat state) {}
+
+    @Override
+    public void onMetadataChanged(EntryID entryID) {}
+
+    @Override
+    public void onSessionReady() {
         if (model != null) {
-            model.setCurrentEntry(getCurrentEntry());
+            model.setCurrentEntry(remote.getCurrentEntry());
             refreshView(model.getUserState().getValue());
         }
     }
 
     @Override
-    protected void onCurrentEntryChanged(PlaybackEntry entry) {
+    public void onQueueChanged(List<PlaybackEntry> queue) {}
+
+    @Override
+    public void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {}
+
+    @Override
+    public void onPlaylistPlaybackOrderModeChanged(int playbackOrderMode) {}
+
+    @Override
+    public void onRepeatModeChanged(boolean repeat) {}
+
+    @Override
+    public void onCurrentEntryChanged(PlaybackEntry entry) {
         if (model != null) {
             model.setCurrentEntry(entry);
         }
     }
+
+    @Override
+    public void onSessionDestroyed() {}
 
     private void refreshView(final MusicLibraryUserState newUserState) {
         if (newUserState == null) {
@@ -594,64 +781,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
                 StorageStrategy.createParcelableStorage(EntryID.class),
                 savedInstanceState
         );
-        ActionModeCallback searchActionModeCallback = new ActionModeCallback(
-                this,
-                new ActionModeCallback.Callback() {
-                    @Override
-                    public List<EntryID> getEntryIDSelection() {
-                        return searchSelectionTracker.getSelection();
-                    }
-
-                    public List<PlaybackEntry> getPlaybackEntrySelection() {
-                        return Collections.emptyList();
-                    }
-
-                    @Override
-                    public List<PlaylistEntry> getPlaylistEntrySelection() {
-                        return Collections.emptyList();
-                    }
-
-                    @Override
-                    public List<Playlist> getPlaylistSelection() {
-                        return Collections.emptyList();
-                    }
-
-                    @Override
-                    public MusicLibraryQueryNode getQueryNode() {
-                        return null;
-                    }
-
-                    @Override
-                    public PlaylistID getPlaylistID() {
-                        return null;
-                    }
-
-                    @Override
-                    public List<MusicLibraryQueryNode> getQueryNodes() {
-                        return Collections.emptyList();
-                    }
-
-                    @Override
-                    public void onDestroyActionMode(ActionMode actionMode) {
-                        searchSelectionTracker.clearSelection();
-                    }
-                }
-        );
-        searchSelectionTracker.setActionModeCallback(searchActionModeCallback);
-        searchActionModeCallback.setActions(
-                new int[]{
-                        ACTION_ADD_MULTIPLE_TO_QUEUE,
-                        ACTION_ADD_MULTIPLE_TO_PLAYLIST
-                },
-                new int[]{
-                        ACTION_PLAY_MULTIPLE,
-                        ACTION_ADD_MULTIPLE_TO_QUEUE,
-                        ACTION_ADD_MULTIPLE_TO_PLAYLIST,
-                        ACTION_CACHE_MULTIPLE,
-                        ACTION_CACHE_DELETE_MULTIPLE
-                },
-                new int[0]
-        );
         searchRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
@@ -748,65 +877,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         browseHeaderSortedByOrder = rootView.findViewById(R.id.musiclibrary_browse_header_sortedby_order);
         browseHeaderSortedBy.setOnClickListener(view -> browseHeaderSortedByPopupHelper.show());
 
-        ActionModeCallback browseActionModeCallback = new ActionModeCallback(
-                this,
-                new ActionModeCallback.Callback() {
-                    @Override
-                    public List<EntryID> getEntryIDSelection() {
-                        return Collections.emptyList();
-                    }
-
-                    @Override
-                    public List<PlaybackEntry> getPlaybackEntrySelection() {
-                        return Collections.emptyList();
-                    }
-
-                    @Override
-                    public List<PlaylistEntry> getPlaylistEntrySelection() {
-                        return Collections.emptyList();
-                    }
-
-                    @Override
-                    public List<Playlist> getPlaylistSelection() {
-                        return Collections.emptyList();
-                    }
-
-                    @Override
-                    public MusicLibraryQueryNode getQueryNode() {
-                        return getCurrentQueryTree();
-                    }
-
-                    @Override
-                    public PlaylistID getPlaylistID() {
-                        return null;
-                    }
-
-                    @Override
-                    public List<MusicLibraryQueryNode> getQueryNodes() {
-                        return getSelectedQueryTrees();
-                    }
-
-                    @Override
-                    public void onDestroyActionMode(ActionMode actionMode) {
-                        browseSelectionTracker.clearSelection();
-                        MusicLibraryFragment.this.browseActionMode = null;
-                    }
-                }
-        );
-        browseActionModeCallback.setActions(
-                new int[]{
-                        ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE,
-                        ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST
-                },
-                new int[]{
-                        ACTION_PLAY_MULTIPLE_QUERIES,
-                        ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE,
-                        ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST,
-                        ACTION_CACHE_MULTIPLE_QUERIES,
-                        ACTION_CACHE_DELETE_MULTIPLE_QUERIES
-                },
-                new int[0]
-        );
 
         browseSelectionTracker = new SelectionTracker.Builder<>(
                 MainActivity.SELECTION_ID_MUSICLIBRARY_BROWSE,
@@ -817,29 +887,6 @@ public class MusicLibraryFragment extends AudioBrowserFragment implements EntryT
         ).withSelectionPredicate(
                 SelectionPredicates.createSelectAnything()
         ).build();
-        browseSelectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
-            @Override
-            public void onItemStateChanged(@NonNull Object key, boolean selected) {}
-
-            @Override
-            public void onSelectionRefresh() {}
-
-            @Override
-            public void onSelectionChanged() {
-                if (browseSelectionTracker.hasSelection() && browseActionMode == null) {
-                    browseActionMode = requireActivity().startActionMode(browseActionModeCallback);
-                }
-                if (!browseSelectionTracker.hasSelection() && browseActionMode != null) {
-                    browseActionMode.finish();
-                }
-                if (browseActionMode != null && browseSelectionTracker.hasSelection()) {
-                    browseActionMode.setTitle(browseSelectionTracker.getSelection().size() + " sel.");
-                }
-            }
-
-            @Override
-            public void onSelectionRestored() {}
-        });
         browseRecyclerViewAdapter.setSelectionTracker(browseSelectionTracker);
         if (savedInstanceState != null) {
             browseSelectionTracker.onRestoreInstanceState(savedInstanceState);

@@ -24,17 +24,33 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@color/colorPrimary">
-            <TextView
+            <LinearLayout
+                android:id="@+id/main_appbar_logo"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
+                android:orientation="vertical"
                 android:paddingStart="8dp"
                 android:paddingEnd="8dp"
-                android:layout_margin="0dp"
-                android:textStyle="bold"
-                android:textSize="36sp"
-                android:textColor="@color/colorLogo"
-                android:text="@string/logo_dB"/>
+                android:animateLayoutChanges="true"
+                android:layout_gravity="center_vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_margin="0dp"
+                    android:textStyle="bold"
+                    android:textSize="36sp"
+                    android:textColor="@color/colorLogo"
+                    android:text="@string/app_name_logo"/>
+                <ImageView
+                    android:id="@+id/main_appbar_logo_dl"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginTop="-4dp"
+                    android:layout_gravity="center_horizontal"
+                    android:src="@drawable/ic_file_download_black_24dp"
+                    android:visibility="gone"
+                    />
+            </LinearLayout>
             <com.google.android.material.tabs.TabLayout
                 android:id="@+id/main_tabs"
                 android:layout_width="0dp"

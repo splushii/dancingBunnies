@@ -118,7 +118,12 @@ public class MetaDialogFragmentAdapter extends
     }
 
     @Override
-    public boolean onDragInitiated(Selection<MetaTag> selection) {
+    public boolean validDrag(Selection<MetaTag> selection) {
+        return false;
+    }
+
+    @Override
+    public boolean validSelect(MetaTag key) {
         return false;
     }
 
@@ -233,13 +238,8 @@ public class MetaDialogFragmentAdapter extends
         }
 
         @Override
-        protected int getPositionOf() {
-            return getAdapterPosition();
-        }
-
-        @Override
         protected MetaTag getSelectionKeyOf() {
-            return tagEntries.get(getPositionOf());
+            return tagEntries.get(getPos());
         }
 
         void setTag(MetaTag tag) {
@@ -285,7 +285,6 @@ public class MetaDialogFragmentAdapter extends
                     },
                     disabledActions
             );
-            actionsView.initialize();
             actionsView.setPostAction(action -> {
                 if (action == MenuActions.ACTION_GOTO_META) {
                     fragment.dismiss();
@@ -338,11 +337,13 @@ public class MetaDialogFragmentAdapter extends
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
-        return new ViewHolder(layoutInflater.inflate(
+        ViewHolder holder = new ViewHolder(layoutInflater.inflate(
                 R.layout.meta_dialog_list_item,
                 parent,
                 false
         ));
+        holder.actionsView.initialize();
+        return holder;
     }
 
     @Override

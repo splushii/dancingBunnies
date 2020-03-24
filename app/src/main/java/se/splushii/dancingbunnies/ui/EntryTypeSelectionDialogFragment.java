@@ -14,13 +14,14 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
+import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.storage.MetaStorage;
@@ -49,14 +50,19 @@ public class EntryTypeSelectionDialogFragment extends DialogFragment {
     private ItemTouchHelper touchHelper;
     private HashSet<String> chosenKeys;
 
-    public static void showDialogForSortConfig(Fragment fragment,
+    public static void showDialogForSortConfig(Fragment targetFragment,
                                                List<String> initialSelection) {
         Bundle args = new Bundle();
         args.putStringArrayList(BUNDLE_KEY_INITIAL_SELECTION, new ArrayList<>(initialSelection));
-        showDialog(fragment, args, true);
+        showDialog(
+                targetFragment.requireActivity().getSupportFragmentManager(),
+                targetFragment,
+                args,
+                true
+        );
     }
 
-    static void showDialogToSort(Fragment fragment,
+    static void showDialogToSort(FragmentManager fragmentManager,
                                  ArrayList<PlaybackEntry> entries,
                                  String sortTarget) {
         if (entries == null
@@ -68,19 +74,24 @@ public class EntryTypeSelectionDialogFragment extends DialogFragment {
         Bundle args = new Bundle();
         args.putParcelableArrayList(BUNDLE_KEY_PLAYBACK_ENTRIES, entries);
         args.putString(BUNDLE_KEY_SORT_TARGET, sortTarget);
-        showDialog(fragment, args, false);
+        showDialog(fragmentManager, null, args, false);
     }
 
-    private static void showDialog(Fragment fragment, Bundle args, boolean onlyReturnConfig) {
+    private static void showDialog(FragmentManager fragmentManager,
+                                   Fragment targetFragment,
+                                   Bundle args,
+                                   boolean onlyReturnConfig) {
         args.putBoolean(BUNDLE_KEY_ONLY_RETURN_CONFIG, onlyReturnConfig);
-        FragmentTransaction ft = fragment.getFragmentManager().beginTransaction();
-        Fragment prev = fragment.getFragmentManager().findFragmentByTag(EntryTypeSelectionDialogFragment.TAG);
+        FragmentTransaction ft = fragmentManager.beginTransaction();
+        Fragment prev = fragmentManager.findFragmentByTag(EntryTypeSelectionDialogFragment.TAG);
         if (prev != null) {
             ft.remove(prev);
         }
         ft.addToBackStack(null);
         DialogFragment dialogFragment = new EntryTypeSelectionDialogFragment();
-        dialogFragment.setTargetFragment(fragment, MainActivity.REQUEST_CODE_SORT_DIALOG);
+        if (targetFragment != null) {
+            dialogFragment.setTargetFragment(targetFragment, MainActivity.REQUEST_CODE_SORT_DIALOG);
+        }
         dialogFragment.setArguments(args);
         dialogFragment.show(ft, EntryTypeSelectionDialogFragment.TAG);
     }
@@ -209,22 +220,19 @@ public class EntryTypeSelectionDialogFragment extends DialogFragment {
             }
             return;
         }
-        if (targetFragment instanceof AudioBrowserFragment) {
-            switch (sortTarget) {
-                case SORT_QUEUE:
-                    AudioBrowserFragment audioBrowserFragment = (AudioBrowserFragment) targetFragment;
-                    audioBrowserFragment.sortQueueItems(entries, keys);
-                    break;
-                case SORT_PLAYLIST_PLAYBACK:
-                    PlaybackControllerStorage.getInstance(requireContext()).sort(
-                            PlaybackControllerStorage.QUEUE_ID_CURRENT_PLAYLIST_PLAYBACK,
-                            entries,
-                            keys
-                    );
-                    break;
-            }
-            dismiss();
+        switch (sortTarget) {
+            case SORT_QUEUE:
+                AudioBrowser.getInstance(requireActivity()).sortQueueItems(entries, keys);
+                break;
+            case SORT_PLAYLIST_PLAYBACK:
+                PlaybackControllerStorage.getInstance(requireContext()).sort(
+                        PlaybackControllerStorage.QUEUE_ID_CURRENT_PLAYLIST_PLAYBACK,
+                        entries,
+                        keys
+                );
+                break;
         }
+        dismiss();
     }
 
     public interface ConfigHandler {

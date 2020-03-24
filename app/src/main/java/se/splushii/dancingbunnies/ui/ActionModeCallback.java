@@ -8,8 +8,10 @@ import android.view.View;
 import java.util.HashSet;
 import java.util.List;
 
+import androidx.appcompat.widget.Toolbar;
+import androidx.fragment.app.FragmentActivity;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
+import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
@@ -20,19 +22,34 @@ import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_MORE;
 
-public class ActionModeCallback implements ActionMode.Callback {
+public class ActionModeCallback implements ActionMode.Callback, MenuItem.OnMenuItemClickListener {
     private static final String LC = Util.getLogContext(ActionModeCallback.class);
 
-    private final AudioBrowserFragment audioBrowserFragment;
+    private final FragmentActivity activity;
+    private final AudioBrowser remote;
     private final Callback callback;
     private ActionMode currentMode;
+    private final Toolbar customToolbar;
     private int[] visibleActions = {};
     private int[] moreActions = {};
     private HashSet<Integer> disabled = new HashSet<>();
+    private MenuItem moreActionsMenuItem;
 
-    public ActionModeCallback(AudioBrowserFragment audioBrowserFragment, Callback callback) {
-        this.audioBrowserFragment = audioBrowserFragment;
+    public ActionModeCallback(FragmentActivity activity, AudioBrowser remote, Callback callback) {
+        this.activity = activity;
+        this.remote = remote;
         this.callback = callback;
+        this.customToolbar = null;
+    }
+
+    public ActionModeCallback(FragmentActivity activity,
+                              AudioBrowser remote,
+                              Toolbar customToolbar,
+                              Callback callback) {
+        this.activity = activity;
+        this.remote = remote;
+        this.callback = callback;
+        this.customToolbar = customToolbar;
     }
 
     public interface Callback {
@@ -53,8 +70,13 @@ public class ActionModeCallback implements ActionMode.Callback {
         for (int d: disabled) {
             this.disabled.add(d);
         }
-        if (currentMode != null) {
-            Menu menu = currentMode.getMenu();
+        Menu menu = null;
+        if (customToolbar != null) {
+            menu = customToolbar.getMenu();
+        } else if (currentMode != null) {
+            menu = currentMode.getMenu();
+        }
+        if (menu != null) {
             menu.clear();
             setActions(menu);
         }
@@ -62,18 +84,23 @@ public class ActionModeCallback implements ActionMode.Callback {
 
     private void setActions(Menu menu) {
         for (int i = 0; i < visibleActions.length; i++) {
-            MenuActions.addAction(
-                    audioBrowserFragment.requireContext(),
+            MenuItem menuItem = MenuActions.addAction(
+                    activity,
                     menu,
                     i,
                     visibleActions[i],
                     R.color.icon_on_primary,
                     !disabled.contains(visibleActions[i])
             );
+            if (customToolbar != null && menuItem != null) {
+                // Add a click listener as onActionItemClicked will not be triggered
+                // when using a custom toolbar
+                menuItem.setOnMenuItemClickListener(this);
+            }
         }
         if (moreActions.length > 0) {
-            MenuActions.addAction(
-                    audioBrowserFragment.requireContext(),
+            moreActionsMenuItem = MenuActions.addAction(
+                    activity,
                     menu,
                     visibleActions.length,
                     ACTION_MORE,
@@ -87,6 +114,10 @@ public class ActionModeCallback implements ActionMode.Callback {
     @Override
     public boolean onCreateActionMode(ActionMode mode, Menu menu) {
         currentMode = mode;
+        if (customToolbar != null) {
+            menu = customToolbar.getMenu();
+        }
+        menu.clear();
         setActions(menu);
         return true;
     }
@@ -95,30 +126,51 @@ public class ActionModeCallback implements ActionMode.Callback {
     // may be called multiple times if the mode is invalidated.
     @Override
     public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+        currentMode = mode;
         return false; // Return false if nothing is done
     }
 
     // Called when the user selects a contextual menu item
     @Override
     public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-        if (item.getItemId() == ACTION_MORE) {
-            View anchor = audioBrowserFragment.requireActivity().findViewById(ACTION_MORE);
+        currentMode = mode;
+        return handleItemClick(item);
+    }
+
+    @Override
+    public boolean onMenuItemClick(MenuItem item) {
+        return handleItemClick(item);
+    }
+
+    private boolean handleItemClick(MenuItem item) {
+        if (onMenuItemClicked(item.getItemId())) {
+            return true;
+        }
+        return onAction(item.getItemId());
+    }
+
+    public boolean onMenuItemClicked(int itemId) {
+        if (itemId == ACTION_MORE && moreActionsMenuItem != null) {
+            View anchor = customToolbar != null ?
+                    customToolbar.findViewById(ACTION_MORE) : activity.findViewById(ACTION_MORE);
             MenuActions.showPopupMenu(
-                    audioBrowserFragment.requireContext(),
+                    activity,
                     anchor,
                     moreActions,
                     disabled,
-                    popupItem -> onAction(mode, popupItem.getItemId())
+                    popupItem -> onAction(popupItem.getItemId())
             );
             return true;
         }
-        return onAction(mode, item.getItemId());
+        return false;
     }
 
-    private boolean onAction(ActionMode mode, int itemId) {
+    private boolean onAction(int itemId) {
         if (!MenuActions.doSelectionAction(
                 itemId,
-                audioBrowserFragment,
+                remote,
+                activity,
+                activity.getSupportFragmentManager(),
                 callback::getEntryIDSelection,
                 callback::getQueryNode,
                 callback::getPlaybackEntrySelection,
@@ -129,7 +181,9 @@ public class ActionModeCallback implements ActionMode.Callback {
         )) {
             return false;
         }
-        mode.finish();
+        if (currentMode != null) {
+            currentMode.finish();
+        }
         return true;
     }
 

@@ -5,7 +5,7 @@ import android.util.Log;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-interface AudioPlayer {
+public interface AudioPlayer {
     Callback dummyCallback = new Callback() {
         private static final String LC = "AudioPlayer.dummyCallback";
 

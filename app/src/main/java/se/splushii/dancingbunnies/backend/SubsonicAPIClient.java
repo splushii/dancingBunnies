@@ -693,10 +693,7 @@ public class SubsonicAPIClient extends APIClient {
                     .getString(R.string.pref_key_subsonic_usr), "");
             String pwd = settings.getString(context.getResources()
                     .getString(R.string.pref_key_subsonic_pwd), "");
-            String pwdPublic = pwd.isEmpty() ? "" : "********";
             tagDelimiter = settings.getString(context.getResources().getString(R.string.pref_key_subsonic_tag_delim), null);
-            Log.d(LC, "Subsonic backend enabled.\nbaseURL: " + url + "\nusr: " + usr
-                    + "\npwd: " + pwdPublic + "\n");
             baseURL = url + API_BASE_URL;
             username = usr;
             password = pwd;

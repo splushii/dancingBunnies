@@ -28,6 +28,7 @@ import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.util.Pair;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
@@ -37,7 +38,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
@@ -60,25 +60,26 @@ public class MetaDialogFragment extends DialogFragment {
     private ImageButton addBtn;
 
     private MetaDialogFragmentAdapter recViewAdapter;
-    private RecyclerViewActionModeSelectionTracker<MetaTag, MetaDialogFragmentAdapter, MetaDialogFragmentAdapter.ViewHolder> selectionTracker;
+    private RecyclerViewActionModeSelectionTracker
+            <MetaTag, MetaDialogFragmentAdapter.ViewHolder, MetaDialogFragmentAdapter>
+            selectionTracker;
     private LiveData<Meta> metaLiveData;
     private SwitchCompat addLocalTagSwitch;
 
     private ArrayList<String> metaKeys;
     private ArrayAdapter<String> displayMetaKeysAdapter;
 
-    public static void showMeta(AudioBrowserFragment audioBrowserFragment, EntryID entryID) {
+    public static void showMeta(FragmentManager fragmentManager, EntryID entryID) {
         if (entryID == null || entryID.isUnknown()) {
             return;
         }
-        FragmentTransaction ft = audioBrowserFragment.getFragmentManager().beginTransaction();
-        Fragment prev = audioBrowserFragment.getFragmentManager().findFragmentByTag(MetaDialogFragment.TAG);
+        FragmentTransaction ft = fragmentManager.beginTransaction();
+        Fragment prev = fragmentManager.findFragmentByTag(MetaDialogFragment.TAG);
         if (prev != null) {
             ft.remove(prev);
         }
         ft.addToBackStack(null);
         DialogFragment dialogFragment = new MetaDialogFragment();
-        dialogFragment.setTargetFragment(audioBrowserFragment, MainActivity.REQUEST_CODE_META_DIALOG);
         dialogFragment.setArguments(entryID.toBundle());
         dialogFragment.show(ft, MetaDialogFragment.TAG);
     }

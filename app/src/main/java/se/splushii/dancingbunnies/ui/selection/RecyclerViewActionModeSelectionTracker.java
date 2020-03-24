@@ -22,12 +22,16 @@ import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.util.Util;
 
 public class RecyclerViewActionModeSelectionTracker<ID,
-        Adapter extends SelectionRecyclerViewAdapter<ID, ViewHolder>,
-        ViewHolder extends ItemDetailsViewHolder<ID>> {
+        ViewHolder extends ItemDetailsViewHolder<ID>,
+        Adapter extends SelectionRecyclerViewAdapter<ID, ViewHolder>> {
     private static final String LC = Util.getLogContext(RecyclerViewActionModeSelectionTracker.class);
     private final ItemTouchHelper itemTouchHelper;
+    private final ItemTouchHelperCallback<ID, ViewHolder, Adapter> itemTouchHelperCallback;
+    private final Adapter recViewAdapter;
     private SelectionTracker<ID> selectionTracker;
     private ActionModeCallback actionModeCallback;
+    private int actionModeType;
+    private boolean isDragging;
 
     public RecyclerViewActionModeSelectionTracker(
             FragmentActivity fragmentActivity,
@@ -36,9 +40,10 @@ public class RecyclerViewActionModeSelectionTracker<ID,
             Adapter recViewAdapter,
             StorageStrategy<ID> storageStrategy,
             Bundle savedInstanceState) {
-        ItemTouchHelperCallback<ID, Adapter, ViewHolder> itemTouchHelperCallback = new ItemTouchHelperCallback<>(
+        this.recViewAdapter = recViewAdapter;
+        itemTouchHelperCallback = new ItemTouchHelperCallback<>(
                 recViewAdapter,
-                new ItemTouchHelperCallback.Listener<ID, ViewHolder>() {
+                new ItemTouchHelperCallback.Listener<ID>() {
                     @Override
                     public void onDrop(
                             Collection<ID> selection,
@@ -48,36 +53,13 @@ public class RecyclerViewActionModeSelectionTracker<ID,
                         Log.d(LC, "ItemTouchHelper onDrop at " + targetPos
                                 + " before " + idAfterTargetPos);
                         recViewAdapter.onSelectionDrop(selection, targetPos, idAfterTargetPos);
-                        actionModeCallback.finish();
+                        endDrag();
                     }
 
                     @Override
                     public void onAbort() {
                         Log.d(LC, "ItemTouchHelper onAbort");
-                        actionModeCallback.finish();
-                    }
-
-                    @Override
-                    public void onUseViewHolderForDrag(ViewHolder dragViewHolder,
-                                                       Collection<ID> selection) {
-                        Log.d(LC, "ItemTouchHelper onUseViewHolderForDrag");
-                        recViewAdapter.onUseViewHolderForDrag(dragViewHolder, selection);
-                    }
-
-                    @Override
-                    public void onResetDragViewHolder(ViewHolder dragViewHolder) {
-                        Log.d(LC, "ItemTouchHelper onResetDragViewHolder");
-                        recViewAdapter.onResetDragViewHolder(dragViewHolder);
-                    }
-
-                    @Override
-                    public boolean validMove(ViewHolder current, ViewHolder target) {
-                        return recViewAdapter.validMove(current, target);
-                    }
-
-                    @Override
-                    public boolean validDrag(ViewHolder viewHolder) {
-                        return recViewAdapter.validDrag(viewHolder);
+                        endDrag();
                     }
                 }
         );
@@ -101,20 +83,47 @@ public class RecyclerViewActionModeSelectionTracker<ID,
                 recViewAdapter.keyProvider,
                 itemDetailsLookup,
                 storageStrategy
-        ).withOnDragInitiatedListener(e -> {
-            // Add support for drag and drop.
-            View view = recView.findChildViewUnder(e.getX(), e.getY());
-            ViewHolder viewHolder = (ViewHolder) recView.findContainingViewHolder(view);
-            if (viewHolder != null
-                    && recViewAdapter.onDragInitiated(selectionTracker.getSelection()) ) {
-                itemTouchHelperCallback.prepareDrag(viewHolder);
-                itemTouchHelper.startDrag(viewHolder);
-                return true;
-            }
-            return false;
-        }).build();
-        recViewAdapter.setSelectionTracker(selectionTracker);
-        itemTouchHelperCallback.setSelectionTracker(selectionTracker);
+        ).withSelectionPredicate(
+                new SelectionTracker.SelectionPredicate<ID>() {
+
+                    @Override
+                    public boolean canSetStateForKey(@NonNull ID key, boolean nextState) {
+                        return canSetState(key, nextState);
+                    }
+
+                    @Override
+                    public boolean canSetStateAtPosition(int position, boolean nextState) {
+                        return canSetState(recViewAdapter.getKey(position), nextState);
+                    }
+
+                    private boolean canSetState(@NonNull ID key, boolean nextState) {
+                        if (!isSelected(key) && nextState) {
+                            if (isDragging) {
+                                Log.w(LC, "Can not select while dragging: "
+                                        + key.toString());
+                                return false;
+                            }
+                            return recViewAdapter.validSelect(key);
+                        }
+                        // Always allow deselect
+                        return true;
+                    }
+
+                    @Override
+                    public boolean canSelectMultiple() {
+                        return true;
+                    }
+                }
+        ).withOnDragInitiatedListener(
+                e -> {
+                    // Add support for drag and drop.
+                    View view = recView.findChildViewUnder(e.getX(), e.getY());
+                    ViewHolder viewHolder = (ViewHolder) recView.findContainingViewHolder(view);
+                    return startDrag(viewHolder);
+                }
+        ).build();
+        recViewAdapter.setSelectionTracker(this);
+        itemTouchHelperCallback.setSelectionTracker(this);
         if (savedInstanceState != null) {
             selectionTracker.onRestoreInstanceState(savedInstanceState);
         }
@@ -147,7 +156,7 @@ public class RecyclerViewActionModeSelectionTracker<ID,
                                 selectionTracker.getSelection()
                         );
                     } else if (actionModeCallback != null) {
-                        fragmentActivity.startActionMode(actionModeCallback);
+                        fragmentActivity.startActionMode(actionModeCallback, actionModeType);
                         recViewAdapter.onActionModeStarted(
                                 actionModeCallback,
                                 selectionTracker.getSelection()
@@ -155,13 +164,15 @@ public class RecyclerViewActionModeSelectionTracker<ID,
                     }
                 } else if (actionModeCallback.isActionMode()) {
                     recViewAdapter.onActionModeEnding(actionModeCallback);
-                    actionModeCallback.finish();
+                    endDrag();
                 }
             }
         });
     }
 
-    public void setActionModeCallback(ActionModeCallback callback) {
+    public void setActionModeCallback(int actionModeType,
+                                      ActionModeCallback callback) {
+        this.actionModeType = actionModeType;
         this.actionModeCallback = callback;
     }
 
@@ -185,5 +196,54 @@ public class RecyclerViewActionModeSelectionTracker<ID,
 
     public boolean hasSelection() {
         return selectionTracker.hasSelection();
+    }
+
+    public boolean startDrag(ViewHolder viewHolder) {
+        if (isDragging) {
+            Log.e(LC, "startDrag when already dragging");
+            return false;
+        }
+        if (viewHolder == null) {
+            Log.e(LC, "startDrag with null viewHolder");
+            return false;
+        }
+        ID key = viewHolder.getKey();
+        if (!selectionTracker.isSelected(key) && !selectionTracker.select(key)) {
+            Log.e(LC, "startDrag could not select item: " + key.toString());
+            return false;
+        }
+        if (!recViewAdapter.validDrag(selectionTracker.getSelection()) ) {
+            Log.e(LC, "startDrag not allowed by recyclerview adapter");
+            return false;
+        }
+        itemTouchHelperCallback.prepareDrag(viewHolder);
+        itemTouchHelper.startDrag(viewHolder);
+        isDragging = true;
+        return true;
+    }
+
+    private void endDrag() {
+        actionModeCallback.finish();
+        isDragging = false;
+    }
+
+    void addObserver(SelectionTracker.SelectionObserver observer) {
+        selectionTracker.addObserver(observer);
+    }
+
+    boolean isSelected(ID key) {
+        return selectionTracker.isSelected(key);
+    }
+
+    void setItemsSelected(List<ID> keys, boolean selected) {
+        selectionTracker.setItemsSelected(keys, selected);
+    }
+
+    void recalculateSelection() {
+        itemTouchHelperCallback.recalculateSelection();
+    }
+
+    boolean isDragViewHolder(ViewHolder viewHolder) {
+        return itemTouchHelperCallback.isDragViewHolder(viewHolder);
     }
 }

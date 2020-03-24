@@ -13,6 +13,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -93,13 +94,16 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
     @Override
     public void onUseViewHolderForDrag(PlaylistHolder dragViewHolder,
                                        Collection<Playlist> selection) {
-        dragViewHolder.nameTextView.setText(selection.size() + " selected");
-        dragViewHolder.srcImageView.setBackgroundResource(0);
+        if (selection.size() == 1) {
+            onResetDragViewHolder(dragViewHolder);
+            return;
+        }
+        dragViewHolder.useForDrag(selection.size() + " selected");
     }
 
     @Override
     public void onResetDragViewHolder(PlaylistHolder dragViewHolder) {
-        dragViewHolder.update();
+        dragViewHolder.resetFromDrag();
     }
 
     private void updateActionModeView(ActionModeCallback actionModeCallback,
@@ -136,7 +140,12 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
     public void onActionModeEnding(ActionModeCallback actionModeCallback) {}
 
     @Override
-    public boolean onDragInitiated(Selection<Playlist> selection) {
+    public boolean validDrag(Selection<Playlist> selection) {
+        return true;
+    }
+
+    @Override
+    public boolean validSelect(Playlist key) {
         return true;
     }
 
@@ -163,8 +172,20 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
 
     private void setDataSet(List<Playlist> playlists) {
         Log.d(LC, "playlists: " + playlists);
-        playlistDataset = playlists;
-        notifyDataSetChanged();
+        Util.Diff diff = Util.calculateDiff(playlistDataset, playlists);
+        if (diff.changed) {
+            if (hasSelection() && !diff.deleted.isEmpty()) {
+                removeSelection(
+                        diff.deleted.stream()
+                                .map(playlistDataset::get)
+                                .collect(Collectors.toList())
+                );
+            }
+            playlistDataset.clear();
+            playlistDataset.addAll(playlists);
+            notifyDataSetChanged();
+            recalculateSelection();
+        }
     }
 
     private boolean initialScrolled;
@@ -194,8 +215,6 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
     }
 
     class PlaylistHolder extends ItemDetailsViewHolder<Playlist> {
-        private Playlist playlist;
-        private int srcResourceID = 0;
         MutableLiveData<PlaylistID> playlistIDLiveData;
         LiveData<List<PlaylistEntry>> playlistEntriesLiveData;
 
@@ -205,6 +224,12 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
         private final ImageView srcImageView;
         private final TextView typeTextView;
         private final TextView numEntriesTextView;
+
+        private Playlist playlist;
+        private int srcResourceID = 0;
+        private int numEntries;
+        private PlaylistID currentPlaylist;
+        private boolean isStatic;
 
         PlaylistHolder(View v) {
             super(v);
@@ -218,21 +243,23 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
         }
 
         @Override
-        protected int getPositionOf() {
-            return getAdapterPosition();
-        }
-
-        @Override
         protected Playlist getSelectionKeyOf() {
-            return playlistDataset.get(getPositionOf());
+            return playlistDataset.get(getPos());
         }
 
         void setSourceResourceID(int srcResourceID) {
             this.srcResourceID = srcResourceID;
+            if (isStatic) {
+                return;
+            }
             srcImageView.setBackgroundResource(srcResourceID);
         }
 
         void updateHighlight(PlaylistID currentPlaylistEntry) {
+            this.currentPlaylist = currentPlaylistEntry;
+            if (isStatic) {
+                return;
+            }
             boolean highlighted = playlist != null
                     && new PlaylistID(playlist).equals(currentPlaylistEntry);
             if (highlighted) {
@@ -241,18 +268,25 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
                         R.color.colorAccent
                 ));
             } else {
-                TypedValue value = new TypedValue();
-                fragment.requireContext().getTheme().resolveAttribute(
-                        android.R.color.transparent,
-                        value,
-                        true
-                );
-                highlightView.setBackgroundResource(value.resourceId);
+                setDefaultHighlightBackground();
             }
         }
 
-        public void setPlaylist(Playlist playlist) {
+        private void setDefaultHighlightBackground() {
+            TypedValue value = new TypedValue();
+            fragment.requireContext().getTheme().resolveAttribute(
+                    android.R.color.transparent,
+                    value,
+                    true
+            );
+            highlightView.setBackgroundResource(value.resourceId);
+        }
+
+        void setPlaylist(Playlist playlist) {
             this.playlist = playlist;
+            if (isStatic) {
+                return;
+            }
             playlistIDLiveData.setValue(new PlaylistID(
                     playlist.api,
                     playlist.id,
@@ -275,9 +309,29 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
             typeTextView.setText(type);
         }
 
-        public void update() {
-            nameTextView.setText(playlist.name);
-            srcImageView.setBackgroundResource(srcResourceID);
+        void setNumEntries(int numEntries) {
+            this.numEntries = numEntries;
+            if (isStatic) {
+                return;
+            }
+            numEntriesTextView.setText(String.valueOf(numEntries));
+        }
+
+        void useForDrag(String txt) {
+            isStatic = true;
+            nameTextView.setText(txt);
+            srcImageView.setBackgroundResource(0);
+            typeTextView.setText("");
+            numEntriesTextView.setText("");
+            setDefaultHighlightBackground();
+        }
+
+        void resetFromDrag() {
+            isStatic = false;
+            setPlaylist(playlist);
+            setSourceResourceID(srcResourceID);
+            setNumEntries(numEntries);
+            updateHighlight(currentPlaylist);
         }
     }
 
@@ -301,8 +355,7 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
         );
         holder.playlistEntriesLiveData.observe(
                 fragment.getViewLifecycleOwner(),
-                playlistEntries ->
-                        holder.numEntriesTextView.setText(String.valueOf(playlistEntries.size()))
+                playlistEntries -> holder.setNumEntries(playlistEntries.size())
         );
         return holder;
     }

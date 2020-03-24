@@ -12,7 +12,7 @@
         android:elevation="4dp"
         android:background="@color/colorAccentDark"
         android:padding="16dp"
-        android:textColor="@color/text_primary_color"
+        android:textColor="@color/colorTextOnSecondary"
         android:fontFamily="sans-serif"
         android:textSize="18sp"
         android:text="@string/metadata"/>

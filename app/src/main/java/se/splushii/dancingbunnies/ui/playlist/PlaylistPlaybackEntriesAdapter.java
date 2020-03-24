@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -39,7 +40,8 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_FROM_PLAYLIST;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SET_CURRENT_PLAYLIST;
 
-public class PlaylistPlaybackEntriesAdapter extends
+public class PlaylistPlaybackEntriesAdapter
+        extends
         SelectionRecyclerViewAdapter<PlaybackEntry, PlaylistPlaybackEntriesAdapter.ViewHolder> {
     private static final String LC = Util.getLogContext(PlaylistPlaybackEntriesAdapter.class);
 
@@ -82,9 +84,21 @@ public class PlaylistPlaybackEntriesAdapter extends
         });
     }
 
-    void setEntries(List<PlaybackEntry> entries) {
-        this.entries = entries;
-        notifyDataSetChanged();
+    private void setEntries(List<PlaybackEntry> entries) {
+        Util.Diff diff = Util.calculateDiff(this.entries, entries);
+        if (diff.changed) {
+            if (hasSelection() && !diff.deleted.isEmpty()) {
+                removeSelection(
+                        diff.deleted.stream()
+                                .map(this.entries::get)
+                                .collect(Collectors.toList())
+                );
+            }
+            this.entries.clear();
+            this.entries.addAll(entries);
+            notifyDataSetChanged();
+            recalculateSelection();
+        }
     }
 
     private void updateScrollPos(PlaylistFragmentModel model) {
@@ -145,12 +159,16 @@ public class PlaylistPlaybackEntriesAdapter extends
     @Override
     public void onUseViewHolderForDrag(ViewHolder dragViewHolder,
                                        Collection<PlaybackEntry> selection) {
-        dragViewHolder.itemContent.setDragTitle(selection.size() + " entries");
+        if (selection.size() == 1) {
+            onResetDragViewHolder(dragViewHolder);
+            return;
+        }
+        dragViewHolder.itemContent.useForDrag(selection.size() + " entries");
     }
 
     @Override
     public void onResetDragViewHolder(ViewHolder dragViewHolder) {
-        dragViewHolder.itemContent.reset();
+        dragViewHolder.itemContent.resetFromDrag();
     }
 
     private void updateActionModeView(ActionModeCallback actionModeCallback,
@@ -174,7 +192,12 @@ public class PlaylistPlaybackEntriesAdapter extends
     public void onActionModeEnding(ActionModeCallback actionModeCallback) {}
 
     @Override
-    public boolean onDragInitiated(Selection<PlaybackEntry> selection) {
+    public boolean validDrag(Selection<PlaybackEntry> selection) {
+        return true;
+    }
+
+    @Override
+    public boolean validSelect(PlaybackEntry key) {
         return true;
     }
 
@@ -236,13 +259,8 @@ public class PlaylistPlaybackEntriesAdapter extends
         }
 
         @Override
-        protected int getPositionOf() {
-            return getAdapterPosition();
-        }
-
-        @Override
         protected PlaybackEntry getSelectionKeyOf() {
-            return entries.get(getPositionOf());
+            return entries.get(getPos());
         }
 
         void updateHighlight(PlaylistID browsedPlaylistID,
@@ -316,22 +334,24 @@ public class PlaylistPlaybackEntriesAdapter extends
         holder.itemContent.observeMeta(fragment.getViewLifecycleOwner());
         holder.itemContent.observeCachedLiveData(cachedEntriesLiveData, fragment.getViewLifecycleOwner());
         holder.itemContent.observeFetchStateLiveData(fetchStateLiveData, fragment.getViewLifecycleOwner());
-        holder.actionsView.setAudioBrowserFragment(fragment);
+        holder.actionsView.setAudioBrowser(fragment.getRemote());
+        holder.actionsView.setFragmentManager(fragment.requireActivity().getSupportFragmentManager());
         holder.actionsView.setEntryIDSupplier(() -> holder.playbackEntry.entryID);
         holder.actionsView.setPlaylistIDSupplier(() -> currentPlaylistIDLiveData.getValue());
         holder.actionsView.setPlaylistPositionSupplier(() -> holder.playbackEntry.playlistPos);
+        holder.actionsView.initialize();
         return holder;
     }
 
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, int position) {
-        holder.actionsView.initialize();
         holder.item.setBackgroundResource(position % 2 == 0 ?
                 R.color.background_active_accent : R.color.backgroundalternate_active_accent
         );
         PlaybackEntry entry = entries.get(position);
         holder.playbackEntry = entry;
         holder.itemContent.setEntryID(entry.entryID);
+        holder.itemContent.setDragHandleListener(() -> startDrag(holder));
         holder.itemContent.setPos(entry.playlistPos);
         holder.itemContent.setPreloaded(entry.isPreloaded());
         holder.updateHighlight(
@@ -368,6 +388,9 @@ public class PlaylistPlaybackEntriesAdapter extends
                 disabledActions
         );
         holder.item.setActivated(isSelected(holder.getKey()));
+        if (isDragViewHolder(holder)) {
+            onUseViewHolderForDrag(holder, getSelection());
+        }
     }
 
     @Override

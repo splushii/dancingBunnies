@@ -1,17 +1,14 @@
 package se.splushii.dancingbunnies.ui.musiclibrary;
 
-import android.support.v4.media.MediaBrowserCompat;
-
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.Collectors;
 
-import androidx.annotation.NonNull;
 import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
+import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
@@ -176,22 +173,12 @@ public class MusicLibraryFragmentModel extends ViewModel {
         getMutableDataSet().setValue(new ArrayList<>());
     }
 
-    void query(MediaBrowserCompat mediaBrowser) {
-        // Unsubscribe
+    void query(AudioBrowser remote) {
         String currentSubscriptionID = getCurrentSubscriptionID();
-        if (currentSubscriptionID != null && mediaBrowser.isConnected()) {
-            mediaBrowser.unsubscribe(currentSubscriptionID);
-        }
-        currentSubscriptionID = getMusicLibraryQuery().query(
-                mediaBrowser,
-                new MusicLibraryQuery.MusicLibraryQueryCallback() {
-                    @Override
-                    public void onQueryResult(@NonNull List<MediaBrowserCompat.MediaItem> items) {
-                        getMutableDataSet().setValue(
-                                items.stream().map(LibraryEntry::from).collect(Collectors.toList())
-                        );
-                    }
-                }
+        currentSubscriptionID = remote.query(
+                currentSubscriptionID,
+                getMusicLibraryQuery(),
+                items -> getMutableDataSet().setValue(items)
         );
         setCurrentSubscriptionID(currentSubscriptionID);
     }

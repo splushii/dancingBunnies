@@ -4,13 +4,11 @@ import android.util.Log;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
-import androidx.recyclerview.selection.MutableSelection;
-import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -18,60 +16,38 @@ import se.splushii.dancingbunnies.util.Util;
 
 public class ItemTouchHelperCallback<
         ID,
-        Adapter extends SelectionRecyclerViewAdapter<ID, ViewHolder>,
-        ViewHolder extends ItemDetailsViewHolder<ID>>
+        ViewHolder extends ItemDetailsViewHolder<ID>,
+        Adapter extends SelectionRecyclerViewAdapter<ID, ViewHolder>>
         extends ItemTouchHelper.Callback {
     private static final String LC = Util.getLogContext(ItemTouchHelperCallback.class);
     private final Adapter adapter;
-    private Listener<ID, ViewHolder> listener;
-    private TreeMap<Integer, ID> initialSelection;
-    private TreeMap<Integer, ID> removedSelectedItems;
-    private SelectionTracker<ID> selectionTracker;
+    private Listener<ID> listener;
+    private TreeMap<Integer, ID> selection;
+    private RecyclerViewActionModeSelectionTracker
+            <ID, ViewHolder, ? extends SelectionRecyclerViewAdapter<ID, ViewHolder>>
+            selectionTracker;
     private ViewHolder dragViewHolder;
     private ID dragID;
-    private int initialDragPos;
     private int targetDragPos = -1;
     private boolean aborted = false;
 
-    public interface Listener<ID, ViewHolder> {
+    public interface Listener<ID> {
         void onDrop(Collection<ID> selection, int targetPos, ID idAfterTargetPos);
         void onAbort();
-        void onUseViewHolderForDrag(ViewHolder dragViewHolder, Collection<ID> selection);
-        void onResetDragViewHolder(ViewHolder dragViewHolder);
-        boolean validMove(ViewHolder current, ViewHolder target);
-        boolean validDrag(ViewHolder v);
     }
 
-    ItemTouchHelperCallback(Adapter adapter, Listener<ID, ViewHolder> listener) {
+    ItemTouchHelperCallback(Adapter adapter, Listener<ID> listener) {
         this.adapter = adapter;
         this.listener = listener;
     }
 
-    void setSelectionTracker(SelectionTracker<ID> selectionTracker) {
+    void setSelectionTracker(
+            RecyclerViewActionModeSelectionTracker
+                    <ID, ViewHolder, ? extends SelectionRecyclerViewAdapter<ID, ViewHolder>>
+                    selectionTracker
+    ) {
         this.selectionTracker = selectionTracker;
-    }
-
-    void prepareDrag(ViewHolder viewHolder) {
-        dragViewHolder = viewHolder;
-        targetDragPos = initialDragPos = dragViewHolder.getAdapterPosition();
-
-        MutableSelection<ID> mutableSelection = new MutableSelection<>();
-        selectionTracker.copySelection(mutableSelection);
-        dragID = dragViewHolder.getKey();
-        List<ID> selectionToRemove = new LinkedList<>();
-        mutableSelection.forEach(id -> {
-            if (!id.equals(dragID)) {
-                selectionToRemove.add(id);
-            }
-        });
-        removedSelectedItems = adapter.removeItems(selectionToRemove);
-        initialSelection = new TreeMap<>(removedSelectedItems);
-        initialSelection.put(initialDragPos, dragID);
-        // The id of the draggable item when other items are removed
-        if (initialSelection.size() > 1) {
-            listener.onUseViewHolderForDrag(dragViewHolder, initialSelection.values());
-        }
-        aborted = false;
+        selection = new TreeMap<>();
     }
 
     @Override
@@ -89,7 +65,7 @@ public class ItemTouchHelperCallback<
                                 @NonNull RecyclerView.ViewHolder viewHolder) {
         ViewHolder v = (ViewHolder) viewHolder;
         return makeMovementFlags(
-                listener.validDrag(v) ? ItemTouchHelper.UP | ItemTouchHelper.DOWN : 0,
+                adapter.validDrag(v) ? ItemTouchHelper.UP | ItemTouchHelper.DOWN : 0,
                 0
         );
     }
@@ -107,7 +83,44 @@ public class ItemTouchHelperCallback<
 
     private boolean validMove(RecyclerView.ViewHolder current,
                               RecyclerView.ViewHolder target) {
-        return !aborted && listener.validMove((ViewHolder) current, (ViewHolder) target);
+        return !aborted && adapter.validMove((ViewHolder) current, (ViewHolder) target);
+    }
+
+
+    void prepareDrag(ViewHolder viewHolder) {
+        Log.d(LC, "prepareDrag");
+        targetDragPos = -1;
+        aborted = false;
+        dragViewHolder = viewHolder;
+        dragID = dragViewHolder.getKey();
+        initializeSelection();
+    }
+
+    void recalculateSelection() {
+        if (dragViewHolder == null) {
+            return;
+        }
+        Log.d(LC, "recalculateSelection");
+        initializeSelection();
+    }
+
+    private void initializeSelection() {
+        Log.d(LC, "initializeSelection");
+        selection.clear();
+        // Save viewHolder pos
+        int dragPos = adapter.getPosition(dragID);
+        selection.put(dragPos, dragID);
+        // Remove and save all selection positions except viewHolder's from adapter
+        List<ID> selectionToRemove = selectionTracker.getSelection().stream()
+                .filter(key -> !key.equals(dragID))
+                .collect(Collectors.toList());
+        selection.putAll(adapter.removeItems(selectionToRemove));
+        // Use viewHolder as dragViewHolder
+        adapter.onUseViewHolderForDrag(dragViewHolder, selection.values());
+    }
+
+    boolean isDragViewHolder(ViewHolder viewHolder) {
+        return viewHolder == dragViewHolder;
     }
 
     @Override
@@ -183,33 +196,42 @@ public class ItemTouchHelperCallback<
         if (aborted) {
             return;
         }
-        if (targetDragPos == initialDragPos) {
-            reset();
+        if (targetDragPos < 0) {
+            resetDrag();
         } else {
-            int newPos = targetDragPos;
-            ID idAfterTargetPos = adapter.getKey(newPos + 1);
-            adapter.removeItems(Collections.singletonList(dragID));
-            TreeMap<Integer, ID> movedSelection = new TreeMap<>();
-            for (ID id: initialSelection.values()) {
-                movedSelection.put(newPos++, id);
-            }
-            adapter.insertItems(movedSelection);
-            listener.onDrop(
-                    initialSelection.values(),
-                    targetDragPos,
-                    idAfterTargetPos
-            );
+            dropDrag();
         }
     }
 
-    private void reset() {
-        // Reset drag view
-        listener.onResetDragViewHolder(dragViewHolder);
-        // Reset adapter items
-        if (targetDragPos != initialDragPos) {
-            adapter.moveItem(targetDragPos, initialDragPos);
+    private void dropDrag() {
+        ID idAfterTargetPos = adapter.getKey(targetDragPos + 1);
+        // Reset and remove dragViewHolder
+        adapter.onResetDragViewHolder(dragViewHolder);
+        adapter.removeItems(Collections.singletonList(dragID));
+        // Move dropped selection
+        TreeMap<Integer, ID> movedSelection = new TreeMap<>();
+        int newPos = targetDragPos;
+        for (ID id: selection.values()) {
+            movedSelection.put(newPos++, id);
         }
-        adapter.insertItems(removedSelectedItems);
+        adapter.insertItems(movedSelection);
+        dragViewHolder = null;
+        dragID = null;
+        listener.onDrop(
+                selection.values(),
+                targetDragPos,
+                idAfterTargetPos
+        );
+    }
+
+    private void resetDrag() {
+        // Reset and remove dragViewHolder
+        adapter.onResetDragViewHolder(dragViewHolder);
+        adapter.removeItems(Collections.singletonList(dragID));
+        // Reset selection
+        adapter.insertItems(selection);
+        dragViewHolder = null;
+        dragID = null;
         listener.onAbort();
     }
 
@@ -226,7 +248,7 @@ public class ItemTouchHelperCallback<
             // FIXME: This is an ugly fix because of the two problems below
             // viewHolder is detached when dragged out of bounds (and thus calling clearView())
             // ItemTouchHelper does not fire onMove when dragging view out of bounds
-            reset();
+            resetDrag();
             aborted = true;
             return 0;
         }

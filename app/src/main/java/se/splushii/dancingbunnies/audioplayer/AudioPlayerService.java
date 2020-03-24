@@ -389,7 +389,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         playbackController = new PlaybackController(
                 this,
                 playbackControllerStorage,
-                musicLibraryService,
                 audioPlayerManagerCallback
         );
     }
@@ -407,12 +406,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                         | PlaybackStateCompat.ACTION_STOP
                         | PlaybackStateCompat.ACTION_SEEK_TO
                         | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-//                      | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS is intentionally not supported
-                        | PlaybackStateCompat.ACTION_SKIP_TO_QUEUE_ITEM
                         | PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
                         | PlaybackStateCompat.ACTION_SET_SHUFFLE_MODE
                         | PlaybackStateCompat.ACTION_SET_REPEAT_MODE
+//                      | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS is intentionally not supported
 //                        TODO: Implement
+//                        | PlaybackStateCompat.ACTION_SKIP_TO_QUEUE_ITEM
 //                        | PlaybackStateCompat.ACTION_SET_RATING
 //                        | PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
                 )
@@ -614,8 +613,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         @Override
         public void onSkipToQueueItem(long queueItemId) {
-            playbackController.skip((int) queueItemId)
-                    .handle(AudioPlayerService.this::handleControllerResult);
+            Log.e(LC, "onSkipToQueueItem not implemented");
         }
 
         @Override

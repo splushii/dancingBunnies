@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -103,12 +104,16 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
     @Override
     public void onUseViewHolderForDrag(PlaylistEntryHolder dragViewHolder,
                                        Collection<PlaylistEntry> selection) {
-        dragViewHolder.itemContent.setDragTitle(selection.size() + " entries");
+        if (selection.size() == 1) {
+            dragViewHolder.itemContent.resetFromDrag();
+            return;
+        }
+        dragViewHolder.itemContent.useForDrag(selection.size() + " entries");
     }
 
     @Override
     public void onResetDragViewHolder(PlaylistEntryHolder dragViewHolder) {
-        dragViewHolder.itemContent.reset();
+        dragViewHolder.itemContent.resetFromDrag();
     }
 
     private void updateActionModeView(ActionModeCallback actionModeCallback,
@@ -151,9 +156,18 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
     public void onActionModeEnding(ActionModeCallback actionModeCallback) {}
 
     @Override
-    public boolean onDragInitiated(Selection<PlaylistEntry> selection) {
+    public boolean validDrag(Selection<PlaylistEntry> selection) {
+        return dragSupported();
+    }
+
+    private boolean dragSupported() {
         return playlistID.type == PlaylistID.TYPE_STUPID
                 && MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_MOVE);
+    }
+
+    @Override
+    public boolean validSelect(PlaylistEntry key) {
+        return true;
     }
 
     @Override
@@ -216,17 +230,18 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         holder.itemContent.observeMeta(fragment.getViewLifecycleOwner());
         holder.itemContent.observeCachedLiveData(cachedEntriesLiveData, fragment.getViewLifecycleOwner());
         holder.itemContent.observeFetchStateLiveData(fetchStateLiveData, fragment.getViewLifecycleOwner());
-        holder.actionsView.setAudioBrowserFragment(fragment);
+        holder.actionsView.setAudioBrowser(fragment.getRemote());
+        holder.actionsView.setFragmentManager(fragment.requireActivity().getSupportFragmentManager());
         holder.actionsView.setEntryIDSupplier(() -> EntryID.from(holder.playlistEntry));
         holder.actionsView.setPlaylistIDSupplier(() -> playlistID);
         holder.actionsView.setPlaylistEntrySupplier(() -> holder.playlistEntry);
         holder.actionsView.setPlaylistPositionSupplier(() -> holder.playlistEntry.pos);
+        holder.actionsView.initialize();
         return holder;
     }
 
     @Override
     public void onBindViewHolder(@NonNull PlaylistEntryHolder holder, int position) {
-        holder.actionsView.initialize();
         holder.position = position;
         holder.entry.setBackgroundResource(position % 2 == 0 ?
                 R.color.background_active_accent : R.color.backgroundalternate_active_accent
@@ -235,6 +250,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         holder.playlistEntry = playlistEntry;
         EntryID entryID = EntryID.from(playlistEntry);
         holder.itemContent.setEntryID(entryID);
+        holder.itemContent.setDragHandleListener(dragSupported() ? () -> startDrag(holder) : null);
         holder.itemContent.setPos(playlistEntry.pos);
         holder.updateHighlight(
                 currentEntryLiveData.getValue(),
@@ -267,6 +283,9 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
                 },
                 disabledActions
         );
+        if (isDragViewHolder(holder)) {
+            onUseViewHolderForDrag(holder, getSelection());
+        }
     }
 
     @Override
@@ -276,8 +295,20 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
 
     private void setDataSet(PlaylistID playlistID, List<PlaylistEntry> entries) {
         this.playlistID = playlistID;
-        playlistEntriesDataset = entries;
-        notifyDataSetChanged();
+        Util.Diff diff = Util.calculateDiff(playlistEntriesDataset, entries);
+        if (diff.changed) {
+            if (hasSelection() && !diff.deleted.isEmpty()) {
+                removeSelection(
+                        diff.deleted.stream()
+                                .map(playlistEntriesDataset::get)
+                                .collect(Collectors.toList())
+                );
+            }
+            this.playlistEntriesDataset.clear();
+            this.playlistEntriesDataset.addAll(entries);
+            notifyDataSetChanged();
+            recalculateSelection();
+        }
     }
 
     void setModel(PlaylistFragmentModel model) {
@@ -352,13 +383,8 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         }
 
         @Override
-        protected int getPositionOf() {
-            return getAdapterPosition();
-        }
-
-        @Override
         protected PlaylistEntry getSelectionKeyOf() {
-            return playlistEntriesDataset.get(getPositionOf());
+            return playlistEntriesDataset.get(getPos());
         }
 
         void updateHighlight(PlaybackEntry currentEntry,

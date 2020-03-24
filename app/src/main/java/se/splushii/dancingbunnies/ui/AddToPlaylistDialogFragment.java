@@ -15,11 +15,11 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
-import androidx.lifecycle.ViewModelProviders;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
@@ -48,24 +48,23 @@ public class AddToPlaylistDialogFragment
     private List<MusicLibraryQueryNode> queryNodes;
     private CompletableFuture<List<EntryID>> songEntries;
 
-    static void showDialog(Fragment fragment, List<MusicLibraryQueryNode> queryNodes) {
+    static void showDialog(FragmentManager fragmentManager, List<MusicLibraryQueryNode> queryNodes) {
         if (queryNodes == null || queryNodes.isEmpty()) {
             return;
         }
         Bundle args = new Bundle();
         args.putStringArray(BUNDLE_KEY_QUERY_NODES, MusicLibraryQueryNode.toJSONStringArray(queryNodes));
-        showDialog(fragment, args);
+        showDialog(fragmentManager, args);
     }
 
-    private static void showDialog(Fragment fragment, Bundle args) {
-        FragmentTransaction ft = fragment.getFragmentManager().beginTransaction();
-        Fragment prev = fragment.getFragmentManager().findFragmentByTag(AddToPlaylistDialogFragment.TAG);
+    private static void showDialog(FragmentManager fragmentManager, Bundle args) {
+        FragmentTransaction ft = fragmentManager.beginTransaction();
+        Fragment prev = fragmentManager.findFragmentByTag(AddToPlaylistDialogFragment.TAG);
         if (prev != null) {
             ft.remove(prev);
         }
         ft.addToBackStack(null);
         DialogFragment dialogFragment = new AddToPlaylistDialogFragment();
-        dialogFragment.setTargetFragment(fragment, MainActivity.REQUEST_CODE_ADD_TO_PLAYLIST_DIALOG);
         dialogFragment.setArguments(args);
         dialogFragment.show(ft, AddToPlaylistDialogFragment.TAG);
     }
@@ -73,7 +72,7 @@ public class AddToPlaylistDialogFragment
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-        model = ViewModelProviders.of(requireActivity()).get(PlaylistFragmentModel.class);
+        model = new ViewModelProvider(requireActivity()).get(PlaylistFragmentModel.class);
         filterPlaylists(model, songEntries.getNow(null));
     }
 

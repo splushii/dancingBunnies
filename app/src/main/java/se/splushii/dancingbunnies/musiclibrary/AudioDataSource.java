@@ -40,6 +40,7 @@ import se.splushii.dancingbunnies.util.Util;
 public class AudioDataSource extends MediaDataSource {
     private static final String LC = Util.getLogContext(AudioDataSource.class);
     private static final long BYTES_BETWEEN_PROGRESS_UPDATE = 100_000L;
+    private static final long TIME_MS_BETWEEN_PROGRESS_UPDATE = 200L;
     private final String url;
     public final EntryID entryID;
     private final File cacheFile;
@@ -72,7 +73,7 @@ public class AudioDataSource extends MediaDataSource {
             if (!isFetching) {
                 isFetching = true;
                 fetchThread = new Thread(() -> {
-                    Log.d(LC, "fetching data");
+                    Log.d(LC, "fetching data for " + entryID);
                     if (isDataReady()) {
                         handler.onDownloadFinished();
                     } else {
@@ -81,10 +82,12 @@ public class AudioDataSource extends MediaDataSource {
                         boolean dataSuccess = fetchData(handler);
                         if (!dataSuccess) {
                             isFetching = false;
+                            Log.e(LC, "fetching data failed for " + entryID);
                             handler.onFailure("Data fetch failed");
                             return;
                         }
                     }
+                    isFetching = false;
                     handler.onSuccess();
                 });
                 fetchThread.start();
@@ -98,7 +101,7 @@ public class AudioDataSource extends MediaDataSource {
             try {
                 fetchThread.join();
             } catch (InterruptedException e) {
-                handler.onDownloadFailed("Could not join download thread");
+                handler.onDownloadFailed("Could not join download thread for " + entryID);
                 handler.onFailure("Could not join download thread");
                 return;
             }
@@ -106,7 +109,7 @@ public class AudioDataSource extends MediaDataSource {
                 handler.onDownloadFinished();
                 handler.onSuccess();
             } else {
-                handler.onDownloadFailed("fetch thread failed");
+                handler.onDownloadFailed("fetch thread failed for " + entryID);
                 handler.onFailure("fetch thread failed");
             }
         }).start();
@@ -135,11 +138,16 @@ public class AudioDataSource extends MediaDataSource {
             InputStream in = new BufferedInputStream(conn.getInputStream());
             long contentLength = conn.getContentLengthLong();
             int b = in.read();
+            long timeLastProgress = 0; // Make sure initial progress is always set
             long bytesRead = 0;
             while (b != -1) {
                 outputStream.write(b);
-                if (bytesRead % BYTES_BETWEEN_PROGRESS_UPDATE == 0) {
+                long currTime = System.currentTimeMillis();
+                long timeSinceLastProgress = currTime - timeLastProgress;
+                if (bytesRead % BYTES_BETWEEN_PROGRESS_UPDATE == 0
+                        && timeSinceLastProgress > TIME_MS_BETWEEN_PROGRESS_UPDATE) {
                     handler.onDownloadProgress(bytesRead, contentLength);
+                    timeLastProgress = currTime;
                 }
                 bytesRead++;
                 b = in.read();
@@ -163,17 +171,17 @@ public class AudioDataSource extends MediaDataSource {
             handler.onDownloadFinished();
             return true;
         } catch (InterruptedIOException e) {
-            String err = "download interrupted";
+            String err = "download interrupted for " + entryID;
             Log.e(LC, err);
             handler.onDownloadFailed(err);
             return false;
         } catch (IOException e) {
             e.printStackTrace();
-            String err = "Error: " + e.getMessage();
+            String err = "Error: " + e.getMessage() + " for " + entryID;
             handler.onDownloadFailed(err);
             return false;
         } catch (CacheFileException e) {
-            String err = "Could not get cache file output stream: " + e.getMessage();
+            String err = "Could not get cache file output stream: " + e.getMessage() + " for " + entryID;
             Log.e(LC, err);
             handler.onDownloadFailed(err);
             return false;
@@ -251,7 +259,7 @@ public class AudioDataSource extends MediaDataSource {
 
     @Override
     public void close() {
-        if (isFetching) {
+        if (isFetching && !fetchThread.isInterrupted()) {
             fetchThread.interrupt();
         }
     }

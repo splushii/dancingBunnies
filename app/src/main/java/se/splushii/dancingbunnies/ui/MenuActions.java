@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -19,9 +20,10 @@ import androidx.appcompat.view.menu.MenuBuilder;
 import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.FragmentManager;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
+import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
@@ -77,19 +79,20 @@ public class MenuActions {
     public static final int ACTION_CLEAR_QUEUE = View.generateViewId();
     public static final int ACTION_CLEAR_HISTORY = View.generateViewId();
 
-    static void addAction(Context context,
-                          Menu menu,
-                          int order,
-                          int action,
-                          int iconColorResource,
-                          boolean enabled) {
+    static MenuItem addAction(Context context,
+                              Menu menu,
+                              int order,
+                              int action,
+                              int iconColorResource,
+                              boolean enabled) {
         int stringResource = getStringResource(action);
         int iconResource = getIconResource(action);
         if (stringResource < 0 || iconResource < 0) {
-            return;
+            return null;
         }
-        menu.add(Menu.NONE, action, order, stringResource)
+        return menu.add(Menu.NONE, action, order, stringResource)
                 .setIcon(iconResource)
+                .setShowAsActionFlags(MenuItem.SHOW_AS_ACTION_ALWAYS)
                 .setEnabled(enabled)
                 .setIconTintList(ContextCompat.getColorStateList(context, iconColorResource));
     }
@@ -143,7 +146,9 @@ public class MenuActions {
     }
 
     public static boolean doAction(int action,
-                                   AudioBrowserFragment audioBrowserFragment,
+                                   AudioBrowser remote,
+                                   Context context,
+                                   FragmentManager fragmentManager,
                                    Supplier<EntryID> entryIDSupplier,
                                    Supplier<PlaybackEntry> playbackEntrySupplier,
                                    Supplier<PlaylistEntry> playlistEntrySupplier,
@@ -153,45 +158,43 @@ public class MenuActions {
                                    Supplier<MetaTag> metaTagSupplier
                                    ) {
         if (action == ACTION_PLAY) {
-            audioBrowserFragment.play(entryIDSupplier.get());
+            remote.play(entryIDSupplier.get());
         } else if (action == ACTION_ADD_TO_QUEUE) {
-            audioBrowserFragment.queue(entryIDSupplier.get());
+            remote.queue(entryIDSupplier.get());
         } else if (action == ACTION_ADD_TO_PLAYLIST) {
             AddToPlaylistDialogFragment.showDialog(
-                    audioBrowserFragment,
+                    fragmentManager,
                     Collections.singletonList(MusicLibraryQueryNode.fromEntryID(entryIDSupplier.get()))
             );
         } else if (action == ACTION_CACHE) {
-            audioBrowserFragment.downloadAudioData(
+            remote.downloadAudioData(
+                    context,
                     Collections.singletonList(MusicLibraryQueryNode.fromEntryID(entryIDSupplier.get())),
                     AudioStorage.DOWNLOAD_PRIO_LOW
             );
         } else if (action == ACTION_CACHE_DELETE) {
-            MusicLibraryService.deleteAudioData(
-                    audioBrowserFragment.requireContext(),
-                    entryIDSupplier.get()
-            );
+            MusicLibraryService.deleteAudioData(context, entryIDSupplier.get());
         } else if (action == ACTION_REMOVE_FROM_QUEUE) {
-            audioBrowserFragment.dequeue(playbackEntrySupplier.get());
+            remote.dequeue(playbackEntrySupplier.get());
         } else if (action == ACTION_REMOVE_FROM_HISTORY) {
-            PlaybackControllerStorage.getInstance(audioBrowserFragment.requireContext())
+            PlaybackControllerStorage.getInstance(context)
                     .removeEntries(
                             PlaybackControllerStorage.QUEUE_ID_HISTORY,
                             Collections.singletonList(playbackEntrySupplier.get())
                     );
         } else if (action == ACTION_REMOVE_FROM_PLAYLIST) {
-            PlaylistStorage.getInstance(audioBrowserFragment.requireContext())
+            PlaylistStorage.getInstance(context)
                     .removeFromPlaylist(
                             playlistIDSupplier.get(),
                             Collections.singletonList(playlistEntrySupplier.get())
                     );
         } else if (action == ACTION_SET_CURRENT_PLAYLIST) {
-            audioBrowserFragment.setCurrentPlaylist(
+            remote.setCurrentPlaylist(
                     playlistIDSupplier.get(),
                     playlistPositionSupplier.get()
             );
         } else if (action == ACTION_INFO) {
-            MetaDialogFragment.showMeta(audioBrowserFragment, entryIDSupplier.get());
+            MetaDialogFragment.showMeta(fragmentManager, entryIDSupplier.get());
         } else if (action == ACTION_GOTO_META) {
             Intent intent = new Intent(metaDialogFragment.requireContext(), MainActivity.class);
             MetaTag metaTag = metaTagSupplier.get();
@@ -201,9 +204,9 @@ public class MenuActions {
         } else if (action == ACTION_EDIT_META) {
         } else if (action == ACTION_DELETE_META) {
         } else if (action == ACTION_CLEAR_QUEUE) {
-            audioBrowserFragment.clearQueue();
+            remote.clearQueue();
         } else if (action == ACTION_CLEAR_HISTORY) {
-            PlaybackControllerStorage.getInstance(audioBrowserFragment.requireContext())
+            PlaybackControllerStorage.getInstance(context)
                     .removeAll(PlaybackControllerStorage.QUEUE_ID_HISTORY);
         } else {
             return false;
@@ -212,7 +215,9 @@ public class MenuActions {
     }
 
     static boolean doSelectionAction(int action,
-                                     AudioBrowserFragment audioBrowserFragment,
+                                     AudioBrowser remote,
+                                     Context context,
+                                     FragmentManager fragmentManager,
                                      Supplier<List<EntryID>> entryIDSupplier,
                                      Supplier<MusicLibraryQueryNode> queryNodeSupplier,
                                      Supplier<List<PlaybackEntry>> playbackEntrySupplier,
@@ -222,27 +227,28 @@ public class MenuActions {
                                      Supplier<List<MusicLibraryQueryNode>> queryNodesSupplier
     ) {
         if (action == ACTION_PLAY_MULTIPLE) {
-            audioBrowserFragment.play(entryIDSupplier.get(), queryNodeSupplier.get());
+            remote.play(entryIDSupplier.get(), queryNodeSupplier.get());
         } else if (action == ACTION_PLAY_MULTIPLE_QUERIES) {
-            audioBrowserFragment.playQueries(queryNodesSupplier.get());
+            remote.playQueries(queryNodesSupplier.get());
         } else if (action == ACTION_ADD_MULTIPLE_TO_QUEUE) {
-            audioBrowserFragment.queue(entryIDSupplier.get(), queryNodeSupplier.get());
+            remote.queue(entryIDSupplier.get(), queryNodeSupplier.get());
         } else if (action == ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE) {
-            audioBrowserFragment.queueQueryBundles(queryNodesSupplier.get());
+            remote.queueQueryBundles(queryNodesSupplier.get());
         } else if (action == ACTION_ADD_MULTIPLE_TO_PLAYLIST) {
             AddToPlaylistDialogFragment.showDialog(
-                    audioBrowserFragment,
+                    fragmentManager,
                     getQueryNodeOrDefault(
                             queryNodeSupplier.get()).withEntryIDs(entryIDSupplier.get()
                     )
             );
         } else if (action == ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST) {
             AddToPlaylistDialogFragment.showDialog(
-                    audioBrowserFragment,
+                    fragmentManager,
                     queryNodesSupplier.get()
             );
         } else if (action == ACTION_CACHE_MULTIPLE) {
-            audioBrowserFragment.downloadAudioData(
+            remote.downloadAudioData(
+                    context,
                     new ArrayList<>(
                             getQueryNodeOrDefault(queryNodeSupplier.get())
                                     .withEntryIDs(entryIDSupplier.get())
@@ -250,56 +256,56 @@ public class MenuActions {
                     AudioStorage.DOWNLOAD_PRIO_LOW
             );
         } else if (action == ACTION_CACHE_MULTIPLE_QUERIES) {
-            audioBrowserFragment.downloadAudioData(
+            remote.downloadAudioData(
+                    context,
                     new ArrayList<>(queryNodesSupplier.get()),
                     AudioStorage.DOWNLOAD_PRIO_LOW
             );
         } else if (action == ACTION_CACHE_DELETE_MULTIPLE) {
             MusicLibraryService.deleteAudioData(
-                    audioBrowserFragment.requireContext(),
+                    context,
                     new ArrayList<>(
                             getQueryNodeOrDefault(queryNodeSupplier.get())
                                     .withEntryIDs(entryIDSupplier.get())
                     )
             );
         } else if (action == ACTION_CACHE_DELETE_MULTIPLE_QUERIES) {
-            MusicLibraryService.deleteAudioData(
-                    audioBrowserFragment.requireContext(),
-                    new ArrayList<>(queryNodesSupplier.get())
+            MusicLibraryService.deleteAudioData(context, new ArrayList<>(queryNodesSupplier.get())
             );
         } else if (action == ACTION_REMOVE_MULTIPLE_FROM_QUEUE) {
-            audioBrowserFragment.dequeue(playbackEntrySupplier.get());
+            remote.dequeue(playbackEntrySupplier.get());
         } else if (action == ACTION_HISTORY_DELETE_MULTIPLE) {
-            PlaybackControllerStorage.getInstance(audioBrowserFragment.requireContext())
+            PlaybackControllerStorage.getInstance(context)
                     .removeEntries(
                             PlaybackControllerStorage.QUEUE_ID_HISTORY,
                             playbackEntrySupplier.get()
                     );
         } else if (action == ACTION_REMOVE_MULTIPLE_FROM_PLAYLIST) {
-            PlaylistStorage.getInstance(audioBrowserFragment.requireContext())
+            PlaylistStorage.getInstance(context)
                     .removeFromPlaylist(
                             playlistIDSupplier.get(),
                             playlistEntrySupplier.get()
                     );
         } else if (action == ACTION_PLAYLIST_DELETE_MULTIPLE) {
-            PlaylistStorage.getInstance(audioBrowserFragment.requireContext())
+            PlaylistStorage.getInstance(context)
                     .deletePlaylists(playlistSupplier.get());
         } else if (action == ACTION_SHUFFLE_MULTIPLE_IN_QUEUE) {
-            audioBrowserFragment.shuffleQueueItems(playbackEntrySupplier.get());
+            remote.shuffleQueueItems(playbackEntrySupplier.get());
         } else if (action == ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK) {
-            PlaybackControllerStorage.getInstance(audioBrowserFragment.requireContext()).shuffle(
-                    PlaybackControllerStorage.QUEUE_ID_CURRENT_PLAYLIST_PLAYBACK,
-                    playbackEntrySupplier.get()
-            );
+            PlaybackControllerStorage.getInstance(context)
+                    .shuffle(
+                            PlaybackControllerStorage.QUEUE_ID_CURRENT_PLAYLIST_PLAYBACK,
+                            playbackEntrySupplier.get()
+                    );
         } else if (action == ACTION_SORT_MULTIPLE_IN_QUEUE) {
             EntryTypeSelectionDialogFragment.showDialogToSort(
-                    audioBrowserFragment,
+                    fragmentManager,
                     new ArrayList<>(playbackEntrySupplier.get()),
                     EntryTypeSelectionDialogFragment.SORT_QUEUE
             );
         } else if (action == ACTION_SORT_MULTIPLE_IN_PLAYLIST_PLAYBACK) {
             EntryTypeSelectionDialogFragment.showDialogToSort(
-                    audioBrowserFragment,
+                    fragmentManager,
                     new ArrayList<>(playbackEntrySupplier.get()),
                     EntryTypeSelectionDialogFragment.SORT_PLAYLIST_PLAYBACK
             );

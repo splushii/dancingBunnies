@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.util.AttributeSet;
 import android.util.TypedValue;
+import android.view.MotionEvent;
+import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -39,6 +41,7 @@ public class TrackItemView extends LinearLayout {
     private TextView cacheStatusView;
     private ImageView cachedView;
     private TextView posView;
+    private View dragHandleView;
 
     private MutableLiveData<EntryID> entryIDLiveData;
     private LiveData<Meta> metaLiveData;
@@ -51,9 +54,13 @@ public class TrackItemView extends LinearLayout {
     private String discNum;
     private String src;
     private String cacheStatus;
+    private long pos;
+    private Runnable dragHandleCallback;
     private boolean isCached;
     private boolean isPreloaded;
-    private boolean posViewHighlighted = false;
+    private boolean isHighlighted;
+    private boolean isPosHighlighted;
+    private boolean isStatic;
 
     public TrackItemView(Context context) {
         super(context);
@@ -91,7 +98,8 @@ public class TrackItemView extends LinearLayout {
         cachedView = findViewById(R.id.track_item_cached);
         cacheStatusView = findViewById(R.id.track_item_cache_status);
         posView = findViewById(R.id.track_item_pos);
-        resetPos();
+        dragHandleView = findViewById(R.id.track_item_handle);
+        setPos(-1);
         entryIDLiveData = new MutableLiveData<>();
         title = "";
         duration = "";
@@ -102,6 +110,7 @@ public class TrackItemView extends LinearLayout {
         src = "";
         isCached = false;
         isPreloaded = false;
+        isStatic = false;
     }
 
     private void setFetchState(HashMap<EntryID, AudioStorage.AudioDataFetchState> fetchStateMap,
@@ -118,6 +127,9 @@ public class TrackItemView extends LinearLayout {
     }
 
     private void setCacheStatus() {
+        if (isStatic) {
+            return;
+        }
         if (isCached) {
             cacheStatusView.setVisibility(GONE);
             cacheStatusView.setText("");
@@ -143,32 +155,50 @@ public class TrackItemView extends LinearLayout {
 
     public void setTitle(String title) {
         this.title = title;
+        if (isStatic) {
+            return;
+        }
         titleView.setText(title);
     }
 
     public void setDuration(String duration) {
         this.duration = duration;
+        if (isStatic) {
+            return;
+        }
         durationView.setText(duration);
     }
 
     public void setArtist(String artist) {
         this.artist = artist;
+        if (isStatic) {
+            return;
+        }
         artistView.setText(artist);
     }
 
     public void setTrackNum(String trackNum) {
         this.trackNum = trackNum;
+        if (isStatic) {
+            return;
+        }
         trackNumView.setVisibility(trackNum.isEmpty() ? GONE : VISIBLE);
         trackNumView.setText(trackNum);
     }
 
     public void setAlbum(String album) {
         this.album = album;
+        if (isStatic) {
+            return;
+        }
         albumView.setText(album);
     }
 
     public void setDiscNum(String discNum) {
         this.discNum = discNum;
+        if (isStatic) {
+            return;
+        }
         if (discNum == null || discNum.isEmpty()) {
             discNumView.setVisibility(GONE);
         } else {
@@ -179,27 +209,41 @@ public class TrackItemView extends LinearLayout {
 
     public void setSource(String src) {
         this.src = src;
+        if (isStatic) {
+            return;
+        }
         sourceView.setBackgroundResource(MusicLibraryService.getAPIIconResource(src));
         sourceView.setVisibility(VISIBLE);
     }
 
     public void setPreloaded(boolean preloaded) {
         isPreloaded = preloaded;
+        if (isStatic) {
+            return;
+        }
         preloadedView.setVisibility(preloaded ? VISIBLE : GONE);
     }
 
-    public void setDragTitle(String txt) {
+    public void useForDrag(String txt) {
+        isStatic = true;
         titleView.setText(txt);
         durationView.setText("");
         artistView.setText("");
         trackNumView.setText("");
         albumView.setText("");
+        discNumView.setText("");
+        posView.setVisibility(GONE);
         sourceView.setVisibility(GONE);
         preloadedView.setVisibility(GONE);
+        cachedView.setVisibility(GONE);
         cacheStatusView.setVisibility(GONE);
+        setDefaultBackground();
+        setDefaultPosBackground();
+        setDragHandleListener(null);
     }
 
-    public void reset() {
+    public void resetFromDrag() {
+        isStatic = false;
         setTitle(title);
         setDuration(duration);
         setArtist(artist);
@@ -209,49 +253,98 @@ public class TrackItemView extends LinearLayout {
         setSource(src);
         setCacheStatus();
         setPreloaded(isPreloaded);
+        setPos(pos);
+        setItemHighlight(isHighlighted);
+        setPosHighlight(isPosHighlighted);
+        setDragHandleListener(dragHandleCallback);
     }
 
     public void setEntryID(EntryID entryID) {
         entryIDLiveData.setValue(entryID);
+        src = entryID.src;
+        if (isStatic) {
+            return;
+        }
         setSource(entryID.src);
     }
 
-    public void setPos(long pos) {
-        posView.setText(String.format(Locale.getDefault(), "%01d", pos));
-        updatePosViewVisibility();
+    public EntryID getEntryID() {
+        return entryIDLiveData.getValue();
     }
 
-    public void resetPos() {
-        posView.setText("");
+    public void setDragHandleListener(Runnable callback) {
+        this.dragHandleCallback = callback;
+        if (isStatic) {
+            return;
+        }
+        if (callback != null) {
+            dragHandleView.setOnTouchListener((v, event) -> {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    callback.run();
+                }
+                return false;
+            });
+            dragHandleView.setVisibility(VISIBLE);
+        } else {
+            dragHandleView.setVisibility(GONE);
+            dragHandleView.setOnClickListener(null);
+        }
+    }
+
+    public void setPos(long pos) {
+        this.pos = pos;
+        if (isStatic) {
+            return;
+        }
+        if (pos < 0) {
+            posView.setText("");
+        } else {
+            posView.setText(String.format(Locale.getDefault(), "%01d", pos));
+        }
         updatePosViewVisibility();
     }
 
     public void setItemHighlight(boolean highlighted) {
+        this.isHighlighted = highlighted;
+        if (isStatic) {
+            return;
+        }
         if (highlighted) {
             setBackgroundResource(R.color.primary_extra_light_active_accent);
         } else {
-            TypedValue value = new TypedValue();
-            getContext().getTheme().resolveAttribute(android.R.color.transparent, value, true);
-            setBackgroundResource(value.resourceId);
+            setDefaultBackground();
         }
     }
 
+    private void setDefaultBackground() {
+        TypedValue value = new TypedValue();
+        getContext().getTheme().resolveAttribute(android.R.color.transparent, value, true);
+        setBackgroundResource(value.resourceId);
+    }
+
     public void setPosHighlight(boolean highlighted) {
-        posViewHighlighted = highlighted;
+        isPosHighlighted = highlighted;
+        if (isStatic) {
+            return;
+        }
         if (highlighted) {
             posView.setBackgroundColor(ContextCompat.getColor(getContext(), R.color.colorAccent));
             posView.setTextColor(ContextCompat.getColor(getContext(), R.color.white));
         } else {
-            TypedValue value = new TypedValue();
-            getContext().getTheme().resolveAttribute(android.R.color.transparent, value, true);
-            posView.setBackgroundResource(value.resourceId);
-            posView.setTextColor(ContextCompat.getColorStateList(getContext(), R.color.text_secondary_color));
+            setDefaultPosBackground();
         }
         updatePosViewVisibility();
     }
 
+    private void setDefaultPosBackground() {
+        TypedValue value = new TypedValue();
+        getContext().getTheme().resolveAttribute(android.R.color.transparent, value, true);
+        posView.setBackgroundResource(value.resourceId);
+        posView.setTextColor(ContextCompat.getColorStateList(getContext(), R.color.text_secondary_color));
+    }
+
     private void updatePosViewVisibility() {
-        if (posView.getText().length() > 0 || posViewHighlighted) {
+        if (posView.getText().length() > 0 || isPosHighlighted) {
             posView.setVisibility(VISIBLE);
         } else {
             posView.setVisibility(GONE);
@@ -263,6 +356,7 @@ public class TrackItemView extends LinearLayout {
         setArtist("");
         setTrackNum("");
         setAlbum("");
+        setDuration("");
         setDiscNum(null);
     }
 
@@ -305,6 +399,7 @@ public class TrackItemView extends LinearLayout {
                 lifecycleOwner,
                 e -> setFetchState(fetchStateLiveData.getValue(), e)
         );
+        setFetchState(fetchStateLiveData.getValue(), entryIDLiveData.getValue());
     }
 
     private void setMeta(Meta meta) {

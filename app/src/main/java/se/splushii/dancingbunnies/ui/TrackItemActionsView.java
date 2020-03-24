@@ -14,8 +14,9 @@ import java.util.function.Supplier;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.LinearLayoutCompat;
+import androidx.fragment.app.FragmentManager;
 import se.splushii.dancingbunnies.R;
-import se.splushii.dancingbunnies.audioplayer.AudioBrowserFragment;
+import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
@@ -29,7 +30,8 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_MORE;
 public class TrackItemActionsView extends LinearLayoutCompat {
     private static final String LC = Util.getLogContext(TrackItemActionsView.class);
 
-    private AudioBrowserFragment audioBrowserFragment;
+    private AudioBrowser remote;
+    private FragmentManager fragmentManager;
     private MetaDialogFragment metaDialogFragment;
 
     private Supplier<EntryID> entryIDSupplier;
@@ -118,7 +120,9 @@ public class TrackItemActionsView extends LinearLayoutCompat {
         }
         if (!MenuActions.doAction(
                 action,
-                audioBrowserFragment,
+                remote,
+                getContext(),
+                fragmentManager,
                 entryIDSupplier,
                 playbackEntrySupplier,
                 playlistEntrySupplier,
@@ -194,8 +198,12 @@ public class TrackItemActionsView extends LinearLayoutCompat {
         this.metaTagSupplier = metaTagSupplier;
     }
 
-    public void setAudioBrowserFragment(AudioBrowserFragment fragment) {
-        audioBrowserFragment = fragment;
+    public void setAudioBrowser(AudioBrowser remote) {
+        this.remote = remote;
+    }
+
+    public void setFragmentManager(FragmentManager fragmentManager) {
+        this.fragmentManager = fragmentManager;
     }
 
     public void setPostAction(Consumer<Integer> postAction) {

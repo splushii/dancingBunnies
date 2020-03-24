@@ -84,7 +84,9 @@ public class CastAudioPlayer implements AudioPlayer {
         playbackIDToCastItemIDMap = new LongSparseArray<>();
         mediaQueueCallback = new MediaQueueCallback();
         remoteMediaClientCallback = new RemoteMediaClientCallback();
-        setCastSession(castSession);
+        if (castSession != null) {
+            setCastSession(castSession);
+        }
     }
 
     void setCastSession(CastSession castSession) {

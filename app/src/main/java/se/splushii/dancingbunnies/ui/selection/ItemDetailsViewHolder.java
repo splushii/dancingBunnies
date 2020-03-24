@@ -8,10 +8,6 @@ import androidx.recyclerview.selection.ItemDetailsLookup;
 import androidx.recyclerview.widget.RecyclerView;
 
 public abstract class ItemDetailsViewHolder<ID> extends RecyclerView.ViewHolder {
-    public ItemDetailsViewHolder(@NonNull View itemView) {
-        super(itemView);
-    }
-
     private final ItemDetailsLookup.ItemDetails<ID> itemDetails = new ItemDetailsLookup.ItemDetails<ID>() {
         @Override
         public int getPosition() {
@@ -24,8 +20,10 @@ public abstract class ItemDetailsViewHolder<ID> extends RecyclerView.ViewHolder 
             return getSelectionKeyOf();
         }
     };
-    protected abstract int getPositionOf();
-    protected abstract ID getSelectionKeyOf();
+
+    public ItemDetailsViewHolder(@NonNull View itemView) {
+        super(itemView);
+    }
 
     ItemDetailsLookup.ItemDetails<ID> getItemDetails() {
         return itemDetails;
@@ -34,4 +32,14 @@ public abstract class ItemDetailsViewHolder<ID> extends RecyclerView.ViewHolder 
     public ID getKey() {
         return itemDetails.getSelectionKey();
     }
+
+    public int getPos() {
+        return itemDetails.getPosition();
+    }
+
+    protected int getPositionOf() {
+        return getAdapterPosition();
+    }
+
+    protected abstract ID getSelectionKeyOf();
 }

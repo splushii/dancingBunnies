@@ -12,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -37,14 +38,13 @@ public class AudioStorage {
     private static volatile AudioStorage instance;
     private final HashMap<EntryID, AudioDataSource> audioMap;
     private final HashMap<EntryID, List<AudioDataHandler>> handlerMap;
-    private final MutableLiveData<HashMap<EntryID,AudioDataFetchState>> fetchStateMapLiveData;
     private final HashMap<EntryID, AudioDataFetchState> fetchStateMap;
+    private final MutableLiveData<HashMap<EntryID,AudioDataFetchState>> fetchStateMapLiveData;
     private final WaveformDao waveformModel;
 
-    private HashMap<EntryID, Integer> downloadPrioMap;
-    private final List<AudioDataSource> downloadQueue;
-    private AudioDataSource currentAudioDataSource;
-    private Integer currentDownloadPrio;
+    private final List<DownloadDataSourceEntry> downloadQueue;
+    private final MutableLiveData<List<DownloadEntry>> downloadsLiveData;
+    private DownloadDataSourceEntry currentDownloadDataSource;
 
     private ExecutorService samplerExecutor = Executors.newSingleThreadExecutor();
 
@@ -52,7 +52,7 @@ public class AudioStorage {
 
     public static synchronized AudioStorage getInstance(Context context) {
         if (instance == null) {
-            instance = new AudioStorage(context);
+            instance = new AudioStorage(context.getApplicationContext());
         }
         return instance;
     }
@@ -63,8 +63,8 @@ public class AudioStorage {
         fetchStateMap = new HashMap<>();
         fetchStateMapLiveData = new MutableLiveData<>();
         waveformModel = DB.getDB(context).waveformModel();
-        downloadPrioMap = new HashMap<>();
         downloadQueue = new ArrayList<>();
+        downloadsLiveData = new MutableLiveData<>();
         onDeleteListeners = new ArrayList<>();
     }
 
@@ -97,6 +97,14 @@ public class AudioStorage {
     }
 
     public void fetch(Context context, EntryID entryID, int priority, AudioDataHandler handler) {
+        fetch(context, entryID, priority, null, handler);
+    }
+
+    private void fetch(Context context,
+                       EntryID entryID,
+                       int priority,
+                       EntryID putBeforeEntryIDIfPossible,
+                       AudioDataHandler handler) {
         AudioDataSource audioDataSource = get(entryID);
         if (audioDataSource == null) {
             audioDataSource = APIClient.getAudioDataSource(context, entryID);
@@ -122,13 +130,14 @@ public class AudioStorage {
                 handlers.add(handler);
             }
         }
-        addToDownloadQueue(audioDataSource, priority);
+        addToDownloadQueue(audioDataSource, priority, putBeforeEntryIDIfPossible);
+        updateDownloads();
         triggerDownloadQueue();
     }
 
     private void triggerDownloadQueue() {
         synchronized (downloadQueue) {
-            if (currentAudioDataSource != null) {
+            if (currentDownloadDataSource != null) {
                 Log.d(LC, "triggerDownloadQuue: already downloading");
                 return;
             }
@@ -136,12 +145,12 @@ public class AudioStorage {
                 Log.d(LC, "triggerDownloadQuue: queue empty");
                 return;
             }
-            AudioDataSource audioDataSource = downloadQueue.remove(0);
-            EntryID entryID = audioDataSource.entryID;
-            currentAudioDataSource = audioDataSource;
-            currentDownloadPrio = downloadPrioMap.get(audioDataSource.entryID);
+            DownloadDataSourceEntry downloadDataSourceEntry = downloadQueue.remove(0);
+            EntryID entryID = downloadDataSourceEntry.audioDataSource.entryID;
+            currentDownloadDataSource = downloadDataSourceEntry;
+            updateDownloads();
             // TODO: Change to audioDataSource.buffer, and use a callback to play when buffered enough
-            audioDataSource.fetch(new AudioDataSource.FetchDataHandler() {
+            downloadDataSourceEntry.audioDataSource.fetch(new AudioDataSource.FetchDataHandler() {
                 @Override
                 public void onDownloading() {
                     onDownloadStartEvent(entryID);
@@ -156,7 +165,7 @@ public class AudioStorage {
                 public void onDownloadFinished() {
                     onDownloadSuccessEvent(entryID);
                     samplerExecutor.submit(() -> {
-                        if (!audioDataSource.fetchSamples()) {
+                        if (!downloadDataSourceEntry.audioDataSource.fetchSamples()) {
                             Log.e(LC, "Could not sample entry: " + entryID);
                         }
                     });
@@ -181,60 +190,77 @@ public class AudioStorage {
         }
     }
 
-    private void addToDownloadQueue(AudioDataSource audioDataSource, int priority) {
+    private void addToDownloadQueue(AudioDataSource audioDataSource,
+                                    int priority,
+                                    EntryID putBeforeEntryIDIfPossible
+                                    ) {
         EntryID entryID = audioDataSource.entryID;
         synchronized (downloadQueue) {
-            if (currentAudioDataSource != null) {
-                if (currentAudioDataSource.entryID.equals(entryID)) {
+            // Compare new item with current item
+            if (currentDownloadDataSource != null) {
+                if (currentDownloadDataSource.audioDataSource.entryID.equals(entryID)) {
                     return;
                 }
-                if (priority == DOWNLOAD_PRIO_TOP || priority < currentDownloadPrio) {
-                    // Cancel current item if new item is higher prio
-                    currentAudioDataSource.close();
-                    downloadPrioMap.put(currentAudioDataSource.entryID, currentDownloadPrio);
-                    downloadQueue.add(0, currentAudioDataSource);
-                    currentAudioDataSource = null;
-                    currentDownloadPrio = DOWNLOAD_PRIO_LOW;
+                boolean isHighPrio = priority == DOWNLOAD_PRIO_TOP || priority < currentDownloadDataSource.priority;
+                boolean positionNotSpecified = putBeforeEntryIDIfPossible == null;
+                boolean wantToReplaceCurrent = currentDownloadDataSource.audioDataSource.entryID.equals(putBeforeEntryIDIfPossible);
+                if (isHighPrio && (positionNotSpecified || wantToReplaceCurrent)) {
+                    // Cancel current item
+                    currentDownloadDataSource.audioDataSource.close();
+                    downloadQueue.add(0, currentDownloadDataSource);
+                    currentDownloadDataSource = null;
                 }
             }
-            for (AudioDataSource otherAudioDataSource: downloadQueue) {
-                if (entryID.equals(otherAudioDataSource.entryID)) {
-                    if (priority > downloadPrioMap.getOrDefault(otherAudioDataSource.entryID, DOWNLOAD_PRIO_LOW)) {
+            // Check if new item is already present in download queue
+            for (DownloadDataSourceEntry otherDownloadDataSource: downloadQueue) {
+                if (entryID.equals(otherDownloadDataSource.audioDataSource.entryID)) {
+                    if (priority > otherDownloadDataSource.priority) {
                         // Another item trumps this item
                         return;
                     }
                     // This item trumps another item
-                    downloadQueue.remove(otherAudioDataSource);
+                    downloadQueue.remove(otherDownloadDataSource);
                     break;
                 }
             }
+            // Handle new top priority item
             if (priority == DOWNLOAD_PRIO_TOP) {
                 // Always put top prio first (even if there's other top prio items in queue)
-                downloadPrioMap.put(entryID, priority);
-                downloadQueue.add(0, audioDataSource);
+                downloadQueue.add(0, new DownloadDataSourceEntry(audioDataSource, priority));
                 return;
             }
-            // Else put it last in its prio class
+            // Try to put it before "putBeforeEntryIDIfPossible"
+            if (putBeforeEntryIDIfPossible != null) {
+                for (int i = 0; i < downloadQueue.size(); i++) {
+                    DownloadDataSourceEntry otherDownloadDataSource = downloadQueue.get(i);
+                    if (otherDownloadDataSource.audioDataSource.entryID.equals(putBeforeEntryIDIfPossible)) {
+                        if (priority <= otherDownloadDataSource.priority) {
+                            downloadQueue.add(i, new DownloadDataSourceEntry(audioDataSource, priority));
+                            return;
+                        }
+                        break;
+                    }
+                }
+            }
+            // Else put it last in its priority class
             for (int i = 0; i < downloadQueue.size(); i++) {
-                AudioDataSource otherAudioDataSource = downloadQueue.get(i);
-                if (priority < downloadPrioMap.getOrDefault(
-                        otherAudioDataSource.entryID,
-                        DOWNLOAD_PRIO_LOW
-                )) {
-                    downloadPrioMap.put(entryID, priority);
-                    downloadQueue.add(i, audioDataSource);
+                DownloadDataSourceEntry otherDownloadDataSource = downloadQueue.get(i);
+                if (priority < otherDownloadDataSource.priority) {
+                    downloadQueue.add(i, new DownloadDataSourceEntry(audioDataSource, priority));
                     return;
                 }
             }
-            downloadPrioMap.put(entryID, priority);
-            downloadQueue.add(audioDataSource);
+            downloadQueue.add(new DownloadDataSourceEntry(audioDataSource, priority));
         }
     }
 
-    private void downloadEnded() {
+    private void downloadEnded(EntryID entryID) {
         synchronized (downloadQueue) {
-            currentAudioDataSource = null;
-            currentDownloadPrio = DOWNLOAD_PRIO_LOW;
+            if (currentDownloadDataSource != null
+                    && currentDownloadDataSource.audioDataSource.entryID.equals(entryID)) {
+                currentDownloadDataSource = null;
+            }
+            updateDownloads();
         }
     }
 
@@ -283,7 +309,7 @@ public class AudioStorage {
         synchronized (handlerMap) {
             handlerMap.remove(entryID);
         }
-        downloadEnded();
+        downloadEnded(entryID);
         release(entryID);
     }
 
@@ -295,12 +321,52 @@ public class AudioStorage {
             }
             handlerMap.remove(entryID);
         }
-        downloadEnded();
+        downloadEnded(entryID);
         release(entryID);
     }
 
     public LiveData<HashMap<EntryID,AudioDataFetchState>> getFetchState() {
         return fetchStateMapLiveData;
+    }
+
+    private void updateDownloads() {
+        synchronized (downloadQueue) {
+            List<DownloadEntry> downloads = new ArrayList<>();
+            if (currentDownloadDataSource != null) {
+                downloads.add(new DownloadEntry(
+                        currentDownloadDataSource.audioDataSource.entryID,
+                        currentDownloadDataSource.priority
+                ));
+            }
+            downloads.addAll(
+                    downloadQueue.stream()
+                            .map(d -> new DownloadEntry(d.audioDataSource.entryID, d.priority))
+                            .collect(Collectors.toList())
+            );
+            downloadsLiveData.postValue(downloads);
+        }
+    }
+
+    public LiveData<List<DownloadEntry>> getDownloads() {
+        return downloadsLiveData;
+    }
+
+
+    public void moveDownloads(Context context,
+                              ArrayList<DownloadEntry> downloadEntries,
+                              DownloadEntry idAfterTargetPos) {
+        synchronized (downloadQueue) {
+            downloadEntries.forEach(downloadEntry -> deleteAudioData(context, downloadEntry.entryID));
+            for (DownloadEntry downloadEntry: downloadEntries) {
+                fetch(
+                        context,
+                        downloadEntry.entryID,
+                        DOWNLOAD_PRIO_MEDIUM,
+                        idAfterTargetPos.entryID,
+                        null
+                );
+            }
+        }
     }
 
     public LiveData<WaveformEntry> getWaveform(LiveData<EntryID> entryIDLiveData) {
@@ -335,7 +401,7 @@ public class AudioStorage {
     private static void deleteCacheFile(Context context, EntryID entryID) {
         File cacheFile = AudioStorage.getCacheFile(context, entryID);
         if (!cacheFile.exists()) {
-            Log.d(LC, "deleteCacheFile that not exists: " + entryID);
+            Log.d(LC, "deleteCacheFile non-existent file: " + entryID);
             return;
         }
         if (!cacheFile.isFile()) {
@@ -349,18 +415,18 @@ public class AudioStorage {
     }
 
     public CompletableFuture<Void> deleteAudioData(Context context, EntryID entryID) {
-        AudioDataSource audioDataSource = get(entryID);
-        if (audioDataSource != null) {
-            audioDataSource.close();
-        }
         synchronized (downloadQueue) {
-            if (currentAudioDataSource != null && currentAudioDataSource.entryID.equals(entryID)) {
-                currentAudioDataSource.close();
-                currentAudioDataSource = null;
-                currentDownloadPrio = DOWNLOAD_PRIO_LOW;
+            if (currentDownloadDataSource != null
+                    && currentDownloadDataSource.audioDataSource.entryID.equals(entryID)) {
+                Log.d(LC, "deleteAudioData stop current " + entryID);
+                currentDownloadDataSource.audioDataSource.close();
+                currentDownloadDataSource = null;
+                updateDownloads();
+            } else if (downloadQueue.removeIf(a -> a.audioDataSource.entryID.equals(entryID))) {
+                Log.d(LC, "deleteAudioData stop " + entryID);
+                updateDownloads();
             }
         }
-        release(entryID);
         AudioStorage.deleteCacheFile(context, entryID);
         return AudioStorage.getInstance(context).deleteWaveform(entryID)
                 .thenCompose(aVoid -> MetaStorage.getInstance(context).deleteLocalMeta(
@@ -370,7 +436,8 @@ public class AudioStorage {
                 ))
                 .thenRunAsync(() -> onDeleteListeners.forEach(
                         onDeleteListener -> onDeleteListener.accept(entryID)
-                ), Util.getMainThreadExecutor());
+                ), Util.getMainThreadExecutor())
+                .thenRunAsync(() -> release(entryID));
     }
 
     public void addDeleteListener(Consumer<EntryID> onDelete) {
@@ -383,7 +450,7 @@ public class AudioStorage {
         onDeleteListeners.remove(onDelete);
     }
 
-    public class AudioDataFetchState {
+    public static class AudioDataFetchState {
         static final String IDLE = "idle";
         static final String DOWNLOADING = "downloading";
         static final String SUCCESS = "success";
@@ -395,7 +462,7 @@ public class AudioStorage {
 
         AudioDataFetchState(EntryID entryID) {
             this.entryID = entryID;
-            state =  IDLE;
+            state = IDLE;
             bytesFetched = 0L;
             bytesTotal = 0L;
         }
@@ -472,4 +539,15 @@ public class AudioStorage {
             fetchStateMapLiveData.postValue(fetchStateMap);
         }
     }
+
+    private class DownloadDataSourceEntry {
+        final AudioDataSource audioDataSource;
+        final int priority;
+
+        DownloadDataSourceEntry(AudioDataSource audioDataSource, int priority) {
+            this.audioDataSource = audioDataSource;
+            this.priority = priority;
+        }
+    }
+
 }

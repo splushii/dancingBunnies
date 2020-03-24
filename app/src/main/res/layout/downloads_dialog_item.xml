@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/downloads_entry"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/background_active_accent">
+    <se.splushii.dancingbunnies.ui.TrackItemView
+        android:id="@+id/downloads_entry_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+    <se.splushii.dancingbunnies.ui.TrackItemActionsView
+        android:id="@+id/downloads_entry_actions"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent" />
+</FrameLayout>

@@ -52,6 +52,7 @@
     <color name="colorIconDisabled">@color/grey500</color>
     <color name="colorIconSecondary">@color/grey500</color>
     <color name="colorIconSecondaryDisabled">@color/colorAccentAlmostWindowBackground</color>
+    <color name="colorIconSecondarySelected">@color/colorAccentLight</color>
 
     <color name="windowBackground">@color/white</color>
     <color name="windowBackgroundAlternate">@color/grey50</color>

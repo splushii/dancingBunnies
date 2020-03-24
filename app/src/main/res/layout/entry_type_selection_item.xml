@@ -5,7 +5,7 @@
     android:layout_height="wrap_content"
     android:background="@color/windowBackground">
     <LinearLayout
-        android:id="@+id/sort_item"
+        android:id="@+id/entry_type_selection_item"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
