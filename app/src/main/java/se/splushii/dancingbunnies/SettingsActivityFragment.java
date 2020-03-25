@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import androidx.annotation.Nullable;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 import androidx.preference.EditTextPreference;
 import androidx.preference.Preference;
@@ -145,11 +144,7 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
             LayoutInflater inflater,
             ViewGroup container,
             Bundle savedInstanceState) {
-        View view = super.onCreateView(inflater, container, savedInstanceState);
-        if (view != null) {
-            view.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.bluegrey900));
-        }
-        return view;
+        return super.onCreateView(inflater, container, savedInstanceState);
     }
 
     @Override

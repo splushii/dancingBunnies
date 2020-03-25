@@ -36,7 +36,7 @@
 
     <color name="colorSecondaryText">@color/grey500</color>
     <color name="colorSecondaryTextSelected">@color/colorAccentLight</color>
-    <color name="colorSecondaryTextDisabled">@color/colorAccentAlmostWindowBackground</color>
+    <color name="colorSecondaryTextDisabled">@color/grey300</color>
 
     <color name="colorTextOnPrimary">@color/white</color>
     <color name="colorTextOnPrimaryDynamic">@color/white</color>

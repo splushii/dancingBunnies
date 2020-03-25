@@ -11,6 +11,10 @@
 
     <color name="colorPrimaryText">@color/grey100</color>
 
+    <color name="colorSecondaryText">@color/grey500</color>
+    <color name="colorSecondaryTextSelected">@color/colorAccentLight</color>
+    <color name="colorSecondaryTextDisabled">@color/grey700</color>
+
     <color name="colorTextOnPrimary">@color/white</color>
     <color name="colorTextOnPrimaryDynamic">@color/grey_active_black</color>
     <color name="colorIconOnPrimary">@color/white</color>
