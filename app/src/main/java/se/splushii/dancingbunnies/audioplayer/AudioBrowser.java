@@ -106,7 +106,9 @@ public class AudioBrowser {
             return;
         }
         mediaController = new MediaControllerCompat(activity, token);
-        MediaControllerCompat.setMediaController(activity, mediaController);
+        // Do not set media controller
+        // It breaks hardware volume control for cast
+//        MediaControllerCompat.setMediaController(activity, mediaController);
         callbackMap.forEach((callback, mediaControllerCallback) ->
                 mediaController.registerCallback(mediaControllerCallback)
         );

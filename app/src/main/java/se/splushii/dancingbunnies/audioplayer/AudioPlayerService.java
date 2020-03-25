@@ -429,6 +429,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         mediaSession.setQueueTitle("Queue");
         mediaSession.setQueue(new LinkedList<>());
+
+        mediaSession.setActive(true);
     }
 
     private boolean isStoppedState() {

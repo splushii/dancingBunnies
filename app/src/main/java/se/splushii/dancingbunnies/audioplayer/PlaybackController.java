@@ -130,28 +130,6 @@ public class PlaybackController {
                 + "\ncurrentPlaylistPlaybackOrderMode: " + currentPlaylistPlaybackOrderMode
                 + "\ncurrentPlaylistPlaybackRepeatMode: " + currentPlaylistPlaybackRepeatMode
         );
-        switch (currentPlayerType) {
-            default:
-                storage.setCurrentPlayerType(LocalAudioPlayer.Type.LOCAL);
-            case LOCAL:
-                audioPlayer = new LocalAudioPlayer(
-                        audioPlayerCallback,
-                        context,
-                        storage,
-                        true,
-                        playWhenReady
-                );
-                break;
-            case CAST:
-                audioPlayer = new CastAudioPlayer(
-                        audioPlayerCallback,
-                        context,
-                        null,
-                        true,
-                        playWhenReady
-                );
-                break;
-        }
 
         LiveData<List<PlaybackEntry>> queueEntriesLiveData = storage.getQueueEntries();
         queue = new PlaybackQueue(
@@ -198,10 +176,35 @@ public class PlaybackController {
         CastContext castContext = CastContext.getSharedInstance(context);
         sessionManager = castContext.getSessionManager();
         sessionManager.addSessionManagerListener(sessionManagerListener);
+
+        switch (currentPlayerType) {
+            default:
+            case LOCAL:
+                audioPlayer = new LocalAudioPlayer(
+                        audioPlayerCallback,
+                        context,
+                        storage,
+                        true,
+                        playWhenReady
+                );
+                setCurrentPlayerType(AudioPlayer.Type.LOCAL);
+                break;
+            case CAST:
+                audioPlayer = new CastAudioPlayer(
+                        audioPlayerCallback,
+                        context,
+                        sessionManager.getCurrentCastSession(),
+                        true,
+                        playWhenReady
+                );
+                setCurrentPlayerType(AudioPlayer.Type.CAST);
+                break;
+        }
     }
 
     void initialize() {
         isPlaying = false;
+        callback.onPlayerChanged(getCurrentPlayerType());
         callback.onPlaybackOrderChanged(getCurrentPlaylistPlaybackOrderMode());
         callback.onRepeatModeChanged(getCurrentPlaylistPlaybackRepeatMode());
         callback.onPlaylistSelectionChanged(
@@ -264,6 +267,15 @@ public class PlaybackController {
         Log.d(LC, "removePlaylistEntries");
         return playlistItems.clear()
                 .thenCompose(aVoid -> audioPlayer.dePreload(getPlayerPlaylistEntries()));
+    }
+
+    private void setCurrentPlayerType(AudioPlayer.Type type) {
+        currentPlayerType = type;
+        storage.setCurrentPlayerType(type);
+    }
+
+    private AudioPlayer.Type getCurrentPlayerType() {
+        return currentPlayerType;
     }
 
     private void setCurrentPlaylistSelectionID(long id) {
@@ -1415,6 +1427,7 @@ public class PlaybackController {
             // TODO: What if sessions differ? Transfer state?
             Log.w(LC, "onCastConnect: Replacing session for CastAudioPlayer");
             ((CastAudioPlayer)audioPlayer).setCastSession(session);
+            audioPlayer.initialize();
             return;
         }
         AudioPlayer.AudioPlayerState lastPlayerState = resetController();
@@ -1426,7 +1439,7 @@ public class PlaybackController {
                 playWhenReady
         );
         submitCompletableFuture(() -> transferAudioPlayerState(lastPlayerState));
-        storage.setCurrentPlayerType(AudioPlayer.Type.CAST);
+        setCurrentPlayerType(AudioPlayer.Type.CAST);
         callback.onPlayerChanged(AudioPlayer.Type.CAST);
         updateCurrent();
     }
@@ -1445,7 +1458,7 @@ public class PlaybackController {
                 playWhenReady
         );
         submitCompletableFuture(() -> transferAudioPlayerState(lastPlayerState));
-        storage.setCurrentPlayerType(AudioPlayer.Type.LOCAL);
+        setCurrentPlayerType(AudioPlayer.Type.LOCAL);
         callback.onPlayerChanged(AudioPlayer.Type.LOCAL);
         updateCurrent();
     }
