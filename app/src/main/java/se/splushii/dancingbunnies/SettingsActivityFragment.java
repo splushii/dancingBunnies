@@ -2,6 +2,7 @@ package se.splushii.dancingbunnies;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.InputType;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,6 +10,7 @@ import android.view.ViewGroup;
 
 import java.util.Date;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import androidx.annotation.Nullable;
@@ -74,33 +76,47 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        SharedPreferences settings = getPreferenceManager().getSharedPreferences();
-        EditTextPreference SSurl = findPreference(getResources()
-                .getString(R.string.pref_key_subsonic_url));
-        SSurl.setSummary(settings.getString(getResources()
-                .getString(R.string.pref_key_subsonic_url), ""));
-        EditTextPreference SSusr = findPreference(getResources()
-                .getString(R.string.pref_key_subsonic_usr));
-        SSusr.setSummary(settings.getString(getResources()
-                .getString(R.string.pref_key_subsonic_usr), ""));
-        EditTextPreference SSpwd = findPreference(getResources()
-                .getString(R.string.pref_key_subsonic_pwd));
-        SSpwd.setSummary(settings.contains(getResources()
-                .getString(R.string.pref_key_subsonic_pwd)) ?
-                "********" : ""
+
+        setupTextPref(R.string.pref_key_subsonic_url);
+        setupTextPref(R.string.pref_key_subsonic_usr);
+        setupTextPref(
+                R.string.pref_key_subsonic_pwd,
+                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD
         );
-        EditTextPreference SSTagDelim = findPreference(getResources()
-                .getString(R.string.pref_key_subsonic_tag_delim));
-        String SSTagDelimValue = settings.getString(getResources().getString(R.string.pref_key_subsonic_tag_delim), "");
-        SSTagDelim.setSummary(Util.isValidRegex(SSTagDelimValue) ? SSTagDelimValue : "(Not a valid regular expression!)");
-        SSrefresh = findPreference(getResources()
-                .getString(R.string.pref_key_subsonic_refresh));
+        setupTextPref(
+                R.string.pref_key_subsonic_tag_delim,
+                v -> Util.isValidRegex(v) ? v : "(Not a valid regular expression!)"
+        );
+
+        String SSrefreshKey = getResources().getString(R.string.pref_key_subsonic_refresh);
+        SSrefresh = findPreference(SSrefreshKey);
         SSrefresh.setOnPreferenceClickListener(preference -> {
             Log.d(LC, "refresh onClick!");
             LibrarySyncWorker.runNow(requireContext());
             return false;
         });
         setLastRefreshSummary();
+    }
+
+    private void setupTextPref(int prefKeyResource) {
+        setupTextPref(prefKeyResource, null);
+    }
+
+    private void setupTextPref(int prefKeyResource, int inputType) {
+        EditTextPreference textPreference = setupTextPref(prefKeyResource, null);
+        textPreference.setOnBindEditTextListener(editText -> editText.setInputType(inputType));
+    }
+
+    private EditTextPreference setupTextPref(int prefKeyResource, Function<String, String> valueMapper) {
+        String prefKey = getResources().getString(prefKeyResource);
+        EditTextPreference textPreference = findPreference(prefKey);
+        SharedPreferences settings = getPreferenceManager().getSharedPreferences();
+        String value = settings.getString(prefKey, "");
+        if (valueMapper != null) {
+            value = valueMapper.apply(value);
+        }
+        textPreference.setSummary(maskIfSensitive(prefKey, value));
+        return textPreference;
     }
 
     @Override
@@ -154,11 +170,18 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                 || key.equals(getResources().getString(R.string.pref_key_subsonic_pwd))
                 || key.equals(getResources().getString(R.string.pref_key_subsonic_tag_delim))) {
             EditTextPreference etp = findPreference(key);
-            etp.setSummary(sp.getString(key, ""));
+            etp.setSummary(maskIfSensitive(key, sp.getString(key, "")));
             etp.setText(sp.getString(key, ""));
         } else if (key.equals(getResources().getString(R.string.pref_key_subsonic_refresh_time))
                 || key.equals(getResources().getString(R.string.pref_key_subsonic_refresh_enabled))) {
             LibrarySyncWorker.requeue(requireContext());
         }
+    }
+
+    private String maskIfSensitive(String key, String value) {
+        if (key.equals(getResources().getString(R.string.pref_key_subsonic_pwd))) {
+            return "********";
+        }
+        return value;
     }
 }
