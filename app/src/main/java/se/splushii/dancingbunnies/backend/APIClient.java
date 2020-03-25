@@ -25,6 +25,11 @@ public abstract class APIClient {
     public abstract boolean hasLibrary();
 
     /**
+     * @return A future with optional error message. Optional empty on success.
+     */
+    public abstract CompletableFuture<Optional<String>> heartbeat();
+
+    /**
      * @param handler Optional to call handler methods
      * @return A future with a list of MediaMetaData
      * Each MediaMetaData element must include the following entries:

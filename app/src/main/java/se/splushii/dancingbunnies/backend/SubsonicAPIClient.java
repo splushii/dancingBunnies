@@ -39,7 +39,11 @@ public class SubsonicAPIClient extends APIClient {
     private final Context context;
 
     public enum RequestType {
-        GET_INDEXES, GET_MUSIC_DIRECTORY, GET_MUSIC_FOLDERS, GET_PLAYLIST, GET_PLAYLISTS
+        GET_INDEXES,
+        GET_MUSIC_DIRECTORY,
+        GET_MUSIC_FOLDERS,
+        GET_PLAYLIST,
+        GET_PLAYLISTS
     }
 
     private static final String API_BASE_URL = "/rest/";
@@ -166,8 +170,31 @@ public class SubsonicAPIClient extends APIClient {
         return true;
     }
 
+    @Override
+    public CompletableFuture<Optional<String>> heartbeat() {
+        String query = baseURL + "ping" + getBaseQuery();
+        final CompletableFuture<Optional<String>> req = new CompletableFuture<>();
+        httpRequestQueue.addToRequestQueue(new StringRequest(
+                query,
+                response -> {
+                    String status = statusOK(response);
+                    if (status.isEmpty()) {
+                        req.complete(Optional.empty());
+                    } else {
+                        Log.e(LC, "heartbeat: " + status);
+                        req.complete(Optional.of(status));
+                    }
+                },
+                error -> {
+                    Log.e(LC, "heartbeat: " + error.getMessage());
+                    req.complete(Optional.of(error.getMessage()));
+                }
+        ));
+        return req;
+    }
+
     private CompletableFuture<Void> getMusicFolders(final ConcurrentLinkedQueue<Meta> metaList,
-                                                     final APIClientRequestHandler handler) {
+                                                    final APIClientRequestHandler handler) {
         String query = baseURL + "getMusicFolders" + getBaseQuery();
         return getMusicFoldersQuery(query, metaList, handler);
     }

@@ -19,8 +19,10 @@ import androidx.preference.EditTextPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.work.WorkManager;
+import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.jobs.Jobs;
 import se.splushii.dancingbunnies.jobs.LibrarySyncWorker;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.ui.TimePreference;
 import se.splushii.dancingbunnies.ui.TimePreferenceDialogFragment;
 import se.splushii.dancingbunnies.util.Util;
@@ -31,18 +33,17 @@ import se.splushii.dancingbunnies.util.Util;
 public class SettingsActivityFragment extends PreferenceFragmentCompat
         implements SharedPreferences.OnSharedPreferenceChangeListener {
     private static final String LC = Util.getLogContext(SettingsActivityFragment.class);
-    private Preference SSrefresh;
+    private Preference subsonicPref;
+    private Preference subsonicScheduledRefreshPref;
+    private Preference subsonicRefreshPref;
 
-    public SettingsActivityFragment() {}
+    public SettingsActivityFragment() {
+    }
 
     @Override
     public void onStart() {
         super.onStart();
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
+        heartbeatSubsonic();
     }
 
     @Override
@@ -57,6 +58,11 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
         super.onPause();
         getPreferenceManager().getSharedPreferences()
                 .unregisterOnSharedPreferenceChangeListener(this);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
     }
 
     @Override
@@ -77,6 +83,9 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        String subsonicPrefKey = getResources().getString(R.string.pref_key_subsonic);
+        subsonicPref = findPreference(subsonicPrefKey);
+
         setupTextPref(R.string.pref_key_subsonic_url);
         setupTextPref(R.string.pref_key_subsonic_usr);
         setupTextPref(
@@ -88,9 +97,12 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                 v -> Util.isValidRegex(v) ? v : "(Not a valid regular expression!)"
         );
 
-        String SSrefreshKey = getResources().getString(R.string.pref_key_subsonic_refresh);
-        SSrefresh = findPreference(SSrefreshKey);
-        SSrefresh.setOnPreferenceClickListener(preference -> {
+        String subsonicScheduledRefreshKey = getResources().getString(R.string.pref_key_subsonic_refresh_enabled);
+        subsonicScheduledRefreshPref = findPreference(subsonicScheduledRefreshKey);
+
+        String subsonicRefreshKey = getResources().getString(R.string.pref_key_subsonic_refresh);
+        subsonicRefreshPref = findPreference(subsonicRefreshKey);
+        subsonicRefreshPref.setOnPreferenceClickListener(preference -> {
             Log.d(LC, "refresh onClick!");
             LibrarySyncWorker.runNow(requireContext());
             return false;
@@ -133,10 +145,10 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                         if (status == null) {
                             setLastRefreshSummary();
                         } else {
-                            SSrefresh.setSummary(status);
+                            subsonicRefreshPref.setSummary(status);
                         }
                     } else if (statuses.size() > 1) {
-                        SSrefresh.setSummary("Multiple refresh jobs running...");
+                        subsonicRefreshPref.setSummary("Multiple refresh jobs running...");
                     } else {
                         setLastRefreshSummary();
                     }
@@ -145,7 +157,7 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
 
     private void setLastRefreshSummary() {
         long lastRefresh = LibrarySyncWorker.getLastRefresh(requireContext());
-        SSrefresh.setSummary(lastRefresh > 0L ?
+        subsonicRefreshPref.setSummary(lastRefresh > 0L ?
                 "Last refresh: " + new Date(lastRefresh) : ""
         );
     }
@@ -169,13 +181,19 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                 || key.equals(getResources().getString(R.string.pref_key_subsonic_usr))
                 || key.equals(getResources().getString(R.string.pref_key_subsonic_pwd))
                 || key.equals(getResources().getString(R.string.pref_key_subsonic_tag_delim))) {
-            EditTextPreference etp = findPreference(key);
-            etp.setSummary(maskIfSensitive(key, sp.getString(key, "")));
-            etp.setText(sp.getString(key, ""));
+            updateTextPref(key, sp);
+            enableSubsonicAuthenticatedPrefs(false);
+            heartbeatSubsonic();
         } else if (key.equals(getResources().getString(R.string.pref_key_subsonic_refresh_time))
                 || key.equals(getResources().getString(R.string.pref_key_subsonic_refresh_enabled))) {
             LibrarySyncWorker.requeue(requireContext());
         }
+    }
+
+    private void updateTextPref(String key, SharedPreferences sp) {
+        EditTextPreference etp = findPreference(key);
+        etp.setSummary(maskIfSensitive(key, sp.getString(key, "")));
+        etp.setText(sp.getString(key, ""));
     }
 
     private String maskIfSensitive(String key, String value) {
@@ -183,5 +201,34 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
             return "********";
         }
         return value;
+    }
+
+    private void heartbeatSubsonic() {
+        APIClient apiClient = APIClient.getAPIClient(
+                requireContext(),
+                MusicLibraryService.API_ID_SUBSONIC
+        );
+        if (apiClient == null) {
+            enableSubsonicAuthenticatedPrefs(false);
+            subsonicPref.setSummary("");
+            return;
+        }
+        apiClient.heartbeat()
+                .thenAccept(error -> {
+                    if (error.isPresent()) {
+                        String errorMsg = error.get();
+                        Log.e(LC, "error: " + errorMsg);
+                        subsonicPref.setSummary(errorMsg);
+                        enableSubsonicAuthenticatedPrefs(false);
+                    } else {
+                        subsonicPref.setSummary("Successfully authenticated");
+                        enableSubsonicAuthenticatedPrefs(true);
+                    }
+                });
+    }
+
+    private void enableSubsonicAuthenticatedPrefs(boolean enabled) {
+        subsonicRefreshPref.setEnabled(enabled);
+        subsonicScheduledRefreshPref.setEnabled(enabled);
     }
 }
