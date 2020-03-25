@@ -42,6 +42,7 @@ public class TrackItemView extends LinearLayout {
     private ImageView cachedView;
     private TextView posView;
     private View dragHandleView;
+    private View dragHandleTouchAreaView;
 
     private MutableLiveData<EntryID> entryIDLiveData;
     private LiveData<Meta> metaLiveData;
@@ -99,6 +100,7 @@ public class TrackItemView extends LinearLayout {
         cacheStatusView = findViewById(R.id.track_item_cache_status);
         posView = findViewById(R.id.track_item_pos);
         dragHandleView = findViewById(R.id.track_item_handle);
+        dragHandleTouchAreaView = findViewById(R.id.track_item_handle_touch_area);
         setPos(-1);
         entryIDLiveData = new MutableLiveData<>();
         title = "";
@@ -278,7 +280,7 @@ public class TrackItemView extends LinearLayout {
             return;
         }
         if (callback != null) {
-            dragHandleView.setOnTouchListener((v, event) -> {
+            dragHandleTouchAreaView.setOnTouchListener((v, event) -> {
                 if (event.getAction() == MotionEvent.ACTION_DOWN) {
                     callback.run();
                 }
@@ -287,7 +289,7 @@ public class TrackItemView extends LinearLayout {
             dragHandleView.setVisibility(VISIBLE);
         } else {
             dragHandleView.setVisibility(GONE);
-            dragHandleView.setOnClickListener(null);
+            dragHandleTouchAreaView.setOnTouchListener(null);
         }
     }
 
