@@ -3,7 +3,9 @@ package se.splushii.dancingbunnies.ui.musiclibrary;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.ActionMode;
@@ -379,7 +381,9 @@ public class MusicLibraryFragment
             browseHeader.setVisibility(GONE);
             browseFastScroller.enableBubble(false);
             browseView.setVisibility(GONE);
-            searchQueryEdit.setText(newUserState.query.getSearchQuery());
+            if (!searchQueryEdit.getText().toString().equals(newUserState.query.getSearchQuery())) {
+                searchQueryEdit.setText(newUserState.query.getSearchQuery());
+            }
             searchView.setVisibility(VISIBLE);
             searchContentView.setVisibility(VISIBLE);
         } else {
@@ -749,7 +753,7 @@ public class MusicLibraryFragment
         });
         searchFAB.setOnClickListener(v -> {
             if (!getCurrentQuery().isSearchQuery()) {
-                model.search("");
+                model.search("", true);
             } else {
                 searchQueryEdit.setText("");
             }
@@ -757,10 +761,27 @@ public class MusicLibraryFragment
             searchQueryEdit.requestFocus();
             Util.showSoftInput(requireActivity(), searchQueryEdit);
         });
+        searchQueryEdit.addTextChangedListener(new TextWatcher() {
+            private String lastQuery = "";
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                String query = editable.toString();
+                if (!query.isEmpty() && !query.equals(lastQuery)) {
+                    model.search(editable.toString(), false);
+                    lastQuery = query;
+                }
+            }
+        });
         searchQueryEdit.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 String query = searchQueryEdit.getText().toString();
-                model.search(query);
+                model.search(query, true);
                 clearFocus();
                 return true;
             }

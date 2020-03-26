@@ -13,6 +13,9 @@ import org.apache.lucene.util.Version;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 
@@ -48,23 +51,44 @@ public class Indexer {
         doc.add(new TextField(Meta.FIELD_SPECIAL_MEDIA_SRC, meta.entryID.src, Field.Store.YES));
         doc.add(new TextField(Meta.FIELD_SPECIAL_MEDIA_ID, meta.entryID.id, Field.Store.YES));
         for (String key: meta.keySet()) {
+            float boost;
+            List<Field> fields = Collections.emptyList();
+            switch (key) {
+                case Meta.FIELD_TITLE:
+                    boost = 4.7f;
+                    break;
+                case Meta.FIELD_ARTIST:
+                    boost = 2.3f;
+                    break;
+                case Meta.FIELD_ALBUM:
+                    boost = 1.1f;
+                    break;
+                default:
+                    boost = 1.0f;
+            }
             switch (Meta.getType(key)) {
                 case STRING:
-                    meta.getStrings(key).forEach(s ->
-                            doc.add(new TextField(key, s, Field.Store.NO))
-                    );
+                    fields = meta.getStrings(key).stream()
+                            .map(s -> new TextField(key, s, Field.Store.NO))
+                            .collect(Collectors.toList());
                     break;
                 case DOUBLE:
-                    meta.getDoubles(key).stream()
+                    fields = meta.getDoubles(key).stream()
                             .map(String::valueOf)
-                            .forEach(s -> doc.add(new TextField(key, s, Field.Store.NO)));
+                            .map(s -> new TextField(key, s, Field.Store.NO))
+                            .collect(Collectors.toList());
                     break;
                 case LONG:
-                    meta.getLongs(key).stream()
+                    fields = meta.getLongs(key).stream()
                             .map(String::valueOf)
-                            .forEach(s -> doc.add(new TextField(key, s, Field.Store.NO)));
+                            .map(s -> new TextField(key, s, Field.Store.NO))
+                            .collect(Collectors.toList());
                     break;
             }
+            fields.forEach(f -> {
+                f.setBoost(boost);
+                doc.add(f);
+            });
         }
         try {
             indexWriter.addDocument(doc);

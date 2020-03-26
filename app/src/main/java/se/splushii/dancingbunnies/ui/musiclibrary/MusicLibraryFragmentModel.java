@@ -143,8 +143,8 @@ public class MusicLibraryFragmentModel extends ViewModel {
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 
-    public void search(String query) {
-        if (!isEmptySearch()) {
+    public void search(String query, boolean saveToHistory) {
+        if (!isEmptySearch() && saveToHistory) {
             addBackStackHistory(new Pair<>(0, 0));
         }
         getMutableUserState().setValue(new MusicLibraryUserState(

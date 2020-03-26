@@ -49,8 +49,8 @@ public class Searcher {
         Analyzer analyzer = new StandardAnalyzer(Indexer.LUCENE_VERSION);
         String[] defaultFields = {
                 Indexer.FIELD_TITLE,
-                Indexer.FIELD_ALBUM,
-                Indexer.FIELD_ARTIST
+                Indexer.FIELD_ARTIST,
+                Indexer.FIELD_ALBUM
         };
         queryParser = new MultiFieldQueryParser(
                 Version.LUCENE_48,

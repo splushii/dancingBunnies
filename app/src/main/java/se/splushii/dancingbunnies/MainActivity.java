@@ -121,7 +121,7 @@ public final class MainActivity extends AppCompatActivity {
         if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
             mViewPager.setCurrentItem(PAGER_MUSICLIBRARY);
             String query = intent.getStringExtra(SearchManager.QUERY);
-            musicLibraryModel.search(query);
+            musicLibraryModel.search(query, true);
             intent.setAction(Intent.ACTION_MAIN);
             return;
         }
