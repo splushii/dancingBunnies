@@ -142,12 +142,13 @@ public class AudioDataSource extends MediaDataSource {
             long bytesRead = 0;
             while (b != -1) {
                 outputStream.write(b);
-                long currTime = System.currentTimeMillis();
-                long timeSinceLastProgress = currTime - timeLastProgress;
-                if (bytesRead % BYTES_BETWEEN_PROGRESS_UPDATE == 0
-                        && timeSinceLastProgress > TIME_MS_BETWEEN_PROGRESS_UPDATE) {
-                    handler.onDownloadProgress(bytesRead, contentLength);
-                    timeLastProgress = currTime;
+                if (bytesRead % BYTES_BETWEEN_PROGRESS_UPDATE == 0) {
+                    long currTime = System.currentTimeMillis();
+                    long timeSinceLastProgress = currTime - timeLastProgress;
+                    if (timeSinceLastProgress > TIME_MS_BETWEEN_PROGRESS_UPDATE) {
+                        handler.onDownloadProgress(bytesRead, contentLength);
+                        timeLastProgress = currTime;
+                    }
                 }
                 bytesRead++;
                 b = in.read();
