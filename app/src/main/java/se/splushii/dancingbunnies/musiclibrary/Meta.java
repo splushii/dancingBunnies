@@ -459,11 +459,24 @@ public class Meta {
         return keySet;
     }
 
-    public static String getLongDescription(MediaMetadataCompat metadata) {
+    public static String getTitle(MediaMetadataCompat metadata) {
+        return metadata.getString(MediaMetadataCompat.METADATA_KEY_TITLE);
+    }
+
+    public static String getArtistAlbum(MediaMetadataCompat metadata) {
         String artist = metadata.getString(MediaMetadataCompat.METADATA_KEY_ARTIST);
         String album = metadata.getString(MediaMetadataCompat.METADATA_KEY_ALBUM);
-        String title = metadata.getString(MediaMetadataCompat.METADATA_KEY_TITLE);
-        return title + " - " + artist + " [" + album + "]";
+        String value = "";
+        if (artist != null && !artist.isEmpty()) {
+            value += artist;
+        }
+        if (album != null && !album.isEmpty()) {
+            if (!value.isEmpty()) {
+                value += " ";
+            }
+            value += "[" + album + "]";
+        }
+        return value;
     }
 
     @NonNull

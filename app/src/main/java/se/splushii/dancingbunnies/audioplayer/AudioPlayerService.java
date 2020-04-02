@@ -20,6 +20,7 @@ import android.os.IBinder;
 import android.os.ResultReceiver;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaDescriptionCompat;
+import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
@@ -39,6 +40,7 @@ import java.util.stream.Collectors;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
 import androidx.media.MediaBrowserServiceCompat;
@@ -452,11 +454,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     @SuppressLint("SwitchIntDef")
-    private void setNotification() {
-        if (casting || isStoppedState()) {
-            stopForeground(true);
-            return;
-        }
+    private Notification setNotification() {
         String play_pause_string;
         int play_pause_drawable;
         switch (playbackState.getState()) {
@@ -478,14 +476,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                         PlaybackStateCompat.ACTION_PLAY_PAUSE
                 )
         ).build();
-        NotificationCompat.Action action_stop = new NotificationCompat.Action.Builder(
-                R.drawable.ic_stop,
-                getString(R.string.stop),
-                MediaButtonReceiver.buildMediaButtonPendingIntent(
-                        this,
-                        PlaybackStateCompat.ACTION_STOP
-                )
-        ).build();
         NotificationCompat.Action action_next = new NotificationCompat.Action.Builder(
                 R.drawable.ic_next,
                 getString(R.string.next),
@@ -496,23 +486,32 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         ).build();
         MediaStyle style = new MediaStyle()
                 .setMediaSession(mediaSession.getSessionToken())
-                .setShowActionsInCompactView(0, 2);
+                .setShowCancelButton(true)
+                .setCancelButtonIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(
+                        this,
+                        PlaybackStateCompat.ACTION_STOP
+                ))
+                .setShowActionsInCompactView(0, 1);
         MediaControllerCompat controller = mediaSession.getController();
-        String description = Meta.getLongDescription(controller.getMetadata());
+        MediaMetadataCompat mediaMetadataCompat = controller.getMetadata();
         Notification notification =
                 new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-                        .setContentTitle(description)
-                        .setContentText(description)
+                        .setContentTitle(Meta.getTitle(mediaMetadataCompat))
+                        .setContentText(Meta.getArtistAlbum(mediaMetadataCompat))
                         .setLargeIcon(controller.getMetadata().getDescription().getIconBitmap())
                         .setSmallIcon(R.drawable.ic_play)
                         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                         .setContentIntent(controller.getSessionActivity())
+                        .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(
+                                this,
+                                PlaybackStateCompat.ACTION_STOP
+                        ))
                         .addAction(action_play_pause)
                         .addAction(action_next)
-                        .addAction(action_stop)
                         .setStyle(style)
                         .build();
-        startForeground(SERVICE_NOTIFICATION_ID, notification);
+        NotificationManagerCompat.from(this).notify(SERVICE_NOTIFICATION_ID, notification);
+        return notification;
     }
 
     private Void handleControllerResult(Void result, Throwable t) {
@@ -1068,8 +1067,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     casting = false;
                     break;
             }
-            setMediaSessionActiveness();
-            setNotification();
+            onStateChanged(playbackState.getState());
         }
 
         private String getPlaybackStateString(int playbackState) {
@@ -1110,11 +1108,15 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 case PlaybackStateCompat.STATE_ERROR:
                 case PlaybackStateCompat.STATE_NONE:
                 case PlaybackStateCompat.STATE_STOPPED:
-                    setPlaybackState(newPlaybackState, 0L, PLAYBACK_SPEED_PAUSED);
-                    stopForeground(true);
-                    stopSelf();
+                    setPlaybackState(
+                            newPlaybackState,
+                            playbackController.getPlayerSeekPosition(),
+                            PLAYBACK_SPEED_PAUSED
+                    );
                     toggleNoiseReceiver(false);
                     audioManager.abandonAudioFocusRequest(audioFocusRequest);
+                    stopForeground(true);
+                    stopSelf();
                     break;
                 case PlaybackStateCompat.STATE_PAUSED:
                     setPlaybackState(
@@ -1123,17 +1125,16 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                             PLAYBACK_SPEED_PAUSED
                     );
                     toggleNoiseReceiver(false);
+                    stopForeground(false);
                     break;
                 case PlaybackStateCompat.STATE_PLAYING:
                     Log.d(LC, "startService");
-                    startService(new Intent(
-                            AudioPlayerService.this,
-                            AudioPlayerService.class));
                     setPlaybackState(
                             newPlaybackState,
                             playbackController.getPlayerSeekPosition(),
                             PLAYBACK_SPEED_PLAYING
                     );
+                    startService(new Intent(AudioPlayerService.this, AudioPlayerService.class));
                     toggleNoiseReceiver(true);
                     break;
                 case PlaybackStateCompat.STATE_BUFFERING:
@@ -1161,8 +1162,22 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     Log.e(LC, "Unhandled state: " + newPlaybackState);
                     break;
             }
-            setMediaSessionActiveness();
-            setNotification();
+            if (casting) {
+                setMediaSessionActive(false);
+                // The cast framework supplies its own notification
+                stopForeground(true);
+            } else {
+                if (isStoppedState()) {
+                    setMediaSessionActive(false);
+                } else {
+                    setMediaSessionActive(true);
+                    if (isPlayingState()) {
+                        startForeground(SERVICE_NOTIFICATION_ID, setNotification());
+                    } else {
+                        setNotification();
+                    }
+                }
+            }
         }
 
         private synchronized void setPlaybackState(int newPlaybackState, long position, float playbackSpeed) {
@@ -1269,8 +1284,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         }
     }
 
-    private void setMediaSessionActiveness() {
-        boolean active = !isStoppedState() && !casting;
+    private void setMediaSessionActive(boolean active) {
         if (active != mediaSession.isActive()) {
             mediaSession.setActive(active);
         }
