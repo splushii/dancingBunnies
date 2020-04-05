@@ -55,6 +55,7 @@
         <item name="android:spinnerDropDownItemStyle">@style/SpinnerDropDownItemTheme</item>
         <item name="imageButtonStyle">@style/ImageButtonStyle</item>
         <item name="popupMenuStyle">@style/PopupMenuTheme</item>
+        <item name="homeAsUpIndicator">@drawable/ic_arrow_back_white_24dp</item>
     </style>
 
     <style name="AppTheme" parent="AppTheme.Base">

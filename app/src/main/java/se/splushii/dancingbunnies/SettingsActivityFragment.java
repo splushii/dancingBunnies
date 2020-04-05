@@ -8,7 +8,11 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.mikepenz.aboutlibraries.Libs;
+import com.mikepenz.aboutlibraries.LibsBuilder;
+
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -103,11 +107,45 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
         String subsonicRefreshKey = getResources().getString(R.string.pref_key_subsonic_refresh);
         subsonicRefreshPref = findPreference(subsonicRefreshKey);
         subsonicRefreshPref.setOnPreferenceClickListener(preference -> {
-            Log.d(LC, "refresh onClick!");
             LibrarySyncWorker.runNow(requireContext());
             return false;
         });
         setLastRefreshSummary();
+
+        String aboutKey = getResources().getString(R.string.pref_key_about);
+        findPreference(aboutKey).setOnPreferenceClickListener(preference -> {
+            // Add license info to libraries where it's not auto-detected
+            HashMap<String, HashMap<String, String>> libModMap = new HashMap<>();
+            for (String libID: new String[] {
+                    "org_apache_lucene__lucene_core",
+                    "org_apache_lucene__lucene_analyzers_common",
+                    "org_apache_lucene__lucene_queries",
+                    "org_apache_lucene__lucene_queryparser",
+                    "org_apache_lucene__lucene_sandbox"
+            }) {
+                HashMap<String, String> libMods = new HashMap<>();
+                libMods.put(
+                        Libs.LibraryFields.LICENSE_NAME.name(),
+                        "Apache Version 2.0"
+                );
+                libMods.put(
+                        Libs.LibraryFields.LICENSE_WEBSITE.name(),
+                        "http://www.apache.org/licenses/LICENSE-2.0"
+                );
+                libModMap.put(libID, libMods);
+            }
+            new LibsBuilder()
+                    .withAboutIconShown(true)
+                    .withAboutVersionShown(true)
+                    .withAboutVersionShownCode(true)
+                    .withAboutVersionShownName(true)
+                    .withAboutAppName(getResources().getString(R.string.app_name))
+                    .withLicenseShown(true)
+                    .withLicenseDialog(true)
+                    .withLibraryModification(libModMap)
+                    .start(requireContext());
+            return false;
+        });
     }
 
     private void setupTextPref(int prefKeyResource) {
