@@ -186,8 +186,9 @@ public class SubsonicAPIClient extends APIClient {
                     }
                 },
                 error -> {
-                    Log.e(LC, "heartbeat: " + error.getMessage());
-                    req.complete(Optional.of(error.getMessage()));
+                    String errMsg = HTTPRequestQueue.getHTTPErrorMessage(error);
+                    Log.e(LC, "heartbeat: " + errMsg);
+                    req.complete(Optional.of(errMsg));
                 }
         ));
         return req;
@@ -235,7 +236,7 @@ public class SubsonicAPIClient extends APIClient {
                         ret,
                         query,
                         "",
-                        error.getMessage(),
+                        HTTPRequestQueue.getHTTPErrorMessage(error),
                         metaList,
                         null,
                         null,
@@ -341,7 +342,7 @@ public class SubsonicAPIClient extends APIClient {
                             ret,
                             query,
                             musicFolder,
-                            error.getMessage(),
+                            HTTPRequestQueue.getHTTPErrorMessage(error),
                             metaList,
                             null,
                             null,
@@ -540,7 +541,7 @@ public class SubsonicAPIClient extends APIClient {
                             ret,
                             query,
                             musicFolder,
-                            error.getMessage(),
+                            HTTPRequestQueue.getHTTPErrorMessage(error),
                             metaList,
                             null,
                             null,
@@ -625,7 +626,7 @@ public class SubsonicAPIClient extends APIClient {
                             ret,
                             query,
                             null,
-                            error.getMessage(),
+                            HTTPRequestQueue.getHTTPErrorMessage(error),
                             null,
                             playlists,
                             null,
@@ -683,7 +684,7 @@ public class SubsonicAPIClient extends APIClient {
                             ret,
                             query,
                             null,
-                            error.getMessage(),
+                            HTTPRequestQueue.getHTTPErrorMessage(error),
                             null,
                             null,
                             entries,

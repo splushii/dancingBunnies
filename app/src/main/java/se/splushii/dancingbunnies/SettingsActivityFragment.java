@@ -14,6 +14,8 @@ import com.mikepenz.aboutlibraries.LibsBuilder;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -40,6 +42,7 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
     private Preference subsonicPref;
     private Preference subsonicScheduledRefreshPref;
     private Preference subsonicRefreshPref;
+    private CompletableFuture<Optional<String>> currentSubsonicHeartbeat;
 
     public SettingsActivityFragment() {
     }
@@ -242,6 +245,10 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
     }
 
     private void heartbeatSubsonic() {
+        if (currentSubsonicHeartbeat != null) {
+            currentSubsonicHeartbeat.complete(Optional.of("interrupted"));
+        }
+        subsonicPref.setSummary("Testing connection...");
         APIClient apiClient = APIClient.getAPIClient(
                 requireContext(),
                 MusicLibraryService.API_ID_SUBSONIC
@@ -251,8 +258,8 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
             subsonicPref.setSummary("");
             return;
         }
-        apiClient.heartbeat()
-                .thenAccept(error -> {
+        currentSubsonicHeartbeat = apiClient.heartbeat();
+        currentSubsonicHeartbeat.thenAccept(error -> {
                     if (error.isPresent()) {
                         String errorMsg = error.get();
                         Log.e(LC, "error: " + errorMsg);
