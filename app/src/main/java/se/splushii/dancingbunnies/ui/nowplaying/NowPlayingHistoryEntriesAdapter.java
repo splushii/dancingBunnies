@@ -5,17 +5,14 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.recyclerview.selection.Selection;
-import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -26,7 +23,7 @@ import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
-import se.splushii.dancingbunnies.ui.selection.SelectionRecyclerViewAdapter;
+import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_PLAYLIST;
@@ -38,19 +35,18 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_FROM_HISTORY;
 
 public class NowPlayingHistoryEntriesAdapter extends
-        SelectionRecyclerViewAdapter<PlaybackEntry, NowPlayingHistoryEntriesAdapter.ViewHolder> {
+        SmartDiffSelectionRecyclerViewAdapter
+                <PlaybackEntry, NowPlayingHistoryEntriesAdapter.ViewHolder> {
     private static final String LC = Util.getLogContext(NowPlayingHistoryEntriesAdapter.class);
 
     private final NowPlayingFragment fragment;
 
-    private List<PlaybackEntry> historyEntries;
     private TrackItemActionsView selectedActionView;
     private LiveData<HashSet<EntryID>> cachedEntriesLiveData;
     private LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> fetchStateLiveData;
 
     NowPlayingHistoryEntriesAdapter(NowPlayingFragment fragment) {
         this.fragment = fragment;
-        historyEntries = new ArrayList<>();
         setHasStableIds(true);
         cachedEntriesLiveData = MusicLibraryService.getCachedEntries(fragment.requireContext());
         fetchStateLiveData = AudioStorage.getInstance(fragment.requireContext()).getFetchState();
@@ -61,28 +57,9 @@ public class NowPlayingHistoryEntriesAdapter extends
 
     private void setHistoryEntries(List<PlaybackEntry> entries) {
         Log.d(LC, "setHistoryEntries: "
-                + "curSize: " + historyEntries.size()
+                + "curSize: " + getSize()
                 + " newSize " + entries.size());
-        boolean changed = !historyEntries.equals(entries);
-        if (changed) {
-            historyEntries = entries;
-            notifyDataSetChanged();
-        }
-
-        Util.Diff diff = Util.calculateDiff(historyEntries, entries);
-        if (diff.changed) {
-            if (hasSelection() && !diff.deleted.isEmpty()) {
-                removeSelection(
-                        diff.deleted.stream()
-                                .map(historyEntries::get)
-                                .collect(Collectors.toList())
-                );
-            }
-            historyEntries.clear();
-            historyEntries.addAll(entries);
-            notifyDataSetChanged();
-            recalculateSelection();
-        }
+        setDataSet(entries);
     }
 
     @Override
@@ -91,20 +68,6 @@ public class NowPlayingHistoryEntriesAdapter extends
             selectedActionView.animateShow(false);
             selectedActionView = null;
         }
-    }
-
-    @Override
-    protected PlaybackEntry getKey(int pos) {
-        if (pos < 0 || pos >= historyEntries.size()) {
-            return null;
-        }
-        return historyEntries.get(pos);
-    }
-
-    @Override
-    protected int getPosition(@NonNull PlaybackEntry key) {
-        int index = historyEntries.indexOf(key);
-        return index < 0 ? RecyclerView.NO_POSITION : index;
     }
 
     @Override
@@ -164,21 +127,6 @@ public class NowPlayingHistoryEntriesAdapter extends
         return false;
     }
 
-    @Override
-    protected void moveItemInDataset(int from, int to) {
-        throw new RuntimeException("Not supported");
-    }
-
-    @Override
-    protected void addItemToDataset(int pos, PlaybackEntry item) {
-        throw new RuntimeException("Not supported");
-    }
-
-    @Override
-    protected void removeItemFromDataset(int pos) {
-        throw new RuntimeException("Not supported");
-    }
-
     void hideTrackItemActions() {
         if (selectedActionView != null) {
             selectedActionView.animateShow(false);
@@ -205,21 +153,19 @@ public class NowPlayingHistoryEntriesAdapter extends
                     selectedActionView.animateShow(false);
                 }
                 selectedActionView = actionsView;
-                boolean showActionsView = !hasSelection()
-                        && actionsView.getVisibility() != View.VISIBLE;
-                actionsView.animateShow(showActionsView);
+                actionsView.animateShow(actionsView.getVisibility() != View.VISIBLE);
             });
         }
 
         @Override
         protected PlaybackEntry getSelectionKeyOf() {
-            return historyEntries.get(getPos());
+            return getItem(getPos());
         }
     }
 
     @Override
     public long getItemId(int position) {
-        return historyEntries.get(position).playbackID;
+        return getItem(position).playbackID;
     }
 
     @NonNull
@@ -258,7 +204,7 @@ public class NowPlayingHistoryEntriesAdapter extends
 
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, int position) {
-        PlaybackEntry entry = historyEntries.get(position);
+        PlaybackEntry entry = getItem(position);
         holder.playbackEntry = entry;
         holder.item.setBackgroundResource(position % 2 == 0 ?
                 R.color.background_active_accent : R.color.backgroundalternate_active_accent
@@ -267,10 +213,5 @@ public class NowPlayingHistoryEntriesAdapter extends
         holder.itemContent.setPreloaded(entry.isPreloaded());
         holder.itemContent.setPos(position);
         holder.item.setActivated(isSelected(holder.getKey()));
-    }
-
-    @Override
-    public int getItemCount() {
-        return historyEntries.size();
     }
 }

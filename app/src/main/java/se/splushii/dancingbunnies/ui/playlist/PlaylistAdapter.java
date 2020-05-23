@@ -9,11 +9,9 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.Collection;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -23,7 +21,6 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.recyclerview.selection.Selection;
-import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
@@ -32,57 +29,30 @@ import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
-import se.splushii.dancingbunnies.ui.selection.SelectionRecyclerViewAdapter;
+import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.PLAYLIST_DELETE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_DELETE_MULTIPLE;
 
-public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, PlaylistAdapter.PlaylistHolder> {
+public class PlaylistAdapter extends
+        SmartDiffSelectionRecyclerViewAdapter<Playlist, PlaylistAdapter.PlaylistHolder> {
     private static final String LC = Util.getLogContext(PlaylistAdapter.class);
 
     private final Fragment fragment;
     private final PlaylistStorage playlistStorage;
 
-    private List<Playlist> playlistDataset;
     private Consumer<Playlist> onItemClickListener = p -> {};
     private LiveData<PlaylistID> currentPlaylistEntryLiveData;
 
     public PlaylistAdapter(Fragment fragment) {
         this.fragment = fragment;
-        playlistDataset = new LinkedList<>();
         playlistStorage = PlaylistStorage.getInstance(fragment.getContext());
         setHasStableIds(true);
     }
 
     @Override
-    protected void moveItemInDataset(int from, int to) {
-        playlistDataset.add(to, playlistDataset.remove(from));
-    }
-
-    @Override
-    protected void addItemToDataset(int pos, Playlist item) {
-        playlistDataset.add(pos, item);
-    }
-
-    @Override
-    protected void removeItemFromDataset(int pos) {
-        playlistDataset.remove(pos);
-    }
-
-    @Override
     protected void onSelectionChanged() {}
-
-    @Override
-    protected Playlist getKey(int pos) {
-        return playlistDataset.get(pos);
-    }
-
-    @Override
-    protected int getPosition(@NonNull Playlist playlist) {
-        int index = playlistDataset.indexOf(playlist);
-        return index < 0 ? RecyclerView.NO_POSITION : index;
-    }
 
     @Override
     public void onSelectionDrop(Collection<Playlist> selection,
@@ -160,32 +130,14 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
     }
 
     @Override
-    public int getItemCount() {
-        return playlistDataset.size();
-    }
-
-    @Override
     public long getItemId(int position) {
-        Playlist playlist = playlistDataset.get(position);
+        Playlist playlist = getItem(position);
         return Objects.hash(playlist.api, playlist.id, playlist.type);
     }
 
-    private void setDataSet(List<Playlist> playlists) {
-        Log.d(LC, "playlists: " + playlists);
-        Util.Diff diff = Util.calculateDiff(playlistDataset, playlists);
-        if (diff.changed) {
-            if (hasSelection() && !diff.deleted.isEmpty()) {
-                removeSelection(
-                        diff.deleted.stream()
-                                .map(playlistDataset::get)
-                                .collect(Collectors.toList())
-                );
-            }
-            playlistDataset.clear();
-            playlistDataset.addAll(playlists);
-            notifyDataSetChanged();
-            recalculateSelection();
-        }
+    private void setPlaylists(List<Playlist> playlists) {
+        Log.d(LC, "setPlaylists: " + playlists.size());
+        setDataSet(playlists);
     }
 
     private boolean initialScrolled;
@@ -194,18 +146,18 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
         initialScrolled = false;
         model.getPlaylists(fragment.getContext())
                 .observe(fragment.getViewLifecycleOwner(), entries -> {
-                    setDataSet(playlistFilter.apply(entries));
-                    updateScrollPos(model.getUserStateValue(), entries);
+                    setPlaylists(playlistFilter.apply(entries));
+                    updateScrollPos(model.getUserStateValue(), !entries.isEmpty());
                 });
         model.getUserState().observe(
                 fragment.getViewLifecycleOwner(),
-                userState -> updateScrollPos(userState, playlistDataset)
+                userState -> updateScrollPos(userState, !isEmpty())
         );
         currentPlaylistEntryLiveData = model.getCurrentPlaylistID();
     }
 
-    private void updateScrollPos(PlaylistUserState userState, List<Playlist> entries) {
-        if (!initialScrolled && !entries.isEmpty() && fragment instanceof PlaylistFragment) {
+    private void updateScrollPos(PlaylistUserState userState, boolean hasPlaylists) {
+        if (!initialScrolled && hasPlaylists && fragment instanceof PlaylistFragment) {
             initialScrolled = true;
             ((PlaylistFragment) fragment).scrollPlaylistsTo(
                     userState.playlistPos,
@@ -244,7 +196,7 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
 
         @Override
         protected Playlist getSelectionKeyOf() {
-            return playlistDataset.get(getPos());
+            return getItem(getPos());
         }
 
         void setSourceResourceID(int srcResourceID) {
@@ -366,7 +318,7 @@ public class PlaylistAdapter extends SelectionRecyclerViewAdapter<Playlist, Play
 
     @Override
     public void onBindViewHolder(@NonNull PlaylistHolder holder, int position) {
-        holder.setPlaylist(playlistDataset.get(position));
+        holder.setPlaylist(getItem(position));
         holder.entry.setOnClickListener(view -> {
             if (hasSelection()) {
                 return;

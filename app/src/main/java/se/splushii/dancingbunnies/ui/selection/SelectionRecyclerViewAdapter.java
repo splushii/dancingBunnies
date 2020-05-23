@@ -55,8 +55,10 @@ public abstract class SelectionRecyclerViewAdapter<ID, ViewHolder extends ItemDe
         return removedItemsMap;
     }
 
-    protected void recalculateSelection() {
-        selectionTracker.recalculateSelection();
+    void recalculateSelection() {
+        if (selectionTracker != null) {
+            selectionTracker.recalculateSelection();
+        }
     }
 
     void setSelectionTracker(

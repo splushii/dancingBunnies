@@ -159,7 +159,7 @@ public class DownloadsDialogFragment extends DialogFragment {
         AudioStorage.getInstance(requireContext())
                 .getDownloads()
                 .observe(getViewLifecycleOwner(), downloads -> {
-                    recyclerViewAdapter.setDataset(downloads);
+                    recyclerViewAdapter.setDownloads(downloads);
                     downloadsEmptyView.setVisibility(downloads.isEmpty() ? View.VISIBLE : View.GONE);
                     contentView.setVisibility(downloads.isEmpty() ? View.GONE : View.VISIBLE);
                 });

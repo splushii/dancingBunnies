@@ -8,14 +8,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
-import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.recyclerview.selection.Selection;
-import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -27,8 +24,7 @@ import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
-import se.splushii.dancingbunnies.ui.selection.SelectionRecyclerViewAdapter;
-import se.splushii.dancingbunnies.util.Util;
+import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 
 import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.PLAYLIST_ENTRY_DELETE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_PLAYLIST;
@@ -40,14 +36,12 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_FROM_PLAYLIST;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SET_CURRENT_PLAYLIST;
 
-public class PlaylistPlaybackEntriesAdapter
-        extends
-        SelectionRecyclerViewAdapter<PlaybackEntry, PlaylistPlaybackEntriesAdapter.ViewHolder> {
-    private static final String LC = Util.getLogContext(PlaylistPlaybackEntriesAdapter.class);
-
+public class PlaylistPlaybackEntriesAdapter extends
+        SmartDiffSelectionRecyclerViewAdapter
+                <PlaybackEntry, PlaylistPlaybackEntriesAdapter.ViewHolder>
+{
     private final PlaylistFragment fragment;
 
-    private List<PlaybackEntry> entries;
     private TrackItemActionsView selectedActionView;
     private LiveData<HashSet<EntryID>> cachedEntriesLiveData;
     private LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> fetchStateLiveData;
@@ -60,7 +54,6 @@ public class PlaylistPlaybackEntriesAdapter
 
     PlaylistPlaybackEntriesAdapter(PlaylistFragment fragment) {
         this.fragment = fragment;
-        entries = new ArrayList<>();
         setHasStableIds(true);
     }
 
@@ -74,7 +67,7 @@ public class PlaylistPlaybackEntriesAdapter
         PlaybackControllerStorage.getInstance(fragment.getContext())
                 .getCurrentPlaylistPlaybackEntries()
                 .observe(fragment.getViewLifecycleOwner(), entries -> {
-                    setEntries(entries);
+                    setDataSet(entries);
                     updateScrollPos(model);
                 });
         browsedPlaylistIDLiveData = new MutableLiveData<>();
@@ -84,35 +77,18 @@ public class PlaylistPlaybackEntriesAdapter
         });
     }
 
-    private void setEntries(List<PlaybackEntry> entries) {
-        Util.Diff diff = Util.calculateDiff(this.entries, entries);
-        if (diff.changed) {
-            if (hasSelection() && !diff.deleted.isEmpty()) {
-                removeSelection(
-                        diff.deleted.stream()
-                                .map(this.entries::get)
-                                .collect(Collectors.toList())
-                );
-            }
-            this.entries.clear();
-            this.entries.addAll(entries);
-            notifyDataSetChanged();
-            recalculateSelection();
-        }
-    }
-
     private void updateScrollPos(PlaylistFragmentModel model) {
         PlaylistUserState userState = model.getUserStateValue();
         if (userState.scrollPlaylistPlaybackToPlaylistPos) {
             model.unsetScrollPlaylistPlaybackToPlaylistPos();
-            for (int i = 0; i < entries.size(); i++) {
-                PlaybackEntry entry = entries.get(i);
+            for (int i = 0; i < getSize(); i++) {
+                PlaybackEntry entry = getItem(i);
                 if (entry.playlistPos == userState.playlistPlaybackEntriesPos) {
                     fragment.scrollPlaylistPlaybackEntriesTo(i, 0);
                     break;
                 }
             }
-        } else if (!initialScrolled && !entries.isEmpty()) {
+        } else if (!initialScrolled && !isEmpty()) {
             initialScrolled = true;
             fragment.scrollPlaylistPlaybackEntriesTo(
                     userState.playlistPlaybackEntriesPos,
@@ -127,20 +103,6 @@ public class PlaylistPlaybackEntriesAdapter
             selectedActionView.animateShow(false);
             selectedActionView = null;
         }
-    }
-
-    @Override
-    protected PlaybackEntry getKey(int pos) {
-        if (pos < 0 || pos >= entries.size()) {
-            return null;
-        }
-        return entries.get(pos);
-    }
-
-    @Override
-    protected int getPosition(@NonNull PlaybackEntry key) {
-        int index = entries.indexOf(key);
-        return index < 0 ? RecyclerView.NO_POSITION : index;
     }
 
     @Override
@@ -211,21 +173,6 @@ public class PlaylistPlaybackEntriesAdapter
         return true;
     }
 
-    @Override
-    protected void moveItemInDataset(int from, int to) {
-        entries.add(to, entries.remove(from));
-    }
-
-    @Override
-    protected void addItemToDataset(int pos, PlaybackEntry item) {
-        entries.add(pos, item);
-    }
-
-    @Override
-    protected void removeItemFromDataset(int pos) {
-        entries.remove(pos);
-    }
-
     void hideTrackItemActions() {
         if (selectedActionView != null) {
             selectedActionView.animateShow(false);
@@ -252,15 +199,13 @@ public class PlaylistPlaybackEntriesAdapter
                     selectedActionView.animateShow(false);
                 }
                 selectedActionView = actionsView;
-                boolean showActionsView = !hasSelection()
-                        && actionsView.getVisibility() != View.VISIBLE;
-                actionsView.animateShow(showActionsView);
+                actionsView.animateShow(actionsView.getVisibility() != View.VISIBLE);
             });
         }
 
         @Override
         protected PlaybackEntry getSelectionKeyOf() {
-            return entries.get(getPos());
+            return getItem(getPos());
         }
 
         void updateHighlight(PlaylistID browsedPlaylistID,
@@ -282,7 +227,7 @@ public class PlaylistPlaybackEntriesAdapter
 
     @Override
     public long getItemId(int position) {
-        return entries.get(position).playbackID;
+        return getItem(position).playbackID;
     }
 
     @NonNull
@@ -348,7 +293,7 @@ public class PlaylistPlaybackEntriesAdapter
         holder.item.setBackgroundResource(position % 2 == 0 ?
                 R.color.background_active_accent : R.color.backgroundalternate_active_accent
         );
-        PlaybackEntry entry = entries.get(position);
+        PlaybackEntry entry = getItem(position);
         holder.playbackEntry = entry;
         holder.itemContent.setEntryID(entry.entryID);
         holder.itemContent.setDragHandleListener(() -> startDrag(holder));
@@ -391,10 +336,5 @@ public class PlaylistPlaybackEntriesAdapter
         if (isDragViewHolder(holder)) {
             onUseViewHolderForDrag(holder, getSelection());
         }
-    }
-
-    @Override
-    public int getItemCount() {
-        return entries.size();
     }
 }

@@ -41,9 +41,6 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.recyclerview.selection.MutableSelection;
-import androidx.recyclerview.selection.SelectionPredicates;
-import androidx.recyclerview.selection.SelectionTracker;
 import androidx.recyclerview.selection.StorageStrategy;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -68,7 +65,6 @@ import se.splushii.dancingbunnies.ui.AddToNewPlaylistDialogFragment;
 import se.splushii.dancingbunnies.ui.EntryTypeSelectionDialogFragment;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.FastScrollerBubble;
-import se.splushii.dancingbunnies.ui.selection.LibraryEntryItemDetailsLookup;
 import se.splushii.dancingbunnies.ui.selection.RecyclerViewActionModeSelectionTracker;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -124,10 +120,11 @@ public class MusicLibraryFragment
     private RecyclerView browseRecyclerView;
     private MusicLibraryAdapter browseRecyclerViewAdapter;
     private LinearLayoutManager browseRecyclerViewLayoutManager;
+    private RecyclerViewActionModeSelectionTracker
+            <LibraryEntry, MusicLibraryAdapter.SongViewHolder, MusicLibraryAdapter>
+            browseSelectionTracker;
     private FastScroller browseFastScroller;
     private FastScrollerBubble browseFastScrollerBubble;
-    private SelectionTracker<LibraryEntry> browseSelectionTracker;
-    private ActionMode browseActionMode;
 
     private LinearLayout searchView;
     private EditText searchQueryEdit;
@@ -255,7 +252,6 @@ public class MusicLibraryFragment
                     @Override
                     public void onDestroyActionMode(ActionMode actionMode) {
                         browseSelectionTracker.clearSelection();
-                        MusicLibraryFragment.this.browseActionMode = null;
                     }
                 }
         );
@@ -273,29 +269,10 @@ public class MusicLibraryFragment
                 },
                 new int[0]
         );
-        browseSelectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
-            @Override
-            public void onItemStateChanged(@NonNull Object key, boolean selected) {}
-
-            @Override
-            public void onSelectionRefresh() {}
-
-            @Override
-            public void onSelectionChanged() {
-                if (browseSelectionTracker.hasSelection() && browseActionMode == null) {
-                    browseActionMode = requireActivity().startActionMode(browseActionModeCallback);
-                }
-                if (!browseSelectionTracker.hasSelection() && browseActionMode != null) {
-                    browseActionMode.finish();
-                }
-                if (browseActionMode != null && browseSelectionTracker.hasSelection()) {
-                    browseActionMode.setTitle(browseSelectionTracker.getSelection().size() + " sel.");
-                }
-            }
-
-            @Override
-            public void onSelectionRestored() {}
-        });
+        browseSelectionTracker.setActionModeCallback(
+                ActionMode.TYPE_PRIMARY,
+                browseActionModeCallback
+        );
 
         model = new ViewModelProvider(requireActivity()).get(MusicLibraryFragmentModel.class);
         model.getUserState().observe(getViewLifecycleOwner(), state -> {
@@ -732,6 +709,9 @@ public class MusicLibraryFragment
         if (browseSelectionTracker != null) {
             browseSelectionTracker.onSaveInstanceState(outState);
         }
+        if (searchSelectionTracker != null) {
+            searchSelectionTracker.onSaveInstanceState(outState);
+        }
     }
 
     @Override
@@ -828,6 +808,14 @@ public class MusicLibraryFragment
 
         browseRecyclerViewAdapter = new MusicLibraryAdapter(this, browseRecyclerView);
         browseRecyclerView.setAdapter(browseRecyclerViewAdapter);
+        browseSelectionTracker = new RecyclerViewActionModeSelectionTracker<>(
+                requireActivity(),
+                MainActivity.SELECTION_ID_MUSICLIBRARY_BROWSE,
+                browseRecyclerView,
+                browseRecyclerViewAdapter,
+                StorageStrategy.createParcelableStorage(LibraryEntry.class),
+                savedInstanceState
+        );
         browseRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
@@ -897,21 +885,6 @@ public class MusicLibraryFragment
         browseHeaderSortedByKeys = rootView.findViewById(R.id.musiclibrary_browse_header_sortedby_keys);
         browseHeaderSortedByOrder = rootView.findViewById(R.id.musiclibrary_browse_header_sortedby_order);
         browseHeaderSortedBy.setOnClickListener(view -> browseHeaderSortedByPopupHelper.show());
-
-
-        browseSelectionTracker = new SelectionTracker.Builder<>(
-                MainActivity.SELECTION_ID_MUSICLIBRARY_BROWSE,
-                browseRecyclerView,
-                new MusicLibraryKeyProvider(browseRecyclerViewAdapter),
-                new LibraryEntryItemDetailsLookup(browseRecyclerView),
-                StorageStrategy.createParcelableStorage(LibraryEntry.class)
-        ).withSelectionPredicate(
-                SelectionPredicates.createSelectAnything()
-        ).build();
-        browseRecyclerViewAdapter.setSelectionTracker(browseSelectionTracker);
-        if (savedInstanceState != null) {
-            browseSelectionTracker.onRestoreInstanceState(savedInstanceState);
-        }
 
         View browseHomeBtn = rootView.findViewById(R.id.musiclibrary_browse_home);
         browseHomeBtn.setOnClickListener(v -> {
@@ -1136,11 +1109,9 @@ public class MusicLibraryFragment
     }
 
     private ArrayList<MusicLibraryQueryNode> getSelectedQueryTrees() {
-        MutableSelection<LibraryEntry> selection = new MutableSelection<>();
-        browseSelectionTracker.copySelection(selection);
         ArrayList<MusicLibraryQueryNode> queryTrees = new ArrayList<>();
         List<String> sortedByKeys = querySortedByKeys();
-        selection.forEach(libraryEntry -> {
+        browseSelectionTracker.getSelection().forEach(libraryEntry -> {
             MusicLibraryQuery query = getCurrentQuery();
             query.andEntryIDToQuery(libraryEntry.entryID);
             query.andSortedByValuesToQuery(sortedByKeys, libraryEntry.sortedByValues());

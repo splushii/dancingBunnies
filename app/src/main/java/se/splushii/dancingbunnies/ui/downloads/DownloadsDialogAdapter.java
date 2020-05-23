@@ -9,12 +9,10 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.recyclerview.selection.Selection;
-import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -25,25 +23,23 @@ import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
-import se.splushii.dancingbunnies.ui.selection.SelectionRecyclerViewAdapter;
+import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_INFO;
 
 public class DownloadsDialogAdapter extends
-        SelectionRecyclerViewAdapter<DownloadEntry, DownloadsDialogAdapter.ViewHolder> {
+        SmartDiffSelectionRecyclerViewAdapter<DownloadEntry, DownloadsDialogAdapter.ViewHolder> {
     private static final String LC = Util.getLogContext(DownloadsDialogAdapter.class);
 
     private final DownloadsDialogFragment fragment;
-    private final List<DownloadEntry> dataset;
     private TrackItemActionsView selectedActionView;
     private LiveData<HashSet<EntryID>> cachedEntriesLiveData;
     private LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> fetchStateLiveData;
 
     DownloadsDialogAdapter(DownloadsDialogFragment fragment) {
         this.fragment = fragment;
-        dataset = new ArrayList<>();
         cachedEntriesLiveData = MusicLibraryService.getCachedEntries(fragment.getContext());
         fetchStateLiveData = AudioStorage.getInstance(fragment.getContext()).getFetchState();
         setHasStableIds(true);
@@ -69,7 +65,7 @@ public class DownloadsDialogAdapter extends
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        DownloadEntry downloadEntry = dataset.get(position);
+        DownloadEntry downloadEntry = getItem(position);
         EntryID entryID = downloadEntry.entryID;
         holder.item.setBackgroundResource(
                 position % 2 == 0
@@ -102,44 +98,17 @@ public class DownloadsDialogAdapter extends
         }
     }
 
-    @Override
-    public int getItemCount() {
-        return dataset.size();
-    }
-
-    void setDataset(List<DownloadEntry> downloads) {
-        Util.Diff diff = Util.calculateDiff(dataset, downloads);
-        if (diff.changed) {
-            if (hasSelection()) {
-                removeSelection(diff.deleted.stream().map(dataset::get).collect(Collectors.toList()));
-            }
-            dataset.clear();
-            dataset.addAll(downloads);
-            notifyDataSetChanged();
-            recalculateSelection();
-        }
+    void setDownloads(List<DownloadEntry> downloads) {
+        setDataSet(downloads);
     }
 
     void clearAll() {
-        for (DownloadEntry downloadEntry: dataset) {
-            AudioStorage.getInstance(fragment.requireContext())
-                    .deleteAudioData(fragment.requireContext(), downloadEntry.entryID);
-        }
-    }
-
-    @Override
-    protected void moveItemInDataset(int from, int to) {
-        dataset.add(to, dataset.remove(from));
-    }
-
-    @Override
-    protected void addItemToDataset(int pos, DownloadEntry item) {
-        dataset.add(pos, item);
-    }
-
-    @Override
-    protected void removeItemFromDataset(int pos) {
-        dataset.remove(pos);
+        forEachItem(downloadEntry ->
+                AudioStorage.getInstance(fragment.requireContext()).deleteAudioData(
+                        fragment.requireContext(),
+                        downloadEntry.entryID
+                )
+        );
     }
 
     @Override
@@ -148,20 +117,6 @@ public class DownloadsDialogAdapter extends
             selectedActionView.animateShow(false);
             selectedActionView = null;
         }
-    }
-
-    @Override
-    protected DownloadEntry getKey(int pos) {
-        if (pos < 0 || pos >= dataset.size()) {
-            return null;
-        }
-        return dataset.get(pos);
-    }
-
-    @Override
-    protected int getPosition(@NonNull DownloadEntry key) {
-        int index = dataset.indexOf(key);
-        return index < 0 ? RecyclerView.NO_POSITION : index;
     }
 
     @Override
@@ -245,20 +200,18 @@ public class DownloadsDialogAdapter extends
                     selectedActionView.animateShow(false);
                 }
                 selectedActionView = actionsView;
-                boolean showActionsView = !hasSelection()
-                        && actionsView.getVisibility() != View.VISIBLE;
-                actionsView.animateShow(showActionsView);
+                actionsView.animateShow(actionsView.getVisibility() != View.VISIBLE);
             });
         }
 
         @Override
         protected DownloadEntry getSelectionKeyOf() {
-            return dataset.get(getPos());
+            return getItem(getPos());
         }
     }
 
     @Override
     public long getItemId(int position) {
-        return dataset.get(position).hashCode();
+        return getItem(position).hashCode();
     }
 }

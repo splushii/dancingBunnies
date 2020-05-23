@@ -9,7 +9,6 @@ import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.TextView;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -17,7 +16,6 @@ import androidx.annotation.NonNull;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.recyclerview.selection.Selection;
-import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
@@ -26,34 +24,28 @@ import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.MenuActions;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
-import se.splushii.dancingbunnies.ui.selection.SelectionRecyclerViewAdapter;
+import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MetaDialogFragmentAdapter extends
-        SelectionRecyclerViewAdapter<MetaTag, MetaDialogFragmentAdapter.ViewHolder> {
+        SmartDiffSelectionRecyclerViewAdapter<MetaTag, MetaDialogFragmentAdapter.ViewHolder> {
     private static final String LC = Util.getLogContext(MetaDialogFragmentAdapter.class);
 
     private final MetaDialogFragment fragment;
 
-    private List<MetaTag> tagEntries;
     private TrackItemActionsView selectedActionView;
     private ViewHolder currentEditViewHolder;
 
     MetaDialogFragmentAdapter(MetaDialogFragment fragment) {
         this.fragment = fragment;
-        tagEntries = new ArrayList<>();
         setHasStableIds(true);
     }
 
     void setTagEntries(List<MetaTag> entries) {
         Log.d(LC, "setTagEntries: "
-                + "curSize: " + tagEntries.size()
+                + "curSize: " + getSize()
                 + " newSize " + entries.size());
-        boolean changed = !tagEntries.equals(entries);
-        if (changed) {
-            tagEntries = entries;
-            notifyDataSetChanged();
-        }
+        setDataSet(entries);
     }
 
     @Override
@@ -62,20 +54,6 @@ public class MetaDialogFragmentAdapter extends
             hideTrackItemActions();
             disableCurrentEdit();
         }
-    }
-
-    @Override
-    protected MetaTag getKey(int pos) {
-        if (pos < 0 || pos >= tagEntries.size()) {
-            return null;
-        }
-        return tagEntries.get(pos);
-    }
-
-    @Override
-    protected int getPosition(@NonNull MetaTag key) {
-        int index = tagEntries.indexOf(key);
-        return index < 0 ? RecyclerView.NO_POSITION : index;
     }
 
     @Override
@@ -137,21 +115,6 @@ public class MetaDialogFragmentAdapter extends
         return false;
     }
 
-    @Override
-    protected void moveItemInDataset(int from, int to) {
-        throw new RuntimeException("Not supported");
-    }
-
-    @Override
-    protected void addItemToDataset(int pos, MetaTag item) {
-        throw new RuntimeException("Not supported");
-    }
-
-    @Override
-    protected void removeItemFromDataset(int pos) {
-        throw new RuntimeException("Not supported");
-    }
-
     boolean hideTrackItemActions() {
         if (selectedActionView != null) {
             selectedActionView.animateShow(false);
@@ -197,9 +160,7 @@ public class MetaDialogFragmentAdapter extends
                 disableCurrentEdit();
                 fragment.clearFocus();
                 selectedActionView = actionsView;
-                boolean showActionsView = !hasSelection()
-                        && actionsView.getVisibility() != View.VISIBLE;
-                actionsView.animateShow(showActionsView);
+                actionsView.animateShow(actionsView.getVisibility() != View.VISIBLE);
             });
             editValueEditText.setOnEditorActionListener((textView, actionId, keyEvent) -> {
                 if (actionId == EditorInfo.IME_ACTION_DONE) {
@@ -239,7 +200,7 @@ public class MetaDialogFragmentAdapter extends
 
         @Override
         protected MetaTag getSelectionKeyOf() {
-            return tagEntries.get(getPos());
+            return getItem(getPos());
         }
 
         void setTag(MetaTag tag) {
@@ -330,7 +291,7 @@ public class MetaDialogFragmentAdapter extends
 
     @Override
     public long getItemId(int position) {
-        return tagEntries.get(position).hashCode();
+        return getItem(position).hashCode();
     }
 
     @NonNull
@@ -348,14 +309,9 @@ public class MetaDialogFragmentAdapter extends
 
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, int position) {
-        MetaTag metaTag = tagEntries.get(position);
+        MetaTag metaTag = getItem(position);
         holder.setTag(metaTag);
         holder.item.setActivated(isSelected(holder.getKey()));
-    }
-
-    @Override
-    public int getItemCount() {
-        return tagEntries.size();
     }
 
     boolean clearFocus() {

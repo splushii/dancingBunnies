@@ -8,16 +8,13 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.recyclerview.selection.Selection;
-import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -30,7 +27,7 @@ import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
-import se.splushii.dancingbunnies.ui.selection.SelectionRecyclerViewAdapter;
+import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.PLAYLIST_ENTRY_DELETE;
@@ -50,13 +47,14 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_FROM_PLAYL
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_MULTIPLE_FROM_PLAYLIST;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SET_CURRENT_PLAYLIST;
 
-public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<PlaylistEntry, PlaylistEntriesAdapter.PlaylistEntryHolder> {
+public class PlaylistEntriesAdapter extends
+        SmartDiffSelectionRecyclerViewAdapter
+                <PlaylistEntry, PlaylistEntriesAdapter.PlaylistEntryHolder> {
     private static final String LC = Util.getLogContext(PlaylistEntriesAdapter.class);
     private final PlaylistFragment fragment;
     private final PlaylistStorage playlistStorage;
 
     private PlaylistID playlistID;
-    private List<PlaylistEntry> playlistEntriesDataset;
     private TrackItemActionsView selectedActionView;
     private LiveData<HashSet<EntryID>> cachedEntriesLiveData;
     private LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> fetchStateLiveData;
@@ -67,7 +65,6 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
 
     PlaylistEntriesAdapter(PlaylistFragment playlistFragment) {
         fragment = playlistFragment;
-        playlistEntriesDataset = new LinkedList<>();
         playlistStorage = PlaylistStorage.getInstance(fragment.getContext());
         setHasStableIds(true);
     }
@@ -78,20 +75,6 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
             selectedActionView.animateShow(false);
             selectedActionView = null;
         }
-    }
-
-    @Override
-    protected PlaylistEntry getKey(int pos) {
-        if (pos < 0 || pos >= playlistEntriesDataset.size()) {
-            return null;
-        }
-        return playlistEntriesDataset.get(pos);
-    }
-
-    @Override
-    protected int getPosition(@NonNull PlaylistEntry key) {
-        int index = playlistEntriesDataset.indexOf(key);
-        return index < 0 ? RecyclerView.NO_POSITION : index;
     }
 
     @Override
@@ -180,21 +163,6 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         return true;
     }
 
-    @Override
-    protected void moveItemInDataset(int from, int to) {
-        playlistEntriesDataset.add(to, playlistEntriesDataset.remove(from));
-    }
-
-    @Override
-    protected void addItemToDataset(int pos, PlaylistEntry item) {
-        playlistEntriesDataset.add(pos, item);
-    }
-
-    @Override
-    protected void removeItemFromDataset(int pos) {
-        playlistEntriesDataset.remove(pos);
-    }
-
     @NonNull
     @Override
     public PlaylistEntryHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -246,7 +214,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         holder.entry.setBackgroundResource(position % 2 == 0 ?
                 R.color.background_active_accent : R.color.backgroundalternate_active_accent
         );
-        PlaylistEntry playlistEntry = playlistEntriesDataset.get(position);
+        PlaylistEntry playlistEntry = getItem(position);
         holder.playlistEntry = playlistEntry;
         EntryID entryID = EntryID.from(playlistEntry);
         holder.itemContent.setEntryID(entryID);
@@ -288,27 +256,9 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
         }
     }
 
-    @Override
-    public int getItemCount() {
-        return playlistEntriesDataset.size();
-    }
-
     private void setDataSet(PlaylistID playlistID, List<PlaylistEntry> entries) {
         this.playlistID = playlistID;
-        Util.Diff diff = Util.calculateDiff(playlistEntriesDataset, entries);
-        if (diff.changed) {
-            if (hasSelection() && !diff.deleted.isEmpty()) {
-                removeSelection(
-                        diff.deleted.stream()
-                                .map(playlistEntriesDataset::get)
-                                .collect(Collectors.toList())
-                );
-            }
-            this.playlistEntriesDataset.clear();
-            this.playlistEntriesDataset.addAll(entries);
-            notifyDataSetChanged();
-            recalculateSelection();
-        }
+        setDataSet(entries);
     }
 
     void setModel(PlaylistFragmentModel model) {
@@ -346,7 +296,7 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
 
     @Override
     public long getItemId(int position) {
-        return playlistEntriesDataset.get(position).rowId;
+        return getItem(position).rowId;
     }
 
     void hideTrackItemActions() {
@@ -376,15 +326,13 @@ public class PlaylistEntriesAdapter extends SelectionRecyclerViewAdapter<Playlis
                     selectedActionView.animateShow(false);
                 }
                 selectedActionView = actionsView;
-                boolean showActionsView = !hasSelection()
-                        && actionsView.getVisibility() != View.VISIBLE;
-                actionsView.animateShow(showActionsView);
+                actionsView.animateShow(actionsView.getVisibility() != View.VISIBLE);
             });
         }
 
         @Override
         protected PlaylistEntry getSelectionKeyOf() {
-            return playlistEntriesDataset.get(getPos());
+            return getItem(getPos());
         }
 
         void updateHighlight(PlaybackEntry currentEntry,

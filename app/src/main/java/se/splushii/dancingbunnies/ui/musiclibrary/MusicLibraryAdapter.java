@@ -7,18 +7,17 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
-import androidx.recyclerview.selection.ItemDetailsLookup;
-import androidx.recyclerview.selection.SelectionTracker;
+import androidx.recyclerview.selection.Selection;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -26,8 +25,11 @@ import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
 import se.splushii.dancingbunnies.storage.MetaStorage;
+import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.FastScrollerBubble;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
+import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
+import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_PLAYLIST;
@@ -37,23 +39,22 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_INFO;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY;
 
-public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapter.SongViewHolder> {
+public class MusicLibraryAdapter extends
+        SmartDiffSelectionRecyclerViewAdapter<LibraryEntry, MusicLibraryAdapter.SongViewHolder> {
     private static final String LC = Util.getLogContext(MusicLibraryAdapter.class);
+
     private final MusicLibraryFragment fragment;
     private final RecyclerView recyclerView;
     private SongViewHolder currentFastScrollerHolder;
-    private List<LibraryEntry> dataset;
     private TrackItemActionsView selectedActionView;
-    private SelectionTracker<LibraryEntry> selectionTracker;
     private boolean initialScrolled;
 
     MusicLibraryAdapter(MusicLibraryFragment fragment, RecyclerView recyclerView) {
-        this.dataset = new ArrayList<>();
         this.fragment = fragment;
         this.recyclerView = recyclerView;
     }
 
-    public void setFastScrollerBubble(FastScrollerBubble fastScrollerBubble) {
+    void setFastScrollerBubble(FastScrollerBubble fastScrollerBubble) {
         fastScrollerBubble.setUpdateCallback(pos -> {
             currentFastScrollerHolder =
                     (SongViewHolder) recyclerView.findViewHolderForLayoutPosition(pos);
@@ -81,20 +82,20 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
 
     void setModel(MusicLibraryFragmentModel model) {
         initialScrolled = false;
-        model.getDataSet().observe(fragment.getViewLifecycleOwner(), dataset -> {
+        model.getLibraryEntries().observe(fragment.getViewLifecycleOwner(), libraryEntries -> {
             MusicLibraryUserState state = model.getUserState().getValue();
-            if (state.query.isSearchQuery()) {
-                setDataset(new ArrayList<>());
+            if (state.query.isSearchQuery() || libraryEntries.isEmpty()) {
+                setLibraryEntries(new ArrayList<>());
             } else {
                 if (fragment.showAllEntriesRow()) {
-                    dataset.add(
+                    libraryEntries.add(
                             0,
                             new LibraryEntry(EntryID.UNKOWN, "All entries...", null)
                     );
                 }
-                setDataset(dataset);
+                setLibraryEntries(libraryEntries);
             }
-            updateScrollPos(state, dataset);
+            updateScrollPos(state, libraryEntries);
         });
     }
 
@@ -105,18 +106,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         }
     }
 
-    void setSelectionTracker(SelectionTracker<LibraryEntry> selectionTracker) {
-        this.selectionTracker = selectionTracker;
-        selectionTracker.addObserver(new SelectionTracker.SelectionObserver() {
-            @Override
-            public void onSelectionChanged() {
-                if (selectionTracker.hasSelection()) {
-                    hideTrackItemActions();
-                }
-            }
-        });
-    }
-
     void hideTrackItemActions() {
         if (selectedActionView != null) {
             selectedActionView.animateShow(false);
@@ -124,7 +113,68 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         }
     }
 
-    public class SongViewHolder extends RecyclerView.ViewHolder {
+    @Override
+    protected void onSelectionChanged() {
+        if (hasSelection() && selectedActionView != null) {
+            selectedActionView.animateShow(false);
+            selectedActionView = null;
+        }
+    }
+
+    @Override
+    public void onSelectionDrop(Collection<LibraryEntry> selection, int targetPos, LibraryEntry idAfterTargetPos) {
+        throw new RuntimeException("Not supported");
+    }
+
+    @Override
+    public void onUseViewHolderForDrag(SongViewHolder dragViewHolder, Collection<LibraryEntry> selection) {
+        throw new RuntimeException("Not supported");
+    }
+
+    @Override
+    public void onResetDragViewHolder(SongViewHolder dragViewHolder) {
+        throw new RuntimeException("Not supported");
+    }
+
+    @Override
+    public void onActionModeStarted(ActionModeCallback actionModeCallback, Selection<LibraryEntry> selection) {
+        updateActionModeView(actionModeCallback, selection);
+    }
+
+    @Override
+    public void onActionModeSelectionChanged(ActionModeCallback actionModeCallback, Selection<LibraryEntry> selection) {
+        updateActionModeView(actionModeCallback, selection);
+    }
+
+    private void updateActionModeView(ActionModeCallback actionModeCallback,
+                                      Selection<LibraryEntry> selection) {
+        actionModeCallback.getActionMode().setTitle(selection.size() + " entries");
+    }
+
+    @Override
+    public void onActionModeEnding(ActionModeCallback actionModeCallback) {}
+
+    @Override
+    public boolean validSelect(LibraryEntry key) {
+        return true;
+    }
+
+    @Override
+    public boolean validMove(SongViewHolder current, SongViewHolder target) {
+        return false;
+    }
+
+    @Override
+    public boolean validDrag(SongViewHolder viewHolder) {
+        return false;
+    }
+
+    @Override
+    public boolean validDrag(Selection<LibraryEntry> selection) {
+        return false;
+    }
+
+    public class SongViewHolder extends ItemDetailsViewHolder<LibraryEntry> {
         private final View libraryEntry;
         private final TextView libraryEntryShow;
         private final LinearLayout libraryEntrySortedBy;
@@ -135,20 +185,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         private MutableLiveData<EntryID> entryIDLiveData;
         private LibraryEntry entry;
         private boolean browsable = false;
-
-        private final ItemDetailsLookup.ItemDetails<LibraryEntry> itemDetails =
-                new ItemDetailsLookup.ItemDetails<LibraryEntry>() {
-            @Override
-            public int getPosition() {
-                return getAdapterPosition();
-            }
-
-            @Nullable
-            @Override
-            public LibraryEntry getSelectionKey() {
-                return entry;
-            }
-        };
 
         SongViewHolder(View view) {
             super(view);
@@ -161,21 +197,16 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
             actionsView = view.findViewById(R.id.library_entry_actions);
         }
 
-        public ItemDetailsLookup.ItemDetails<LibraryEntry> getItemDetails() {
-            return itemDetails;
-        }
-
-        void setShowValue(List<String> showMeta) {
-            if (showMeta != null) {
-                libraryEntryShow.setText(getShowDisplayValue(Meta.getAsString(showMeta)));
-            }
+        @Override
+        protected LibraryEntry getSelectionKeyOf() {
+            return entry;
         }
 
         void update(LibraryEntry libraryEntry, boolean browsable) {
             entry = libraryEntry;
             this.browsable = browsable;
             fragment.addSortedByColumns(libraryEntrySortedBy, libraryEntrySortedByKeys, entry.sortedByValues(), false);
-            libraryEntryShow.setText(fragment.isSearchQuery() ? "" : getShowDisplayValue(entry.name()));
+            libraryEntryShow.setText(getShowDisplayValue(entry.name()));
             libraryEntryNum.setVisibility(browsable ? View.VISIBLE : View.GONE);
             entryIDLiveData.setValue(libraryEntry.entryID);
         }
@@ -194,19 +225,11 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
     @Override
     public SongViewHolder onCreateViewHolder(@NonNull ViewGroup parent,
                                              int viewType) {
-        View v = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.musiclibrary_item, parent, false);
-        SongViewHolder holder = new SongViewHolder(v);
-        LiveData<List<String>> titleMetaLiveData = Transformations.switchMap(holder.entryIDLiveData, entryID -> {
-            if (!fragment.isSearchQuery()) {
-                MutableLiveData<List<String>> nullMeta = new MutableLiveData<>();
-                nullMeta.setValue(null);
-                return nullMeta;
-            }
-            return MetaStorage.getInstance(fragment.requireContext())
-                    .getMetaString(entryID, Meta.FIELD_TITLE);
-        });
-        titleMetaLiveData.observe(fragment.getViewLifecycleOwner(), holder::setShowValue);
+        SongViewHolder holder = new SongViewHolder(
+                LayoutInflater.from(parent.getContext())
+                        .inflate(R.layout.musiclibrary_item, parent, false)
+        );
+
         holder.numSubEntriesLiveData = Transformations.switchMap(holder.entryIDLiveData, e -> {
             if (!holder.isBrowsable()) {
                 MutableLiveData<Integer> ret = new MutableLiveData<>();
@@ -223,9 +246,10 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         holder.numSubEntriesLiveData.observe(fragment.getViewLifecycleOwner(), numSubEntries ->
                 holder.libraryEntryNum.setText(String.valueOf(numSubEntries))
         );
+
         holder.actionsView.setAudioBrowser(fragment.getRemote());
         holder.actionsView.setFragmentManager(fragment.requireActivity().getSupportFragmentManager());
-        holder.actionsView.setEntryIDSupplier(() -> holder.entry.entryID);
+        holder.actionsView.setEntryIDSupplier(() -> holder.entryIDLiveData.getValue());
         holder.actionsView.setActions(
                 new int[] {
                         ACTION_ADD_TO_QUEUE,
@@ -262,15 +286,13 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         holder.libraryEntry.setBackgroundResource(position % 2 == 0 ?
                 R.color.background_active_accent : R.color.backgroundalternate_active_accent
         );
-        LibraryEntry libraryEntry = dataset.get(position);
+        LibraryEntry libraryEntry = getItem(position);
         final boolean browsable = libraryEntry.isBrowsable();
         holder.libraryEntryNum.setText("");
         holder.update(libraryEntry, browsable);
-        boolean selected = selectionTracker != null
-                && selectionTracker.isSelected(holder.getItemDetails().getSelectionKey());
-        holder.libraryEntry.setActivated(selected);
+        holder.libraryEntry.setActivated(isSelected(holder.getKey()));
         holder.libraryEntry.setOnClickListener(view -> {
-            if (selectionTracker.hasSelection()) {
+            if (hasSelection()) {
                 return;
             }
             if (browsable) {
@@ -295,18 +317,13 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
                 fragment.setQuery(query);
             } else {
                 fragment.clearFocus();
-                if (selectedActionView != holder.actionsView) {
-                    hideTrackItemActions();
-                }
                 selectedActionView = holder.actionsView;
-                boolean showActionsView = !selectionTracker.hasSelection()
-                        && holder.actionsView.getVisibility() != View.VISIBLE;
-                holder.actionsView.animateShow(showActionsView);
+                holder.actionsView.animateShow(holder.actionsView.getVisibility() != View.VISIBLE);
             }
         });
     }
 
-    private void setDataset(List<LibraryEntry> items) {
+    private void setLibraryEntries(List<LibraryEntry> items) {
         String showKey = fragment.getCurrentQuery().getShowField();
         List<LibraryEntry> newItems;
         if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(showKey)) {
@@ -338,30 +355,6 @@ public class MusicLibraryAdapter extends RecyclerView.Adapter<MusicLibraryAdapte
         } else {
             newItems = items;
         }
-        boolean changed = !dataset.equals(newItems);
-        if (changed) {
-            this.dataset = newItems;
-            notifyDataSetChanged();
-        }
-    }
-
-    LibraryEntry getEntryId(int position) {
-        return dataset.get(position);
-    }
-
-    int getEntryIdPosition(@NonNull LibraryEntry libraryEntry) {
-        int index = 0;
-        for (LibraryEntry l: dataset) {
-            if (libraryEntry.equals(l)) {
-                return index;
-            }
-            index++;
-        }
-        return RecyclerView.NO_POSITION;
-    }
-
-    @Override
-    public int getItemCount() {
-        return dataset.size();
+        setDataSet(newItems);
     }
 }

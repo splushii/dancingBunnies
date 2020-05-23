@@ -87,6 +87,9 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
         if (sortedByValues == null && e.sortedByValues != null) {
             return false;
         }
+        if (EntryID.UNKOWN.equals(entryID) || EntryID.UNKOWN.equals(e.entryID)) {
+            return false;
+        }
         return this.entryID.equals(e.entryID)
                 && (name == null || name.equals(e.name))
                 && (sortedByValues == null || sortedByValues.equals(e.sortedByValues));

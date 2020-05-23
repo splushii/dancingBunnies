@@ -22,7 +22,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
     private MutableLiveData<MusicLibraryUserState> userState;
     private LinkedList<MusicLibraryUserState> backStack;
     private String currentSubscriptionID;
-    private MutableLiveData<List<LibraryEntry>> dataset;
+    private MutableLiveData<List<LibraryEntry>> libraryEntries;
     private MutableLiveData<PlaybackEntry> currentEntry;
     private List<Integer> queryTreeSelection;
 
@@ -89,7 +89,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
     }
 
     void setQuery(MusicLibraryQuery query) {
-        resetDataSet();
+        resetLibraryEntries();
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0 , 0));
     }
 
@@ -157,20 +157,20 @@ public class MusicLibraryFragmentModel extends ViewModel {
                 && getMusicLibraryQuery().getSearchQuery().isEmpty();
     }
 
-    private MutableLiveData<List<LibraryEntry>> getMutableDataSet() {
-        if (dataset == null) {
-            dataset = new MutableLiveData<>();
-            dataset.setValue(new LinkedList<>());
+    private MutableLiveData<List<LibraryEntry>> getMutableLibraryEntries() {
+        if (libraryEntries == null) {
+            libraryEntries = new MutableLiveData<>();
+            libraryEntries.setValue(new LinkedList<>());
         }
-        return dataset;
+        return libraryEntries;
     }
 
-    LiveData<List<LibraryEntry>> getDataSet() {
-        return getMutableDataSet();
+    LiveData<List<LibraryEntry>> getLibraryEntries() {
+        return getMutableLibraryEntries();
     }
 
-    private void resetDataSet() {
-        getMutableDataSet().setValue(new ArrayList<>());
+    private void resetLibraryEntries() {
+        getMutableLibraryEntries().setValue(new ArrayList<>());
     }
 
     void query(AudioBrowser remote) {
@@ -178,7 +178,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
         currentSubscriptionID = remote.query(
                 currentSubscriptionID,
                 getMusicLibraryQuery(),
-                items -> getMutableDataSet().setValue(items)
+                items -> getMutableLibraryEntries().setValue(items)
         );
         setCurrentSubscriptionID(currentSubscriptionID);
     }

@@ -9,12 +9,12 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.recyclerview.selection.Selection;
-import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -25,7 +25,7 @@ import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
-import se.splushii.dancingbunnies.ui.selection.SelectionRecyclerViewAdapter;
+import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_PLAYLIST;
@@ -35,10 +35,10 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_INFO;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY;
 
-public class MusicLibrarySearchAdapter extends SelectionRecyclerViewAdapter<EntryID, MusicLibrarySearchAdapter.SongViewHolder> {
+public class MusicLibrarySearchAdapter extends
+        SmartDiffSelectionRecyclerViewAdapter<EntryID, MusicLibrarySearchAdapter.SongViewHolder> {
     private static final String LC = Util.getLogContext(MusicLibrarySearchAdapter.class);
     private final MusicLibraryFragment fragment;
-    private List<LibraryEntry> dataset;
     private TrackItemActionsView selectedActionView;
     private boolean initialScrolled;
     private LiveData<HashSet<EntryID>> cachedEntriesLiveData;
@@ -46,7 +46,6 @@ public class MusicLibrarySearchAdapter extends SelectionRecyclerViewAdapter<Entr
     private LiveData<PlaybackEntry> currentEntryLiveData;
 
     MusicLibrarySearchAdapter(MusicLibraryFragment fragment) {
-        this.dataset = new ArrayList<>();
         this.fragment = fragment;
         setHasStableIds(true);
     }
@@ -59,7 +58,7 @@ public class MusicLibrarySearchAdapter extends SelectionRecyclerViewAdapter<Entr
         initialScrolled = false;
         cachedEntriesLiveData = MusicLibraryService.getCachedEntries(fragment.getContext());
         fetchStateLiveData = AudioStorage.getInstance(fragment.getContext()).getFetchState();
-        model.getDataSet().observe(fragment.getViewLifecycleOwner(), dataset -> {
+        model.getLibraryEntries().observe(fragment.getViewLifecycleOwner(), dataset -> {
             MusicLibraryUserState state = model.getUserState().getValue();
             if (state.query.isSearchQuery()) {
                 setDataset(dataset);
@@ -86,41 +85,11 @@ public class MusicLibrarySearchAdapter extends SelectionRecyclerViewAdapter<Entr
     }
 
     @Override
-    protected void moveItemInDataset(int from, int to) {
-        throw new RuntimeException("Not supported");
-    }
-
-    @Override
-    protected void addItemToDataset(int pos, EntryID item) {
-        throw new RuntimeException("Not supported");
-    }
-
-    @Override
-    protected void removeItemFromDataset(int pos) {
-        throw new RuntimeException("Not supported");
-    }
-
-    @Override
     protected void onSelectionChanged() {
         if (hasSelection() && selectedActionView != null) {
             selectedActionView.animateShow(false);
             selectedActionView = null;
         }
-    }
-
-    @Override
-    protected EntryID getKey(int pos) {
-        return dataset.get(pos).entryID;
-    }
-
-    @Override
-    protected int getPosition(@NonNull EntryID key) {
-        for (int i = 0; i < dataset.size(); i++) {
-            if (dataset.get(i).entryID.equals(key)) {
-                return i;
-            }
-        }
-        return RecyclerView.NO_POSITION;
     }
 
     @Override
@@ -198,9 +167,7 @@ public class MusicLibrarySearchAdapter extends SelectionRecyclerViewAdapter<Entr
                     selectedActionView.animateShow(false);
                 }
                 selectedActionView = actionsView;
-                boolean showActionsView = !hasSelection()
-                        && actionsView.getVisibility() != View.VISIBLE;
-                actionsView.animateShow(showActionsView);
+                actionsView.animateShow(actionsView.getVisibility() != View.VISIBLE);
             });
         }
 
@@ -209,8 +176,8 @@ public class MusicLibrarySearchAdapter extends SelectionRecyclerViewAdapter<Entr
             return entryIDLiveData.getValue();
         }
 
-        void update(LibraryEntry libraryEntry) {
-            entryIDLiveData.setValue(libraryEntry.entryID);
+        void update(EntryID entryID) {
+            entryIDLiveData.setValue(entryID);
         }
 
         void updateHighlight(PlaybackEntry currentEntry) {
@@ -266,28 +233,19 @@ public class MusicLibrarySearchAdapter extends SelectionRecyclerViewAdapter<Entr
         holder.item.setBackgroundResource(position % 2 == 0 ?
                 R.color.background_active_accent : R.color.backgroundalternate_active_accent
         );
-        LibraryEntry libraryEntry = dataset.get(position);
-        holder.update(libraryEntry);
-        holder.itemContent.setEntryID(libraryEntry.entryID);
+        EntryID entryID = getItem(position);
+        holder.update(entryID);
+        holder.itemContent.setEntryID(entryID);
         holder.item.setActivated(isSelected(holder.getKey()));
         holder.updateHighlight(currentEntryLiveData.getValue());
     }
 
     private void setDataset(List<LibraryEntry> items) {
-        boolean changed = !dataset.equals(items);
-        if (changed) {
-            this.dataset = items;
-            notifyDataSetChanged();
-        }
-    }
-
-    @Override
-    public int getItemCount() {
-        return dataset.size();
+        setDataSet(items.stream().map(item -> item.entryID).collect(Collectors.toList()));
     }
 
     @Override
     public long getItemId(int position) {
-        return dataset.get(position).entryID.hashCode();
+        return getItem(position).hashCode();
     }
 }

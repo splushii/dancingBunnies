@@ -135,6 +135,7 @@ public class ItemTouchHelperCallback<
         Log.d(LC, "onMove from: " + from + " to " + to);
         if (to != targetDragPos && canDropOver(recyclerView, current, target)) {
             adapter.moveItem(from, to);
+            adapter.notifyItemChanged(from);
             targetDragPos = to;
             return true;
         }

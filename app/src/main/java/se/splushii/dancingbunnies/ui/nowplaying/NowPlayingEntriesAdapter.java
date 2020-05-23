@@ -1,5 +1,6 @@
 package se.splushii.dancingbunnies.ui.nowplaying;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,7 +15,6 @@ import java.util.stream.Collectors;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.recyclerview.selection.Selection;
-import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -24,7 +24,7 @@ import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
-import se.splushii.dancingbunnies.ui.selection.SelectionRecyclerViewAdapter;
+import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_PLAYLIST;
@@ -45,7 +45,7 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SHUFFLE_MULTIPLE_
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SORT_MULTIPLE_IN_QUEUE;
 
 public class NowPlayingEntriesAdapter extends
-        SelectionRecyclerViewAdapter<PlaybackEntry, NowPlayingEntriesAdapter.ViewHolder> {
+        SmartDiffSelectionRecyclerViewAdapter<PlaybackEntry, NowPlayingEntriesAdapter.ViewHolder> {
     private static final String LC = Util.getLogContext(NowPlayingEntriesAdapter.class);
 
     // Use to debug. Maybe put in settings in the future.
@@ -53,7 +53,6 @@ public class NowPlayingEntriesAdapter extends
 
     private final NowPlayingFragment fragment;
 
-    private List<PlaybackEntry> queueEntries;
     private TrackItemActionsView selectedActionView;
     private LiveData<HashSet<EntryID>> cachedEntriesLiveData;
     private LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> fetchStateLiveData;
@@ -61,7 +60,6 @@ public class NowPlayingEntriesAdapter extends
 
     NowPlayingEntriesAdapter(NowPlayingFragment fragment) {
         this.fragment = fragment;
-        queueEntries = new ArrayList<>();
         setHasStableIds(true);
     }
 
@@ -72,24 +70,14 @@ public class NowPlayingEntriesAdapter extends
     }
 
     void setQueueEntries(List<PlaybackEntry> queueEntries) {
+        Log.d(LC, "setQueueEntries: "
+                + "curSize: " + getSize()
+                + " newSize " + queueEntries.size());
         List<PlaybackEntry> entries = SHOW_PLAYLIST_ENTRIES ? queueEntries :
                 queueEntries.stream()
                         .filter(p -> !PlaybackEntry.USER_TYPE_PLAYLIST.equals(p.playbackType))
                         .collect(Collectors.toList());
-        Util.Diff diff = Util.calculateDiff(this.queueEntries, entries);
-        if (diff.changed) {
-            if (hasSelection() && !diff.deleted.isEmpty()) {
-                removeSelection(
-                        diff.deleted.stream()
-                                .map(queueEntries::get)
-                                .collect(Collectors.toList())
-                );
-            }
-            this.queueEntries.clear();
-            this.queueEntries.addAll(entries);
-            notifyDataSetChanged();
-            recalculateSelection();
-        }
+        setDataSet(entries, PlaybackEntry::equalsContent);
     }
 
     @Override
@@ -98,20 +86,6 @@ public class NowPlayingEntriesAdapter extends
             selectedActionView.animateShow(false);
             selectedActionView = null;
         }
-    }
-
-    @Override
-    protected PlaybackEntry getKey(int pos) {
-        if (pos < 0 || pos >= queueEntries.size()) {
-            return null;
-        }
-        return queueEntries.get(pos);
-    }
-
-    @Override
-    protected int getPosition(@NonNull PlaybackEntry key) {
-        int index = queueEntries.indexOf(key);
-        return index < 0 ? RecyclerView.NO_POSITION : index;
     }
 
     @Override
@@ -212,21 +186,6 @@ public class NowPlayingEntriesAdapter extends
         return PlaybackEntry.USER_TYPE_QUEUE.equals(viewHolder.playbackEntry.playbackType);
     }
 
-    @Override
-    protected void moveItemInDataset(int from, int to) {
-        queueEntries.add(to, queueEntries.remove(from));
-    }
-
-    @Override
-    protected void addItemToDataset(int pos, PlaybackEntry item) {
-        queueEntries.add(pos, item);
-    }
-
-    @Override
-    protected void removeItemFromDataset(int pos) {
-        queueEntries.remove(pos);
-    }
-
     void hideTrackItemActions() {
         if (selectedActionView != null) {
             selectedActionView.animateShow(false);
@@ -253,15 +212,13 @@ public class NowPlayingEntriesAdapter extends
                     selectedActionView.animateShow(false);
                 }
                 selectedActionView = actionsView;
-                boolean showActionsView = !hasSelection()
-                        && actionsView.getVisibility() != View.VISIBLE;
-                actionsView.animateShow(showActionsView);
+                actionsView.animateShow(actionsView.getVisibility() != View.VISIBLE);
             });
         }
 
         @Override
         protected PlaybackEntry getSelectionKeyOf() {
-            return queueEntries.get(getPos());
+            return getItem(getPos());
         }
 
         void updateHighlight(NowPlayingState state) {
@@ -275,7 +232,7 @@ public class NowPlayingEntriesAdapter extends
 
     @Override
     public long getItemId(int position) {
-        return queueEntries.get(position).playbackID;
+        return getItem(position).playbackID;
     }
 
     @NonNull
@@ -303,7 +260,7 @@ public class NowPlayingEntriesAdapter extends
 
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, int position) {
-        PlaybackEntry entry = queueEntries.get(position);
+        PlaybackEntry entry = getItem(position);
         holder.playbackEntry = entry;
         boolean isQueueEntry = PlaybackEntry.USER_TYPE_QUEUE.equals(entry.playbackType);
         holder.item.setBackgroundResource(position % 2 == 0 ?
@@ -348,8 +305,8 @@ public class NowPlayingEntriesAdapter extends
     }
 
     private boolean isFirstPlaylistEntry(int position) {
-        for (int i = 0; i < queueEntries.size() && i <= position; i++) {
-            PlaybackEntry entry = queueEntries.get(i);
+        for (int i = 0; i < getSize() && i <= position; i++) {
+            PlaybackEntry entry = getItem(i);
             if (PlaybackEntry.USER_TYPE_PLAYLIST.equals(entry.playbackType)) {
                 if (i == position) {
                     return true;
@@ -359,10 +316,5 @@ public class NowPlayingEntriesAdapter extends
             }
         }
         return false;
-    }
-
-    @Override
-    public int getItemCount() {
-        return queueEntries.size();
     }
 }

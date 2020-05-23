@@ -99,6 +99,20 @@ public class PlaybackEntry implements Parcelable {
         return playbackID == that.playbackID;
     }
 
+    public boolean equalsContent(PlaybackEntry other) {
+        if (other == null) {
+            return false;
+        }
+        if (EntryID.UNKOWN.equals(entryID) || EntryID.UNKOWN.equals(other.entryID)) {
+            return false;
+        }
+        return entryID.equals(other.entryID) // This should always be true
+                && playbackType.equals(other.playbackType)
+                && playlistPos == other.playlistPos
+                && playlistSelectionID == other.playlistSelectionID
+                && preloaded == other.preloaded;
+    }
+
     @Override
     public int hashCode() {
         return Objects.hash(playbackID);
@@ -130,7 +144,7 @@ public class PlaybackEntry implements Parcelable {
     MediaDescriptionCompat toMediaDescriptionCompat() {
         Bundle b = toBundle();
         return new MediaDescriptionCompat.Builder()
-                .setMediaId(entryID.id) // TODO: Use entryID.key() for uniqueness?
+                .setMediaId(entryID.key())
                 .setExtras(b)
                 .build();
     }
