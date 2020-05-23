@@ -84,6 +84,9 @@ class PlaybackQueue {
     CompletableFuture<Void> update(List<PlaybackEntry> movedPlaybackEntries) {
         Log.d(LC, "update(entries.size: " + movedPlaybackEntries.size() + ")"
                 + " in \"" + PlaybackControllerStorage.getQueueName(queueID) + "\"");
+        if (movedPlaybackEntries.isEmpty()) {
+            return Util.futureResult(null);
+        }
         // Optimistic update of in-memory queue
         int previousSize;
         int newSize;

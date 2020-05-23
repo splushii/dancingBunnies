@@ -15,14 +15,18 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 import androidx.annotation.NonNull;
 import androidx.core.util.Pair;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -93,7 +97,54 @@ public class Util {
         return true;
     }
 
+    // TODO: Put diff stuff in its own class
+    public static <T> boolean fastDiff(List<T> currentEntries,
+                                       List<T> newEntries) {
+        return fastDiff(currentEntries, newEntries, Object::equals);
+    }
+
+    // TODO: Rename to equals()
+    public static <T> boolean fastDiff(List<T> currentEntries,
+                                       List<T> newEntries,
+                                       BiFunction<T, T, Boolean> contentComparator) {
+        if (currentEntries == null && newEntries == null) {
+            return false;
+        }
+        if (currentEntries == null || newEntries == null) {
+            return true;
+        }
+        if (currentEntries.size() != newEntries.size()) {
+            return true;
+        }
+        for (int i = 0; i < currentEntries.size(); i++) {
+            if (!currentEntries.get(i).equals(newEntries.get(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static <T> Diff calculateDiff(List<T> currentEntries, List<T> newEntries) {
+        return calculateDiff(currentEntries, newEntries, Object::equals, false);
+    }
+
+    public static <T> Diff calculateDiff(List<T> currentEntries,
+                                         List<T> newEntries,
+                                         BiFunction<T, T, Boolean> contentComparator) {
+        return calculateDiff(currentEntries, newEntries, contentComparator, false);
+    }
+
+    public static <T> Diff calculateDiff(List<T> currentEntries,
+                                         List<T> newEntries,
+                                         BiFunction<T, T, Boolean> contentComparator,
+                                         boolean debug) {
+        if (debug) {
+            Log.d(LC, "calculateDiff start "
+                    + "(old: " + currentEntries.size() + ", new: " + newEntries.size() + ")");
+        }
+        long startTime = System.currentTimeMillis();
+
+        // Find deleted/added/moved positions
         HashMap<T, List<Integer>> oldMap = new HashMap<>();
         for (int i = 0; i < currentEntries.size(); i++) {
             T entry = currentEntries.get(i);
@@ -109,6 +160,8 @@ public class Util {
             newMap.put(entry, indices);
         }
         // Find unchanged, deleted and moved
+//        List<Integer> samePositions = new ArrayList<>();
+        HashSet<Integer> sameSet = new HashSet<>();
         List<Integer> deletedPositions = new ArrayList<>();
         List<Integer> addedPositions = new ArrayList<>();
         List<Pair<Integer, Integer>> movedPositions = new ArrayList<>();
@@ -125,6 +178,7 @@ public class Util {
                         oldPositions.remove(oldPosIndex);
                         oldPosIndex--;
                         newPositions.remove(newPosIndex);
+                        sameSet.add(oldPos);
                         continue nextOldPos;
                     }
                 }
@@ -148,7 +202,102 @@ public class Util {
         }
         Collections.sort(deletedPositions);
         Collections.sort(addedPositions);
-        return new Diff(deletedPositions, addedPositions, movedPositions);
+
+
+        HashSet<Integer> deletedSet = new HashSet<>(deletedPositions);
+        HashMap<Integer, Integer> movedMap = new HashMap<>();
+        for (Pair<Integer, Integer> movedPosition: movedPositions) {
+            movedMap.put(movedPosition.first, movedPosition.second);
+        }
+        HashSet<Integer> addedSet = new HashSet<>(addedPositions);
+
+        // Find updated content
+        List<Integer> updatedPositions = new ArrayList<>();
+        for (int i = 0; i < currentEntries.size(); i++) {
+            T oldEntry = currentEntries.get(i);
+            if (deletedSet.contains(i)) {
+                continue;
+            }
+            if (movedMap.containsKey(i)) {
+                T newEntry = newEntries.get(movedMap.get(i));
+                if (!contentComparator.apply(oldEntry, newEntry)) {
+                    updatedPositions.add(movedMap.get(i));
+                }
+                continue;
+            }
+            // If it's not deleted or moved, it's in the same position
+            if (!sameSet.contains(i)) {
+                Log.e(LC, "SOMETHING BAD WRONG HERE YO");
+            }
+            T newEntry = newEntries.get(i);
+            if (!contentComparator.apply(oldEntry, newEntry)) {
+                updatedPositions.add(i);
+                sameSet.remove(i);
+            }
+        }
+
+        long time = System.currentTimeMillis() - startTime;
+        if (debug) {
+            Log.d(LC, "calculateDiff finish "
+                    + "(old: " + currentEntries.size() + ", new: " + newEntries.size() + ")"
+                    + "\ntime: " + time + "ms"
+                    + "\nnop: " + sameSet.size()
+                    + "\nupd : " + updatedPositions.size()
+                    + "\ndel : " + deletedPositions.size()
+                    + "\nadd : " + addedPositions.size()
+                    + "\nmov : " + movedPositions.size()
+            );
+        }
+        int numKeptEntries = sameSet.size() + updatedPositions.size() + movedPositions.size();
+        if (numKeptEntries != currentEntries.size()) {
+            Log.e(LC, "Number of ops not affecting count (nop/upd/mov) is invalid."
+                    + " Expected " + currentEntries.size() + ", got " + numKeptEntries);
+        }
+        int numDeltaEntries = addedPositions.size() - deletedPositions.size();
+        if (currentEntries.size() + numDeltaEntries != newEntries.size()) {
+            Log.e(LC, "Number of ops affecting count (add/del) is invalid."
+                    + " Expected " + (newEntries.size() - currentEntries.size()) + ", got " + numDeltaEntries);
+        }
+
+        // Calculate DiffUtil diff
+        if (debug) {
+            Log.d(LC, "calculateDiff DiffUtil start "
+                    + "(old: " + currentEntries.size() + ", new: " + newEntries.size() + ")");
+        }
+        startTime = System.currentTimeMillis();
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override
+            public int getOldListSize() {
+                return currentEntries.size();
+            }
+
+            @Override
+            public int getNewListSize() {
+                return newEntries.size();
+            }
+
+            @Override
+            public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                T oldItem = currentEntries.get(oldItemPosition);
+                T newItem = newEntries.get(newItemPosition);
+                return oldItem.equals(newItem);
+            }
+
+            @Override
+            public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                T oldItem = currentEntries.get(oldItemPosition);
+                T newItem = newEntries.get(newItemPosition);
+                return contentComparator.apply(oldItem, newItem);
+            }
+        }, false);
+        time = System.currentTimeMillis() - startTime;
+        if (debug) {
+            Log.d(LC, "calculateDiff DiffUtil finish "
+                    + "(old: " + currentEntries.size() + ", new: " + newEntries.size() + ")"
+                    + "\ntime: " + time + "ms");
+        }
+
+        return new Diff(deletedPositions, addedPositions, movedPositions, diffResult);
     }
 
     public static class Diff {
@@ -156,13 +305,49 @@ public class Util {
         public final List<Integer> deleted;
         public final List<Integer> added;
         public final List<Pair<Integer, Integer>> moved;
+        public final DiffUtil.DiffResult diffUtilResult;
         Diff(List<Integer> deleted,
              List<Integer> added,
-             List<Pair<Integer, Integer>> moved) {
+             List<Pair<Integer, Integer>> moved,
+             DiffUtil.DiffResult diffUtilResult) {
             this.deleted = deleted;
             this.added = added;
             this.moved = moved;
-            changed = !(deleted.isEmpty() && added.isEmpty() && moved.isEmpty());
+            AtomicBoolean diffUtilChanged = new AtomicBoolean();
+//            diffUtilResult.dispatchUpdatesTo(new ListUpdateCallback() {
+//                @Override
+//                public void onInserted(int position, int count) {
+////                    Log.e(LC, "onInserted(pos: " + position + ", count: " + count + ")");
+//                    diffUtilChanged.set(true);
+//                }
+//
+//                @Override
+//                public void onRemoved(int position, int count) {
+////                    Log.e(LC, "onRemoved(pos: " + position + ", count: " + count + ")");
+//                    diffUtilChanged.set(true);
+//                }
+//
+//                @Override
+//                public void onMoved(int fromPosition, int toPosition) {
+////                    Log.e(LC, "onMoved(from: " + fromPosition + ", to: " + toPosition + ")");
+//                    diffUtilChanged.set(true);
+//                }
+//
+//                @Override
+//                public void onChanged(int position, int count, @Nullable Object payload) {
+////                    Log.e(LC, "onChanged(pos: " + position + ", count: " + count + ")");
+//                    diffUtilChanged.set(true);
+//                }
+//            });
+//            Log.e(LC, "diffUtilChanged: " + diffUtilChanged.get());
+
+            // TODO: REMOVE ME
+            diffUtilChanged.set(true);
+
+
+            changed = !(deleted.isEmpty() && added.isEmpty() && moved.isEmpty())
+                    || diffUtilChanged.get();
+            this.diffUtilResult = diffUtilResult;
         }
 
         @NonNull
