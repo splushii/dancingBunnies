@@ -9,8 +9,8 @@ android {
         applicationId "se.splushii.dancingbunnies"
         minSdkVersion 26
         targetSdkVersion 29
-        versionCode 4
-        versionName "0.0.4"
+        versionCode 5
+        versionName "0.0.5"
         javaCompileOptions {
             annotationProcessorOptions {
                 arguments = ["room.schemaLocation": "$projectDir/schemas".toString()]
