@@ -38,6 +38,7 @@ import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
+import se.splushii.dancingbunnies.util.Diff;
 import se.splushii.dancingbunnies.util.Util;
 
 // PlaybackController should have audio players, an internal queue, an internal playlist,
@@ -1024,7 +1025,7 @@ public class PlaybackController {
             Log.d(LC, "playlistEntriesObserver."
                     + " Calculating diff between current and new playlist entries.");
             List<PlaylistEntry> currentEntries = currentPlaylistEntries;
-            Util.Diff diff = Util.calculateDiff(
+            Diff diff = Diff.diff(
                     currentEntries.stream().map(EntryID::from).collect(Collectors.toList()),
                     newPlaylistEntries.stream().map(EntryID::from).collect(Collectors.toList())
             );

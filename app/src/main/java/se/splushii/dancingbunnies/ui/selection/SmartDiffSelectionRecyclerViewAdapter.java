@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import androidx.annotation.NonNull;
 import androidx.core.util.Consumer;
 import androidx.recyclerview.widget.RecyclerView;
+import se.splushii.dancingbunnies.util.Diff;
 import se.splushii.dancingbunnies.util.Util;
 
 public abstract class SmartDiffSelectionRecyclerViewAdapter<ID, ViewHolder extends ItemDetailsViewHolder<ID>>
@@ -25,7 +26,7 @@ public abstract class SmartDiffSelectionRecyclerViewAdapter<ID, ViewHolder exten
                               BiFunction<ID, ID, Boolean> contentComparator) {
         if (items.size() > 1000) {
             // Do fast diff
-            boolean changed = Util.fastDiff(dataSet, items, contentComparator);
+            boolean changed = Diff.fastDiff(dataSet, items, contentComparator);
             if (changed) {
                 dataSet.clear();
                 dataSet.addAll(items);
@@ -33,7 +34,7 @@ public abstract class SmartDiffSelectionRecyclerViewAdapter<ID, ViewHolder exten
             }
         } else {
             // Do thorough diff
-            Util.Diff diff = Util.calculateDiff(dataSet, items, contentComparator);
+            Diff diff = Diff.diff(dataSet, items, contentComparator);
             if (diff.changed) {
                 if (hasSelection() && !diff.deleted.isEmpty()) {
                     removeSelection(
