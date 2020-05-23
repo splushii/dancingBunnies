@@ -34,6 +34,7 @@ public class PlaybackEntry implements Parcelable {
 
     public PlaybackEntry(MediaMetadata metadata) {
         this.entryID = EntryID.from(metadata);
+        // TODO: try/catch NumberFormatException (from CastAudioPlayer onMetadataUpdated crash)
         this.playbackID = Long.parseLong(metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYBACK_ID));
         String playbackType = metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYBACK_TYPE);
         this.playbackType = playbackType != null ? playbackType : PlaybackEntry.USER_TYPE_EXTERNAL;

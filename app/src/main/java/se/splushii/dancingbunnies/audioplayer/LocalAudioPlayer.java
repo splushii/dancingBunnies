@@ -27,6 +27,7 @@ class LocalAudioPlayer implements AudioPlayer {
     private MediaPlayerInstance player;
     private boolean playWhenReady;
     private final Context context;
+    // TODO: Make preloadPlayers thread safe (to avoid ConcurrentModificationException)
     private final LinkedList<MediaPlayerInstance> preloadPlayers;
     private final LinkedList<PlaybackEntry> historyPlaybackEntries;
 

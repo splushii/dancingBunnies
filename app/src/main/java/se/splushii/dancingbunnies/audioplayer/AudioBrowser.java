@@ -34,6 +34,8 @@ public class AudioBrowser {
     private static volatile AudioBrowser instance;
 
     private final MediaBrowserCompat mediaBrowser;
+    // TODO: Do null checks on mediaController (and let caller know)
+    // TODO: Maybe wrap mediaController getter with isSessionReady() check
     private MediaControllerCompat mediaController;
     private final ConcurrentHashMap<AudioBrowserCallback, MediaControllerCallback> callbackMap;
 

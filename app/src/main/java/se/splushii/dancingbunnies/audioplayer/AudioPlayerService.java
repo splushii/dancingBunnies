@@ -110,6 +110,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public static final String CAST_ACTION_NEXT = "NEXT";
 
     private PlaybackControllerStorage playbackControllerStorage;
+    // TODO: Do null checks on playbackController (and let caller know)
+    // TODO: Maybe wrap playbackController with getter (see AudioBrowser.isSessionReady())
     private PlaybackController playbackController;
     private final PlaybackController.Callback audioPlayerManagerCallback = new PlaybackCallback();
     private MediaSessionCompat mediaSession;

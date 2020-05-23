@@ -188,6 +188,7 @@ public class SubsonicAPIClient extends APIClient {
                 error -> {
                     String errMsg = HTTPRequestQueue.getHTTPErrorMessage(error);
                     Log.e(LC, "heartbeat: " + errMsg);
+                    // TODO: Can errMsg null? (app crash)
                     req.complete(Optional.of(errMsg));
                 }
         ));
