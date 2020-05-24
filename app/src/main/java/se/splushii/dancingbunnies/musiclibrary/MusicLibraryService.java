@@ -19,6 +19,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import androidx.annotation.Nullable;
@@ -42,15 +43,52 @@ public class MusicLibraryService extends Service {
     private static final String LC = Util.getLogContext(MusicLibraryService.class);
 
     // Supported API:s
+    // Use [a-z0-9] for API ID:s
     public static final String API_ID_DANCINGBUNNIES = "dancingbunnies";
     public static final String API_ID_SUBSONIC = "subsonic";
 
+    // Local API source
+    public static final String API_SRC_DANCINGBUNNIES_LOCAL =
+            getAPISource(API_ID_DANCINGBUNNIES, "local");
+
+    private static final String API_SRC_DELIMITER = "@";
+
+    public static String getAPISource(String apiID, String apiInstanceID) {
+        return apiID + API_SRC_DELIMITER + apiInstanceID;
+    }
+
+    public static String getAPIFromSource(String src) {
+        return getAPIPartFromSource(src, 0);
+    }
+
+    public static String getAPIInstanceIDFromSource(String src) {
+        return getAPIPartFromSource(src, 1);
+    }
+
+    private static String getAPIPartFromSource(String src, int part) {
+        if (src == null) {
+            return null;
+        }
+        String[] split = src.split(API_SRC_DELIMITER, 2);
+        if (split.length == 1 && part == 0) {
+            return src;
+        }
+        if (split.length != 2) {
+            return null;
+        }
+        return split[part];
+    }
+
     // API icons
-    public static int getAPIIconResource(String src) {
+    public static int getAPIIconResourceFromSource(String src) {
         if (src == null) {
             return 0;
         }
-        switch (src) {
+        String api = getAPIFromSource(src);
+        if (api == null) {
+            return 0;
+        }
+        switch (api) {
             case MusicLibraryService.API_ID_DANCINGBUNNIES:
                 return R.mipmap.dancingbunnies_icon;
             case MusicLibraryService.API_ID_SUBSONIC:
@@ -69,7 +107,8 @@ public class MusicLibraryService extends Service {
     public static final String META_ADD = "meta_add";
     public static final String META_DELETE = "meta_delete";
     public static boolean checkAPISupport(String src, String action) {
-        switch (src) {
+        String api = getAPIFromSource(src);
+        switch (api) {
             case API_ID_DANCINGBUNNIES:
                 switch (action) {
                     case PLAYLIST_ENTRY_DELETE:
@@ -195,15 +234,21 @@ public class MusicLibraryService extends Service {
         return binder;
     }
 
-    private static void reIndex(Context context, List<Meta> metas, File indexPath) {
+    private static void reIndex(Context context,
+                                List<Meta> metas,
+                                Consumer<String> progressHandler) {
         Log.d(LC, "Indexing library...");
-        indexPath = prepareIndex(context.getFilesDir(), indexPath);
+        File indexPath = prepareIndex(context.getFilesDir(), null);
         Indexer indexer = new Indexer(indexPath);
         long startTime = System.currentTimeMillis();
         int numDocs = 0;
-        Log.d(LC, "Songs: " + metas.size());
+        int size = metas.size();
+        Log.d(LC, "Entries to index: " + size);
         for (Meta meta: metas) {
             numDocs = indexer.indexSong(meta);
+            if (progressHandler != null && (numDocs % 100 == 0 || numDocs == size)) {
+                progressHandler.accept("Indexed " + numDocs + "/" + size + " entries...");
+            }
         }
         indexer.close();
         long time = System.currentTimeMillis() - startTime;
@@ -352,17 +397,22 @@ public class MusicLibraryService extends Service {
         return true;
     }
 
-    public static CompletableFuture<Void> fetchAPILibrary(Context context, final String api, final MusicLibraryRequestHandler handler) {
+    public static CompletableFuture<Void> fetchAPILibrary(Context context,
+                                                          final String src,
+                                                          final MusicLibraryRequestHandler handler) {
         handler.onStart();
         MetaStorage metaStorage = MetaStorage.getInstance(context);
-        APIClient client = APIClient.getAPIClient(context, api);
+        String api = getAPIFromSource(src);
+        APIClient client = APIClient.getAPIClient(context, src);
         if (client == null) {
-            handler.onFailure("Can not fetch library. API " + api + " not found.");
-            return Util.futureResult("Can not fetch library. API " + api + " not found.");
+            String msg = "Can not fetch library from " + src + ". API " + api + " not found.";
+            handler.onFailure(msg);
+            return Util.futureResult(msg);
         }
         if (!client.hasLibrary()) {
-            handler.onFailure("Can not fetch library. API " + api + " does not support library.");
-            return Util.futureResult("Can not fetch library. API " + api + " does not support library.");
+            String msg = "Can not fetch library from " + src + ". API " + api + " does not support library.";
+            handler.onFailure(msg);
+            return Util.futureResult(msg);
         }
         return client.getLibrary(new APIClientRequestHandler() {
             @Override
@@ -372,23 +422,23 @@ public class MusicLibraryService extends Service {
         }).thenCompose(opt -> {
             if (opt.isPresent()) {
                 final List<Meta> data = opt.get();
-                Log.d(LC, "Fetched library from " + api + ": " + data.size() + " entries.");
-                handler.onProgress("Saving entries to local meta storage...");
+                Log.d(LC, "Fetched library from " + src + ": " + data.size() + " entries.");
+                handler.onProgress("Clearing old entries from local meta storage...");
                 // TODO: Possible to perform a smart merge instead?
                 Log.d(LC, "clearLibraryStorageEntries start");
                 return CompletableFuture.supplyAsync(() -> {
-                    metaStorage.clearAll(api);
+                    metaStorage.clearAll(src);
                     Log.d(LC, "clearLibraryStorageEntries finish");
                     return data;
                 });
             } else {
-                handler.onFailure("Could not fetch library from " + api + ".");
-                return Util.futureResult("Could not fetch library from " + api + ".");
+                handler.onFailure("Could not fetch library from " + src + ".");
+                return Util.futureResult("Could not fetch library from " + src + ".");
             }
         }).thenCompose(data -> {
             Log.d(LC, "saveLibraryToStorage start");
             return CompletableFuture.supplyAsync(() -> {
-                metaStorage.insertSongs(data);
+                metaStorage.insertSongs(data, handler::onProgress);
                 Log.d(LC, "saveLibraryToStorage finish");
                 return data;
             });
@@ -396,26 +446,29 @@ public class MusicLibraryService extends Service {
             Log.d(LC, "Saved library to local meta storage.");
             handler.onProgress("Indexing...");
             return CompletableFuture.supplyAsync(() -> {
-                reIndex(context, data, null);
+                reIndex(context, data, handler::onProgress);
                 handler.onProgress("Indexing done.");
                 return data;
             });
         }).thenAccept(data -> {
             handler.onSuccess("Successfully processed "
-                    + data.size() + " library entries from " + api + ".");
+                    + data.size() + " library entries from " + src + ".");
         }).exceptionally(throwable -> {
             if (throwable != null) {
                 throwable.printStackTrace();
                 Log.e(LC, "msg: " + throwable.getMessage());
             }
-            handler.onFailure("Could not fetch library from " + api + ".");
+            handler.onFailure("Could not fetch library from " + src + ".");
             return null;
         });
     }
 
-    public static void fetchPlayLists(Context context, final String api, final MusicLibraryRequestHandler handler) {
+    public static void fetchPlayLists(Context context,
+                                      final String src,
+                                      final MusicLibraryRequestHandler handler) {
         handler.onStart();
-        APIClient client = APIClient.getAPIClient(context, api);
+        String api = getAPIFromSource(src);
+        APIClient client = APIClient.getAPIClient(context, src);
         PlaylistStorage playlistStorage = PlaylistStorage.getInstance(context);
         if (client == null) {
             handler.onFailure("Can not fetch playlists. API " + api + " not found.");

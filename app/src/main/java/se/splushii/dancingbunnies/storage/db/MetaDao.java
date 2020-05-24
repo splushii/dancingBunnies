@@ -4,6 +4,7 @@ import android.util.Log;
 
 import java.util.List;
 
+import androidx.core.util.Consumer;
 import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
@@ -21,7 +22,7 @@ import static androidx.room.OnConflictStrategy.REPLACE;
 public abstract class MetaDao {
     private static final String LC = Util.getLogContext(MetaDao.class);
 
-    private static final String isEntryID = DB.COLUMN_API + " = :src " + " AND " + DB.COLUMN_ID + " = :id";
+    private static final String isEntryID = DB.COLUMN_SRC + " = :src " + " AND " + DB.COLUMN_ID + " = :id";
 
     public static String getTable(String key) {
         if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(key) || Meta.FIELD_SPECIAL_MEDIA_SRC.equals(key)) {
@@ -70,15 +71,22 @@ public abstract class MetaDao {
     })
     public abstract LiveData<Integer> getNumEntries(SupportSQLiteQuery query);
     @Transaction
-    public void insert(List<Meta> metaList) {
-        for (Meta meta: metaList) {
-            insert(meta);
+    public void insert(List<Meta> metaList, Consumer<String> progressHandler) {
+        int size = metaList.size();
+        for (int i = 0; i < size; i++) {
+             insert(metaList.get(i));
+             if (progressHandler != null
+                     && ((i + 1) % 100 == 0 || i == size - 1)) {
+                 progressHandler.accept(
+                         "Saved " + (i + 1) + "/" + size + " entries to local meta storage..."
+                 );
+             }
         }
     }
     public void insert(Meta meta) {
-        String api = meta.entryID.src;
+        String src = meta.entryID.src;
         String id = meta.entryID.id;
-        insert(Entry.from(api, id));
+        insert(Entry.from(src, id));
         for (String key: meta.keySet()) {
             if (Meta.isLocal(key)) {
                 Log.e(LC, "Won't insert value with key reserved for local use: " + key);
@@ -87,17 +95,17 @@ public abstract class MetaDao {
             switch (Meta.getType(key)) {
                 case STRING:
                     for (String s: meta.getStrings(key)) {
-                        insert(MetaString.from(api, id, key, s));
+                        insert(MetaString.from(src, id, key, s));
                     }
                     break;
                 case LONG:
                     for (Long l: meta.getLongs(key)) {
-                        insert(MetaLong.from(api, id, key, l));
+                        insert(MetaLong.from(src, id, key, l));
                     }
                     break;
                 case DOUBLE:
                     for (Double d: meta.getDoubles(key)) {
-                        insert(MetaDouble.from(api, id, key, d));
+                        insert(MetaDouble.from(src, id, key, d));
                     }
                     break;
                 default:
@@ -194,7 +202,7 @@ public abstract class MetaDao {
         insertLocalMeta(entryID, key, newValue, userKey);
     }
 
-    @Query("DELETE FROM " + DB.TABLE_ENTRY_ID + " WHERE " + DB.COLUMN_API + " = :src")
+    @Query("DELETE FROM " + DB.TABLE_ENTRY_ID + " WHERE " + DB.COLUMN_SRC + " = :src")
     public abstract void deleteWhereSourceIs(String src);
 
     private static final String getStringMeta
@@ -261,4 +269,7 @@ public abstract class MetaDao {
             + " SELECT DISTINCT \"" + DB.COLUMN_VALUE + "\" FROM " + DB.TABLE_META_LOCAL_DOUBLE
             + " WHERE \"" + DB.COLUMN_KEY + "\" = :key")
     public abstract LiveData<List<Double>> getDoubleMetaValues(String key);
+
+    @Query("SELECT DISTINCT \"" + DB.COLUMN_SRC + "\" FROM " + DB.TABLE_ENTRY_ID)
+    public abstract LiveData<List<String>> getSources();
 }

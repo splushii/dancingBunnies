@@ -8,7 +8,7 @@ import androidx.room.Index;
 @Entity(tableName = DB.TABLE_META_LOCAL_LONG,
         indices = {
                 @Index(value = {
-                        DB.COLUMN_API,
+                        DB.COLUMN_SRC,
                         DB.COLUMN_ID,
                         DB.COLUMN_KEY,
                         DB.COLUMN_VALUE
@@ -16,17 +16,17 @@ import androidx.room.Index;
                 @Index({
                         DB.COLUMN_KEY,
                         DB.COLUMN_VALUE,
-                        DB.COLUMN_API
+                        DB.COLUMN_SRC
                 }),
                 @Index({
                         DB.COLUMN_VALUE,
                         DB.COLUMN_KEY,
-                        DB.COLUMN_API
+                        DB.COLUMN_SRC
                 }),
                 @Index(DB.COLUMN_VALUE)
         },
         primaryKeys = {
-                DB.COLUMN_API,
+                DB.COLUMN_SRC,
                 DB.COLUMN_ID,
                 DB.COLUMN_KEY,
                 DB.COLUMN_VALUE
@@ -34,8 +34,8 @@ import androidx.room.Index;
 )
 public class MetaLocalLong {
     @NonNull
-    @ColumnInfo(name = DB.COLUMN_API)
-    public String api;
+    @ColumnInfo(name = DB.COLUMN_SRC)
+    public String src;
     @NonNull
     @ColumnInfo(name = DB.COLUMN_ID)
     public String id;
@@ -46,9 +46,9 @@ public class MetaLocalLong {
     @ColumnInfo(name = DB.COLUMN_VALUE)
     public long value;
 
-    public static MetaLocalLong from(String api, String id, String key, long value) {
+    public static MetaLocalLong from(String src, String id, String key, long value) {
         MetaLocalLong t = new MetaLocalLong();
-        t.api = api;
+        t.src = src;
         t.id = id;
         t.key = key;
         t.value = value;

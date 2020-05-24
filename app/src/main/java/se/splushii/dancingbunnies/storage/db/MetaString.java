@@ -11,7 +11,7 @@ import static androidx.room.ForeignKey.CASCADE;
 @Entity(tableName = DB.TABLE_META_STRING,
         indices = {
                 @Index(value = {
-                        DB.COLUMN_API,
+                        DB.COLUMN_SRC,
                         DB.COLUMN_ID,
                         DB.COLUMN_KEY,
                         DB.COLUMN_VALUE
@@ -19,32 +19,32 @@ import static androidx.room.ForeignKey.CASCADE;
                 @Index({
                         DB.COLUMN_KEY,
                         DB.COLUMN_VALUE,
-                        DB.COLUMN_API
+                        DB.COLUMN_SRC
                 }),
                 @Index({
                         DB.COLUMN_VALUE,
                         DB.COLUMN_KEY,
-                        DB.COLUMN_API
+                        DB.COLUMN_SRC
                 }),
                 @Index(DB.COLUMN_VALUE)
         },
         primaryKeys = {
-                DB.COLUMN_API,
+                DB.COLUMN_SRC,
                 DB.COLUMN_ID,
                 DB.COLUMN_KEY,
                 DB.COLUMN_VALUE
         },
         foreignKeys = @ForeignKey(
                 entity = Entry.class,
-                parentColumns = { DB.COLUMN_API, DB.COLUMN_ID },
-                childColumns = { DB.COLUMN_API, DB.COLUMN_ID },
+                parentColumns = { DB.COLUMN_SRC, DB.COLUMN_ID },
+                childColumns = { DB.COLUMN_SRC, DB.COLUMN_ID },
                 onDelete = CASCADE
         )
 )
 public class MetaString {
     @NonNull
-    @ColumnInfo(name = DB.COLUMN_API)
-    public String api;
+    @ColumnInfo(name = DB.COLUMN_SRC)
+    public String src;
     @NonNull
     @ColumnInfo(name = DB.COLUMN_ID)
     public String id;
@@ -55,9 +55,9 @@ public class MetaString {
     @ColumnInfo(name = DB.COLUMN_VALUE)
     public String value;
 
-    public static MetaString from(String api, String id, String key, String value) {
+    public static MetaString from(String src, String id, String key, String value) {
         MetaString t = new MetaString();
-        t.api = api;
+        t.src = src;
         t.id = id;
         t.key = key;
         t.value = value;

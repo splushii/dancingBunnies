@@ -17,27 +17,25 @@ import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
 // needs to be done in a TEMP table, something not supported in Room as far as I know.
 // See: https://stackoverflow.com/questions/22494148/incrementing-value-in-table-with-unique-key-causes-constraint-error
         indices = @Index(value = {
-                Playlist.COLUMN_API,
-                Playlist.COLUMN_ID
+                DB.COLUMN_SRC,
+                DB.COLUMN_ID
         }, unique = true),
         primaryKeys = {
-                Playlist.COLUMN_API,
-                Playlist.COLUMN_ID
+                DB.COLUMN_SRC,
+                DB.COLUMN_ID
         }
 )
 public class Playlist implements Parcelable {
-    static final String COLUMN_API = "api";
-    static final String COLUMN_ID = "id";
     private static final String COLUMN_TYPE = "type";
     private static final String COLUMN_NAME = "name";
     private static final String COLUMN_QUERY = "query";
     static final String COLUMN_POS = "pos";
 
     @NonNull
-    @ColumnInfo(name = COLUMN_API)
-    public String api;
+    @ColumnInfo(name = DB.COLUMN_SRC)
+    public String src;
     @NonNull
-    @ColumnInfo(name = COLUMN_ID)
+    @ColumnInfo(name = DB.COLUMN_ID)
     public String id;
     @NonNull
     @ColumnInfo(name = COLUMN_TYPE)
@@ -54,7 +52,7 @@ public class Playlist implements Parcelable {
     public Playlist() {}
 
     protected Playlist(Parcel in) {
-        api = in.readString();
+        src = in.readString();
         id = in.readString();
         type = in.readInt();
         name = in.readString();
@@ -76,7 +74,7 @@ public class Playlist implements Parcelable {
 
     private static Playlist from(se.splushii.dancingbunnies.musiclibrary.Playlist playlist, int pos) {
         Playlist roomPlaylist = new Playlist();
-        roomPlaylist.api = playlist.id.src;
+        roomPlaylist.src = playlist.id.src;
         roomPlaylist.id = playlist.id.id;
         roomPlaylist.type = playlist.id.type;
         roomPlaylist.name = playlist.name;
@@ -101,7 +99,7 @@ public class Playlist implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(api);
+        dest.writeString(src);
         dest.writeString(id);
         dest.writeString(name);
         dest.writeLong(pos);
@@ -112,7 +110,7 @@ public class Playlist implements Parcelable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Playlist playlist = (Playlist) o;
-        return api.equals(playlist.api) &&
+        return src.equals(playlist.src) &&
                 id.equals(playlist.id);
     }
 
@@ -121,13 +119,13 @@ public class Playlist implements Parcelable {
         return "Playlist{" +
                 "pos=" + pos +
                 ", name='" + name + '\'' +
-                ", api='" + api + '\'' +
+                ", src='" + src + '\'' +
                 ", id='" + id + '\'' +
                 '}';
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(api, id);
+        return Objects.hash(src, id);
     }
 }

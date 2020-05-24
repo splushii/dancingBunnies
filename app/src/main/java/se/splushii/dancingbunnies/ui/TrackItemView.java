@@ -214,7 +214,7 @@ public class TrackItemView extends LinearLayout {
         if (isStatic) {
             return;
         }
-        sourceView.setBackgroundResource(MusicLibraryService.getAPIIconResource(src));
+        sourceView.setBackgroundResource(MusicLibraryService.getAPIIconResourceFromSource(src));
         sourceView.setVisibility(VISIBLE);
     }
 

@@ -2,15 +2,15 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "5988f3b63ed0e88110aa2c10545c2e6d",
+    "identityHash": "4bc0a39cc3e5da2f35baf6cd5b9eaf1f",
     "entities": [
       {
         "tableName": "entry_id",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, PRIMARY KEY(`api`, `id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, PRIMARY KEY(`src`, `id`))",
         "fields": [
           {
-            "fieldPath": "api",
-            "columnName": "api",
+            "fieldPath": "src",
+            "columnName": "src",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -23,31 +23,31 @@
         ],
         "primaryKey": {
           "columnNames": [
-            "api",
+            "src",
             "id"
           ],
           "autoGenerate": false
         },
         "indices": [
           {
-            "name": "index_entry_id_api_id",
+            "name": "index_entry_id_src_id",
             "unique": true,
             "columnNames": [
-              "api",
+              "src",
               "id"
             ],
-            "createSql": "CREATE UNIQUE INDEX `index_entry_id_api_id` ON `${TABLE_NAME}` (`api`, `id`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_entry_id_src_id` ON `${TABLE_NAME}` (`src`, `id`)"
           }
         ],
         "foreignKeys": []
       },
       {
         "tableName": "meta_string",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`api`, `id`, `key`, `value`), FOREIGN KEY(`api`, `id`) REFERENCES `entry_id`(`api`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`), FOREIGN KEY(`src`, `id`) REFERENCES `entry_id`(`src`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
-            "fieldPath": "api",
-            "columnName": "api",
+            "fieldPath": "src",
+            "columnName": "src",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -72,7 +72,7 @@
         ],
         "primaryKey": {
           "columnNames": [
-            "api",
+            "src",
             "id",
             "key",
             "value"
@@ -81,35 +81,35 @@
         },
         "indices": [
           {
-            "name": "index_meta_string_api_id_key_value",
+            "name": "index_meta_string_src_id_key_value",
             "unique": true,
             "columnNames": [
-              "api",
+              "src",
               "id",
               "key",
               "value"
             ],
-            "createSql": "CREATE UNIQUE INDEX `index_meta_string_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_meta_string_src_id_key_value` ON `${TABLE_NAME}` (`src`, `id`, `key`, `value`)"
           },
           {
-            "name": "index_meta_string_key_value_api",
+            "name": "index_meta_string_key_value_src",
             "unique": false,
             "columnNames": [
               "key",
               "value",
-              "api"
+              "src"
             ],
-            "createSql": "CREATE  INDEX `index_meta_string_key_value_api` ON `${TABLE_NAME}` (`key`, `value`, `api`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_string_key_value_src` ON `${TABLE_NAME}` (`key`, `value`, `src`)"
           },
           {
-            "name": "index_meta_string_value_key_api",
+            "name": "index_meta_string_value_key_src",
             "unique": false,
             "columnNames": [
               "value",
               "key",
-              "api"
+              "src"
             ],
-            "createSql": "CREATE  INDEX `index_meta_string_value_key_api` ON `${TABLE_NAME}` (`value`, `key`, `api`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_string_value_key_src` ON `${TABLE_NAME}` (`value`, `key`, `src`)"
           },
           {
             "name": "index_meta_string_value",
@@ -117,7 +117,7 @@
             "columnNames": [
               "value"
             ],
-            "createSql": "CREATE  INDEX `index_meta_string_value` ON `${TABLE_NAME}` (`value`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_string_value` ON `${TABLE_NAME}` (`value`)"
           }
         ],
         "foreignKeys": [
@@ -126,11 +126,11 @@
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
-              "api",
+              "src",
               "id"
             ],
             "referencedColumns": [
-              "api",
+              "src",
               "id"
             ]
           }
@@ -138,11 +138,11 @@
       },
       {
         "tableName": "meta_long",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY(`api`, `id`, `key`, `value`), FOREIGN KEY(`api`, `id`) REFERENCES `entry_id`(`api`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`), FOREIGN KEY(`src`, `id`) REFERENCES `entry_id`(`src`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
-            "fieldPath": "api",
-            "columnName": "api",
+            "fieldPath": "src",
+            "columnName": "src",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -167,7 +167,7 @@
         ],
         "primaryKey": {
           "columnNames": [
-            "api",
+            "src",
             "id",
             "key",
             "value"
@@ -176,35 +176,35 @@
         },
         "indices": [
           {
-            "name": "index_meta_long_api_id_key_value",
+            "name": "index_meta_long_src_id_key_value",
             "unique": true,
             "columnNames": [
-              "api",
+              "src",
               "id",
               "key",
               "value"
             ],
-            "createSql": "CREATE UNIQUE INDEX `index_meta_long_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_meta_long_src_id_key_value` ON `${TABLE_NAME}` (`src`, `id`, `key`, `value`)"
           },
           {
-            "name": "index_meta_long_key_value_api",
+            "name": "index_meta_long_key_value_src",
             "unique": false,
             "columnNames": [
               "key",
               "value",
-              "api"
+              "src"
             ],
-            "createSql": "CREATE  INDEX `index_meta_long_key_value_api` ON `${TABLE_NAME}` (`key`, `value`, `api`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_long_key_value_src` ON `${TABLE_NAME}` (`key`, `value`, `src`)"
           },
           {
-            "name": "index_meta_long_value_key_api",
+            "name": "index_meta_long_value_key_src",
             "unique": false,
             "columnNames": [
               "value",
               "key",
-              "api"
+              "src"
             ],
-            "createSql": "CREATE  INDEX `index_meta_long_value_key_api` ON `${TABLE_NAME}` (`value`, `key`, `api`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_long_value_key_src` ON `${TABLE_NAME}` (`value`, `key`, `src`)"
           },
           {
             "name": "index_meta_long_value",
@@ -212,7 +212,7 @@
             "columnNames": [
               "value"
             ],
-            "createSql": "CREATE  INDEX `index_meta_long_value` ON `${TABLE_NAME}` (`value`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_long_value` ON `${TABLE_NAME}` (`value`)"
           }
         ],
         "foreignKeys": [
@@ -221,11 +221,11 @@
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
-              "api",
+              "src",
               "id"
             ],
             "referencedColumns": [
-              "api",
+              "src",
               "id"
             ]
           }
@@ -233,11 +233,11 @@
       },
       {
         "tableName": "meta_double",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` REAL NOT NULL, PRIMARY KEY(`api`, `id`, `key`, `value`), FOREIGN KEY(`api`, `id`) REFERENCES `entry_id`(`api`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` REAL NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`), FOREIGN KEY(`src`, `id`) REFERENCES `entry_id`(`src`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
-            "fieldPath": "api",
-            "columnName": "api",
+            "fieldPath": "src",
+            "columnName": "src",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -262,7 +262,7 @@
         ],
         "primaryKey": {
           "columnNames": [
-            "api",
+            "src",
             "id",
             "key",
             "value"
@@ -271,35 +271,35 @@
         },
         "indices": [
           {
-            "name": "index_meta_double_api_id_key_value",
+            "name": "index_meta_double_src_id_key_value",
             "unique": true,
             "columnNames": [
-              "api",
+              "src",
               "id",
               "key",
               "value"
             ],
-            "createSql": "CREATE UNIQUE INDEX `index_meta_double_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_meta_double_src_id_key_value` ON `${TABLE_NAME}` (`src`, `id`, `key`, `value`)"
           },
           {
-            "name": "index_meta_double_key_value_api",
+            "name": "index_meta_double_key_value_src",
             "unique": false,
             "columnNames": [
               "key",
               "value",
-              "api"
+              "src"
             ],
-            "createSql": "CREATE  INDEX `index_meta_double_key_value_api` ON `${TABLE_NAME}` (`key`, `value`, `api`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_double_key_value_src` ON `${TABLE_NAME}` (`key`, `value`, `src`)"
           },
           {
-            "name": "index_meta_double_value_key_api",
+            "name": "index_meta_double_value_key_src",
             "unique": false,
             "columnNames": [
               "value",
               "key",
-              "api"
+              "src"
             ],
-            "createSql": "CREATE  INDEX `index_meta_double_value_key_api` ON `${TABLE_NAME}` (`value`, `key`, `api`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_double_value_key_src` ON `${TABLE_NAME}` (`value`, `key`, `src`)"
           },
           {
             "name": "index_meta_double_value",
@@ -307,7 +307,7 @@
             "columnNames": [
               "value"
             ],
-            "createSql": "CREATE  INDEX `index_meta_double_value` ON `${TABLE_NAME}` (`value`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_double_value` ON `${TABLE_NAME}` (`value`)"
           }
         ],
         "foreignKeys": [
@@ -316,11 +316,11 @@
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
-              "api",
+              "src",
               "id"
             ],
             "referencedColumns": [
-              "api",
+              "src",
               "id"
             ]
           }
@@ -328,11 +328,11 @@
       },
       {
         "tableName": "meta_local_string",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`api`, `id`, `key`, `value`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`))",
         "fields": [
           {
-            "fieldPath": "api",
-            "columnName": "api",
+            "fieldPath": "src",
+            "columnName": "src",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -357,7 +357,7 @@
         ],
         "primaryKey": {
           "columnNames": [
-            "api",
+            "src",
             "id",
             "key",
             "value"
@@ -366,35 +366,35 @@
         },
         "indices": [
           {
-            "name": "index_meta_local_string_api_id_key_value",
+            "name": "index_meta_local_string_src_id_key_value",
             "unique": true,
             "columnNames": [
-              "api",
+              "src",
               "id",
               "key",
               "value"
             ],
-            "createSql": "CREATE UNIQUE INDEX `index_meta_local_string_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_meta_local_string_src_id_key_value` ON `${TABLE_NAME}` (`src`, `id`, `key`, `value`)"
           },
           {
-            "name": "index_meta_local_string_key_value_api",
+            "name": "index_meta_local_string_key_value_src",
             "unique": false,
             "columnNames": [
               "key",
               "value",
-              "api"
+              "src"
             ],
-            "createSql": "CREATE  INDEX `index_meta_local_string_key_value_api` ON `${TABLE_NAME}` (`key`, `value`, `api`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_local_string_key_value_src` ON `${TABLE_NAME}` (`key`, `value`, `src`)"
           },
           {
-            "name": "index_meta_local_string_value_key_api",
+            "name": "index_meta_local_string_value_key_src",
             "unique": false,
             "columnNames": [
               "value",
               "key",
-              "api"
+              "src"
             ],
-            "createSql": "CREATE  INDEX `index_meta_local_string_value_key_api` ON `${TABLE_NAME}` (`value`, `key`, `api`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_local_string_value_key_src` ON `${TABLE_NAME}` (`value`, `key`, `src`)"
           },
           {
             "name": "index_meta_local_string_value",
@@ -402,18 +402,18 @@
             "columnNames": [
               "value"
             ],
-            "createSql": "CREATE  INDEX `index_meta_local_string_value` ON `${TABLE_NAME}` (`value`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_local_string_value` ON `${TABLE_NAME}` (`value`)"
           }
         ],
         "foreignKeys": []
       },
       {
         "tableName": "meta_local_long",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY(`api`, `id`, `key`, `value`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`))",
         "fields": [
           {
-            "fieldPath": "api",
-            "columnName": "api",
+            "fieldPath": "src",
+            "columnName": "src",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -438,7 +438,7 @@
         ],
         "primaryKey": {
           "columnNames": [
-            "api",
+            "src",
             "id",
             "key",
             "value"
@@ -447,35 +447,35 @@
         },
         "indices": [
           {
-            "name": "index_meta_local_long_api_id_key_value",
+            "name": "index_meta_local_long_src_id_key_value",
             "unique": true,
             "columnNames": [
-              "api",
+              "src",
               "id",
               "key",
               "value"
             ],
-            "createSql": "CREATE UNIQUE INDEX `index_meta_local_long_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_meta_local_long_src_id_key_value` ON `${TABLE_NAME}` (`src`, `id`, `key`, `value`)"
           },
           {
-            "name": "index_meta_local_long_key_value_api",
+            "name": "index_meta_local_long_key_value_src",
             "unique": false,
             "columnNames": [
               "key",
               "value",
-              "api"
+              "src"
             ],
-            "createSql": "CREATE  INDEX `index_meta_local_long_key_value_api` ON `${TABLE_NAME}` (`key`, `value`, `api`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_local_long_key_value_src` ON `${TABLE_NAME}` (`key`, `value`, `src`)"
           },
           {
-            "name": "index_meta_local_long_value_key_api",
+            "name": "index_meta_local_long_value_key_src",
             "unique": false,
             "columnNames": [
               "value",
               "key",
-              "api"
+              "src"
             ],
-            "createSql": "CREATE  INDEX `index_meta_local_long_value_key_api` ON `${TABLE_NAME}` (`value`, `key`, `api`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_local_long_value_key_src` ON `${TABLE_NAME}` (`value`, `key`, `src`)"
           },
           {
             "name": "index_meta_local_long_value",
@@ -483,18 +483,18 @@
             "columnNames": [
               "value"
             ],
-            "createSql": "CREATE  INDEX `index_meta_local_long_value` ON `${TABLE_NAME}` (`value`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_local_long_value` ON `${TABLE_NAME}` (`value`)"
           }
         ],
         "foreignKeys": []
       },
       {
         "tableName": "meta_local_double",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` REAL NOT NULL, PRIMARY KEY(`api`, `id`, `key`, `value`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` REAL NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`))",
         "fields": [
           {
-            "fieldPath": "api",
-            "columnName": "api",
+            "fieldPath": "src",
+            "columnName": "src",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -519,7 +519,7 @@
         ],
         "primaryKey": {
           "columnNames": [
-            "api",
+            "src",
             "id",
             "key",
             "value"
@@ -528,35 +528,35 @@
         },
         "indices": [
           {
-            "name": "index_meta_local_double_api_id_key_value",
+            "name": "index_meta_local_double_src_id_key_value",
             "unique": true,
             "columnNames": [
-              "api",
+              "src",
               "id",
               "key",
               "value"
             ],
-            "createSql": "CREATE UNIQUE INDEX `index_meta_local_double_api_id_key_value` ON `${TABLE_NAME}` (`api`, `id`, `key`, `value`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_meta_local_double_src_id_key_value` ON `${TABLE_NAME}` (`src`, `id`, `key`, `value`)"
           },
           {
-            "name": "index_meta_local_double_key_value_api",
+            "name": "index_meta_local_double_key_value_src",
             "unique": false,
             "columnNames": [
               "key",
               "value",
-              "api"
+              "src"
             ],
-            "createSql": "CREATE  INDEX `index_meta_local_double_key_value_api` ON `${TABLE_NAME}` (`key`, `value`, `api`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_local_double_key_value_src` ON `${TABLE_NAME}` (`key`, `value`, `src`)"
           },
           {
-            "name": "index_meta_local_double_value_key_api",
+            "name": "index_meta_local_double_value_key_src",
             "unique": false,
             "columnNames": [
               "value",
               "key",
-              "api"
+              "src"
             ],
-            "createSql": "CREATE  INDEX `index_meta_local_double_value_key_api` ON `${TABLE_NAME}` (`value`, `key`, `api`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_local_double_value_key_src` ON `${TABLE_NAME}` (`value`, `key`, `src`)"
           },
           {
             "name": "index_meta_local_double_value",
@@ -564,18 +564,18 @@
             "columnNames": [
               "value"
             ],
-            "createSql": "CREATE  INDEX `index_meta_local_double_value` ON `${TABLE_NAME}` (`value`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_meta_local_double_value` ON `${TABLE_NAME}` (`value`)"
           }
         ],
         "foreignKeys": []
       },
       {
         "tableName": "waveform",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `peak_positive` BLOB NOT NULL, `peak_negative` BLOB NOT NULL, `rms_positive` BLOB NOT NULL, `rms_negative` BLOB NOT NULL, PRIMARY KEY(`api`, `id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `peak_positive` BLOB NOT NULL, `peak_negative` BLOB NOT NULL, `rms_positive` BLOB NOT NULL, `rms_negative` BLOB NOT NULL, PRIMARY KEY(`src`, `id`))",
         "fields": [
           {
-            "fieldPath": "api",
-            "columnName": "api",
+            "fieldPath": "src",
+            "columnName": "src",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -612,31 +612,31 @@
         ],
         "primaryKey": {
           "columnNames": [
-            "api",
+            "src",
             "id"
           ],
           "autoGenerate": false
         },
         "indices": [
           {
-            "name": "index_waveform_api_id",
+            "name": "index_waveform_src_id",
             "unique": true,
             "columnNames": [
-              "api",
+              "src",
               "id"
             ],
-            "createSql": "CREATE UNIQUE INDEX `index_waveform_api_id` ON `${TABLE_NAME}` (`api`, `id`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_waveform_src_id` ON `${TABLE_NAME}` (`src`, `id`)"
           }
         ],
         "foreignKeys": []
       },
       {
         "tableName": "playlists",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`api` TEXT NOT NULL, `id` TEXT NOT NULL, `type` INTEGER NOT NULL, `name` TEXT NOT NULL, `query` TEXT, `pos` INTEGER NOT NULL, PRIMARY KEY(`api`, `id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `type` INTEGER NOT NULL, `name` TEXT NOT NULL, `query` TEXT, `pos` INTEGER NOT NULL, PRIMARY KEY(`src`, `id`))",
         "fields": [
           {
-            "fieldPath": "api",
-            "columnName": "api",
+            "fieldPath": "src",
+            "columnName": "src",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -673,27 +673,27 @@
         ],
         "primaryKey": {
           "columnNames": [
-            "api",
+            "src",
             "id"
           ],
           "autoGenerate": false
         },
         "indices": [
           {
-            "name": "index_playlists_api_id",
+            "name": "index_playlists_src_id",
             "unique": true,
             "columnNames": [
-              "api",
+              "src",
               "id"
             ],
-            "createSql": "CREATE UNIQUE INDEX `index_playlists_api_id` ON `${TABLE_NAME}` (`api`, `id`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_playlists_src_id` ON `${TABLE_NAME}` (`src`, `id`)"
           }
         ],
         "foreignKeys": []
       },
       {
         "tableName": "playlist_entries",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowid` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `playlist_api` TEXT NOT NULL, `playlist_id` TEXT NOT NULL, `api` TEXT NOT NULL, `id` TEXT NOT NULL, `pos` INTEGER NOT NULL, FOREIGN KEY(`playlist_api`, `playlist_id`) REFERENCES `playlists`(`api`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowid` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `playlist_src` TEXT NOT NULL, `playlist_id` TEXT NOT NULL, `src` TEXT NOT NULL, `id` TEXT NOT NULL, `pos` INTEGER NOT NULL, FOREIGN KEY(`playlist_src`, `playlist_id`) REFERENCES `playlists`(`src`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "rowId",
@@ -702,8 +702,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "playlist_api",
-            "columnName": "playlist_api",
+            "fieldPath": "playlist_src",
+            "columnName": "playlist_src",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -714,8 +714,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "api",
-            "columnName": "api",
+            "fieldPath": "src",
+            "columnName": "src",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -740,13 +740,13 @@
         },
         "indices": [
           {
-            "name": "index_playlist_entries_playlist_api_playlist_id",
+            "name": "index_playlist_entries_playlist_src_playlist_id",
             "unique": false,
             "columnNames": [
-              "playlist_api",
+              "playlist_src",
               "playlist_id"
             ],
-            "createSql": "CREATE  INDEX `index_playlist_entries_playlist_api_playlist_id` ON `${TABLE_NAME}` (`playlist_api`, `playlist_id`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_entries_playlist_src_playlist_id` ON `${TABLE_NAME}` (`playlist_src`, `playlist_id`)"
           }
         ],
         "foreignKeys": [
@@ -755,11 +755,11 @@
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
-              "playlist_api",
+              "playlist_src",
               "playlist_id"
             ],
             "referencedColumns": [
-              "api",
+              "src",
               "id"
             ]
           }
@@ -767,7 +767,7 @@
       },
       {
         "tableName": "playback_controller_entries",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowid` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `playback_id` INTEGER NOT NULL, `playback_type` TEXT NOT NULL, `playlist_pos` INTEGER NOT NULL, `playlist_selection_id` INTEGER NOT NULL, `queue_id` INTEGER NOT NULL, `pos` INTEGER NOT NULL, `api` TEXT NOT NULL, `id` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowid` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `playback_id` INTEGER NOT NULL, `playback_type` TEXT NOT NULL, `playlist_pos` INTEGER NOT NULL, `playlist_selection_id` INTEGER NOT NULL, `queue_id` INTEGER NOT NULL, `pos` INTEGER NOT NULL, `src` TEXT NOT NULL, `id` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "rowId",
@@ -812,8 +812,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "api",
-            "columnName": "api",
+            "fieldPath": "src",
+            "columnName": "src",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -837,7 +837,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '5988f3b63ed0e88110aa2c10545c2e6d')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4bc0a39cc3e5da2f35baf6cd5b9eaf1f')"
     ]
   }
 }

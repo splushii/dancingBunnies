@@ -30,7 +30,7 @@ public class PlaylistID implements Parcelable {
     }
 
     public PlaylistID(Playlist playlist) {
-        src = playlist.api;
+        src = playlist.src;
         id = playlist.id;
         type = playlist.type;
     }

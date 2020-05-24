@@ -24,8 +24,8 @@ public abstract class PlaylistDao {
     abstract public List<Playlist> getAllSync();
 
     @Query("SELECT * FROM " + DB.TABLE_PLAYLISTS
-            + " WHERE " + Playlist.COLUMN_API + " = :src"
-            + " AND " + Playlist.COLUMN_ID + " = :id")
+            + " WHERE " + DB.COLUMN_SRC + " = :src"
+            + " AND " + DB.COLUMN_ID + " = :id")
     abstract public LiveData<Playlist> get(String src, String id);
 
     // Insert
@@ -60,11 +60,11 @@ public abstract class PlaylistDao {
         }
     }
     @Transaction
-    @Query("DELETE FROM " + DB.TABLE_PLAYLISTS + " WHERE " + Playlist.COLUMN_API + " = :src")
+    @Query("DELETE FROM " + DB.TABLE_PLAYLISTS + " WHERE " + DB.COLUMN_SRC + " = :src")
     public void deleteWhereSourceIs(String src) {
         List<Playlist> playlists = getAllSync();
         delete(playlists.stream()
-                .filter(playlist -> playlist.api.equals(src))
+                .filter(playlist -> playlist.src.equals(src))
                 .map(playlist -> playlist.pos)
                 .collect(Collectors.toList())
         );
@@ -107,4 +107,7 @@ public abstract class PlaylistDao {
             newPos++;
         }
     }
+
+    @Query("SELECT DISTINCT \"" + DB.COLUMN_SRC + "\" FROM " + DB.TABLE_PLAYLISTS)
+    public abstract LiveData<List<String>> getSources();
 }

@@ -140,7 +140,7 @@ public class PlaybackControllerStorage {
     ) {
         return roomPlaybackControllerEntries.stream().map(entry ->
                 new PlaybackEntry(
-                        new EntryID(entry.api, entry.id, Meta.FIELD_SPECIAL_MEDIA_ID),
+                        new EntryID(entry.src, entry.id, Meta.FIELD_SPECIAL_MEDIA_ID),
                         entry.playbackID,
                         entry.playbackType,
                         entry.playlistPos,

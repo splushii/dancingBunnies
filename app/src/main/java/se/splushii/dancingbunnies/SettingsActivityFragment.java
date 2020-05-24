@@ -1,5 +1,6 @@
 package se.splushii.dancingbunnies;
 
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.InputType;
@@ -11,6 +12,7 @@ import android.view.ViewGroup;
 import com.mikepenz.aboutlibraries.Libs;
 import com.mikepenz.aboutlibraries.LibsBuilder;
 
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -22,13 +24,17 @@ import java.util.stream.Collectors;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 import androidx.preference.EditTextPreference;
+import androidx.preference.MultiSelectListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.PreferenceManager;
 import androidx.work.WorkManager;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.jobs.Jobs;
 import se.splushii.dancingbunnies.jobs.LibrarySyncWorker;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
+import se.splushii.dancingbunnies.storage.MetaStorage;
+import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.ui.TimePreference;
 import se.splushii.dancingbunnies.ui.TimePreferenceDialogFragment;
 import se.splushii.dancingbunnies.util.Util;
@@ -39,10 +45,15 @@ import se.splushii.dancingbunnies.util.Util;
 public class SettingsActivityFragment extends PreferenceFragmentCompat
         implements SharedPreferences.OnSharedPreferenceChangeListener {
     private static final String LC = Util.getLogContext(SettingsActivityFragment.class);
+
+    public static final int BACKEND_ID_INVALID = -1;
+
     private Preference subsonicPref;
     private Preference subsonicScheduledRefreshPref;
     private Preference subsonicRefreshPref;
     private CompletableFuture<Optional<String>> currentSubsonicHeartbeat;
+    private MultiSelectListPreference libraryClearPref;
+    private MultiSelectListPreference libraryClearPlaylistsPref;
 
     public SettingsActivityFragment() {
     }
@@ -50,7 +61,8 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
     @Override
     public void onStart() {
         super.onStart();
-        heartbeatSubsonic();
+        int preferenceBackendID = 0;
+        heartbeatSubsonic(preferenceBackendID);
     }
 
     @Override
@@ -110,10 +122,32 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
         String subsonicRefreshKey = getResources().getString(R.string.pref_key_subsonic_refresh);
         subsonicRefreshPref = findPreference(subsonicRefreshKey);
         subsonicRefreshPref.setOnPreferenceClickListener(preference -> {
-            LibrarySyncWorker.runNow(requireContext());
+            int preferenceBackendID = 0;
+            LibrarySyncWorker.runNow(
+                    requireContext(),
+                    MusicLibraryService.API_ID_SUBSONIC,
+                    preferenceBackendID,
+                    R.string.pref_key_subsonic_refresh_last_sync,
+                    R.string.pref_key_subsonic_refresh_enabled,
+                    R.string.pref_key_subsonic_refresh_time
+            );
             return false;
         });
         setLastRefreshSummary();
+
+        String libraryClearKey = getResources().getString(R.string.pref_key_library_clear);
+        libraryClearPref = findPreference(libraryClearKey);
+        libraryClearPref.setOnPreferenceClickListener(preference -> {
+            libraryClearPref.setValues(Collections.emptySet());
+            return false;
+        });
+
+        String libraryClearPlaylistsKey = getResources().getString(R.string.pref_key_library_clear_playlists);
+        libraryClearPlaylistsPref = findPreference(libraryClearPlaylistsKey);
+        libraryClearPlaylistsPref.setOnPreferenceClickListener(preference -> {
+            libraryClearPlaylistsPref.setValues(Collections.emptySet());
+            return false;
+        });
 
         String aboutKey = getResources().getString(R.string.pref_key_about);
         findPreference(aboutKey).setOnPreferenceClickListener(preference -> {
@@ -176,9 +210,10 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
         WorkManager.getInstance(requireContext())
-                .getWorkInfosForUniqueWorkLiveData(Jobs.WORK_NAME_LIBRARY_SYNC)
+                .getWorkInfosByTagLiveData(Jobs.WORK_NAME_LIBRARY_SYNC_TAG)
                 .observe(getViewLifecycleOwner(), workInfos -> {
                     List<String> statuses = workInfos.stream()
+                            .filter(workInfo -> !workInfo.getState().isFinished())
                             .map(workInfo -> workInfo.getProgress().getString("status"))
                             .collect(Collectors.toList());
                     if (statuses.size() == 1) {
@@ -194,10 +229,25 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                         setLastRefreshSummary();
                     }
                 });
+        MetaStorage.getInstance(requireContext()).getSources()
+                .observe(getViewLifecycleOwner(), values -> {
+                    String[] valuesArray = values.toArray(new String[0]);
+                    libraryClearPref.setEntries(valuesArray);
+                    libraryClearPref.setEntryValues(valuesArray);
+                });
+        PlaylistStorage.getInstance(requireContext()).getSources()
+                .observe(getViewLifecycleOwner(), values -> {
+                    String[] valuesArray = values.toArray(new String[0]);
+                    libraryClearPlaylistsPref.setEntries(valuesArray);
+                    libraryClearPlaylistsPref.setEntryValues(valuesArray);
+                });
     }
 
     private void setLastRefreshSummary() {
-        long lastRefresh = LibrarySyncWorker.getLastRefresh(requireContext());
+        long lastRefresh = LibrarySyncWorker.getLastRefresh(
+                requireContext(),
+                R.string.pref_key_subsonic_refresh_last_sync
+        );
         subsonicRefreshPref.setSummary(lastRefresh > 0L ?
                 "Last refresh: " + new Date(lastRefresh) : ""
         );
@@ -222,12 +272,29 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                 || key.equals(getResources().getString(R.string.pref_key_subsonic_usr))
                 || key.equals(getResources().getString(R.string.pref_key_subsonic_pwd))
                 || key.equals(getResources().getString(R.string.pref_key_subsonic_tag_delim))) {
+            int preferenceBackendID = 0;
             updateTextPref(key, sp);
             enableSubsonicAuthenticatedPrefs(false);
-            heartbeatSubsonic();
+            heartbeatSubsonic(preferenceBackendID);
         } else if (key.equals(getResources().getString(R.string.pref_key_subsonic_refresh_time))
                 || key.equals(getResources().getString(R.string.pref_key_subsonic_refresh_enabled))) {
-            LibrarySyncWorker.requeue(requireContext());
+            int preferenceBackendID = 0;
+            LibrarySyncWorker.requeue(
+                    requireContext(),
+                    MusicLibraryService.API_ID_SUBSONIC,
+                    preferenceBackendID,
+                    R.string.pref_key_subsonic_refresh_last_sync,
+                    R.string.pref_key_subsonic_refresh_enabled,
+                    R.string.pref_key_subsonic_refresh_time
+            );
+        } else if (key.equals(getResources().getString(R.string.pref_key_library_clear))) {
+            for (String src: libraryClearPref.getValues()) {
+                CompletableFuture.runAsync(() -> MetaStorage.getInstance(requireContext()).clearAll(src));
+            }
+        } else if (key.equals(getResources().getString(R.string.pref_key_library_clear_playlists))) {
+            for (String src: libraryClearPlaylistsPref.getValues()) {
+                CompletableFuture.runAsync(() -> PlaylistStorage.getInstance(requireContext()).clearAll(src));
+            }
         }
     }
 
@@ -244,15 +311,44 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
         return value;
     }
 
-    private void heartbeatSubsonic() {
+    public static String getSourceFromConfig(Context context, String api, int preferenceBackendID) {
+        if (api == null) {
+            return null;
+        }
+        switch (api) {
+            case MusicLibraryService.API_ID_SUBSONIC:
+                return getSubsonicSource(context, preferenceBackendID);
+            case MusicLibraryService.API_ID_DANCINGBUNNIES:
+            default:
+                return null;
+        }
+    }
+
+    // TODO: Support multiple configurations using the same api. Use preferenceBackendID.
+    private static String getSubsonicSource(Context context, int preferenceBackendID) {
+        String api = MusicLibraryService.API_ID_SUBSONIC;
+        String url = PreferenceManager.getDefaultSharedPreferences(context).getString(
+                context.getResources().getString(R.string.pref_key_subsonic_url),
+                null
+        );
+        if (url == null) {
+            Log.e(LC, "requeue: Source URL is null for api \"" + api + "\"");
+            return null;
+        }
+        return MusicLibraryService.getAPISource(
+                api,
+                Util.getHostFromUrl(url)
+        );
+    }
+
+    private void heartbeatSubsonic(int preferenceBackendID) {
         if (currentSubsonicHeartbeat != null) {
             currentSubsonicHeartbeat.complete(Optional.of("interrupted"));
         }
         subsonicPref.setSummary("Testing connection...");
-        APIClient apiClient = APIClient.getAPIClient(
-                requireContext(),
-                MusicLibraryService.API_ID_SUBSONIC
-        );
+        String src = getSubsonicSource(requireContext(), preferenceBackendID);
+        APIClient apiClient = APIClient.getAPIClient(requireContext(), src);
+        Log.e(LC, "apiClient: " + apiClient);
         if (apiClient == null) {
             enableSubsonicAuthenticatedPrefs(false);
             subsonicPref.setSummary("");

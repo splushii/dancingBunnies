@@ -18,7 +18,7 @@ import static androidx.room.OnConflictStrategy.REPLACE;
 @Dao
 public abstract class PlaylistEntryDao {
     private static final String isSpecifiedPlaylist =
-            PlaylistEntry.COLUMN_PLAYLIST_API + " = :playlistSrc"
+            PlaylistEntry.COLUMN_PLAYLIST_SRC + " = :playlistSrc"
                     + " AND " + PlaylistEntry.COLUMN_PLAYLIST_ID + " = :playlistId";
 
     @Query("SELECT * FROM " + DB.TABLE_PLAYLIST_ENTRIES

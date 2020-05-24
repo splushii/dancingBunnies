@@ -31,7 +31,7 @@ public abstract class DB extends RoomDatabase {
     static final String TABLE_META_LOCAL_STRING = "meta_local_string";
     static final String TABLE_META_LOCAL_LONG = "meta_local_long";
     static final String TABLE_META_LOCAL_DOUBLE = "meta_local_double";
-    public static final String COLUMN_API = "api";
+    public static final String COLUMN_SRC = "src";
     public static final String COLUMN_ID = "id";
     public static final String COLUMN_KEY = "key";
     public static final String COLUMN_VALUE = "value";

@@ -13,6 +13,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
+import androidx.core.util.Consumer;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
@@ -51,10 +52,10 @@ public class MetaStorage {
         metaModel = DB.getDB(context).metaModel();
     }
 
-    public void insertSongs(List<Meta> metaList) {
+    public void insertSongs(List<Meta> metaList, Consumer<String> progressHandler) {
         long start = System.currentTimeMillis();
         Log.d(LC, "insertSongs start");
-        metaModel.insert(metaList);
+        metaModel.insert(metaList, progressHandler);
         Log.d(LC, "insertSongs finish. " + (System.currentTimeMillis() - start) + "ms");
     }
 
@@ -124,16 +125,16 @@ public class MetaStorage {
                 query.append(String.format(
                         " %s.%s AS %s",
                         primaryTypeTableAlias,
-                        DB.COLUMN_API,
-                        DB.COLUMN_API
+                        DB.COLUMN_SRC,
+                        DB.COLUMN_SRC
                 ));
                 break;
             case Meta.FIELD_SPECIAL_MEDIA_ID:
                 query.append(String.format(
                         " %s.%s AS %s",
                         primaryTypeTableAlias,
-                        DB.COLUMN_API,
-                        DB.COLUMN_API
+                        DB.COLUMN_SRC,
+                        DB.COLUMN_SRC
                 ));
                 query.append(String.format(
                         ", %s.%s AS %s",
@@ -163,7 +164,7 @@ public class MetaStorage {
             String sortKeyColumn;
             switch (sortKey) {
                 case Meta.FIELD_SPECIAL_MEDIA_SRC:
-                    sortKeyColumn = DB.COLUMN_API;
+                    sortKeyColumn = DB.COLUMN_SRC;
                     break;
                 case Meta.FIELD_SPECIAL_MEDIA_ID:
                     sortKeyColumn = DB.COLUMN_ID;
@@ -206,8 +207,8 @@ public class MetaStorage {
                 continue;
             }
             query.append("\nLEFT JOIN " + typeTable + " AS " + typeTableAlias
-                    + " ON ( " + typeTableAlias + "." + DB.COLUMN_API
-                    + " = " + primaryTypeTableAlias + "." + DB.COLUMN_API
+                    + " ON ( " + typeTableAlias + "." + DB.COLUMN_SRC
+                    + " = " + primaryTypeTableAlias + "." + DB.COLUMN_SRC
                     + " AND " + typeTableAlias + "." + DB.COLUMN_ID
                     + " = " + primaryTypeTableAlias + "." + DB.COLUMN_ID
                     + " AND " + typeTableAlias + "." + DB.COLUMN_KEY + " = ? )");
@@ -263,15 +264,15 @@ public class MetaStorage {
                     switch (primaryTypeKey) {
                         case Meta.FIELD_SPECIAL_MEDIA_SRC:
                             entryID = new EntryID(
-                                    MusicLibraryService.API_ID_DANCINGBUNNIES,
-                                    value.api,
+                                    MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL,
+                                    value.src,
                                     primaryTypeKey
                             );
-                            name = value.api;
+                            name = value.src;
                             break;
                         case Meta.FIELD_SPECIAL_MEDIA_ID:
                             entryID = new EntryID(
-                                    value.api,
+                                    value.src,
                                     value.id,
                                     primaryTypeKey
                             );
@@ -279,7 +280,7 @@ public class MetaStorage {
                             break;
                         default:
                             entryID = new EntryID(
-                                    MusicLibraryService.API_ID_DANCINGBUNNIES,
+                                    MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL,
                                     value.value,
                                     primaryTypeKey
                             );
@@ -416,7 +417,7 @@ public class MetaStorage {
         }
         query.append(" ").append(typeTableAlias).append(".");
         if (Meta.FIELD_SPECIAL_MEDIA_SRC.equals(key)) {
-            query.append(DB.COLUMN_API);
+            query.append(DB.COLUMN_SRC);
         } else if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(key)) {
             query.append(DB.COLUMN_ID);
         } else {
@@ -436,7 +437,7 @@ public class MetaStorage {
                 query.append(showTypeTableAlias).append(".").append(DB.COLUMN_ID);
                 break;
             case Meta.FIELD_SPECIAL_MEDIA_SRC:
-                query.append(showTypeTableAlias).append(".").append(DB.COLUMN_API);
+                query.append(showTypeTableAlias).append(".").append(DB.COLUMN_SRC);
                 break;
             default:
                 query.append(keyTable).append(".").append(DB.COLUMN_VALUE);
@@ -521,8 +522,8 @@ public class MetaStorage {
                 continue;
             }
             query.append("\nLEFT JOIN " + typeTable + " AS " + typeTableAlias
-                    + " ON ( " + typeTableAlias + "." + DB.COLUMN_API
-                    + " = " + baseTableAlias + "." + DB.COLUMN_API
+                    + " ON ( " + typeTableAlias + "." + DB.COLUMN_SRC
+                    + " = " + baseTableAlias + "." + DB.COLUMN_SRC
                     + " AND " + typeTableAlias + "." + DB.COLUMN_ID
                     + " = " + baseTableAlias + "." + DB.COLUMN_ID
                     + " AND " + typeTableAlias + "." + DB.COLUMN_KEY + " = ? )");
@@ -768,6 +769,10 @@ public class MetaStorage {
                                 .collect(Collectors.toList())
                 );
         }
+    }
+
+    public LiveData<List<String>> getSources() {
+        return metaModel.getSources();
     }
 
     public LiveData<List<String>> getMetaFields() {

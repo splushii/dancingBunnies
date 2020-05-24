@@ -50,6 +50,28 @@
             android:enabled="false"
             android:title="@string/pref_subsonic_refresh" />
     </PreferenceCategory>
+    <MultiSelectListPreference
+        app:iconSpaceReserved="false"
+        android:key="@string/pref_key_library_clear"
+        android:title="@string/pref_library_clear"
+        android:summary="@string/pref_library_clear_summary"
+        android:dialogTitle="@string/pref_library_clear_dialog_title"
+        android:entries="@array/empty_array"
+        android:entryValues="@array/empty_array"
+        android:defaultValue="@array/empty_array"
+        app:allowDividerAbove="true"
+        />
+    <MultiSelectListPreference
+        app:iconSpaceReserved="false"
+        android:key="@string/pref_key_library_clear_playlists"
+        android:title="@string/pref_library_clear_playlists"
+        android:summary="@string/pref_library_clear_playlists_summary"
+        android:dialogTitle="@string/pref_library_clear_playlists_dialog_title"
+        android:entries="@array/empty_array"
+        android:entryValues="@array/empty_array"
+        android:defaultValue="@array/empty_array"
+        app:allowDividerBelow="true"
+        />
     <Preference
         app:iconSpaceReserved="false"
         android:key="@string/pref_key_about"

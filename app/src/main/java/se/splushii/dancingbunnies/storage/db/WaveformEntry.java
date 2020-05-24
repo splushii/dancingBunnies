@@ -14,25 +14,23 @@ import se.splushii.dancingbunnies.util.Util;
 
 @Entity(tableName = DB.TABLE_WAVEFORM,
         indices = {
-                @Index(value = {WaveformEntry.COLUMN_API, WaveformEntry.COLUMN_ID}, unique = true)
+                @Index(value = {DB.COLUMN_SRC, DB.COLUMN_ID}, unique = true)
         },
-        primaryKeys = {WaveformEntry.COLUMN_API, WaveformEntry.COLUMN_ID}
+        primaryKeys = {DB.COLUMN_SRC, DB.COLUMN_ID}
 )
 public class WaveformEntry {
     private static final String LC = Util.getLogContext(WaveformEntry.class);
 
-    static final String COLUMN_API = "api";
-    static final String COLUMN_ID = "id";
     private static final String COLUMN_PEAK_POSITIVE = "peak_positive";
     private static final String COLUMN_PEAK_NEGATIVE = "peak_negative";
     private static final String COLUMN_RMS_POSITIVE = "rms_positive";
     private static final String COLUMN_RMS_NEGATIVE = "rms_negative";
 
     @NonNull
-    @ColumnInfo(name = COLUMN_API)
-    public String api;
+    @ColumnInfo(name = DB.COLUMN_SRC)
+    public String src;
     @NonNull
-    @ColumnInfo(name = COLUMN_ID)
+    @ColumnInfo(name = DB.COLUMN_ID)
     public String id;
     @NonNull
     @ColumnInfo(name = COLUMN_PEAK_POSITIVE, typeAffinity = ColumnInfo.BLOB)
@@ -53,7 +51,7 @@ public class WaveformEntry {
                                      byte[] rmsPositive,
                                      byte[] rmsNegative) {
         WaveformEntry waveform = new WaveformEntry();
-        waveform.api = entryID.src;
+        waveform.src = entryID.src;
         waveform.id = entryID.id;
         waveform.peakPositive = peakPositive;
         waveform.peakNegative = peakNegative;

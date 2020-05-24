@@ -81,7 +81,7 @@ public class PlaylistAdapter extends
         actionModeCallback.getActionMode().setTitle(selection.size() + " entries");
         boolean showDelete = true;
         for (Playlist playlist: selection) {
-            if (!MusicLibraryService.checkAPISupport(playlist.api, PLAYLIST_DELETE)) {
+            if (!MusicLibraryService.checkAPISupport(playlist.src, PLAYLIST_DELETE)) {
                 showDelete = false;
             }
         }
@@ -132,7 +132,7 @@ public class PlaylistAdapter extends
     @Override
     public long getItemId(int position) {
         Playlist playlist = getItem(position);
-        return Objects.hash(playlist.api, playlist.id, playlist.type);
+        return Objects.hash(playlist.src, playlist.id, playlist.type);
     }
 
     private void setPlaylists(List<Playlist> playlists) {
@@ -240,7 +240,7 @@ public class PlaylistAdapter extends
                 return;
             }
             playlistIDLiveData.setValue(new PlaylistID(
-                    playlist.api,
+                    playlist.src,
                     playlist.id,
                     playlist.type
             ));
@@ -328,7 +328,7 @@ public class PlaylistAdapter extends
             }
             onItemClickListener.accept(holder.playlist);
         });
-        holder.setSourceResourceID(MusicLibraryService.getAPIIconResource(holder.playlist.api));
+        holder.setSourceResourceID(MusicLibraryService.getAPIIconResourceFromSource(holder.playlist.src));
         holder.updateHighlight(currentPlaylistEntryLiveData.getValue());
         holder.entry.setActivated(isSelected(holder.getKey()));
     }

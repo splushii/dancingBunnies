@@ -52,7 +52,7 @@ public class PlaylistStorage {
     public static PlaylistID generatePlaylistID(int playlistType) {
         String id = DateTimeFormatter.ISO_DATE_TIME.format(OffsetDateTime.now());
         return new PlaylistID(
-                MusicLibraryService.API_ID_DANCINGBUNNIES,
+                MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL,
                 id,
                 playlistType
         );
@@ -157,5 +157,9 @@ public class PlaylistStorage {
                                 .collect(Collectors.toList()),
                         pos
                 ));
+    }
+
+    public LiveData<List<String>> getSources() {
+        return playlistModel.getSources();
     }
 }

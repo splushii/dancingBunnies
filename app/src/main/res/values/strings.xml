@@ -14,6 +14,12 @@
     <string name="pref_subsonic_url">Subsonic URL</string>
     <string name="pref_subsonic_refresh">Refresh library now</string>
     <string name="pref_subsonic_refresh_time">Schedule library refresh</string>
+    <string name="pref_library_clear">Clear library</string>
+    <string name="pref_library_clear_summary">Clear local data from selected library sources</string>
+    <string name="pref_library_clear_dialog_title">Clear local library data</string>
+    <string name="pref_library_clear_playlists">Clear playlists</string>
+    <string name="pref_library_clear_playlists_summary">Clear local playlist data from selected library sources</string>
+    <string name="pref_library_clear_playlists_dialog_title">Clear local playlist data</string>
     <string name="pref_about">About</string>
     <string name="pref_key_backends">se.splushii.dancingbunnies.pref_backends</string>
     <string name="pref_key_subsonic">se.splushii.dancingbunnies.pref_subsonic</string>
@@ -44,6 +50,8 @@
     <string name="pref_key_localaudioplayer_current_lastpos">se.splushii.dancingbunnies.pref_localaudioplayer_current_lastpost</string>
     <string name="pref_key_localaudioplayer_current_playlist_pos">se.splushii.dancingbunnies.pref_localaudioplayer_current_playlist_pos</string>
     <string name="pref_key_localaudioplayer_current_playlist_selection_id">se.splushii.dancingbunnies.pref_localaudioplayer_current_playlist_selection_id</string>
+    <string name="pref_key_library_clear">se.splushii.dancingbunnies.pref_library_clear</string>
+    <string name="pref_key_library_clear_playlists">se.splushii.dancingbunnies.pref_library_clear_playlists</string>
     <string name="pref_key_about">se.splushii.dancingbunnies.pref_about</string>
     <string name="fastscroller_handle">Fastscroller handle</string>
     <string name="fastscroller_bubble">Fastscroller bubble</string>

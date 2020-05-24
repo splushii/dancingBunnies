@@ -137,12 +137,12 @@ public class AddToPlaylistDialogFragment
         if (playlist.type != PlaylistID.TYPE_STUPID) {
             return false;
         }
-        if (MusicLibraryService.API_ID_DANCINGBUNNIES.equals(playlist.api)) {
+        if (MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL.equals(playlist.src)) {
             return true;
         }
-        return playlist.api.equals(entryID.src) &&
+        return playlist.src.equals(entryID.src) &&
                 MusicLibraryService.checkAPISupport(
-                        playlist.api,
+                        playlist.src,
                         MusicLibraryService.PLAYLIST_ENTRY_ADD);
     }
 

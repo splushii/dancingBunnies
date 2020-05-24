@@ -96,6 +96,7 @@ public class SubsonicAPIClient extends APIClient {
     private static final String JSON_ENTRY = "entry";
     private static final String STATUS_OK = "ok";
 
+    private String instanceID = "";
     private String username = "";
     private String password = "";
     private String baseURL = "";
@@ -371,7 +372,10 @@ public class SubsonicAPIClient extends APIClient {
         }
         String title = jChild.getString(JSON_TITLE);
         EntryID entryID = new EntryID(
-                MusicLibraryService.API_ID_SUBSONIC,
+                MusicLibraryService.getAPISource(
+                        MusicLibraryService.API_ID_SUBSONIC,
+                        instanceID
+                ),
                 id,
                 Meta.FIELD_SPECIAL_MEDIA_ID
         );
@@ -600,7 +604,10 @@ public class SubsonicAPIClient extends APIClient {
                                     getPlaylist(id, entries, handler)
                                             .thenRun(() -> {
                                                 Playlist playlist = new StupidPlaylist(new PlaylistID(
-                                                        MusicLibraryService.API_ID_SUBSONIC,
+                                                        MusicLibraryService.getAPISource(
+                                                                MusicLibraryService.API_ID_SUBSONIC,
+                                                                instanceID
+                                                        ),
                                                         id,
                                                         PlaylistID.TYPE_STUPID
                                                 ), name, new ArrayList<>(entries));
@@ -664,7 +671,10 @@ public class SubsonicAPIClient extends APIClient {
                                     // Required attributes
                                     String id = jPlaylist.getString(JSON_ID);
                                     entries.add(new EntryID(
-                                            MusicLibraryService.API_ID_SUBSONIC,
+                                            MusicLibraryService.getAPISource(
+                                                    MusicLibraryService.API_ID_SUBSONIC,
+                                                    instanceID
+                                            ),
                                             id,
                                             Meta.FIELD_SPECIAL_MEDIA_ID
                                     ));
@@ -711,8 +721,10 @@ public class SubsonicAPIClient extends APIClient {
         return new AudioDataSource(context, query, entryID);
     }
 
+    // TODO: Support configuration with multiple Subsonic backend instances (i.e. use apiInstanceID)
     @Override
-    public void loadSettings(Context context) {
+    public void loadSettings(Context context, String apiInstanceID) {
+        instanceID = apiInstanceID;
         SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
         boolean useSubsonic = settings.getBoolean(context.getResources().getString(R.string.pref_key_subsonic), false);
         if (useSubsonic) {

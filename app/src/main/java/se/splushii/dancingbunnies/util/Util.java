@@ -8,6 +8,8 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 
 import java.math.BigInteger;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -88,8 +90,16 @@ public class Util {
         return true;
     }
 
-
-
+    public static String getHostFromUrl(String url) {
+        if (url == null) {
+            return null;
+        }
+        try {
+            return new URL(url).getHost();
+        } catch (MalformedURLException e) {
+            return null;
+        }
+    }
 
     public static class FutureException extends Throwable {
         final String msg;

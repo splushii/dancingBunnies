@@ -12,8 +12,8 @@ public
 interface WaveformDao {
     @Insert(onConflict = REPLACE)
     void insert(WaveformEntry... waveformEntries);
-    String isEntryID = WaveformEntry.COLUMN_API + " = :src "
-            + " AND " + WaveformEntry.COLUMN_ID + " = :id";
+    String isEntryID = DB.COLUMN_SRC + " = :src "
+            + " AND " + DB.COLUMN_ID + " = :id";
     String getQuery = "SELECT * FROM " + DB.TABLE_WAVEFORM + " WHERE " + isEntryID;
     @Query(getQuery)
     LiveData<WaveformEntry> get(String src, String id);
