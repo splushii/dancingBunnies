@@ -9,6 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.Index;
+import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.SmartPlaylist;
 import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
 
@@ -17,47 +18,78 @@ import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
 // needs to be done in a TEMP table, something not supported in Room as far as I know.
 // See: https://stackoverflow.com/questions/22494148/incrementing-value-in-table-with-unique-key-causes-constraint-error
         indices = @Index(value = {
-                DB.COLUMN_SRC,
-                DB.COLUMN_ID
+                Playlist.COLUMN_SRC,
+                Playlist.COLUMN_ID,
+                Playlist.COLUMN_TYPE
         }, unique = true),
         primaryKeys = {
-                DB.COLUMN_SRC,
-                DB.COLUMN_ID
+                Playlist.COLUMN_SRC,
+                Playlist.COLUMN_ID,
+                Playlist.COLUMN_TYPE
         }
 )
 public class Playlist implements Parcelable {
-    private static final String COLUMN_TYPE = "type";
+    static final String COLUMN_SRC = "src";
+    static final String COLUMN_ID = "id";
+    static final String COLUMN_TYPE = "type";
     private static final String COLUMN_NAME = "name";
     private static final String COLUMN_QUERY = "query";
     static final String COLUMN_POS = "pos";
 
     @NonNull
-    @ColumnInfo(name = DB.COLUMN_SRC)
-    public String src;
+    @ColumnInfo(name = COLUMN_SRC)
+    String src;
     @NonNull
-    @ColumnInfo(name = DB.COLUMN_ID)
-    public String id;
+    @ColumnInfo(name = COLUMN_ID)
+    String id;
     @NonNull
     @ColumnInfo(name = COLUMN_TYPE)
-    public int type;
+    int type;
     @NonNull
     @ColumnInfo(name = COLUMN_NAME)
-    public String name;
+    String name;
     @ColumnInfo(name = COLUMN_QUERY)
-    public String query;
+    String query;
     @NonNull
     @ColumnInfo(name = COLUMN_POS)
-    public long pos;
+    long pos;
 
     public Playlist() {}
 
     protected Playlist(Parcel in) {
-        src = in.readString();
-        id = in.readString();
-        type = in.readInt();
-        name = in.readString();
-        query = in.readString();
-        pos = in.readLong();
+        init(
+                in.readString(),
+                in.readString(),
+                in.readInt(),
+                in.readString(),
+                in.readString(),
+                in.readLong()
+        );
+    }
+
+    private void init(String src, String id, int type, String name, String query, long pos) {
+        this.src = src;
+        this.id = id;
+        this.type = type;
+        this.name = name;
+        this.query = query;
+        this.pos = pos;
+    }
+
+    public PlaylistID playlistID() {
+        return new PlaylistID(src, id, type);
+    }
+
+    public String query() {
+        return query;
+    }
+
+    public String name() {
+        return name;
+    }
+
+    public long pos() {
+        return pos;
     }
 
     public static final Creator<Playlist> CREATOR = new Creator<Playlist>() {
@@ -72,24 +104,31 @@ public class Playlist implements Parcelable {
         }
     };
 
-    private static Playlist from(se.splushii.dancingbunnies.musiclibrary.Playlist playlist, int pos) {
+    private static Playlist from(se.splushii.dancingbunnies.musiclibrary.Playlist playlist,
+                                 int pos,
+                                 String query) {
         Playlist roomPlaylist = new Playlist();
-        roomPlaylist.src = playlist.id.src;
-        roomPlaylist.id = playlist.id.id;
-        roomPlaylist.type = playlist.id.type;
-        roomPlaylist.name = playlist.name;
-        roomPlaylist.pos = pos;
+        roomPlaylist.init(
+                playlist.id.src,
+                playlist.id.id,
+                playlist.id.type,
+                playlist.name,
+                query,
+                pos
+        );
         return roomPlaylist;
     }
 
     public static Playlist from(StupidPlaylist playlist, int pos) {
-        return from((se.splushii.dancingbunnies.musiclibrary.Playlist) playlist, pos);
+        return from((se.splushii.dancingbunnies.musiclibrary.Playlist) playlist, pos, null);
     }
 
     public static Playlist from(SmartPlaylist playlist, int pos) {
-        Playlist roomPlaylist = from((se.splushii.dancingbunnies.musiclibrary.Playlist) playlist, pos);
-        roomPlaylist.query = playlist.getJSONQueryString();
-        return roomPlaylist;
+        return from(
+                (se.splushii.dancingbunnies.musiclibrary.Playlist) playlist,
+                pos,
+                playlist.getJSONQueryString()
+        );
     }
 
     @Override
@@ -101,7 +140,9 @@ public class Playlist implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(src);
         dest.writeString(id);
+        dest.writeInt(type);
         dest.writeString(name);
+        dest.writeString(query);
         dest.writeLong(pos);
     }
 
@@ -110,8 +151,9 @@ public class Playlist implements Parcelable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Playlist playlist = (Playlist) o;
-        return src.equals(playlist.src) &&
-                id.equals(playlist.id);
+        return src.equals(playlist.src)
+                && id.equals(playlist.id)
+                && type == playlist.type;
     }
 
     @Override
@@ -119,13 +161,15 @@ public class Playlist implements Parcelable {
         return "Playlist{" +
                 "pos=" + pos +
                 ", name='" + name + '\'' +
+                ", query='" + query + '\'' +
                 ", src='" + src + '\'' +
                 ", id='" + id + '\'' +
+                ", type='" + type + '\'' +
                 '}';
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(src, id);
+        return Objects.hash(src, id, type);
     }
 }

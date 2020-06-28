@@ -42,11 +42,14 @@ public class PlaybackEntry implements Parcelable {
         this.playlistSelectionID = Long.parseLong(metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYLIST_SELECTION_ID));
     }
 
-    public PlaybackEntry(PlaylistEntry playlistEntry, long playlistSelectionID, long playbackID) {
-        this.entryID = EntryID.from(playlistEntry);
+    public PlaybackEntry(PlaylistEntry playlistEntry,
+                         long playlistPos,
+                         long playlistSelectionID,
+                         long playbackID) {
+        this.entryID = playlistEntry.entryID();
         this.playbackID = playbackID;
         this.playbackType = USER_TYPE_PLAYLIST;
-        this.playlistPos = playlistEntry.pos;
+        this.playlistPos = playlistPos;
         this.playlistSelectionID = playlistSelectionID;
     }
 

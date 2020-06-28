@@ -90,7 +90,6 @@ public class PlaybackController {
     // Current playlist entries
     private final LiveData<List<PlaylistEntry>> currentPlaylistEntriesLiveData;
     private final Observer<List<PlaylistEntry>> currentPlaylistEntriesObserver;
-    private List<PlaylistEntry> currentPlaylistEntries;
     // Current playlist entries in playback order.
     // Generated from current playlist entries and possibly reordered by user.
     private final PlaybackQueue currentPlaylistPlaybackEntries;
@@ -170,7 +169,6 @@ public class PlaybackController {
         );
 
         currentPlaylistIDLiveData.setValue(currentPlaylistID);
-        currentPlaylistEntries = new ArrayList<>();
         currentPlaylistEntriesLiveData = Transformations.switchMap(
                 currentPlaylistIDLiveData,
                 playlistID -> MusicLibraryService.getPlaylistEntries(context, playlistID)
@@ -646,11 +644,11 @@ public class PlaybackController {
 
     private boolean isCurrentPlaylistCorrect() {
         List<PlaybackEntry> allEntries = getAllEntries();
-        List<PlaybackEntry> currentPlaylistEntries = getAllPlaylistEntries();
+        List<PlaybackEntry> currentPlaybackPlaylistEntries = getAllPlaylistEntries();
         // Check if the current playlist entries have
         // currentPlaylistSelectionID as playlistSelectionID
         long currentSelectionID = getCurrentPlaylistSelectionID();
-        for (PlaybackEntry entry: currentPlaylistEntries) {
+        for (PlaybackEntry entry: currentPlaybackPlaylistEntries) {
             if (entry.playlistSelectionID != currentSelectionID) {
                 Log.d(LC, "isCurrentPlaylistCorrect: No."
                         +" There are playlist entries with the wrong playlist selection ID.");
@@ -658,9 +656,9 @@ public class PlaybackController {
             }
         }
         // Check if there are too many playlist entries
-        if (currentPlaylistEntries.size() > MAX_PLAYLIST_ENTRIES_TO_PREFETCH) {
+        if (currentPlaybackPlaylistEntries.size() > MAX_PLAYLIST_ENTRIES_TO_PREFETCH) {
             Log.d(LC, "isCurrentPlaylistCorrect: No."
-                    + " Too many playlist entries (" + currentPlaylistEntries.size()  + ")."
+                    + " Too many playlist entries (" + currentPlaybackPlaylistEntries.size()  + ")."
                     + " Exceeding max entries to prefetch: " + MAX_PLAYLIST_ENTRIES_TO_PREFETCH);
             return false;
         }
@@ -683,22 +681,22 @@ public class PlaybackController {
         // expected playlist entries from the selected playlist
         List<PlaybackEntry> expectedPlaylistEntries = playlistGetNext(
                 0,
-                currentPlaylistEntries.size(),
+                currentPlaybackPlaylistEntries.size(),
                 true
         );
-        if (currentPlaylistEntries.size() > expectedPlaylistEntries.size()) {
+        if (currentPlaybackPlaylistEntries.size() > expectedPlaylistEntries.size()) {
             Log.d(LC, "isCurrentPlaylistCorrect: No."
-                    + " Number of entries (" + currentPlaylistEntries.size() + ")"
+                    + " Number of entries (" + currentPlaybackPlaylistEntries.size() + ")"
                     + " exceeding number of expected entries: " + expectedPlaylistEntries.size());
             return false;
-        } else if (currentPlaylistEntries.size() < expectedPlaylistEntries.size()) {
+        } else if (currentPlaybackPlaylistEntries.size() < expectedPlaylistEntries.size()) {
             Log.e(LC, "isCurrentPlaylistCorrect: No."
                     + " Got more expected entries than we asked for. This should never happen...");
             return false;
         }
         for (int i = 0; i < expectedPlaylistEntries.size(); i++) {
             PlaybackEntry expected = expectedPlaylistEntries.get(i);
-            PlaybackEntry current = currentPlaylistEntries.get(i);
+            PlaybackEntry current = currentPlaybackPlaylistEntries.get(i);
             if (expected.playlistPos != current.playlistPos
                     || !expected.entryID.equals(current.entryID)) {
                 Log.d(LC, "isCurrentPlaylistCorrect: No."
@@ -1011,23 +1009,42 @@ public class PlaybackController {
                     + " No playlist playback entries. Initializing from playlist entries.");
             List<PlaybackEntry> playlistPlaybackEntries = new ArrayList<>();
             long playbackID = reservePlaybackIDs(newPlaylistEntries.size());
-            for (PlaylistEntry playlistEntry: newPlaylistEntries) {
+            for (int i = 0; i < newPlaylistEntries.size(); i++) {
+                PlaylistEntry playlistEntry = newPlaylistEntries.get(i);
                 playlistPlaybackEntries.add(new PlaybackEntry(
                         playlistEntry,
+                        i,
                         PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID,
                         playbackID++
                 ));
             }
+//            for (PlaylistEntry playlistEntry: newPlaylistEntries) {
+//                playlistPlaybackEntries.add(new PlaybackEntry(
+//                        playlistEntry,
+//                        PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID,
+//                        playbackID++
+//                ));
+//            }
             playlistPlaybackEntries.forEach(p -> p.setPreloaded(false));
             currentPlaylistPlaybackEntries.add(0, playlistPlaybackEntries);
         } else {
             // Check if playlistEntries have changed.
             Log.d(LC, "playlistEntriesObserver."
                     + " Calculating diff between current and new playlist entries.");
-            List<PlaylistEntry> currentEntries = currentPlaylistEntries;
+            Log.e(LC, "cur: " + currentPlaylistPlaybackEntries.getEntries()
+                    .stream()
+                    .map(p -> p.entryID)
+                    .collect(Collectors.toList())
+            );
+            Log.e(LC, "new: " + newPlaylistEntries.stream().map(PlaylistEntry::entryID).collect(Collectors.toList()));
             Diff diff = Diff.diff(
-                    currentEntries.stream().map(EntryID::from).collect(Collectors.toList()),
-                    newPlaylistEntries.stream().map(EntryID::from).collect(Collectors.toList())
+                    currentPlaylistPlaybackEntries.getEntries()
+                            .stream()
+                            .map(p -> p.entryID)
+                            .collect(Collectors.toList()),
+                    newPlaylistEntries.stream()
+                            .map(PlaylistEntry::entryID)
+                            .collect(Collectors.toList())
             );
 
             List<PlaybackEntry> playbackEntries = currentPlaylistPlaybackEntries.getEntries();
@@ -1048,7 +1065,8 @@ public class PlaybackController {
                 PlaylistEntry addedPlaylistEntry = newPlaylistEntries.get(addedPos);
                 boolean alreadyPresent = false;
                 for (PlaybackEntry entry: playbackEntries) {
-                    if (entry.playlistPos == addedPlaylistEntry.pos) {
+//                    if (entry.playlistPos == addedPlaylistEntry.pos()) {
+                    if (entry.playlistPos == addedPos) {
                         alreadyPresent = true;
                         break;
                     }
@@ -1056,6 +1074,7 @@ public class PlaybackController {
                 if (!alreadyPresent) {
                     addedPlaybackEntries.add(new PlaybackEntry(
                             addedPlaylistEntry,
+                            addedPos,
                             PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID,
                             playbackID++
                     ));
@@ -1101,10 +1120,9 @@ public class PlaybackController {
                 );
             }
             if (!movedPlaybackEntries.isEmpty()) {
-                currentPlaylistPlaybackEntries.update(movedPlaybackEntries);
+                currentPlaylistPlaybackEntries.updatePositions(movedPlaybackEntries);
             }
         }
-        currentPlaylistEntries = newPlaylistEntries;
         submitCompletableFuture(this::updateState);
     }
 

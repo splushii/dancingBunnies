@@ -1,5 +1,6 @@
 package se.splushii.dancingbunnies.ui.playlist;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,8 +26,9 @@ import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
+import se.splushii.dancingbunnies.util.Util;
 
-import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.PLAYLIST_ENTRY_DELETE;
+import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_ENTRY_DELETE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_PLAYLIST;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_QUEUE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE;
@@ -40,6 +42,8 @@ public class PlaylistPlaybackEntriesAdapter extends
         SmartDiffSelectionRecyclerViewAdapter
                 <PlaybackEntry, PlaylistPlaybackEntriesAdapter.ViewHolder>
 {
+    private static final String LC = Util.getLogContext(PlaylistPlaybackEntriesAdapter.class);
+
     private final PlaylistFragment fragment;
 
     private TrackItemActionsView selectedActionView;
@@ -67,6 +71,7 @@ public class PlaylistPlaybackEntriesAdapter extends
         PlaybackControllerStorage.getInstance(fragment.getContext())
                 .getCurrentPlaylistPlaybackEntries()
                 .observe(fragment.getViewLifecycleOwner(), entries -> {
+                    Log.e(LC, "newEntries: " + entries);
                     setDataSet(entries);
                     updateScrollPos(model);
                 });

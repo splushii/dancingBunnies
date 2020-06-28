@@ -81,7 +81,7 @@ class PlaybackQueue {
         return storage.insert(queueID, toPosition, entries);
     }
 
-    CompletableFuture<Void> update(List<PlaybackEntry> movedPlaybackEntries) {
+    CompletableFuture<Void> updatePositions(List<PlaybackEntry> movedPlaybackEntries) {
         Log.d(LC, "update(entries.size: " + movedPlaybackEntries.size() + ")"
                 + " in \"" + PlaybackControllerStorage.getQueueName(queueID) + "\"");
         if (movedPlaybackEntries.isEmpty()) {
@@ -102,7 +102,7 @@ class PlaybackQueue {
         }
         onChanged(previousSize, newSize);
         // Actual update of queue source data
-        return storage.update(queueID, movedPlaybackEntries);
+        return storage.updatePositions(queueID, movedPlaybackEntries);
     }
 
     CompletableFuture<Void> replaceWith(List<PlaybackEntry> entries) {

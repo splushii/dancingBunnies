@@ -27,6 +27,9 @@ import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
+import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.META_DELETE;
+import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.META_EDIT;
+
 public class MetaDialogFragmentAdapter extends
         SmartDiffSelectionRecyclerViewAdapter<MetaTag, MetaDialogFragmentAdapter.ViewHolder> {
     private static final String LC = Util.getLogContext(MetaDialogFragmentAdapter.class);
@@ -212,9 +215,9 @@ public class MetaDialogFragmentAdapter extends
             valueTextView.setText(displayValue);
 
             boolean metaDelSupported = MusicLibraryService
-                    .checkAPISupport(tag.entryID.src, MusicLibraryService.META_DELETE);
+                    .checkAPISupport(tag.entryID.src, META_DELETE);
             boolean metaEditSupported = MusicLibraryService
-                    .checkAPISupport(tag.entryID.src, MusicLibraryService.META_EDIT);
+                    .checkAPISupport(tag.entryID.src, META_EDIT);
             boolean tagEditable = Meta.isLocalUser(tag.key) || metaEditSupported;
             boolean tagDeletable = Meta.isLocalUser(tag.key) || metaDelSupported;
             int[] disabledActions;

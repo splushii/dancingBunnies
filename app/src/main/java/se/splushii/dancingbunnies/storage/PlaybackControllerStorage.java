@@ -156,11 +156,11 @@ public class PlaybackControllerStorage {
         return CompletableFuture.runAsync(() -> entryModel.insert(queueID, toPosition, entries));
     }
 
-    public CompletableFuture<Void> update(int queueID, List<PlaybackEntry> entries) {
+    public CompletableFuture<Void> updatePositions(int queueID, List<PlaybackEntry> entries) {
         if (entries == null || entries.isEmpty()) {
             return Util.futureResult(null);
         }
-        return CompletableFuture.runAsync(() -> entryModel.update(queueID, entries));
+        return CompletableFuture.runAsync(() -> entryModel.updatePositions(queueID, entries));
     }
 
     public CompletableFuture<Void> replaceWith(int queueID, List<PlaybackEntry> entries) {
@@ -179,7 +179,7 @@ public class PlaybackControllerStorage {
                                         long beforePlaybackID,
                                         List<PlaybackEntry> playbackEntries) {
         return CompletableFuture.runAsync(() ->
-                entryModel.move(queueID, beforePlaybackID, playbackEntries)
+                entryModel.move(queueID, playbackEntries, beforePlaybackID)
         );
     }
 
@@ -367,27 +367,14 @@ public class PlaybackControllerStorage {
 
     public long getNextPlaybackIDs(int num) {
         synchronized (playback_id_counter_key) {
-            return getNextIDs(playback_id_counter_key, num);
+            return Util.getNextIDs(preferences, playback_id_counter_key, num);
         }
     }
 
     public long getNextPlaylistSelectionID() {
         synchronized (playlist_selection_id_counter_key) {
-            return getNextIDs(playlist_selection_id_counter_key, 1);
+            return Util.getNextIDs(preferences, playlist_selection_id_counter_key, 1);
         }
-    }
-
-    private long getNextIDs(String idCounterKey, int num) {
-        long id = preferences.getLong(idCounterKey, 0);
-        if (id + num < 0) { // overflow
-            id = 0;
-        }
-        if (!preferences.edit()
-                .putLong(idCounterKey, id + num)
-                .commit()) {
-            throw new RuntimeException("Could not update ID for: " + idCounterKey);
-        }
-        return id;
     }
 
     public int getCurrentPlaylistPlaybackOrderMode() {

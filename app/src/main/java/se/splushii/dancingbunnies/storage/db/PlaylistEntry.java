@@ -3,14 +3,16 @@ package se.splushii.dancingbunnies.storage.db;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
-import androidx.room.PrimaryKey;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 
@@ -19,20 +21,30 @@ import static androidx.room.ForeignKey.CASCADE;
 @Entity(tableName = DB.TABLE_PLAYLIST_ENTRIES,
         foreignKeys = @ForeignKey(
                 parentColumns = {
-                        DB.COLUMN_SRC,
-                        DB.COLUMN_ID
+                        Playlist.COLUMN_SRC,
+                        Playlist.COLUMN_ID,
+                        Playlist.COLUMN_TYPE
                 },
                 childColumns = {
                         PlaylistEntry.COLUMN_PLAYLIST_SRC,
-                        PlaylistEntry.COLUMN_PLAYLIST_ID
+                        PlaylistEntry.COLUMN_PLAYLIST_ID,
+                        PlaylistEntry.COLUMN_PLAYLIST_TYPE
                 },
                 entity = Playlist.class,
                 onDelete = CASCADE
         ),
         indices = @Index(value = {
                 PlaylistEntry.COLUMN_PLAYLIST_SRC,
-                PlaylistEntry.COLUMN_PLAYLIST_ID
-        })
+                PlaylistEntry.COLUMN_PLAYLIST_ID,
+                PlaylistEntry.COLUMN_PLAYLIST_TYPE,
+                PlaylistEntry.COLUMN_ID
+        }, unique = true),
+        primaryKeys = {
+                PlaylistEntry.COLUMN_PLAYLIST_SRC,
+                PlaylistEntry.COLUMN_PLAYLIST_ID,
+                PlaylistEntry.COLUMN_PLAYLIST_TYPE,
+                PlaylistEntry.COLUMN_ID
+        }
 // Not possible to constrain the pos because of inserts, because incrementing COLUMN_POS
 // needs to be done in a TEMP table, something not supported in Room as far as I know.
 // See: https://stackoverflow.com/questions/22494148/incrementing-value-in-table-with-unique-key-causes-constraint-error
@@ -48,38 +60,71 @@ import static androidx.room.ForeignKey.CASCADE;
 //        }
 )
 public class PlaylistEntry implements Parcelable {
-    private static final String COLUMN_ROW_ID = "rowid";
     static final String COLUMN_PLAYLIST_SRC = "playlist_src";
     static final String COLUMN_PLAYLIST_ID = "playlist_id";
+    static final String COLUMN_PLAYLIST_TYPE = "playlist_type";
+    static final String COLUMN_ID = "id";
+    static final String COLUMN_ENTRY_SRC = "entry_src";
+    static final String COLUMN_ENTRY_ID = "entry_id";
+    static final String COLUMN_ENTRY_TYPE = "entry_type";
     static final String COLUMN_POS = "pos";
 
-    @PrimaryKey(autoGenerate = true)
-    @ColumnInfo(name = COLUMN_ROW_ID)
-    public int rowId;
     @NonNull
     @ColumnInfo(name = COLUMN_PLAYLIST_SRC)
-    public String playlist_src;
+    String playlist_src;
     @NonNull
     @ColumnInfo(name = COLUMN_PLAYLIST_ID)
-    public String playlist_id;
+    String playlist_id;
     @NonNull
-    @ColumnInfo(name = DB.COLUMN_SRC)
-    public String src;
+    @ColumnInfo(name = COLUMN_PLAYLIST_TYPE)
+    int playlist_type;
     @NonNull
-    @ColumnInfo(name = DB.COLUMN_ID)
-    public String id;
+    @ColumnInfo(name = COLUMN_ID)
+    String playlist_entry_id;
+    @NonNull
+    @ColumnInfo(name = COLUMN_ENTRY_SRC)
+    String entry_src;
+    @NonNull
+    @ColumnInfo(name = COLUMN_ENTRY_ID)
+    String entry_id;
+    @NonNull
+    @ColumnInfo(name = COLUMN_ENTRY_TYPE)
+    String entry_type;
     @NonNull
     @ColumnInfo(name = COLUMN_POS)
-    public long pos;
+    long pos;
 
     PlaylistEntry() {}
 
     protected PlaylistEntry(Parcel in) {
-        playlist_src = Objects.requireNonNull(in.readString());
-        playlist_id = Objects.requireNonNull(in.readString());
-        src = Objects.requireNonNull(in.readString());
-        id = Objects.requireNonNull(in.readString());
-        pos = in.readLong();
+        init(
+                Objects.requireNonNull(in.readString()),
+                Objects.requireNonNull(in.readString()),
+                in.readInt(),
+                Objects.requireNonNull(in.readString()),
+                Objects.requireNonNull(in.readString()),
+                Objects.requireNonNull(in.readString()),
+                Objects.requireNonNull(in.readString()),
+                in.readLong()
+        );
+    }
+
+    private void init(String playlist_src,
+                      String playlist_id,
+                      int playlist_type,
+                      String playlist_entry_id,
+                      String entry_src,
+                      String entry_id,
+                      String entry_type,
+                      long position) {
+        this.playlist_src = playlist_src;
+        this.playlist_id = playlist_id;
+        this.playlist_type = playlist_type;
+        this.playlist_entry_id = playlist_entry_id;
+        this.entry_type = entry_type;
+        this.entry_src = entry_src;
+        this.entry_id = entry_id;
+        this.pos = position;
     }
 
     public static final Creator<PlaylistEntry> CREATOR = new Creator<PlaylistEntry>() {
@@ -94,14 +139,78 @@ public class PlaylistEntry implements Parcelable {
         }
     };
 
-    public static PlaylistEntry from(PlaylistID playlistID, EntryID entryID, int pos) {
+    public static PlaylistEntry from(String playlistSrc,
+                                     String playlistID,
+                                     int playlistType,
+                                     String playlistEntryID,
+                                     String entryIDSrc,
+                                     String entryIDID,
+                                     String entryIDType,
+                                     long pos) {
         PlaylistEntry roomPlaylistEntry = new PlaylistEntry();
-        roomPlaylistEntry.playlist_src = playlistID.src;
-        roomPlaylistEntry.playlist_id = playlistID.id;
-        roomPlaylistEntry.src = entryID.src;
-        roomPlaylistEntry.id = entryID.id;
-        roomPlaylistEntry.pos = pos;
+        roomPlaylistEntry.init(
+                playlistSrc,
+                playlistID,
+                playlistType,
+                playlistEntryID,
+                entryIDSrc,
+                entryIDID,
+                entryIDType,
+                pos
+        );
         return roomPlaylistEntry;
+    }
+
+    public static PlaylistEntry from(PlaylistID playlistID,
+                                     String playlistEntryID,
+                                     EntryID entryID,
+                                     int pos) {
+        return from(
+                playlistID.src,
+                playlistID.id,
+                playlistID.type,
+                playlistEntryID,
+                entryID.src,
+                entryID.id,
+                entryID.type,
+                pos
+        );
+    }
+
+    public static PlaylistEntry from(PlaylistEntry playlistEntry, long pos) {
+        return from(
+                playlistEntry.playlist_src,
+                playlistEntry.playlist_id,
+                playlistEntry.playlist_type,
+                playlistEntry.playlist_entry_id,
+                playlistEntry.entry_src,
+                playlistEntry.entry_id,
+                playlistEntry.entry_type,
+                pos
+        );
+    }
+
+    public String playlistEntryID() {
+        return playlist_entry_id;
+    }
+
+    public EntryID entryID() {
+        return new EntryID(entry_src, entry_id, entry_type);
+    }
+
+    public static List<PlaylistEntry> generatePlaylistEntries(PlaylistID playlistID,
+                                                              EntryID[] entryIDs) {
+        List<PlaylistEntry> playlistEntries = new ArrayList<>();
+        for (int index = 0; index < entryIDs.length; index++) {
+            EntryID entryID = entryIDs[index];
+            playlistEntries.add(PlaylistEntry.from(
+                    playlistID,
+                    UUID.randomUUID().toString(),
+                    entryID,
+                    index
+            ));
+        }
+        return playlistEntries;
     }
 
     @Override
@@ -113,8 +222,11 @@ public class PlaylistEntry implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(playlist_src);
         dest.writeString(playlist_id);
-        dest.writeString(src);
-        dest.writeString(id);
+        dest.writeInt(playlist_type);
+        dest.writeString(playlist_entry_id);
+        dest.writeString(entry_src);
+        dest.writeString(entry_id);
+        dest.writeString(entry_type);
         dest.writeLong(pos);
     }
 
@@ -123,27 +235,38 @@ public class PlaylistEntry implements Parcelable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         PlaylistEntry entry = (PlaylistEntry) o;
-        return pos == entry.pos &&
-                Objects.equals(playlist_src, entry.playlist_src) &&
+        return Objects.equals(playlist_src, entry.playlist_src) &&
                 Objects.equals(playlist_id, entry.playlist_id) &&
-                Objects.equals(src, entry.src) &&
-                Objects.equals(id, entry.id);
+                Objects.equals(playlist_type, entry.playlist_type) &&
+                Objects.equals(playlist_entry_id, entry.playlist_entry_id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(playlist_src, playlist_id, src, id, pos);
+        return Objects.hash(
+                playlist_src,
+                playlist_id,
+                playlist_type,
+                playlist_entry_id
+        );
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "PlaylistEntry{" +
-                "rowId=" + rowId +
-                ", playlist_src='" + playlist_src + '\'' +
+                "playlist_src='" + playlist_src + '\'' +
                 ", playlist_id='" + playlist_id + '\'' +
-                ", src='" + src + '\'' +
-                ", id='" + id + '\'' +
+                ", playlist_type='" + playlist_type + '\'' +
+                ", playlist_entry_id='" + playlist_entry_id + '\'' +
+                ", entry_src='" + entry_src + '\'' +
+                ", entry_id='" + entry_id + '\'' +
+                ", entry_type='" + entry_type + '\'' +
                 ", pos=" + pos +
                 '}';
+    }
+
+    public boolean samePos(PlaylistEntry b) {
+        return pos == b.pos;
     }
 }

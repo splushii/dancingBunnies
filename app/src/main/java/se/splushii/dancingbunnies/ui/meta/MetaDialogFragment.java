@@ -45,6 +45,8 @@ import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.ui.selection.RecyclerViewActionModeSelectionTracker;
 import se.splushii.dancingbunnies.util.Util;
 
+import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.META_ADD;
+
 public class MetaDialogFragment extends DialogFragment {
     private static final String LC = Util.getLogContext(MetaDialogFragment.class);
 
@@ -174,8 +176,7 @@ public class MetaDialogFragment extends DialogFragment {
             }
         });
 
-        boolean metaAddSupported = MusicLibraryService
-                .checkAPISupport(entryID.src, MusicLibraryService.META_ADD);
+        boolean metaAddSupported = MusicLibraryService.checkAPISupport(entryID.src, META_ADD);
         addLocalTagSwitch.setEnabled(metaAddSupported);
         addLocalTagSwitch.setChecked(!metaAddSupported);
         AtomicBoolean userSelectedLocalTag = new AtomicBoolean(false);

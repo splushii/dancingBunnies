@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="define_plu_gitlogo"/>
+    <string name="library_gitlogo_author" >Jason Long</string>
+    <string name="library_gitlogo_authorWebsite" >https://twitter.com/jasonlong</string>
+    <string name="library_gitlogo_libraryName" >Git logo</string>
+    <string name="library_gitlogo_libraryDescription" />
+    <string name="library_gitlogo_isOpenSource" >true</string>
+</resources>

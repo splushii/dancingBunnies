@@ -183,7 +183,7 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
                     @Override
                     public List<EntryID> getEntryIDSelection() {
                         return playlistEntriesSelectionTracker.getSelection().stream()
-                                .map(EntryID::from)
+                                .map(PlaylistEntry::entryID)
                                 .collect(Collectors.toList());
                     }
 
@@ -476,7 +476,7 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
             model.getPlaylist(getContext(), playlistID)
                     .observe(getViewLifecycleOwner(), playlist -> {
                         if (playlist != null) {
-                            playlistContentInfoName.setText(playlist.name);
+                            playlistContentInfoName.setText(playlist.name());
                         }
                     });
         }
@@ -504,7 +504,7 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
         playlistRecView.setLayoutManager(playlistRecViewLayoutManager);
         playlistRecViewAdapter = new PlaylistAdapter(this);
         playlistRecViewAdapter.setOnItemClickListener(playlist -> {
-            PlaylistID playlistID = new PlaylistID(playlist);
+            PlaylistID playlistID = playlist.playlistID();
             Log.d(LC, "browse playlist: " + playlistID);
             model.browsePlaylist(playlistID);
         });

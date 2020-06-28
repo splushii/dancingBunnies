@@ -29,12 +29,6 @@ public class PlaylistID implements Parcelable {
         type = in.readInt();
     }
 
-    public PlaylistID(Playlist playlist) {
-        src = playlist.src;
-        id = playlist.id;
-        type = playlist.type;
-    }
-
     public static final Creator<PlaylistID> CREATOR = new Creator<PlaylistID>() {
         @Override
         public PlaylistID createFromParcel(Parcel in) {

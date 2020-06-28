@@ -1,8 +1,9 @@
-package se.splushii.dancingbunnies;
+package se.splushii.dancingbunnies.settings;
 
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
+import se.splushii.dancingbunnies.R;
 
 public class SettingsActivity extends AppCompatActivity {
 
@@ -11,5 +12,4 @@ public class SettingsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.settings_activity_layout);
     }
-
 }

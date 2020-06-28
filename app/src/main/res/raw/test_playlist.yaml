@@ -1,0 +1,27 @@
+---
+
+schema_version: 1
+
+playlist:
+  type: static
+  id: abc123
+  meta:
+    - name: Hejsan
+
+entries:
+  - id: 'nfqJ4RoIOZCjC0tku7KwbfLoRciV0IPbPk5TBeh9hI78tjkIkBwxxZtAbt5rDNwg'
+    entry:
+      type: track
+      src: subsonic@subsonic.splushii.se
+      id: '4124'
+      meta:
+        - title: Down Under
+        - artist: Men At Work
+        - tracknumber: '1'
+  - id: 'hw5pOwG2rfaQ11zMywmZlaJ4EjCiI3FH29SkTn3NJscyGsjtJg9D59TN1fsQ1L1d'
+    entry:
+      type: playlist
+      src: spotify@spotify.com
+      id: 59ZbFPES4DQwEjBpWHzrtC
+      meta:
+        - name: Spotify playlist yeah

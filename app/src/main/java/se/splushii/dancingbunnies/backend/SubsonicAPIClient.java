@@ -1,8 +1,7 @@
 package se.splushii.dancingbunnies.backend;
 
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.preference.PreferenceManager;
+import android.os.Bundle;
 import android.util.Log;
 
 import com.android.volley.toolbox.StringRequest;
@@ -11,6 +10,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
@@ -22,21 +22,19 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import androidx.core.util.Pair;
-import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.Playlist;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 public class SubsonicAPIClient extends APIClient {
     private static final String LC = Util.getLogContext(SubsonicAPIClient.class);
+
     private static final Integer REQ_RETRY_COUNT = 3;
-    private final HashMap<String, Integer> retries;
-    private final Context context;
 
     public enum RequestType {
         GET_INDEXES,
@@ -46,7 +44,7 @@ public class SubsonicAPIClient extends APIClient {
         GET_PLAYLISTS
     }
 
-    private static final String API_BASE_URL = "/rest/";
+    private static final String API_BASE_PATH = "/rest/";
 
     private static final String JSON_RESP = "subsonic-response";
     private static final String JSON_STATUS = "status";
@@ -96,29 +94,36 @@ public class SubsonicAPIClient extends APIClient {
     private static final String JSON_ENTRY = "entry";
     private static final String STATUS_OK = "ok";
 
-    private String instanceID = "";
-    private String username = "";
-    private String password = "";
-    private String baseURL = "";
-    private String tagDelimiter = null;
     private static final String VERSION = "1.15.0";
     private static final String[] SUPPORTED_VERSIONS = {"1.15.0", "1.16.0"};
     private static final String CLIENT_ID = "dancingbunnies";
     private static final String FORMAT = "json";
 
-    private SecureRandom rand;
+    private final Context context;
+    private final SecureRandom rand;
+    private final HashMap<String, Integer> retries;
     private final HTTPRequestQueue httpRequestQueue;
 
-    public SubsonicAPIClient(Context context) {
+    private String username = "";
+    private String password = "";
+    private String baseURL = "";
+    private String tagDelimiter = null;
+
+
+    public SubsonicAPIClient(String src, Context context) {
+        super(src);
         this.context = context;
         retries = new HashMap<>();
+        SecureRandom tmpRand;
         try {
-            rand = SecureRandom.getInstance("SHA1PRNG");
+            tmpRand = SecureRandom.getInstance("SHA1PRNG");
         } catch (NoSuchAlgorithmException e) {
             Log.d(LC, "SHA1PRNG not supported");
             e.printStackTrace();
+            tmpRand = null;
             // TODO(kringlan): do stuff here.
         }
+        rand = tmpRand;
         this.httpRequestQueue = HTTPRequestQueue.getInstance(context);
     }
 
@@ -371,14 +376,7 @@ public class SubsonicAPIClient extends APIClient {
             return Optional.empty();
         }
         String title = jChild.getString(JSON_TITLE);
-        EntryID entryID = new EntryID(
-                MusicLibraryService.getAPISource(
-                        MusicLibraryService.API_ID_SUBSONIC,
-                        instanceID
-                ),
-                id,
-                Meta.FIELD_SPECIAL_MEDIA_ID
-        );
+        EntryID entryID = new EntryID(src, id, Meta.FIELD_SPECIAL_MEDIA_ID);
         Meta meta = new Meta(entryID);
         meta.setTagDelimiter(tagDelimiter);
         meta.addString(Meta.FIELD_MEDIA_ROOT, musicFolder);
@@ -603,14 +601,23 @@ public class SubsonicAPIClient extends APIClient {
                                     ConcurrentLinkedQueue<EntryID> entries = new ConcurrentLinkedQueue<>();
                                     getPlaylist(id, entries, handler)
                                             .thenRun(() -> {
-                                                Playlist playlist = new StupidPlaylist(new PlaylistID(
-                                                        MusicLibraryService.getAPISource(
-                                                                MusicLibraryService.API_ID_SUBSONIC,
-                                                                instanceID
-                                                        ),
+                                                PlaylistID playlistID = new PlaylistID(
+                                                        src,
                                                         id,
                                                         PlaylistID.TYPE_STUPID
-                                                ), name, new ArrayList<>(entries));
+                                                );
+                                                // Subsonic API playlist entries have no ID:s
+                                                // Create mock ID:s
+                                                List<PlaylistEntry> playlistEntries =
+                                                        PlaylistEntry.generatePlaylistEntries(
+                                                                playlistID,
+                                                                entries.toArray(new EntryID[0])
+                                                        );
+                                                Playlist playlist = new StupidPlaylist(
+                                                        playlistID,
+                                                        name,
+                                                        playlistEntries
+                                                );
                                                 playlists.add(playlist);
                                                 req.complete(null);
                                             });
@@ -670,14 +677,7 @@ public class SubsonicAPIClient extends APIClient {
                                     JSONObject jPlaylist = jEntryArray.getJSONObject(i);
                                     // Required attributes
                                     String id = jPlaylist.getString(JSON_ID);
-                                    entries.add(new EntryID(
-                                            MusicLibraryService.getAPISource(
-                                                    MusicLibraryService.API_ID_SUBSONIC,
-                                                    instanceID
-                                            ),
-                                            id,
-                                            Meta.FIELD_SPECIAL_MEDIA_ID
-                                    ));
+                                    entries.add(new EntryID(src, id, Meta.FIELD_SPECIAL_MEDIA_ID));
                                 }
                             }
                         } catch (JSONException e) {
@@ -723,22 +723,11 @@ public class SubsonicAPIClient extends APIClient {
 
     // TODO: Support configuration with multiple Subsonic backend instances (i.e. use apiInstanceID)
     @Override
-    public void loadSettings(Context context, String apiInstanceID) {
-        instanceID = apiInstanceID;
-        SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
-        boolean useSubsonic = settings.getBoolean(context.getResources().getString(R.string.pref_key_subsonic), false);
-        if (useSubsonic) {
-            String url = settings.getString(context.getResources()
-                    .getString(R.string.pref_key_subsonic_url), "");
-            String usr = settings.getString(context.getResources()
-                    .getString(R.string.pref_key_subsonic_usr), "");
-            String pwd = settings.getString(context.getResources()
-                    .getString(R.string.pref_key_subsonic_pwd), "");
-            tagDelimiter = settings.getString(context.getResources().getString(R.string.pref_key_subsonic_tag_delim), null);
-            baseURL = url + API_BASE_URL;
-            username = usr;
-            password = pwd;
-        }
+    public void loadSettings(Context context, Path workDir, Bundle settings) {
+        baseURL = settings.getString(APIClient.SETTINGS_KEY_SUBSONIC_URL) + API_BASE_PATH;
+        username = settings.getString(APIClient.SETTINGS_KEY_SUBSONIC_USERNAME);
+        password = settings.getString(APIClient.SETTINGS_KEY_SUBSONIC_PASSWORD);
+        tagDelimiter = settings.getString(APIClient.SETTINGS_KEY_GENERAL_TAG_DELIM);
     }
 
     private String statusOK(String resp) {

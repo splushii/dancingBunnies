@@ -1,9 +1,11 @@
 package se.splushii.dancingbunnies.ui.playlist;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -30,8 +32,8 @@ import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
-import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.PLAYLIST_ENTRY_DELETE;
-import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.PLAYLIST_ENTRY_MOVE;
+import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_ENTRY_DELETE;
+import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_ENTRY_MOVE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_PLAYLIST;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_QUEUE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_PLAYLIST;
@@ -81,7 +83,11 @@ public class PlaylistEntriesAdapter extends
     public void onSelectionDrop(Collection<PlaylistEntry> selection,
                                 int targetPos,
                                 PlaylistEntry idAfterTargetPos) {
-        playlistStorage.movePlaylistEntries(playlistID, selection, targetPos);
+        playlistStorage.movePlaylistEntries(
+                playlistID,
+                new ArrayList<>(selection),
+                idAfterTargetPos == null ? null : idAfterTargetPos.playlistEntryID()
+        );
     }
 
     @Override
@@ -200,26 +206,25 @@ public class PlaylistEntriesAdapter extends
         holder.itemContent.observeFetchStateLiveData(fetchStateLiveData, fragment.getViewLifecycleOwner());
         holder.actionsView.setAudioBrowser(fragment.getRemote());
         holder.actionsView.setFragmentManager(fragment.requireActivity().getSupportFragmentManager());
-        holder.actionsView.setEntryIDSupplier(() -> EntryID.from(holder.playlistEntry));
+        holder.actionsView.setEntryIDSupplier(() -> holder.playlistEntry.entryID());
         holder.actionsView.setPlaylistIDSupplier(() -> playlistID);
         holder.actionsView.setPlaylistEntrySupplier(() -> holder.playlistEntry);
-        holder.actionsView.setPlaylistPositionSupplier(() -> holder.playlistEntry.pos);
+        holder.actionsView.setPlaylistPositionSupplier(() -> (long) holder.getPos());
         holder.actionsView.initialize();
         return holder;
     }
 
     @Override
     public void onBindViewHolder(@NonNull PlaylistEntryHolder holder, int position) {
-        holder.position = position;
         holder.entry.setBackgroundResource(position % 2 == 0 ?
                 R.color.background_active_accent : R.color.backgroundalternate_active_accent
         );
         PlaylistEntry playlistEntry = getItem(position);
         holder.playlistEntry = playlistEntry;
-        EntryID entryID = EntryID.from(playlistEntry);
+        EntryID entryID = playlistEntry.entryID();
         holder.itemContent.setEntryID(entryID);
         holder.itemContent.setDragHandleListener(dragSupported() ? () -> startDrag(holder) : null);
-        holder.itemContent.setPos(playlistEntry.pos);
+        holder.itemContent.setPos(position);
         holder.updateHighlight(
                 currentEntryLiveData.getValue(),
                 currentPlaylistPosLiveData.getValue(),
@@ -258,7 +263,7 @@ public class PlaylistEntriesAdapter extends
 
     private void setDataSet(PlaylistID playlistID, List<PlaylistEntry> entries) {
         this.playlistID = playlistID;
-        setDataSet(entries);
+        setDataSet(entries, (a, b) -> a.equals(b) && a.samePos(b));
     }
 
     void setModel(PlaylistFragmentModel model) {
@@ -296,7 +301,7 @@ public class PlaylistEntriesAdapter extends
 
     @Override
     public long getItemId(int position) {
-        return getItem(position).rowId;
+        return getItem(position).hashCode();
     }
 
     void hideTrackItemActions() {
@@ -310,7 +315,6 @@ public class PlaylistEntriesAdapter extends
         private final View entry;
         private final TrackItemView itemContent;
         private final TrackItemActionsView actionsView;
-        public int position;
         PlaylistEntry playlistEntry;
 
         PlaylistEntryHolder(View v) {
@@ -342,10 +346,10 @@ public class PlaylistEntriesAdapter extends
                     && playlistID.equals(currentPlaylistID);
             boolean isCurrentEntry = playlistEntry != null
                     && currentEntry != null
-                    && EntryID.from(playlistEntry).equals(currentEntry.entryID);
+                    && playlistEntry.entryID().equals(currentEntry.entryID);
             boolean isCurrentPlaylistEntry = playlistEntry != null
                     && currentPlaylistPos != null
-                    && playlistEntry.pos == currentPlaylistPos;
+                    && getPos() == currentPlaylistPos;
             itemContent.setPosHighlight(isCurrentPlaylist && isCurrentPlaylistEntry);
             itemContent.setItemHighlight(isCurrentEntry);
         }

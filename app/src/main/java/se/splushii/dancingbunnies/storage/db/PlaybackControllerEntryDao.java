@@ -1,7 +1,9 @@
 package se.splushii.dancingbunnies.storage.db;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
@@ -18,34 +20,42 @@ import static androidx.room.OnConflictStrategy.REPLACE;
 public abstract class PlaybackControllerEntryDao {
     private static final String LC = Util.getLogContext(PlaybackControllerEntryDao.class);
 
+    private static final String isQueue = PlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID";
+    private static final String isEntry = isQueue
+            + " AND " + PlaybackControllerEntry.COLUMN_PLAYBACK_ID + " = :playbackID";
+
     private static final String getEntriesQuery = "SELECT * FROM " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
-            + " WHERE " + PlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID"
+            + " WHERE " + isQueue
             + " ORDER BY " + PlaybackControllerEntry.COLUMN_POS + " ASC";
     @Query(getEntriesQuery)
     public abstract LiveData<List<PlaybackControllerEntry>> getEntries(int queueID);
     @Query(getEntriesQuery)
     public abstract List<PlaybackControllerEntry> getEntriesSync(int queueID);
-    @Query("SELECT " + PlaybackControllerEntry.COLUMN_POS + " FROM " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
-            + " WHERE " + PlaybackControllerEntry.COLUMN_PLAYBACK_ID + " = :playbackID"
-            + " LIMIT 1")
-    abstract long getPos(long playbackID);
     @Query("SELECT * FROM " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
-            + " WHERE "  + PlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID"
-            + " AND " + PlaybackControllerEntry.COLUMN_PLAYBACK_ID + " = :playbackID"
+            + " WHERE "  + isEntry
             + " LIMIT 1")
     abstract PlaybackControllerEntry getEntry(int queueID, long playbackID);
+
+    @Query("SELECT COUNT(" + PlaybackControllerEntry.COLUMN_PLAYBACK_ID + ")"
+            + " FROM " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
+            + " WHERE " + isQueue)
+    abstract int _num_entries(int queueID);
+
+    private long[] getEntryPositions(int queueID, List<PlaybackEntry> entries) {
+        return DB.getPositions(entries, entry -> _get_position(queueID, entry.playbackID));
+    }
+    @Query("SELECT " + PlaybackControllerEntry.COLUMN_POS
+            + " FROM " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
+            + " WHERE " + isEntry)
+    abstract long _get_position(int queueID, long playbackID);
 
     // Delete
     @Delete
     abstract void _delete(PlaybackControllerEntry entry);
-    @Query("DELETE FROM " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
-            + " WHERE " + PlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID"
-            + " AND " + PlaybackControllerEntry.COLUMN_POS + " = :position;")
-    abstract void _delete(int queueID, long position);
     @Query("UPDATE " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
             + " SET " + PlaybackControllerEntry.COLUMN_POS + " = "
             + PlaybackControllerEntry.COLUMN_POS + " - 1"
-            + " WHERE " + PlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID"
+            + " WHERE " + isQueue
             + " AND " + PlaybackControllerEntry.COLUMN_POS + " > :position")
     abstract void _update_pos_after_delete(int queueID, long position);
     @Transaction
@@ -60,14 +70,14 @@ public abstract class PlaybackControllerEntryDao {
         }
     }
     @Query("DELETE FROM " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
-            + " WHERE " + PlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID;")
+            + " WHERE " + isQueue)
     public abstract void removeAll(int queueID);
 
     // Insert
     @Query("UPDATE " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
             + " SET " + PlaybackControllerEntry.COLUMN_POS + " = "
             + PlaybackControllerEntry.COLUMN_POS + " + :increment"
-            + " WHERE " + PlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID"
+            + " WHERE " + isQueue
             + " AND " + PlaybackControllerEntry.COLUMN_POS + " >= :fromPosition")
     public abstract void _update_pos_before_insert(int queueID, int fromPosition, int increment);
     @Insert(onConflict = REPLACE)
@@ -111,20 +121,47 @@ public abstract class PlaybackControllerEntryDao {
 
     @Query("UPDATE " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
             + " SET " + PlaybackControllerEntry.COLUMN_PLAYLIST_POS + " = :playlistPos"
-            + " WHERE "  + PlaybackControllerEntry.COLUMN_QUEUE_ID + " = :queueID"
-            + " AND " + PlaybackControllerEntry.COLUMN_PLAYBACK_ID + " = :playbackID")
-    abstract void _update(int queueID, long playbackID, int playlistPos);
+            + " WHERE " + isEntry)
+    abstract void _update_positions(int queueID, long playbackID, int playlistPos);
     @Transaction
-    public void update(int queueID, List<PlaybackEntry> entries) {
+    public void updatePositions(int queueID, List<PlaybackEntry> entries) {
         for (PlaybackEntry playbackEntry: entries) {
-            _update(queueID, playbackEntry.playbackID, (int) playbackEntry.playlistPos);
+            _update_positions(queueID, playbackEntry.playbackID, (int) playbackEntry.playlistPos);
         }
     }
 
     // Move
+    @Query("UPDATE " + DB.TABLE_PLAYBACK_CONTROLLER_ENTRIES
+            + " SET " + PlaybackControllerEntry.COLUMN_POS + " ="
+            + " CASE WHEN :newPos <= " + PlaybackControllerEntry.COLUMN_POS + " AND " + PlaybackControllerEntry.COLUMN_POS + " < :oldPos THEN"
+            + " " + PlaybackControllerEntry.COLUMN_POS  + " + 1"
+            + " ELSE CASE WHEN :oldPos < " + PlaybackControllerEntry.COLUMN_POS + " AND " + PlaybackControllerEntry.COLUMN_POS + " <= :newPos THEN"
+            + " " + PlaybackControllerEntry.COLUMN_POS + " - 1"
+            + " ELSE CASE WHEN " + PlaybackControllerEntry.COLUMN_POS + " = :oldPos THEN"
+            + " :newPos"
+            + " ELSE"
+            + " " + PlaybackControllerEntry.COLUMN_POS
+            + " END END END"
+            + " WHERE " + PlaybackControllerEntry.COLUMN_POS + " BETWEEN MIN(:newPos, :oldPos) AND MAX(:newPos, :oldPos)"
+            + " AND " + isQueue)
+    abstract void _move(int queueID, long oldPos, long newPos);
     @Transaction
-    public void move(int queueID, long beforePlaybackID, List<PlaybackEntry> playbackEntries) {
-        removeEntries(queueID, playbackEntries);
-        insertBeforeID(queueID, beforePlaybackID, playbackEntries);
+    public void move(int queueID,
+                     List<PlaybackEntry> entries,
+                     long idAfterTargetPos) {
+        long[] entryPositions = getEntryPositions(queueID, entries);
+        long targetPos = idAfterTargetPos > PlaybackEntry.PLAYBACK_ID_INVALID ?
+                _get_position(queueID, idAfterTargetPos) : _num_entries(queueID);
+        DB.movePositions(
+                Arrays.stream(entryPositions).boxed().collect(Collectors.toList()),
+                targetPos,
+                (source, target) -> _move(queueID, source, target)
+        );
     }
+//    // Move
+//    @Transaction
+//    public void move(int queueID, long beforePlaybackID, List<PlaybackEntry> playbackEntries) {
+//        removeEntries(queueID, playbackEntries);
+//        insertBeforeID(queueID, beforePlaybackID, playbackEntries);
+//    }
 }

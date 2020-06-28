@@ -15,6 +15,7 @@ import android.util.Log;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -34,6 +35,7 @@ public class AudioBrowser {
     private static volatile AudioBrowser instance;
 
     private final MediaBrowserCompat mediaBrowser;
+    private final AtomicBoolean mediaBrowserConnecting;
     // TODO: Do null checks on mediaController (and let caller know)
     // TODO: Maybe wrap mediaController getter with isSessionReady() check
     private MediaControllerCompat mediaController;
@@ -48,11 +50,13 @@ public class AudioBrowser {
 
     private AudioBrowser(FragmentActivity activity) {
         callbackMap = new ConcurrentHashMap<>();
+        mediaBrowserConnecting = new AtomicBoolean();
         MediaBrowserCompat.ConnectionCallback mediaBrowserConnectionCallback =
                 new MediaBrowserCompat.ConnectionCallback() {
                     @Override
                     public void onConnected() {
                         Log.d(LC, "MediaBrowser connected");
+                        mediaBrowserConnecting.set(false);
                         callbackMap.forEach((callback, mediaControllerCallback) ->
                                 callback.onMediaBrowserConnected()
                         );
@@ -66,11 +70,13 @@ public class AudioBrowser {
                     @Override
                     public void onConnectionFailed() {
                         Log.e(LC, "MediaBrowser onConnectFailed");
+                        mediaBrowserConnecting.set(false);
                     }
 
                     @Override
                     public void onConnectionSuspended() {
                         Log.w(LC, "MediaBrowser onConnectionSuspended");
+                        mediaBrowserConnecting.set(false);
                     }
                 };
         mediaBrowser = new MediaBrowserCompat(
@@ -81,13 +87,13 @@ public class AudioBrowser {
         );
     }
 
-    public synchronized void connect() {
-        if (!mediaBrowser.isConnected()) {
+    public void connect() {
+        if (!mediaBrowser.isConnected() && !mediaBrowserConnecting.getAndSet(true)) {
             mediaBrowser.connect();
         }
     }
 
-    public synchronized void disconnect() {
+    public void disconnect() {
         if (mediaBrowser.isConnected()) {
             if (mediaController != null) {
                 callbackMap.forEach((callback, mediaControllerCallback) ->
@@ -96,11 +102,12 @@ public class AudioBrowser {
                 mediaController = null;
             }
             mediaBrowser.disconnect();
+            mediaBrowserConnecting.set(false);
         }
     }
 
-    private synchronized void registerMediaController(FragmentActivity activity,
-                                                      MediaSessionCompat.Token token
+    private void registerMediaController(FragmentActivity activity,
+                                         MediaSessionCompat.Token token
     ) throws RemoteException {
         if (mediaController != null) {
             Log.w(LC, "MediaController already registered: Session ready: "

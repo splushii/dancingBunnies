@@ -20,6 +20,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import androidx.annotation.Nullable;
@@ -39,19 +41,38 @@ import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
 
+import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.META_ADD;
+import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.META_DELETE;
+import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.META_EDIT;
+import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_DELETE;
+import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_ENTRY_ADD;
+import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_ENTRY_DELETE;
+import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_ENTRY_MOVE;
+
 public class MusicLibraryService extends Service {
     private static final String LC = Util.getLogContext(MusicLibraryService.class);
 
+    public static final String API_SRC_ID_REGEX = "[a-z0-9]+";
     // Supported API:s
-    // Use [a-z0-9] for API ID:s
-    public static final String API_ID_DANCINGBUNNIES = "dancingbunnies";
-    public static final String API_ID_SUBSONIC = "subsonic";
-
-    // Local API source
-    public static final String API_SRC_DANCINGBUNNIES_LOCAL =
-            getAPISource(API_ID_DANCINGBUNNIES, "local");
+    public static final String API_SRC_ID_DANCINGBUNNIES = "dancingbunnies";
+    public static final String API_SRC_ID_SUBSONIC = "subsonic";
+    public static final String API_SRC_ID_GIT = "git";
+    public static final String API_SRC_NAME_DANCINGBUNNIES = "dancing Bunnies";
+    public static final String API_SRC_NAME_SUBSONIC = "Subsonic";
+    public static final String API_SRC_NAME_GIT = "Git";
 
     private static final String API_SRC_DELIMITER = "@";
+    private static final String API_SRC_PATTERN_GROUP_ID = "id";
+    private static final String API_SRC_PATTERN_GROUP_INSTANCE = "instance";
+    public static final String API_SRC_REGEX =
+            "^(?<" + API_SRC_PATTERN_GROUP_ID + ">" + API_SRC_ID_REGEX + ")"
+                    + API_SRC_DELIMITER
+                    + "(?<" + API_SRC_PATTERN_GROUP_INSTANCE + ">.*)$";
+    private static final Pattern apiSourcePattern = Pattern.compile(API_SRC_REGEX);
+    // Local API source
+    public static final String API_SRC_DANCINGBUNNIES_LOCAL =
+            getAPISource(API_SRC_ID_DANCINGBUNNIES, "local");
+
 
     public static String getAPISource(String apiID, String apiInstanceID) {
         return apiID + API_SRC_DELIMITER + apiInstanceID;
@@ -65,18 +86,29 @@ public class MusicLibraryService extends Service {
         return getAPIPartFromSource(src, 1);
     }
 
-    private static String getAPIPartFromSource(String src, int part) {
+    public static boolean matchAPISourceSyntax(String src) {
+        return getAPISourceMatcher(src).matches();
+    }
+
+    private static Matcher getAPISourceMatcher(String src) {
         if (src == null) {
             return null;
         }
-        String[] split = src.split(API_SRC_DELIMITER, 2);
-        if (split.length == 1 && part == 0) {
-            return src;
-        }
-        if (split.length != 2) {
+        return apiSourcePattern.matcher(src);
+    }
+
+    private static String getAPIPartFromSource(String src, int part) {
+        Matcher matcher = getAPISourceMatcher(src);
+        if (matcher == null || !matcher.matches()) {
             return null;
         }
-        return split[part];
+        if (part == 0) {
+            return matcher.group(API_SRC_PATTERN_GROUP_ID);
+        }
+        if (part == 1) {
+            return matcher.group(API_SRC_PATTERN_GROUP_INSTANCE);
+        }
+        return null;
     }
 
     // API icons
@@ -89,27 +121,22 @@ public class MusicLibraryService extends Service {
             return 0;
         }
         switch (api) {
-            case MusicLibraryService.API_ID_DANCINGBUNNIES:
+            case MusicLibraryService.API_SRC_ID_DANCINGBUNNIES:
                 return R.mipmap.dancingbunnies_icon;
-            case MusicLibraryService.API_ID_SUBSONIC:
-                return R.drawable.sub_icon;
+            case MusicLibraryService.API_SRC_ID_SUBSONIC:
+                return R.drawable.api_sub_icon;
+            case MusicLibraryService.API_SRC_ID_GIT:
+                return R.drawable.api_git_icon;
             default:
                 return 0;
         }
     }
 
     // API actions
-    public static final String PLAYLIST_DELETE = "playlist_delete";
-    public static final String PLAYLIST_ENTRY_DELETE = "playlist_entry_delete";
-    public static final String PLAYLIST_ENTRY_MOVE = "playlist_entry_move";
-    public static final String PLAYLIST_ENTRY_ADD = "playlist_entry_add";
-    public static final String META_EDIT = "meta_edit";
-    public static final String META_ADD = "meta_add";
-    public static final String META_DELETE = "meta_delete";
     public static boolean checkAPISupport(String src, String action) {
         String api = getAPIFromSource(src);
         switch (api) {
-            case API_ID_DANCINGBUNNIES:
+            case API_SRC_ID_DANCINGBUNNIES:
                 switch (action) {
                     case PLAYLIST_ENTRY_DELETE:
                     case PLAYLIST_ENTRY_MOVE:
@@ -118,10 +145,12 @@ public class MusicLibraryService extends Service {
                         return true;
                     case META_EDIT:
                     case META_ADD:
+                    case META_DELETE:
+                    default:
                         return false;
                 }
-                return false;
-            case API_ID_SUBSONIC:
+            case API_SRC_ID_SUBSONIC:
+            case API_SRC_ID_GIT: // TODO: Support some stuff
                 switch (action) {
                     case PLAYLIST_ENTRY_DELETE:
                     case PLAYLIST_ENTRY_MOVE:
@@ -129,9 +158,10 @@ public class MusicLibraryService extends Service {
                     case PLAYLIST_ENTRY_ADD:
                     case META_EDIT:
                     case META_ADD:
+                    case META_DELETE:
+                    default:
                         return false;
                 }
-                return false;
             default:
                 return false;
         }
@@ -157,22 +187,28 @@ public class MusicLibraryService extends Service {
                                         Meta.FIELD_SPECIAL_MEDIA_ID,
                                         Collections.singletonList(Meta.FIELD_TITLE),
                                         true,
-                                        MusicLibraryQueryNode.fromJSON(playlist.query)
+                                        MusicLibraryQueryNode.fromJSON(playlist.query())
                                 )
                 ),
                 libraryEntries -> {
-                    List<PlaylistEntry> playlistEntries = new ArrayList<>();
-                    for (int i = 0; i < libraryEntries.size(); i++) {
-                        LibraryEntry libraryEntry = libraryEntries.get(i);
-                        PlaylistEntry playlistEntry = PlaylistEntry.from(
-                                playlistID,
-                                libraryEntry.entryID,
-                                i
-                        );
-                        playlistEntry.rowId = i;
-                        playlistEntries.add(playlistEntry);
-                    }
-                    return playlistEntries;
+                    //                    List<PlaylistEntry> playlistEntries = new ArrayList<>();
+//                    for (int i = 0; i < libraryEntries.size(); i++) {
+//                        LibraryEntry libraryEntry = libraryEntries.get(i);
+//                        PlaylistEntry playlistEntry = PlaylistEntry.from(
+//                                playlistID,
+//                                libraryEntry.entryID,
+//                                i
+//                        );
+//                        playlistEntry.rowId = i; TODO: Needed?
+//                        playlistEntries.add(playlistEntry);
+//                    }
+                    // Generate mock ID:s for playlist entries
+                    return PlaylistEntry.generatePlaylistEntries(
+                            playlistID,
+                            libraryEntries.stream()
+                                    .map(libraryEntry -> libraryEntry.entryID)
+                                    .toArray(EntryID[]::new)
+                    );
                 }
         );
     }
@@ -410,9 +446,10 @@ public class MusicLibraryService extends Service {
             return Util.futureResult(msg);
         }
         if (!client.hasLibrary()) {
-            String msg = "Can not fetch library from " + src + ". API " + api + " does not support library.";
-            handler.onFailure(msg);
-            return Util.futureResult(msg);
+            String msg = "Can not fetch library from " + src + ". "
+                    + "API " + api + " does not support library.";
+            handler.onSuccess(msg);
+            return Util.futureResult(null);
         }
         return client.getLibrary(new APIClientRequestHandler() {
             @Override
@@ -463,23 +500,25 @@ public class MusicLibraryService extends Service {
         });
     }
 
-    public static void fetchPlayLists(Context context,
-                                      final String src,
-                                      final MusicLibraryRequestHandler handler) {
+    public static CompletableFuture<Void> fetchPlayLists(Context context,
+                                                         final String src,
+                                                         final MusicLibraryRequestHandler handler) {
         handler.onStart();
         String api = getAPIFromSource(src);
         APIClient client = APIClient.getAPIClient(context, src);
         PlaylistStorage playlistStorage = PlaylistStorage.getInstance(context);
         if (client == null) {
-            handler.onFailure("Can not fetch playlists. API " + api + " not found.");
-            return;
+            String msg = "Can not fetch playlists from " + src + ". API " + api + " not found.";
+            handler.onFailure(msg);
+            return Util.futureResult(msg);
         }
         if (!client.hasPlaylists()) {
-            handler.onFailure("Can not fetch playlists. API " + api
-                    + " does not support playlists.");
-            return;
+            String msg = "Can not fetch playlists from " + src + "."
+                    + " API " + api + " does not support playlists.";
+            handler.onSuccess(msg);
+            return Util.futureResult(null);
         }
-        client.getPlaylists(new APIClientRequestHandler() {
+        return client.getPlaylists(new APIClientRequestHandler() {
             @Override
             public void onProgress(String s) {
                 handler.onProgress(s);

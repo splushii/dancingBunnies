@@ -6,7 +6,6 @@ import android.util.Log;
 
 import java.time.Duration;
 import java.util.Calendar;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import androidx.annotation.NonNull;
@@ -19,7 +18,7 @@ import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
-import se.splushii.dancingbunnies.SettingsActivityFragment;
+import se.splushii.dancingbunnies.settings.SettingsActivityFragment;
 import se.splushii.dancingbunnies.backend.MusicLibraryRequestHandler;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.ui.TimePreference;
@@ -28,30 +27,43 @@ import se.splushii.dancingbunnies.util.Util;
 public class LibrarySyncWorker extends Worker {
     private static final String LC = Util.getLogContext(LibrarySyncWorker.class);
 
-    private static final String INPUT_KEY_API =
+    private static final String DATA_KEY_API =
             "se.splushii.dancingbunnies.librarysyncworker.input_key.api";
-    private static final String INPUT_KEY_PREF_BACKEND_ID =
+    private static final String DATA_KEY_PREF_BACKEND_ID =
             "se.splushii.dancingbunnies.librarysyncworker.input_key.pref_backend_id";
-    private static final String INPUT_KEY_REFRESH_LAST_SYNC_PREF_KEY =
+    public static final String DATA_KEY_REFRESH_PREF_KEY =
+            "se.splushii.dancingbunnies.librarysyncworker.input_key.refresh_pref_key";
+    public static final String DATA_KEY_REFRESH_LAST_SYNC_PREF_KEY =
             "se.splushii.dancingbunnies.librarysyncworker.input_key.refresh_last_sync_pref_key";
-    private static final String INPUT_KEY_REFRESH_SCHEDULE_ENABLED_PREF_KEY =
+    private static final String DATA_KEY_REFRESH_SCHEDULE_ENABLED_PREF_KEY =
             "se.splushii.dancingbunnies.librarysyncworker.input_key.refresh_schedule_enabled_pref_key";
-    private static final String INPUT_KEY_REFRESH_SCHEDULE_TIME_PREF_KEY =
+    private static final String DATA_KEY_REFRESH_SCHEDULE_TIME_PREF_KEY =
             "se.splushii.dancingbunnies.librarysyncworker.input_key.refresh_schedule_time_pref_key";
+
+    public static final String DATA_KEY_STATUS = "status";
+
+    private final String api;
+    private final long preferenceBackendID;
+    private final int refreshPrefKey;
+    private final int refreshLastSyncPrefKey;
+    private final int refreshScheduleEnabledPrefKey;
+    private final int refreshScheduleTimePrefKey;
 
     public LibrarySyncWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
+        Data inputData = workerParams.getInputData();
+        api = inputData.getString(DATA_KEY_API);
+        preferenceBackendID = inputData.getLong(DATA_KEY_PREF_BACKEND_ID, SettingsActivityFragment.BACKEND_ID_INVALID);
+        refreshPrefKey = inputData.getInt(DATA_KEY_REFRESH_PREF_KEY, 0);
+        refreshLastSyncPrefKey = inputData.getInt(DATA_KEY_REFRESH_LAST_SYNC_PREF_KEY, 0);
+        refreshScheduleEnabledPrefKey = inputData.getInt(DATA_KEY_REFRESH_SCHEDULE_ENABLED_PREF_KEY, 0);
+        refreshScheduleTimePrefKey = inputData.getInt(DATA_KEY_REFRESH_SCHEDULE_TIME_PREF_KEY, 0);
     }
 
     @NonNull
     @Override
     public Result doWork() {
         Log.d(LC, "doWork");
-        String api = getInputData().getString(INPUT_KEY_API);
-        int preferenceBackendID = getInputData().getInt(INPUT_KEY_PREF_BACKEND_ID, SettingsActivityFragment.BACKEND_ID_INVALID);
-        int refreshLastSyncPrefKey = getInputData().getInt(INPUT_KEY_REFRESH_LAST_SYNC_PREF_KEY, 0);
-        int refreshScheduleEnabledPrefKey = getInputData().getInt(INPUT_KEY_REFRESH_SCHEDULE_ENABLED_PREF_KEY, 0);
-        int refreshScheduleTimePrefKey = getInputData().getInt(INPUT_KEY_REFRESH_SCHEDULE_TIME_PREF_KEY, 0);
         String src = SettingsActivityFragment.getSourceFromConfig(
                 getApplicationContext(),
                 api,
@@ -59,13 +71,13 @@ public class LibrarySyncWorker extends Worker {
         );
         if (src == null
                 || preferenceBackendID == SettingsActivityFragment.BACKEND_ID_INVALID
+                || refreshPrefKey == 0
                 || refreshLastSyncPrefKey == 0
                 || refreshScheduleEnabledPrefKey == 0
                 || refreshScheduleTimePrefKey == 0) {
             return Result.failure();
         }
         setLastRefresh(getApplicationContext(), refreshLastSyncPrefKey);
-        CompletableFuture<Void> fetchPlaylistsFuture = new CompletableFuture<>();
         MusicLibraryService.fetchAPILibrary(
                 getApplicationContext(),
                 src,
@@ -89,33 +101,7 @@ public class LibrarySyncWorker extends Worker {
                         String msg = "onSuccess: " + status;
                         Log.d(LC, msg);
                         setProgress(msg);
-                        MusicLibraryService.fetchPlayLists(
-                                getApplicationContext(),
-                                src,
-                                new MusicLibraryRequestHandler() {
-                                    @Override
-                                    public void onStart() {
-                                        String msg = "onStart fetchPlaylists";
-                                        Log.d(LC, msg);
-                                        setProgress(msg);
-                                    }
 
-                                    @Override
-                                    public void onSuccess(String status) {
-                                        String msg = "onSuccess fetchPlaylists: " + status;
-                                        Log.d(LC, msg);
-                                        setProgress(msg);
-                                        fetchPlaylistsFuture.complete(null);
-                                    }
-
-                                    @Override
-                                    public void onFailure(String status) {
-                                        String msg = "onFailure fetchPlaylists: " + status;
-                                        Log.e(LC, msg);
-                                        setProgress(msg);
-                                        fetchPlaylistsFuture.complete(null);
-                                    }
-                                });
                     }
 
                     @Override
@@ -125,12 +111,39 @@ public class LibrarySyncWorker extends Worker {
                         setProgress(msg);
                     }
                 }
+        ).handle(
+                Util::printFutureError
+        ).thenCompose(aVoid -> MusicLibraryService.fetchPlayLists(
+                getApplicationContext(),
+                src,
+                new MusicLibraryRequestHandler() {
+                    @Override
+                    public void onStart() {
+                        String msg = "onStart fetchPlaylists";
+                        Log.d(LC, msg);
+                        setProgress(msg);
+                    }
+
+                    @Override
+                    public void onSuccess(String status) {
+                        String msg = "onSuccess fetchPlaylists: " + status;
+                        Log.d(LC, msg);
+                        setProgress(msg);
+                    }
+
+                    @Override
+                    public void onFailure(String status) {
+                        String msg = "onFailure fetchPlaylists: " + status;
+                        Log.e(LC, msg);
+                        setProgress(msg);
+                    }
+                })
         ).join();
-        fetchPlaylistsFuture.join();
         requeue(
                 getApplicationContext(),
                 api,
                 preferenceBackendID,
+                refreshPrefKey,
                 refreshLastSyncPrefKey,
                 refreshScheduleEnabledPrefKey,
                 refreshScheduleTimePrefKey
@@ -139,12 +152,22 @@ public class LibrarySyncWorker extends Worker {
     }
 
     private void setProgress(String status) {
-        setProgressAsync(new Data.Builder().putString("status", status).build());
+        setProgressAsync(baseData(
+                api,
+                preferenceBackendID,
+                refreshPrefKey,
+                refreshLastSyncPrefKey,
+                refreshScheduleEnabledPrefKey,
+                refreshScheduleTimePrefKey)
+                .putString(DATA_KEY_STATUS, status)
+                .build()
+        );
     }
 
     public static void runNow(Context context,
                               String api,
-                              int preferenceBackendID,
+                              long preferenceBackendID,
+                              int refreshPrefKey,
                               int refreshLastSyncPrefKey,
                               int refreshScheduleEnabledPrefKey,
                               int refreshScheduleTimePrefKey) {
@@ -152,6 +175,7 @@ public class LibrarySyncWorker extends Worker {
                 context,
                 api,
                 preferenceBackendID,
+                refreshPrefKey,
                 refreshLastSyncPrefKey,
                 refreshScheduleEnabledPrefKey,
                 refreshScheduleTimePrefKey,
@@ -161,7 +185,8 @@ public class LibrarySyncWorker extends Worker {
 
     public static void requeue(Context context,
                                String api,
-                               int preferenceBackendID,
+                               long preferenceBackendID,
+                               int refreshPrefKey,
                                int refreshLastSyncPrefKey,
                                int refreshScheduleEnabledPrefKey,
                                int refreshScheduleTimePrefKey) {
@@ -169,6 +194,7 @@ public class LibrarySyncWorker extends Worker {
                 context,
                 api,
                 preferenceBackendID,
+                refreshPrefKey,
                 refreshLastSyncPrefKey,
                 refreshScheduleEnabledPrefKey,
                 refreshScheduleTimePrefKey,
@@ -178,12 +204,14 @@ public class LibrarySyncWorker extends Worker {
 
     private static void requeue(Context context,
                                 String api,
-                                int preferenceBackendID,
+                                long preferenceBackendID,
+                                int refreshPrefKey,
                                 int refreshLastSyncPrefKey,
                                 int refreshScheduleEnabledPrefKey,
                                 int refreshScheduleTimePrefKey,
                                 boolean forceRunNow) {
         String src = SettingsActivityFragment.getSourceFromConfig(context, api, preferenceBackendID);
+        Log.e(LC, "api: " + api + " backid: " + preferenceBackendID);
         if (src == null) {
             Log.e(LC, "requeue: src is null");
             return;
@@ -240,13 +268,14 @@ public class LibrarySyncWorker extends Worker {
         }
         OneTimeWorkRequest workRequest = workRequestBuilder
                 .setInputData(
-                        new Data.Builder()
-                                .putString(INPUT_KEY_API, api)
-                                .putInt(INPUT_KEY_PREF_BACKEND_ID, preferenceBackendID)
-                                .putInt(INPUT_KEY_REFRESH_LAST_SYNC_PREF_KEY, refreshLastSyncPrefKey)
-                                .putInt(INPUT_KEY_REFRESH_SCHEDULE_ENABLED_PREF_KEY, refreshScheduleEnabledPrefKey)
-                                .putInt(INPUT_KEY_REFRESH_SCHEDULE_TIME_PREF_KEY, refreshScheduleTimePrefKey)
-                                .build()
+                        baseData(
+                                api,
+                                preferenceBackendID,
+                                refreshPrefKey,
+                                refreshLastSyncPrefKey,
+                                refreshScheduleEnabledPrefKey,
+                                refreshScheduleTimePrefKey
+                        ).build()
                 )
                 .addTag(Jobs.WORK_NAME_LIBRARY_SYNC_TAG)
                 .build();
@@ -256,6 +285,21 @@ public class LibrarySyncWorker extends Worker {
                         ExistingWorkPolicy.REPLACE,
                         workRequest
                 );
+    }
+
+    private static Data.Builder baseData(String api,
+                                         long preferenceBackendID,
+                                         int refreshPrefKey,
+                                         int refreshLastSyncPrefKey,
+                                         int refreshScheduleEnabledPrefKey,
+                                         int refreshScheduleTimePrefKey) {
+        return new Data.Builder()
+                .putString(DATA_KEY_API, api)
+                .putLong(DATA_KEY_PREF_BACKEND_ID, preferenceBackendID)
+                .putInt(DATA_KEY_REFRESH_PREF_KEY, refreshPrefKey)
+                .putInt(DATA_KEY_REFRESH_LAST_SYNC_PREF_KEY, refreshLastSyncPrefKey)
+                .putInt(DATA_KEY_REFRESH_SCHEDULE_ENABLED_PREF_KEY, refreshScheduleEnabledPrefKey)
+                .putInt(DATA_KEY_REFRESH_SCHEDULE_TIME_PREF_KEY, refreshScheduleTimePrefKey);
     }
 
     private void setLastRefresh(Context context, int prefKey) {

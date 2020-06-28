@@ -82,6 +82,13 @@ dependencies {
     implementation "com.mikepenz:aboutlibraries-core:8.1.0"
     implementation "com.mikepenz:aboutlibraries:8.1.0"
 
+    implementation "com.networknt:json-schema-validator:1.0.40"
+    implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.11.0"
+
+    implementation "org.eclipse.jgit:org.eclipse.jgit:5.7.0.202003110725-r"
+
+    implementation 'commons-io:commons-io:2.7'
+
     testImplementation 'junit:junit:4.12'
 
     // Android is missing ClassValue. Needed to update Lucene.

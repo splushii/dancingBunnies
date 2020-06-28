@@ -25,6 +25,7 @@ import androidx.mediarouter.app.MediaRouteButton;
 import androidx.viewpager.widget.ViewPager;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.settings.SettingsActivity;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.DownloadEntry;
 import se.splushii.dancingbunnies.ui.downloads.DownloadsDialogFragment;
@@ -60,6 +61,7 @@ public final class MainActivity extends AppCompatActivity {
     public static final int REQUEST_CODE_ADD_TO_PLAYLIST_DIALOG = 1338;
     public static final int REQUEST_CODE_ADD_TO_NEW_PLAYLIST_DIALOG = 1339;
     public static final int REQUEST_CODE_SORT_DIALOG = 1340;
+    public static final int REQUEST_CODE_CONFIRMATION_DIALOG = 1341;
 
     private ViewPager mViewPager;
     private SectionsPagerAdapter mSectionsPagerAdapter;

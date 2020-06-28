@@ -126,10 +126,6 @@ public class EntryID implements Parcelable {
         return from(b);
     }
 
-    public static EntryID from(PlaylistEntry playlistEntry) {
-        return new EntryID(playlistEntry.src, playlistEntry.id, Meta.FIELD_SPECIAL_MEDIA_ID);
-    }
-
     public static EntryID from(Bundle b) {
         String src = Objects.requireNonNull(b.getString(EntryID.BUNDLE_KEY_SRC));
         String id = Objects.requireNonNull(b.getString(EntryID.BUNDLE_KEY_ID));

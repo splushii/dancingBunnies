@@ -19,12 +19,14 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.SmartPlaylist;
 import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
 
 public class AddToNewPlaylistDialogFragment extends DialogFragment {
@@ -112,15 +114,21 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
             // Create a StupidPlaylist
             completableFuture = MetaStorage.getInstance(requireContext())
                     .getSongEntriesOnce(queries)
-                    .thenCompose(songEntryIDs ->
-                            PlaylistStorage.getInstance(requireContext()).insertPlaylists(
-                                    0,
-                                    Collections.singletonList(new StupidPlaylist(
-                                            PlaylistStorage.generatePlaylistID(PlaylistID.TYPE_STUPID),
-                                            name,
-                                            songEntryIDs
-                                    ))
-                            ));
+                    .thenCompose(songEntryIDs -> {
+                        PlaylistID playlistID = PlaylistStorage.generatePlaylistID(PlaylistID.TYPE_STUPID);
+                        List<PlaylistEntry> playlistEntries = PlaylistEntry.generatePlaylistEntries(
+                                playlistID,
+                                songEntryIDs.toArray(new EntryID[0])
+                        );
+                        return PlaylistStorage.getInstance(requireContext()).insertPlaylists(
+                                0,
+                                Collections.singletonList(new StupidPlaylist(
+                                        playlistID,
+                                        name,
+                                        playlistEntries
+                                ))
+                        );
+                    });
         } else if (query != null) {
             // Create a SmartPlaylist
             completableFuture = PlaylistStorage.getInstance(requireContext()).insertPlaylists(
