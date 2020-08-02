@@ -2,7 +2,6 @@ package se.splushii.dancingbunnies.ui;
 
 import android.app.Dialog;
 import android.os.Bundle;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -69,9 +68,7 @@ public class ConfirmationDialogFragment extends DialogFragment {
 
     private void onClicked(String id, boolean confirmed) {
         Fragment fragment = getTargetFragment();
-        Log.e(LC, "ONCLICK YEAH");
         if (fragment instanceof Handler) {
-            Log.e(LC, "IS HNDLER YO");
             ((Handler) fragment).onConfirmationDialogClicked(id, confirmed);
         }
     }

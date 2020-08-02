@@ -5,7 +5,6 @@ import android.util.Log;
 import java.util.List;
 
 import androidx.core.util.Consumer;
-import androidx.core.util.Supplier;
 import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
 import androidx.room.Insert;
@@ -61,6 +60,16 @@ public abstract class MetaDao {
             MetaLocalDouble.class
     })
     public abstract LiveData<List<MetaValueEntry>> getEntries(SupportSQLiteQuery query);
+    @RawQuery(observedEntities = {
+            Entry.class,
+            MetaString.class,
+            MetaLong.class,
+            MetaDouble.class,
+            MetaLocalString.class,
+            MetaLocalLong.class,
+            MetaLocalDouble.class
+    })
+    public abstract List<MetaValueEntry> getEntriesOnce(SupportSQLiteQuery query);
     @RawQuery(observedEntities = {
             Entry.class,
             MetaString.class,

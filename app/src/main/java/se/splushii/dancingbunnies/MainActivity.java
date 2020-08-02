@@ -25,7 +25,6 @@ import androidx.mediarouter.app.MediaRouteButton;
 import androidx.viewpager.widget.ViewPager;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
-import se.splushii.dancingbunnies.settings.SettingsActivity;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.DownloadEntry;
 import se.splushii.dancingbunnies.ui.downloads.DownloadsDialogFragment;
@@ -34,6 +33,7 @@ import se.splushii.dancingbunnies.ui.musiclibrary.MusicLibraryFragmentModel;
 import se.splushii.dancingbunnies.ui.nowplaying.NowPlayingFragment;
 import se.splushii.dancingbunnies.ui.playlist.PlaylistFragment;
 import se.splushii.dancingbunnies.ui.playlist.PlaylistFragmentModel;
+import se.splushii.dancingbunnies.ui.settings.SettingsActivity;
 import se.splushii.dancingbunnies.util.Util;
 
 public final class MainActivity extends AppCompatActivity {

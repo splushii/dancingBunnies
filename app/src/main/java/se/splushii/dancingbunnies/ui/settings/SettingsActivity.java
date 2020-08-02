@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies.settings;
+package se.splushii.dancingbunnies.ui.settings;
 
 import android.os.Bundle;
 

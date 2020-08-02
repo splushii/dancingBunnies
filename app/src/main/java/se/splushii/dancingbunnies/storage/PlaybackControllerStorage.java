@@ -151,14 +151,14 @@ public class PlaybackControllerStorage {
 
     public CompletableFuture<Void> insert(int queueID, int toPosition, List<PlaybackEntry> entries) {
         if (entries == null || entries.isEmpty()) {
-            return Util.futureResult(null);
+            return Util.futureResult();
         }
         return CompletableFuture.runAsync(() -> entryModel.insert(queueID, toPosition, entries));
     }
 
     public CompletableFuture<Void> updatePositions(int queueID, List<PlaybackEntry> entries) {
         if (entries == null || entries.isEmpty()) {
-            return Util.futureResult(null);
+            return Util.futureResult();
         }
         return CompletableFuture.runAsync(() -> entryModel.updatePositions(queueID, entries));
     }

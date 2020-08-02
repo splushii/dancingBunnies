@@ -22,7 +22,6 @@ public class HTTPRequestQueue {
         return instance;
     }
 
-
     public static String getHTTPErrorMessage(VolleyError error) {
         String errMsg;
         if (error instanceof com.android.volley.NoConnectionError) {

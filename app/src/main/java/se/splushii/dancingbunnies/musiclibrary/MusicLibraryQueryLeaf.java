@@ -109,7 +109,7 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
 
     @Override
     public MusicLibraryQueryNode withEntryID(EntryID entryID) {
-        if (entryID.isUnknown()) {
+        if (entryID == null || entryID.isUnknown()) {
             return this;
         }
         MusicLibraryQueryTree queryTree = new MusicLibraryQueryTree(

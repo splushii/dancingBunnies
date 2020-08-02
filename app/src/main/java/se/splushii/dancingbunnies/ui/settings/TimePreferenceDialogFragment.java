@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies.ui;
+package se.splushii.dancingbunnies.ui.settings;
 
 import android.content.Context;
 import android.os.Bundle;
@@ -30,18 +30,20 @@ public class TimePreferenceDialogFragment extends PreferenceDialogFragmentCompat
         super.onBindDialogView(v);
         TimePreference pref = (TimePreference) getPreference();
         timePicker.setIs24HourView(true);
-        timePicker.setHour(pref.hour);
-        timePicker.setMinute(pref.minute);
+        timePicker.setHour(pref.getHour());
+        timePicker.setMinute(pref.getMinute());
     }
 
     @Override
     public void onDialogClosed(boolean positiveResult) {
         if (positiveResult) {
             TimePreference pref = (TimePreference) getPreference();
-            pref.hour = timePicker.getHour();
-            pref.minute = timePicker.getMinute();
-            String value = TimePreference.timeToString(pref.hour, pref.minute);
-            if (pref.callChangeListener(value)) pref.persistStringValue(value);
+            pref.setHour(timePicker.getHour());
+            pref.setMinute(timePicker.getMinute());
+            String value = TimePreference.timeToString(pref.getHour(), pref.getMinute());
+            if (pref.callChangeListener(value)) {
+                pref.persistStringValue(value);
+            }
         }
     }
 }

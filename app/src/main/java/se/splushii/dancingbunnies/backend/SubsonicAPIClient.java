@@ -95,7 +95,7 @@ public class SubsonicAPIClient extends APIClient {
     private static final String STATUS_OK = "ok";
 
     private static final String VERSION = "1.15.0";
-    private static final String[] SUPPORTED_VERSIONS = {"1.15.0", "1.16.0"};
+    private static final String[] SUPPORTED_VERSIONS = {"1.15.0", "1.16.0", "1.16.1"};
     private static final String CLIENT_ID = "dancingbunnies";
     private static final String FORMAT = "json";
 
@@ -177,25 +177,25 @@ public class SubsonicAPIClient extends APIClient {
     }
 
     @Override
-    public CompletableFuture<Optional<String>> heartbeat() {
+    public CompletableFuture<Void> heartbeat() {
         String query = baseURL + "ping" + getBaseQuery();
-        final CompletableFuture<Optional<String>> req = new CompletableFuture<>();
+        final CompletableFuture<Void> req = new CompletableFuture<>();
         httpRequestQueue.addToRequestQueue(new StringRequest(
                 query,
                 response -> {
                     String status = statusOK(response);
                     if (status.isEmpty()) {
-                        req.complete(Optional.empty());
+                        req.complete(null);
                     } else {
                         Log.e(LC, "heartbeat: " + status);
-                        req.complete(Optional.of(status));
+                        req.completeExceptionally(new Util.FutureException(status));
                     }
                 },
                 error -> {
                     String errMsg = HTTPRequestQueue.getHTTPErrorMessage(error);
                     Log.e(LC, "heartbeat: " + errMsg);
-                    // TODO: Can errMsg null? (app crash)
-                    req.complete(Optional.of(errMsg));
+//                    // TODO: Can errMsg null? (app crash)
+                    req.completeExceptionally(new Util.FutureException(errMsg));
                 }
         ));
         return req;
@@ -727,7 +727,7 @@ public class SubsonicAPIClient extends APIClient {
         baseURL = settings.getString(APIClient.SETTINGS_KEY_SUBSONIC_URL) + API_BASE_PATH;
         username = settings.getString(APIClient.SETTINGS_KEY_SUBSONIC_USERNAME);
         password = settings.getString(APIClient.SETTINGS_KEY_SUBSONIC_PASSWORD);
-        tagDelimiter = settings.getString(APIClient.SETTINGS_KEY_GENERAL_TAG_DELIM);
+        tagDelimiter = settings.getString(APIClient.SETTINGS_KEY_DB_TAG_DELIM);
     }
 
     private String statusOK(String resp) {

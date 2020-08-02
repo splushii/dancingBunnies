@@ -5,7 +5,8 @@
         app:iconSpaceReserved="false"
         app:allowDividerBelow="true"
         android:title="Backends"
-        android:key="@string/pref_key_backend" >
+        android:key="@string/pref_key_backend"
+        >
         <ListPreference
             android:key="@string/pref_key_backend_new"
             android:title="@string/pref_backend_new"
@@ -15,119 +16,51 @@
             android:entryValues="@array/empty_array"
             android:defaultValue="@array/empty_array"
             />
-<!--        <PreferenceCategory-->
-<!--            android:title="@string/pref_backend_config_subsonic_name"-->
-<!--            android:summary="subsonic.splushii.se"-->
-<!--            android:icon="@drawable/api_sub_icon"-->
-<!--            >-->
-<!--            <CheckBoxPreference-->
-<!--                android:key="@string/pref_key_subsonic"-->
-<!--                android:title="Enabled"-->
-<!--                android:defaultValue="false" />-->
-<!--            <EditTextPreference-->
-<!--                android:dependency="@string/pref_key_subsonic"-->
-<!--                android:key="@string/pref_key_subsonic_id"-->
-<!--                android:title="@string/pref_subsonic_id"-->
-<!--                android:dialogTitle="Customize backend ID"-->
-<!--                android:dialogMessage="The default backend ID does not need to be changed unless there is a special use case. Leave blank to use the default backend ID.\n\nWhen changing the backend ID you must:\n- Manually clear the local data for the old backend ID.\n- Refresh the backend for changes to take effect."-->
-<!--                />-->
-<!--            <EditTextPreference-->
-<!--                android:dependency="@string/pref_key_subsonic"-->
-<!--                android:key="@string/pref_key_subsonic_url"-->
-<!--                android:title="@string/pref_backend_config_subsonic_url" />-->
-<!--            <EditTextPreference-->
-<!--                android:dependency="@string/pref_key_subsonic"-->
-<!--                android:key="@string/pref_key_subsonic_usr"-->
-<!--                android:title="@string/pref_backend_config_subsonic_usr" />-->
-<!--            <EditTextPreference-->
-<!--                android:dependency="@string/pref_key_subsonic"-->
-<!--                android:key="@string/pref_key_subsonic_pwd"-->
-<!--                android:title="@string/pref_backend_config_subsonic_pwd" />-->
-<!--            <EditTextPreference-->
-<!--                android:dependency="@string/pref_key_subsonic"-->
-<!--                android:key="@string/pref_key_subsonic_tag_delim"-->
-<!--                android:title="@string/pref_subsonic_tag_delim" />-->
-<!--            <CheckBoxPreference-->
-<!--                android:dependency="@string/pref_key_subsonic"-->
-<!--                android:key="@string/pref_key_subsonic_refresh_enabled"-->
-<!--                android:title="Enable scheduled refresh"-->
-<!--                android:enabled="false"-->
-<!--                android:defaultValue="false" />-->
-<!--            <se.splushii.dancingbunnies.ui.TimePreference-->
-<!--                android:dependency="@string/pref_key_subsonic_refresh_enabled"-->
-<!--                android:key="@string/pref_key_subsonic_refresh_time"-->
-<!--                android:title="@string/pref_subsonic_refresh_time" />-->
-<!--            <Preference-->
-<!--                android:dependency="@string/pref_key_subsonic"-->
-<!--                android:key="@string/pref_key_subsonic_refresh"-->
-<!--                android:enabled="false"-->
-<!--                android:title="@string/pref_subsonic_refresh"-->
-<!--                />-->
-<!--        </PreferenceCategory>-->
-<!--        <CheckBoxPreference-->
-<!--            android:key="@string/pref_key_git"-->
-<!--            android:title="@string/pref_backend_config_git_name"-->
-<!--            android:icon="@drawable/api_git_icon"-->
-<!--            android:defaultValue="false" />-->
-<!--&lt;!&ndash;        <EditTextPreference&ndash;&gt;-->
-<!--&lt;!&ndash;            android:dependency="@string/pref_key_git"&ndash;&gt;-->
-<!--&lt;!&ndash;            android:key="@string/pref_key_git_url"&ndash;&gt;-->
-<!--&lt;!&ndash;            android:title="@string/pref_subsonic_url" />&ndash;&gt;-->
-<!--&lt;!&ndash;        <EditTextPreference&ndash;&gt;-->
-<!--&lt;!&ndash;            android:dependency="@string/pref_key_git"&ndash;&gt;-->
-<!--&lt;!&ndash;            android:key="@string/pref_key_git_usr"&ndash;&gt;-->
-<!--&lt;!&ndash;            android:title="@string/pref_subsonic_usr" />&ndash;&gt;-->
-<!--&lt;!&ndash;        <EditTextPreference&ndash;&gt;-->
-<!--&lt;!&ndash;            android:dependency="@string/pref_key_git"&ndash;&gt;-->
-<!--&lt;!&ndash;            android:key="@string/pref_key_git_pwd"&ndash;&gt;-->
-<!--&lt;!&ndash;            android:title="@string/pref_subsonic_pwd" />&ndash;&gt;-->
-<!--&lt;!&ndash;        <EditTextPreference&ndash;&gt;-->
-<!--&lt;!&ndash;            android:dependency="@string/pref_key_git"&ndash;&gt;-->
-<!--&lt;!&ndash;            android:key="@string/pref_key_git_tag_delim"&ndash;&gt;-->
-<!--&lt;!&ndash;            android:title="@string/pref_subsonic_tag_delim" />&ndash;&gt;-->
-<!--        <CheckBoxPreference-->
-<!--            android:dependency="@string/pref_key_git"-->
-<!--            android:key="@string/pref_key_git_refresh_enabled"-->
-<!--            android:title="Enable scheduled refresh"-->
-<!--            android:enabled="false"-->
-<!--            android:defaultValue="false" />-->
-<!--        <se.splushii.dancingbunnies.ui.TimePreference-->
-<!--            android:dependency="@string/pref_key_git_refresh_enabled"-->
-<!--            android:key="@string/pref_key_git_refresh_time"-->
-<!--            android:title="@string/pref_git_refresh_time" />-->
-<!--        <Preference-->
-<!--            android:dependency="@string/pref_key_git"-->
-<!--            android:key="@string/pref_key_git_refresh"-->
-<!--            android:title="@string/pref_git_refresh"-->
-<!--            />-->
-<!--&lt;!&ndash;            android:enabled="false"&ndash;&gt;-->
     </PreferenceCategory>
-    <MultiSelectListPreference
+    <PreferenceCategory
         app:iconSpaceReserved="false"
-        android:key="@string/pref_key_library_clear"
-        android:title="@string/pref_library_clear"
-        android:summary="@string/pref_library_clear_summary"
-        android:dialogTitle="@string/pref_library_clear_dialog_title"
-        android:entries="@array/empty_array"
-        android:entryValues="@array/empty_array"
-        android:defaultValue="@array/empty_array"
-        app:allowDividerAbove="true"
-        />
-    <MultiSelectListPreference
-        app:iconSpaceReserved="false"
-        android:key="@string/pref_key_library_clear_playlists"
-        android:title="@string/pref_library_clear_playlists"
-        android:summary="@string/pref_library_clear_playlists_summary"
-        android:dialogTitle="@string/pref_library_clear_playlists_dialog_title"
-        android:entries="@array/empty_array"
-        android:entryValues="@array/empty_array"
-        android:defaultValue="@array/empty_array"
         app:allowDividerBelow="true"
-        />
+        android:title="Global"
+        android:key="@string/pref_key_global"
+        >
+        <MultiSelectListPreference
+            app:iconSpaceReserved="false"
+            android:key="@string/pref_key_library_clear"
+            android:title="@string/pref_library_clear"
+            android:summary="@string/pref_library_clear_summary"
+            android:dialogTitle="@string/pref_library_clear_dialog_title"
+            android:entries="@array/empty_array"
+            android:entryValues="@array/empty_array"
+            android:defaultValue="@array/empty_array"
+            app:allowDividerAbove="true"
+            />
+        <MultiSelectListPreference
+            app:iconSpaceReserved="false"
+            android:key="@string/pref_key_library_clear_playlists"
+            android:title="@string/pref_library_clear_playlists"
+            android:summary="@string/pref_library_clear_playlists_summary"
+            android:dialogTitle="@string/pref_library_clear_playlists_dialog_title"
+            android:entries="@array/empty_array"
+            android:entryValues="@array/empty_array"
+            android:defaultValue="@array/empty_array"
+            app:allowDividerBelow="true"
+            />
+        <MultiSelectListPreference
+            app:iconSpaceReserved="false"
+            android:key="@string/pref_key_library_clear_search_index"
+            android:title="@string/pref_library_clear_search_index"
+            android:summary="@string/pref_library_clear_search_index_summary"
+            android:dialogTitle="@string/pref_library_clear_search_index_dialog_title"
+            android:entries="@array/empty_array"
+            android:entryValues="@array/empty_array"
+            android:defaultValue="@array/empty_array"
+            app:allowDividerBelow="true"
+            />
     <Preference
         app:iconSpaceReserved="false"
         android:key="@string/pref_key_about"
         android:title="@string/pref_about"
         app:allowDividerAbove="true"
         />
+    </PreferenceCategory>
 </androidx.preference.PreferenceScreen>

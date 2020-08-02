@@ -17,7 +17,6 @@ import androidx.core.util.Consumer;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 import androidx.sqlite.db.SimpleSQLiteQuery;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -59,23 +58,68 @@ public class MetaStorage {
         Log.d(LC, "insertSongs finish. " + (System.currentTimeMillis() - start) + "ms");
     }
 
+    public CompletableFuture<List<LibraryEntry>> getEntriesOnce(String primaryField,
+                                                       List<String> sortFields,
+                                                       boolean sortOrderAscending,
+                                                       MusicLibraryQueryNode queryNode,
+                                                       boolean debug) {
+        SimpleSQLiteQuery sqlQuery = getEntriesSQLQuery(
+                primaryField,
+                sortFields,
+                sortOrderAscending,
+                queryNode,
+                debug
+        );
+        if (sqlQuery == null) {
+            return Util.futureResult(Collections.emptyList());
+        }
+        return CompletableFuture.supplyAsync(() -> metaModel.getEntriesOnce(sqlQuery))
+                .thenApply(v -> getEntriesMetaValueEntriesToMeta(primaryField, v));
+    }
+
     public LiveData<List<LibraryEntry>> getEntries(String primaryField,
                                                    List<String> sortFields,
                                                    boolean sortOrderAscending,
-                                                   MusicLibraryQueryNode queryNode) {
+                                                   MusicLibraryQueryNode queryNode,
+                                                   boolean debug) {
+        SimpleSQLiteQuery sqlQuery = getEntriesSQLQuery(
+                primaryField,
+                sortFields,
+                sortOrderAscending,
+                queryNode,
+                debug
+        );
+        if (sqlQuery == null) {
+            MutableLiveData<List<LibraryEntry>> entries = new MutableLiveData<>();
+            entries.setValue(Collections.emptyList());
+            return entries;
+        }
+        return Transformations.map(
+                metaModel.getEntries(sqlQuery),
+                v -> getEntriesMetaValueEntriesToMeta(primaryField, v)
+        );
+    }
+
+    private String getEntriesSQLQueryPrimaryTypeKey(String primaryField) {
+        return primaryField == null ? Meta.FIELD_SPECIAL_MEDIA_ID : primaryField;
+    }
+
+    private SimpleSQLiteQuery getEntriesSQLQuery(String primaryField,
+                                                 List<String> sortFields,
+                                                 boolean sortOrderAscending,
+                                                 MusicLibraryQueryNode queryNode,
+                                                 boolean debug) {
         if (queryNode == null) {
             queryNode = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND, false);
         }
         HashMap<String, String> keyToTableAliasMap = new HashMap<>();
         HashSet<String> uniqueQueryKeys = queryNode.getKeys();
-        String primaryTypeKey = primaryField == null ? Meta.FIELD_SPECIAL_MEDIA_ID : primaryField;
+        String primaryTypeKey = getEntriesSQLQueryPrimaryTypeKey(primaryField);
         String primaryTypeTable = MetaDao.getTable(primaryTypeKey);
         String primaryTypeTableAlias = "meta_primary";
         keyToTableAliasMap.put(primaryTypeKey, primaryTypeTableAlias);
         if (primaryTypeTable == null) {
-            MutableLiveData<List<LibraryEntry>> entries = new MutableLiveData<>();
-            entries.setValue(Collections.emptyList());
-            return entries;
+            return null;
         }
         boolean showMeta = !Meta.FIELD_SPECIAL_MEDIA_ID.equals(primaryTypeKey);
         // Other types (keys) which needs to be joined for the query
@@ -245,61 +289,66 @@ public class MetaStorage {
             );
         }
         SimpleSQLiteQuery sqlQuery = new SimpleSQLiteQuery(query.toString(), queryArgs.toArray());
-//        Log.d(LC, "getEntries:"
-//                + "\nquery: " + sqlQuery.getSql()
-//                + "\nargs: "
-//                + queryArgs.stream()
-//                .map(v -> v == null ? null : v.toString())
-//                .collect(Collectors.joining(", "))
-//                + "\naliases: "
-//                + keyToTableAliasMap.entrySet().stream()
-//                .map(e -> e.getKey() + ": " + e.getValue())
-//                .collect(Collectors.joining(", "))
-//        );
-        return Transformations.map(
-                metaModel.getEntries(sqlQuery),
-                values -> values.stream().map(value -> {
-                    EntryID entryID;
-                    String name;
-                    switch (primaryTypeKey) {
-                        case Meta.FIELD_SPECIAL_MEDIA_SRC:
-                            entryID = new EntryID(
-                                    MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL,
-                                    value.src,
-                                    primaryTypeKey
-                            );
-                            name = value.src;
-                            break;
-                        case Meta.FIELD_SPECIAL_MEDIA_ID:
-                            entryID = new EntryID(
-                                    value.src,
-                                    value.id,
-                                    primaryTypeKey
-                            );
-                            name = value.value;
-                            break;
-                        default:
-                            entryID = new EntryID(
-                                    MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL,
-                                    value.value,
-                                    primaryTypeKey
-                            );
-                            name = value.value;
-                            break;
-                    }
-                    return new LibraryEntry(
-                            entryID,
-                            name,
-                            new ArrayList<>(Arrays.asList(
-                                    value.extra1,
-                                    value.extra2,
-                                    value.extra3,
-                                    value.extra4,
-                                    value.extra5
-                            ))
+        if (debug) {
+            Log.d(LC, "getEntries:"
+                    + "\nquery: " + sqlQuery.getSql()
+                    + "\nargs: "
+                    + queryArgs.stream()
+                    .map(v -> v == null ? null : v.toString())
+                    .collect(Collectors.joining(", "))
+                    + "\naliases: "
+                    + keyToTableAliasMap.entrySet().stream()
+                    .map(e -> e.getKey() + ": " + e.getValue())
+                    .collect(Collectors.joining(", "))
+            );
+        }
+        return sqlQuery;
+    }
+
+    private List<LibraryEntry> getEntriesMetaValueEntriesToMeta(String primaryField,
+                                                                List<MetaValueEntry> metaValueEntries) {
+        String primaryTypeKey = getEntriesSQLQueryPrimaryTypeKey(primaryField);
+        return metaValueEntries.stream().map(value -> {
+            EntryID entryID;
+            String name;
+            switch (primaryTypeKey) {
+                case Meta.FIELD_SPECIAL_MEDIA_SRC:
+                    entryID = new EntryID(
+                            MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL,
+                            value.src,
+                            primaryTypeKey
                     );
-                }).collect(Collectors.toList())
-        );
+                    name = value.src;
+                    break;
+                case Meta.FIELD_SPECIAL_MEDIA_ID:
+                    entryID = new EntryID(
+                            value.src,
+                            value.id,
+                            primaryTypeKey
+                    );
+                    name = value.value;
+                    break;
+                default:
+                    entryID = new EntryID(
+                            MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL,
+                            value.value,
+                            primaryTypeKey
+                    );
+                    name = value.value;
+                    break;
+            }
+            return new LibraryEntry(
+                    entryID,
+                    name,
+                    new ArrayList<>(Arrays.asList(
+                            value.extra1,
+                            value.extra2,
+                            value.extra3,
+                            value.extra4,
+                            value.extra5
+                    ))
+            );
+        }).collect(Collectors.toList());
     }
 
     private boolean addQueryNodeToQuery(StringBuilder query,
@@ -449,11 +498,11 @@ public class MetaStorage {
         query.append(sortOrderAscending ? " ASC" : " DESC");
     }
 
-    public LiveData<Integer> getNumSongEntries(List<EntryID> entryIDs, MusicLibraryQueryNode queryNode) {
+    public LiveData<Integer> getNumSongEntriesSum(List<EntryID> entryIDs, MusicLibraryQueryNode queryNode) {
         MediatorLiveData<Integer> totalEntriesMediator = new MediatorLiveData<>();
         List<LiveData<Integer>> numSongEntryLiveDataList = new ArrayList<>();
         for (EntryID entryID: entryIDs) {
-            numSongEntryLiveDataList.add(getNumSongEntries(entryID, queryNode));
+            numSongEntryLiveDataList.add(getNumSongEntries(entryID, queryNode, false));
         }
         for (LiveData<Integer> numSongEntryLiveData: numSongEntryLiveDataList) {
             totalEntriesMediator.addSource(
@@ -474,22 +523,27 @@ public class MetaStorage {
         return total;
     }
 
-    private LiveData<Integer> getNumSongEntries(EntryID entryID, MusicLibraryQueryNode queryNode) {
+    public LiveData<Integer> getNumSongEntries(EntryID entryID,
+                                               MusicLibraryQueryNode queryNode,
+                                               boolean debug) {
         String baseTableKey;
-        String baseTableValue;
         String baseTableAlias = "base_table";
-        String baseQuery = "";
+        String baseWhereQuery = "";
+        List<Object> baseWhereQueryArgs = new ArrayList<>();
         if (entryID == null
                 || entryID.isUnknown()
-                || Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)
-                || Meta.FIELD_SPECIAL_MEDIA_SRC.equals(entryID.type)) {
+                || Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
             baseTableKey = Meta.FIELD_SPECIAL_MEDIA_ID;
-            baseTableValue = "";
+        } else if (Meta.FIELD_SPECIAL_MEDIA_SRC.equals(entryID.type)) {
+            baseTableKey = Meta.FIELD_SPECIAL_MEDIA_ID;
+            baseWhereQuery = " " + baseTableAlias + "." + DB.COLUMN_SRC + " = ?";
+            baseWhereQueryArgs.add(entryID.id); // src
         } else {
             baseTableKey = entryID.type;
-            baseTableValue = entryID.id;
-            baseQuery = " " + baseTableAlias + "." + DB.COLUMN_KEY + " = ?"
+            baseWhereQuery = " " + baseTableAlias + "." + DB.COLUMN_KEY + " = ?"
                     + " AND " + baseTableAlias + "." + DB.COLUMN_VALUE + " = ?";
+            baseWhereQueryArgs.add(baseTableKey);
+            baseWhereQueryArgs.add(entryID.id); // value
         }
         String baseTable = MetaDao.getTable(baseTableKey);
         HashMap<String, String> keyToTableAliasMap = new HashMap<>();
@@ -530,12 +584,10 @@ public class MetaStorage {
             queryArgs.add(key);
         }
         boolean whereClauseEmpty = true;
-        // Add query for base table meta
-        if (!baseQuery.isEmpty()) {
+        if (!baseWhereQuery.isEmpty()) {
             query.append("\nWHERE (");
-            query.append(baseQuery);
-            queryArgs.add(baseTableKey);
-            queryArgs.add(baseTableValue);
+            query.append(baseWhereQuery);
+            queryArgs.addAll(baseWhereQueryArgs);
             whereClauseEmpty = false;
         }
         // Add user query
@@ -546,26 +598,28 @@ public class MetaStorage {
                 whereClauseEmpty ? "\nWHERE" : " AND",
                 queryNode
         );
-        if (!baseQuery.isEmpty()) {
+        if (!baseWhereQuery.isEmpty()) {
             query.append(" )");
         }
         SimpleSQLiteQuery sqlQuery = new SimpleSQLiteQuery(query.toString(), queryArgs.toArray());
-//        Log.d(LC, "getNumSongEntries:"
-//                + "\nquery: " + sqlQuery.getSql()
-//                + "\nargs: "
-//                + queryArgs.stream()
-//                .map(v -> v == null ? null : v.toString())
-//                .collect(Collectors.joining(", "))
-//                + "\naliases: "
-//                + keyToTableAliasMap.entrySet().stream()
-//                .map(e -> e.getKey() + ": " + e.getValue())
-//                .collect(Collectors.joining(", "))
-//        );
+        if (debug) {
+            Log.d(LC, "getNumSongEntries:"
+                    + "\nquery: " + sqlQuery.getSql()
+                    + "\nargs: "
+                    + queryArgs.stream()
+                    .map(v -> v == null ? null : v.toString())
+                    .collect(Collectors.joining(", "))
+                    + "\naliases: "
+                    + keyToTableAliasMap.entrySet().stream()
+                    .map(e -> e.getKey() + ": " + e.getValue())
+                    .collect(Collectors.joining(", "))
+            );
+        }
         return metaModel.getNumEntries(sqlQuery);
     }
 
-    public LiveData<List<EntryID>> getSongEntries(List<EntryID> entryIDs,
-                                                  MusicLibraryQueryNode queryNode) {
+    public LiveData<List<EntryID>> getSongEntriesSum(List<EntryID> entryIDs,
+                                                     MusicLibraryQueryNode queryNode) {
         MediatorLiveData<List<EntryID>> allEntriesMediator = new MediatorLiveData<>();
         List<LiveData<List<EntryID>>> songEntryLiveDataList = new ArrayList<>();
         for (EntryID entryID: entryIDs) {
@@ -590,14 +644,15 @@ public class MetaStorage {
         return allEntries;
     }
 
-    private LiveData<List<EntryID>> getSongEntries(EntryID entryID,
-                                                   MusicLibraryQueryNode queryNode) {
+    public LiveData<List<EntryID>> getSongEntries(EntryID entryID,
+                                                  MusicLibraryQueryNode queryNode) {
         return Transformations.map(
                 getEntries(
                         Meta.FIELD_SPECIAL_MEDIA_ID,
                         Collections.singletonList(Meta.FIELD_TITLE),
                         true,
-                        queryNode.withEntryID(entryID)
+                        queryNode.withEntryID(entryID),
+                        false
                 ),
                 libraryEntries -> libraryEntries.stream()
                         .map(libraryEntry -> libraryEntry.entryID)
@@ -633,24 +688,18 @@ public class MetaStorage {
                         .collect(Collectors.toList()));
     }
 
-    private CompletableFuture<List<EntryID>> getSongEntriesOnce(MusicLibraryQueryNode queryNode) {
-        LiveData<List<LibraryEntry>> liveData = getEntries(
+    public CompletableFuture<List<EntryID>> getSongEntriesOnce(MusicLibraryQueryNode queryNode) {
+        return getEntriesOnce(
                 Meta.FIELD_SPECIAL_MEDIA_ID,
                 Collections.singletonList(Meta.FIELD_TITLE),
                 true,
-                queryNode
-        );
-        CompletableFuture<List<EntryID>> ret = new CompletableFuture<>();
-        liveData.observeForever(new Observer<List<LibraryEntry>>() {
-            @Override
-            public void onChanged(List<LibraryEntry> libraryEntries) {
-                liveData.removeObserver(this);
-                ret.complete(libraryEntries.stream()
+                queryNode,
+                false
+        ).thenApply(libraryEntries ->
+                libraryEntries.stream()
                         .map(libraryEntry -> libraryEntry.entryID)
-                        .collect(Collectors.toList()));
-            }
-        });
-        return ret;
+                        .collect(Collectors.toList())
+        );
     }
 
     public void clearAll(String src) {

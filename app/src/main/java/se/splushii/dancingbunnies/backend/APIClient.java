@@ -12,23 +12,28 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
-import se.splushii.dancingbunnies.settings.SettingsActivityFragment;
 import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.Playlist;
+import se.splushii.dancingbunnies.ui.settings.SettingsActivityFragment;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.API_SRC_ID_GIT;
 import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.API_SRC_ID_SUBSONIC;
 
 public abstract class APIClient {
-    public static final String SETTINGS_KEY_GENERAL_TAG_DELIM = "se.splushii.dancingbunnies.settings_key.general.tag_delim";
+    public static final String SETTINGS_KEY_DB_TAG_DELIM = "se.splushii.dancingbunnies.settings_key.db.tag_delim";
     public static final String SETTINGS_KEY_SUBSONIC_URL = "se.splushii.dancingbunnies.settings_key.subsonic.url";
     public static final String SETTINGS_KEY_SUBSONIC_USERNAME = "se.splushii.dancingbunnies.settings_key.subsonic.username";
     public static final String SETTINGS_KEY_SUBSONIC_PASSWORD = "se.splushii.dancingbunnies.settings_key.subsonic.password";
-    public static final String SETTINGS_KEY_GIT_URL = "se.splushii.dancingbunnies.settings_key.subsonic.url";
+    public static final String SETTINGS_KEY_GIT_REPO = "se.splushii.dancingbunnies.settings_key.git.repo";
+    public static final String SETTINGS_KEY_GIT_BRANCH = "se.splushii.dancingbunnies.settings_key.git.branch";
+    public static final String SETTINGS_KEY_GIT_USERNAME = "se.splushii.dancingbunnies.settings_key.git.username";
+    public static final String SETTINGS_KEY_GIT_PASSWORD = "se.splushii.dancingbunnies.settings_key.git.password";
+    public static final String SETTINGS_KEY_GIT_SSH_KEY = "se.splushii.dancingbunnies.settings_key.git.ssh_key";
+    public static final String SETTINGS_KEY_GIT_SSH_KEY_PASSPHRASE = "se.splushii.dancingbunnies.settings_key.git.ssh_key_passphrase";
 
     private static final String LC = Util.getLogContext(APIClient.class);
 
@@ -47,7 +52,7 @@ public abstract class APIClient {
     /**
      * @return A future with optional error message. Optional empty on success.
      */
-    public abstract CompletableFuture<Optional<String>> heartbeat();
+    public abstract CompletableFuture<Void> heartbeat();
 
     public CompletableFuture<Optional<List<Meta>>> getLibrary(APIClientRequestHandler handler) {
         CompletableFuture<Optional<List<Meta>>> ret = new CompletableFuture<>();
@@ -71,7 +76,6 @@ public abstract class APIClient {
         if (api == null || apiInstanceID == null) {
             return null;
         }
-//        SharedPreferences settings = PreferenceManager.getDefaultSharedPreferences(context);
         if (!SettingsActivityFragment.isSourceEnabled(context, api, apiInstanceID)) {
             return null;
         }

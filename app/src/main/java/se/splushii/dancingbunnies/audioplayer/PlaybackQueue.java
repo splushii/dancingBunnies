@@ -63,7 +63,7 @@ class PlaybackQueue {
         Log.d(LC, "add(toPosition: " + toPosition + ", entries.size: " + entries.size() + ")"
                 + " to \"" + PlaybackControllerStorage.getQueueName(queueID) + "\"");
         if (entries.isEmpty()) {
-            return Util.futureResult(null);
+            return Util.futureResult();
         }
         // Optimistic update of in-memory queue
         int previousSize;
@@ -85,7 +85,7 @@ class PlaybackQueue {
         Log.d(LC, "update(entries.size: " + movedPlaybackEntries.size() + ")"
                 + " in \"" + PlaybackControllerStorage.getQueueName(queueID) + "\"");
         if (movedPlaybackEntries.isEmpty()) {
-            return Util.futureResult(null);
+            return Util.futureResult();
         }
         // Optimistic update of in-memory queue
         int previousSize;
@@ -137,7 +137,7 @@ class PlaybackQueue {
         Log.d(LC, "remove(entries.size: " + playbackEntries.size() + ")"
                 + "from \"" + PlaybackControllerStorage.getQueueName(queueID) + "\"");
         if (playbackEntries.isEmpty()) {
-            return Util.futureResult(null);
+            return Util.futureResult();
         }
         // Optimistic update of in-memory queue
         int previousSize;

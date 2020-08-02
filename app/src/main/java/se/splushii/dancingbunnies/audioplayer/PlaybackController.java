@@ -618,7 +618,7 @@ public class PlaybackController {
         int numToPreload = numPreloadNeeded();
         Log.d(LC, "updatePreload: Preload needed: " + numToPreload);
         if (numToPreload <= 0) {
-            return Util.futureResult(null);
+            return Util.futureResult();
         }
         // Get queue entries
         return queue.poll(numToPreload)
@@ -636,9 +636,9 @@ public class PlaybackController {
                                     return entries;
                                 });
                     }
-                    return Util.futureResult(null, entries);
+                    return Util.futureResult(entries);
                 })
-                .thenCompose(entries -> entries.isEmpty() ? Util.futureResult(null) :
+                .thenCompose(entries -> entries.isEmpty() ? Util.futureResult() :
                         audioPlayer.preload(entries, audioPlayer.getNumPreloaded()));
     }
 
@@ -770,7 +770,7 @@ public class PlaybackController {
 
         // Update playlist entries
         return CompletableFuture.supplyAsync(this::isCurrentPlaylistCorrect)
-                .thenCompose(correct -> correct ? Util.futureResult(null) :
+                .thenCompose(correct -> correct ? Util.futureResult() :
                         removePlaylistEntries())
                 .thenApply(aVoid -> {
                     // Fill up with playlist entries
@@ -864,7 +864,7 @@ public class PlaybackController {
     private CompletableFuture<Void> queuePlaybackEntries(List<PlaybackEntry> entries,
                                                          long beforePlaybackID) {
         if (entries == null || entries.isEmpty()) {
-            return Util.futureResult(null);
+            return Util.futureResult();
         }
         int toPosition = getQueuePos(beforePlaybackID);
         Log.d(LC, "queuePlaybackEntries() to " + toPosition + " : " + entries.toString());
@@ -965,20 +965,20 @@ public class PlaybackController {
                                 playlistEntriesToDePreload.forEach(p -> p.setPreloaded(false));
                                 return playlistItems.add(0, playlistEntriesToDePreload);
                             }
-                            return Util.futureResult(null);
+                            return Util.futureResult();
                         }).thenCompose(aVoid -> {
                             if (!queueEntriesToDePreload.isEmpty()) {
                                 queueEntriesToDePreload.forEach(p -> p.setPreloaded(false));
                                 return queue.add(0, queueEntriesToDePreload);
                             }
-                            return Util.futureResult(null);
+                            return Util.futureResult();
                         });
                     } else {
-                        return Util.futureResult(null);
+                        return Util.futureResult();
                     }
                 })
                 .thenCompose(v -> newEntriesToPreload.isEmpty() ?
-                        CompletableFuture.completedFuture(null)
+                        Util.futureResult()
                         :
                         audioPlayer.preload(newEntriesToPreload, newEntriesToPreloadOffset)
                 )
@@ -987,7 +987,7 @@ public class PlaybackController {
                         newEntriesToController.forEach(p -> p.setPreloaded(false));
                         return queue.add(newEntriesToControllerOffset, newEntriesToController);
                     }
-                    return Util.futureResult(null);
+                    return Util.futureResult();
                 })
                 .thenCompose(v -> updateState());
     }
@@ -1326,7 +1326,7 @@ public class PlaybackController {
         synchronized (executorLock) {
             return submitCompletableFuture(() -> queueEntries(entryIDs, beforePlaybackID))
                     .thenCompose(r -> getNumTotalQueueEntries() > 0 ?
-                            audioPlayer.next() : Util.futureResult(null))
+                            audioPlayer.next() : Util.futureResult())
                     .thenCompose(r -> audioPlayer.play());
         }
     }

@@ -34,14 +34,10 @@ public class StupidPlaylist extends Playlist {
                     Files.newInputStream(playlistFile),
                     JacksonPlaylistRoot.class
             );
-            Log.e(LC, objMapper.writeValueAsString(jacksonPlaylistRoot));
         } catch (IOException e) {
             e.printStackTrace();
             return null;
         }
-        Log.e(LC, "playlist schema version: " + jacksonPlaylistRoot.schema_version);
-        Log.e(LC, "playlist id: " + jacksonPlaylistRoot.playlist.id);
-        Log.e(LC, "playlist type: " + jacksonPlaylistRoot.playlist.type);
         PlaylistID playlistID = new PlaylistID(
                 src,
                 jacksonPlaylistRoot.playlist.id,

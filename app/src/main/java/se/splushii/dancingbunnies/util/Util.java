@@ -10,8 +10,8 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 
 import java.math.BigInteger;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -24,7 +24,6 @@ import java.util.regex.PatternSyntaxException;
 import androidx.core.util.Pair;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -132,8 +131,20 @@ public class Util {
             return null;
         }
         try {
-            return new URL(url).getHost();
-        } catch (MalformedURLException e) {
+            return new URI(url).getHost();
+        } catch (URISyntaxException e) {
+            Log.e(LC, "getHostFromUrl(" + url +"): " + e.getMessage());
+            return null;
+        }
+    }
+
+    public static String getPathFromUrl(String url) {
+        if (url == null) {
+            return null;
+        }
+        try {
+            return new URI(url).getPath();
+        } catch (URISyntaxException e) {
             return null;
         }
     }
@@ -151,7 +162,7 @@ public class Util {
         return id;
     }
 
-    public static class FutureException extends Throwable {
+    public static class FutureException extends RuntimeException {
         final String msg;
         public FutureException(String msg) {
             super(msg);
@@ -176,6 +187,14 @@ public class Util {
 
     public static <T> CompletableFuture<T> futureResult(String error) {
         return futureResult(error, null);
+    }
+
+    public static <T> CompletableFuture<T> futureResult(T value) {
+        return futureResult(null, value);
+    }
+
+    public static <T> CompletableFuture<T> futureResult() {
+        return futureResult(null, null);
     }
 
     public static <T> T printFutureError(T result, Throwable t) {
