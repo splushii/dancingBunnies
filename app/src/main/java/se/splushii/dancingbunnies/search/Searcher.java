@@ -101,12 +101,11 @@ public class Searcher {
     }
 
     public TopDocs search(String queryString, int maxDocs) {
-        if (indexSearcher == null) {
+        if (indexSearcher == null || queryString == null) {
             return null;
         }
         Query query;
         try {
-            Log.e(LC, "queryString: " + queryString);
             query = getQueryParser().parse(new String(queryString.toCharArray()));
         } catch (ParseException e) {
             Log.e(LC, e.getMessage());

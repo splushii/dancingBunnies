@@ -92,7 +92,7 @@ public class LibrarySyncWorker extends Worker {
                         .build()
                 );
             }
-            SettingsActivityFragment.setLastRefreshLibrary(getApplicationContext(), preferenceBackendID);
+            SettingsActivityFragment.setSyncCompleteLastRun(getApplicationContext(), preferenceBackendID);
         }
         if (indexLibrary) {
             CompletableFuture<Throwable> indexLibraryFuture = MusicLibraryService.indexLibrary(
@@ -213,7 +213,7 @@ public class LibrarySyncWorker extends Worker {
         if (forceRunNow) {
             Log.d(LC, "enqueueing work (now)");
         } else {
-            boolean enabled = SettingsActivityFragment.getRefreshScheduleEnabled(
+            boolean enabled = SettingsActivityFragment.getScheduledSyncEnabled(
                     context,
                     preferenceBackendID
             );
@@ -221,7 +221,7 @@ public class LibrarySyncWorker extends Worker {
                 Log.d(LC, "scheduled refresh disabled, not enqueueing work");
                 return;
             }
-            String timeValue = SettingsActivityFragment.getRefreshScheduleTime(
+            String timeValue = SettingsActivityFragment.getScheduledSyncTime(
                     context,
                     preferenceBackendID
             );

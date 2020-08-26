@@ -5,7 +5,6 @@
     <string name="sort_by_artist">Sort by artist</string>
     <string name="sort_by_song">Sort by song</string>
     <string name="sort_entries">Sort selected entries</string>
-    <string name="refresh">Refresh</string>
     <string name="title_activity_settings">Settings</string>
 
     <!--  Preference strings  -->
@@ -26,15 +25,13 @@
     <!--  Preference strings backend db -->
     <string name="pref_backend_config_db_id">Custom ID</string>
     <string name="pref_backend_config_db_id_dialog_title">Customize backend ID</string>
-    <string name="pref_backend_config_db_id_dialog_message">The default ID does not need to be changed unless there is a special use case. Leave blank to use the default ID.\n\nWhen changing the ID you must:\n- Manually clear the local data for the old ID.\n- Refresh the backend for changes to take effect.</string>
+    <string name="pref_backend_config_db_id_dialog_message">The default ID does not need to be changed unless there is a special use case. Leave blank to use the default ID.\n\nWhen changing the ID you must:\n- Manually clear the local data for the old ID.\n- Sync the backend for changes to take effect.</string>
     <string name="pref_backend_config_db_enabled">Enabled</string>
     <string name="pref_backend_config_db_tag_delim">Tag delimiter</string>
-    <string name="pref_backend_config_db_refresh_enabled">Enable scheduled refresh</string>
-    <string name="pref_backend_config_db_refresh_time">Scheduled refresh time</string>
-    <string name="pref_backend_config_db_refresh_library">Refresh library now</string>
-    <string name="pref_backend_config_db_refresh_search_index">Refresh search index now</string>
-    <string name="pref_backend_config_db_refresh_playlists">Refresh playlists now</string>
-    <string name="pref_backend_config_db_refresh_abort">Click to abort library refresh…</string>
+    <string name="pref_backend_config_db_sync">Sync</string>
+    <string name="pref_backend_config_db_click_to_abort">Click to abort…</string>
+    <string name="pref_backend_config_db_sync_scheduled_enabled">Enable scheduled sync</string>
+    <string name="pref_backend_config_db_sync_scheduled_time">Scheduled sync time</string>
     <string name="pref_backend_config_db_delete">Delete</string>
     <string name="pref_backend_config_db_delete_dialog_title">Confirm backend deletion</string>
     <string name="pref_backend_config_db_delete_dialog_message">Local data for the backend must be manually cleared after deletion.</string>
@@ -79,12 +76,10 @@
     <string name="pref_key_backend_config_suffix_db_id">id</string>
     <string name="pref_key_backend_config_suffix_db_enabled">enabled</string>
     <string name="pref_key_backend_config_suffix_db_tag_delim">tag_delim</string>
-    <string name="pref_key_backend_config_suffix_db_refresh_library">refresh</string>
-    <string name="pref_key_backend_config_suffix_db_refresh_search_index">refresh_search_index</string>
-    <string name="pref_key_backend_config_suffix_db_refresh_playlists">refresh_playlists</string>
-    <string name="pref_key_backend_config_suffix_db_refresh_enabled">refresh_enabled</string>
-    <string name="pref_key_backend_config_suffix_db_refresh_time">refresh_time</string>
-    <string name="pref_key_backend_config_suffix_db_refresh_last_sync">refresh_last_sync</string>
+    <string name="pref_key_backend_config_suffix_db_sync">sync</string>
+    <string name="pref_key_backend_config_suffix_db_sync_scheduled_enabled">sync_scheduled_enabled</string>
+    <string name="pref_key_backend_config_suffix_db_sync_scheduled_time">sync_scheduled_time</string>
+    <string name="pref_key_backend_config_suffix_db_sync_complete_last_run">sync_scheduled_last_run</string>
     <string name="pref_key_backend_config_suffix_db_delete">delete</string>
     <!--  Preference keys: backend subsonic  -->
     <string name="pref_key_backend_config_suffix_subsonic_url">url</string>

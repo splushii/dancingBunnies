@@ -4,7 +4,6 @@ import android.content.Context;
 import android.os.Bundle;
 import android.util.Log;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,6 +35,7 @@ public abstract class APIClient {
     public static final String SETTINGS_KEY_GIT_SSH_KEY_PASSPHRASE = "se.splushii.dancingbunnies.settings_key.git.ssh_key_passphrase";
 
     private static final String LC = Util.getLogContext(APIClient.class);
+    private static final String CACHE_DIR = "apiclient";
 
     final String src;
 
@@ -91,14 +91,13 @@ public abstract class APIClient {
                 return null;
         }
         Bundle settings = SettingsActivityFragment.getSettings(context, src);
-        // TODO: Use FilesDir instead of CacheDir
-        File cacheDir = context.getCacheDir();
-        Path gitAPIClientPath = cacheDir.toPath().resolve(api);
-        Path gitAPIClientInstancePath = gitAPIClientPath.resolve(apiInstanceID);
+        Path workDirPath = context.getCacheDir().toPath()
+                .resolve(CACHE_DIR)
+                .resolve(api)
+                .resolve(Util.md5(apiInstanceID));
         Path workDir;
         try {
-            workDir = Files.createDirectories(gitAPIClientInstancePath);
-            Log.d(LC, "API (" + src + ") working directory: " + workDir.toString());
+            workDir = Files.createDirectories(workDirPath);
         } catch (IOException e) {
             Log.e(LC, "Could not create working directory for API: " + src);
             e.printStackTrace();

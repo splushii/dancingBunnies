@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import androidx.core.util.Pair;
 import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
@@ -570,7 +571,7 @@ public class SubsonicAPIClient extends APIClient {
     }
 
     private CompletableFuture<Void> getPlaylists(final ConcurrentLinkedQueue<Playlist> playlists,
-                                                    final APIClientRequestHandler handler) {
+                                                 final APIClientRequestHandler handler) {
         String query = baseURL + "getPlaylists" + getBaseQuery();
         return getPlaylistsQuery(query, playlists, handler);
     }
@@ -580,6 +581,7 @@ public class SubsonicAPIClient extends APIClient {
                                                       APIClientRequestHandler handler) {
         final CompletableFuture<Void> ret = new CompletableFuture<>();
         final List<CompletableFuture<Void>> reqList = new ArrayList<>();
+        AtomicInteger fetchedPlaylistsCounter = new AtomicInteger();
         httpRequestQueue.addToRequestQueue(new StringRequest(
                 query,
                 response -> {
@@ -619,6 +621,10 @@ public class SubsonicAPIClient extends APIClient {
                                                         playlistEntries
                                                 );
                                                 playlists.add(playlist);
+                                                int fetchedPlaylists =
+                                                        fetchedPlaylistsCounter.incrementAndGet();
+                                                handler.onProgress("Fetched " + fetchedPlaylists
+                                                        + " playlists...");
                                                 req.complete(null);
                                             });
                                 }

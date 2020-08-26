@@ -12,6 +12,7 @@ import android.view.ViewGroup;
 import com.mikepenz.aboutlibraries.Libs;
 import com.mikepenz.aboutlibraries.LibsBuilder;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -73,15 +74,22 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
     private static final String BACKEND_CONFIG_PREF_KEY_PATTERN_GROUP_SUFFIX = "suffix";
     private static final String BACKEND_CONFIG_PREF_KEY_DELIM = "/";
 
+    // If changed, update backend_sync_values_array in arrays.xml
+    private static final String BACKEND_SYNC_LIBRARY = "sync_library";
+    private static final String BACKEND_REINDEX_LIBRARY = "reindex_library";
+    private static final String BACKEND_SYNC_PLAYLISTS = "sync_playlists";
+
     private Pattern backendConfigPrefKeyPattern;
 
     private final HashMap<Long, CompletableFuture<Void>> currentHeartbeatMap = new HashMap<>();
-    private final HashMap<Long, Boolean> backendRefreshWorkingMap = new HashMap<>();
+    private final HashMap<Long, Boolean> backendSyncWorkingMap = new HashMap<>();
 
     private final HashMap<Long, LiveData<Integer>> backendIDToNumEntriesMap = new HashMap<>();
     private final Set<String> backendIDToNumIndexedSubIDs = new HashSet<>();
     private final HashMap<Long, LiveData<Integer>> backendIDToNumIndexedMap = new HashMap<>();
     private final HashMap<Long, LiveData<Long>> backendIDToNumPlaylistsMap = new HashMap<>();
+
+    private boolean resetSyncValues = false;
 
     private ListPreference newBackendPref;
     private MultiSelectListPreference libraryClearPref;
@@ -144,31 +152,31 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
         return settings;
     }
 
-    public static boolean getRefreshScheduleEnabled(Context context, long preferenceBackendID) {
-        String refreshScheduleEnabledPrefKey = SettingsActivityFragment.getBackendConfigPrefKey(
+    public static boolean getScheduledSyncEnabled(Context context, long preferenceBackendID) {
+        String scheduledSyncEnabledPrefKey = SettingsActivityFragment.getBackendConfigPrefKey(
                 context,
                 preferenceBackendID,
-                R.string.pref_key_backend_config_suffix_db_refresh_enabled
+                R.string.pref_key_backend_config_suffix_db_sync_scheduled_enabled
         );
         return PreferenceManager.getDefaultSharedPreferences(context)
-                .getBoolean(refreshScheduleEnabledPrefKey, false);
+                .getBoolean(scheduledSyncEnabledPrefKey, false);
     }
 
-    public static String getRefreshScheduleTime(Context context, long preferenceBackendID) {
-        String refreshScheduleTimePrefKey = SettingsActivityFragment.getBackendConfigPrefKey(
+    public static String getScheduledSyncTime(Context context, long preferenceBackendID) {
+        String scheduledSyncTimePrefKey = SettingsActivityFragment.getBackendConfigPrefKey(
                 context,
                 preferenceBackendID,
-                R.string.pref_key_backend_config_suffix_db_refresh_time
+                R.string.pref_key_backend_config_suffix_db_sync_scheduled_time
         );
         return PreferenceManager.getDefaultSharedPreferences(context)
-                .getString(refreshScheduleTimePrefKey, TimePreference.DEFAULT);
+                .getString(scheduledSyncTimePrefKey, TimePreference.DEFAULT);
     }
 
-    public static void setLastRefreshLibrary(Context context, long backendID) {
-        setLastRefresh(context, backendID, R.string.pref_key_backend_config_suffix_db_refresh_last_sync);
+    public static void setSyncCompleteLastRun(Context context, long backendID) {
+        setSyncCompleteLastRun(context, backendID, R.string.pref_key_backend_config_suffix_db_sync_complete_last_run);
     }
 
-    private static void setLastRefresh(Context context, long backendID, int prefKeyResource) {
+    private static void setSyncCompleteLastRun(Context context, long backendID, int prefKeyResource) {
         SharedPreferences sharedPreferences = PreferenceManager
                 .getDefaultSharedPreferences(context.getApplicationContext());
         String prefKey = SettingsActivityFragment.getBackendConfigPrefKey(
@@ -181,8 +189,8 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                 .apply();
     }
 
-    private long getLastRefresh(long backendID) {
-        String prefKey = getBackendConfigPrefKey(backendID, R.string.pref_key_backend_config_suffix_db_refresh_last_sync);
+    private long getSyncCompleteLastRun(long backendID) {
+        String prefKey = getBackendConfigPrefKey(backendID, R.string.pref_key_backend_config_suffix_db_sync_complete_last_run);
         return PreferenceManager.getDefaultSharedPreferences(requireContext()).getLong(prefKey, -1);
     }
 
@@ -219,6 +227,20 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
             dialogFragment = TimePreferenceDialogFragment.newInstance(preference.getKey());
         } else if (preference instanceof GitRepoPreference) {
             dialogFragment = GitRepoPreferenceDialogFragment.newInstance(preference.getKey());
+        } else if (preference instanceof MultiSelectListPreference) {
+            if (matchesBackendConfigPrefKey(
+                    preference.getKey(),
+                    BACKEND_ID_ANY,
+                    null,
+                    Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_sync))
+            ) {
+                long backendID = getBackendConfigID(preference.getKey());
+                if (isSyncWorking(backendID)) {
+                    // Do not display dialog if sync is already running
+                    // The sync will instead be cancelled
+                    return;
+                }
+            }
         }
         if (dialogFragment != null) {
             dialogFragment.setTargetFragment(this, 0);
@@ -246,18 +268,52 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
             HashMap<String, HashMap<String, String>> libModMap = new HashMap<>();
             String fieldLicName = Libs.LibraryFields.LICENSE_NAME.name();
             String fieldLicWeb = Libs.LibraryFields.LICENSE_WEBSITE.name();
+            // Apache 2.0
             for (String libID: new String[] {
                     "org_apache_lucene__lucene_core",
                     "org_apache_lucene__lucene_analyzers_common",
                     "org_apache_lucene__lucene_queries",
                     "org_apache_lucene__lucene_queryparser",
-                    "org_apache_lucene__lucene_sandbox"
+                    "org_apache_lucene__lucene_sandbox",
+                    "commons_io__commons_io",
+                    "org_apache_commons__commons_lang3",
+                    "com_fasterxml_jackson_dataformat__jackson_dataformat_yaml"
             }) {
                 HashMap<String, String> libMods = new HashMap<>();
                 libMods.put(fieldLicName, "Apache Version 2.0");
                 libMods.put(fieldLicWeb, "http://www.apache.org/licenses/LICENSE-2.0");
                 libModMap.put(libID, libMods);
             }
+            // MIT
+            for (String libID: new String[] {
+                    "org_bouncycastle__bcpkix_jdk15on",
+                    "org_bouncycastle__bcprov_jdk15on"
+            }) {
+                HashMap<String, String> libMods = new HashMap<>();
+                libMods.put(fieldLicName, "MIT");
+                libMods.put(fieldLicWeb, "https://opensource.org/licenses/MIT");
+                libModMap.put(libID, libMods);
+            }
+            // BSD
+            for (String libID: new String[] {
+                    "com_jcraft__jsch",
+                    "com_jcraft__jzlib"
+            }) {
+                HashMap<String, String> libMods = new HashMap<>();
+                libMods.put(fieldLicName, "BSD 3-Clause");
+                libMods.put(fieldLicWeb, "https://opensource.org/licenses/BSD-3-Clause");
+                libModMap.put(libID, libMods);
+            }
+            // EDL
+            for (String libID: new String[] {
+                    "org_eclipse_jgit__org_eclipse_jgit"
+            }) {
+                HashMap<String, String> libMods = new HashMap<>();
+                libMods.put(fieldLicName, "EDL");
+                libMods.put(fieldLicWeb, "https://www.eclipse.org/org/documents/edl-v10.html");
+                libModMap.put(libID, libMods);
+            }
+            // CC BY 3.0
             for (String libID: new String[] {
                     "gitlogo"
             }) {
@@ -335,38 +391,35 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                         switch (workInfo.getState()) {
                             case ENQUEUED:
                                 status = "Sync enqueued.";
-                                Log.e(LC, "workinfo: " + status);
-                                setRefreshWorking(backendID, true);
+                                setSyncWorking(backendID, true);
                                 break;
                             case RUNNING:
                                 data = workInfo.getProgress();
                                 status = data.getString(LibrarySyncWorker.DATA_KEY_STATUS);
-                                setRefreshWorking(backendID, true);
+                                setSyncWorking(backendID, true);
                                 break;
                             case SUCCEEDED:
-                                setRefreshLastSyncSummary(backendID);
-                                setRefreshWorking(backendID, false);
+                                setSyncCompleteLastRunSummary(backendID);
+                                setSyncWorking(backendID, false);
                                 continue;
                             case FAILED:
                                 data = workInfo.getOutputData();
                                 status = "Sync failed (" + workInfo.getRunAttemptCount() + " attempts): "
                                         + data.getString(LibrarySyncWorker.DATA_KEY_STATUS);
-                                setRefreshWorking(backendID, false);
+                                setSyncWorking(backendID, false);
                                 break;
                             case BLOCKED:
                                 status = "Sync blocked.";
-                                Log.e(LC, "workinfo: " + status);
-                                setRefreshWorking(backendID, true);
+                                setSyncWorking(backendID, true);
                                 break;
                             case CANCELLED:
                                 status = "Sync cancelled.";
-                                Log.e(LC, "workinfo: " + status);
-                                setRefreshWorking(backendID, false);
+                                setSyncWorking(backendID, false);
                                 break;
                             default:
                                 continue;
                         }
-                        setRefreshStatus(backendID, status);
+                        setSyncCompleteStatus(backendID, status);
                     }
                 });
         MetaStorage.getInstance(requireContext())
@@ -424,7 +477,6 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                                             )
                                     );
                                 } else {
-                                    Log.e(LC, "HERE");
                                     backendIDToNumIndexedMap.put(
                                             backendID,
                                             new MutableLiveData<>(0)
@@ -504,41 +556,46 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
         }
     }
 
-    private void setRefreshWorking(long backendID, boolean working) {
-        String refreshPrefKey = getBackendConfigPrefKey(backendID, R.string.pref_key_backend_config_suffix_db_refresh_library);
-        Preference refreshPref = findPreference(refreshPrefKey);
+    private boolean isSyncWorking(long backendID) {
+        Boolean working = backendSyncWorkingMap.getOrDefault(backendID, false);
+        return working != null && working;
+    }
+
+    private void setSyncWorking(long backendID, boolean working) {
+        String prefKey = getBackendConfigPrefKey(backendID, R.string.pref_key_backend_config_suffix_db_sync);
+        Preference pref = findPreference(prefKey);
         if (!working) {
-            backendRefreshWorkingMap.remove(backendID);
+            backendSyncWorkingMap.remove(backendID);
         } else {
-            backendRefreshWorkingMap.put(backendID, true);
+            backendSyncWorkingMap.put(backendID, true);
         }
-        if (refreshPref != null) {
-            refreshPref.setTitle(
-                    working ? R.string.pref_backend_config_db_refresh_abort
-                            : R.string.pref_backend_config_db_refresh_library
+        if (pref != null) {
+            pref.setTitle(
+                    working ? R.string.pref_backend_config_db_click_to_abort
+                            : R.string.pref_backend_config_db_sync
             );
         }
     }
 
-    private void setRefreshStatus(long backendID, String status) {
-        String refreshPrefKey = getBackendConfigPrefKey(backendID, R.string.pref_key_backend_config_suffix_db_refresh_library);
+    private void setSyncCompleteStatus(long backendID, String status) {
+        String prefKey = getBackendConfigPrefKey(backendID, R.string.pref_key_backend_config_suffix_db_sync);
         if (status == null) {
             return;
         }
-        Preference refreshPref = findPreference(refreshPrefKey);
-        if (refreshPref != null) {
-            refreshPref.setSummary(status);
+        Preference pref = findPreference(prefKey);
+        if (pref != null) {
+            pref.setSummary(status);
         }
     }
 
-    private void setRefreshLastSyncSummary(long backendID) {
-        String refreshPrefKey = getBackendConfigPrefKey(backendID, R.string.pref_key_backend_config_suffix_db_refresh_library);
-        Preference refreshPref = findPreference(refreshPrefKey);
-        if (refreshPref == null) {
+    private void setSyncCompleteLastRunSummary(long backendID) {
+        String prefKey = getBackendConfigPrefKey(backendID, R.string.pref_key_backend_config_suffix_db_sync);
+        Preference pref = findPreference(prefKey);
+        if (pref == null) {
             return;
         }
-        long lastRefresh = getLastRefresh(backendID);
-        refreshPref.setSummary(lastRefresh > 0L ? "Last refresh: " + new Date(lastRefresh) : "");
+        long lastRun = getSyncCompleteLastRun(backendID);
+        pref.setSummary(lastRun > 0L ? "Last run: " + new Date(lastRun) : "");
     }
 
     @Override
@@ -577,14 +634,14 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                     if (suffix.equals(Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_id))
                             || suffix.equals(Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_api))
                             || suffix.equals(Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_backend))
-                            || suffix.equals(Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_refresh_last_sync))) {
+                            || suffix.equals(Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_sync_complete_last_run))) {
                         // No-op
                     } else if (suffix.equals(Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_enabled))) {
                         heartbeatAPI(backendID);
                     } else if (suffix.equals(Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_delete))) {
                         deleteBackendConfig(key, false);
-                    } else if (suffix.equals(Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_refresh_time))
-                            || suffix.equals(Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_refresh_enabled))) {
+                    } else if (suffix.equals(Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_sync_scheduled_time))
+                            || suffix.equals(Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_sync_scheduled_enabled))) {
                         LibrarySyncWorker.requeue(
                                 requireContext(),
                                 backendID,
@@ -592,18 +649,26 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                                 true,
                                 true
                         );
-                    } else if (suffix.equals(Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_refresh_library))) {
-                        Boolean working = backendRefreshWorkingMap.getOrDefault(backendID, false);
-                        if (working != null && working) {
-                            LibrarySyncWorker.cancel(requireContext(), backendID);
+                    } else if (suffix.equals(Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_sync))) {
+                        if (resetSyncValues) {
+                            resetSyncValues = false;
                         } else {
-                            LibrarySyncWorker.runNow(
-                                    requireContext(),
-                                    backendID,
-                                    false,
-                                    true,
-                                    false
-                            );
+                            MultiSelectListPreference syncPref = findPreference(key);
+                            Set<String> selected = syncPref.getValues();
+                            boolean fetchLibrary = selected.contains(BACKEND_SYNC_LIBRARY);
+                            boolean indexLibrary = selected.contains(BACKEND_REINDEX_LIBRARY);
+                            boolean fetchPlaylists = selected.contains(BACKEND_SYNC_PLAYLISTS);
+                            if (isSyncWorking(backendID)) {
+                                LibrarySyncWorker.cancel(requireContext(), backendID);
+                            } else {
+                                LibrarySyncWorker.runNow(
+                                        requireContext(),
+                                        backendID,
+                                        fetchLibrary,
+                                        indexLibrary,
+                                        fetchPlaylists
+                                );
+                            }
                         }
                     } else if (suffix.equals(Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_tag_delim))) {
                         updateTextPref(key, sp);
@@ -716,7 +781,7 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
         editor.apply();
 
         LibrarySyncWorker.cancel(requireContext(), backendID);
-        backendRefreshWorkingMap.remove(backendID);
+        backendSyncWorkingMap.remove(backendID);
 
         cancelHeartbeatAPI(backendID);
     }
@@ -748,7 +813,6 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
 
             prefAPI.setKey(prefKeyAPI);
             prefRootCat.addPreference(prefAPI);
-            prefAPI.setTitle(R.string.pref_backend_config_db_refresh_library);
             prefAPI.setIcon(MusicLibraryService.getAPIIconResourceFromAPI(api));
             prefAPI.setWidgetLayoutResource(R.layout.preference_widget_dropdown_layout);
 
@@ -823,60 +887,79 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                     value -> Util.isValidRegex(value) ? value : "(Not a valid regular expression!)"
             );
 
-            Preference prefRefreshEnabled = addCheckPref(
+            Preference prefScheduledSyncEnabled = addCheckPref(
                     sp,
                     prefSettingsGeneralCat,
                     prefKeyEnabled,
                     backendID,
-                    R.string.pref_key_backend_config_suffix_db_refresh_enabled,
-                    R.string.pref_backend_config_db_refresh_enabled,
+                    R.string.pref_key_backend_config_suffix_db_sync_scheduled_enabled,
+                    R.string.pref_backend_config_db_sync_scheduled_enabled,
                     true
             );
-            String prefKeyRefreshEnabled = prefRefreshEnabled.getKey();
+            String prefKeyScheduledSyncEnabled = prefScheduledSyncEnabled.getKey();
 
-            TimePreference prefRefreshTime = new TimePreference(requireContext());
+            TimePreference prefScheduledSyncTime = new TimePreference(requireContext());
             setupPrefBase(
-                    prefRefreshTime,
+                    prefScheduledSyncTime,
                     sp,
                     prefSettingsGeneralCat,
-                    prefKeyRefreshEnabled,
+                    prefKeyScheduledSyncEnabled,
                     backendID,
-                    R.string.pref_key_backend_config_suffix_db_refresh_time,
-                    R.string.pref_backend_config_db_refresh_time,
+                    R.string.pref_key_backend_config_suffix_db_sync_scheduled_time,
+                    R.string.pref_backend_config_db_sync_scheduled_time,
                     true
             );
-            prefRefreshTime.setDialogTitle(R.string.pref_backend_config_db_refresh_time);
+            prefScheduledSyncTime.setDialogTitle(R.string.pref_backend_config_db_sync_scheduled_time);
 
             PreferenceCategory prefSettingsActionsCat = new PreferenceCategory(requireContext());
             prefSettingsCat.addPreference(prefSettingsActionsCat);
             prefSettingsActionsCat.setTitle("Actions");
 
-            addPref(sp,
+            MultiSelectListPreference syncPref = new MultiSelectListPreference(requireContext());
+            setupPrefBase(
+                    syncPref,
+                    sp,
                     prefSettingsActionsCat,
                     prefKeyEnabled,
                     backendID,
-                    R.string.pref_key_backend_config_suffix_db_refresh_library,
-                    R.string.pref_backend_config_db_refresh_library,
+                    R.string.pref_key_backend_config_suffix_db_sync,
+                    R.string.pref_backend_config_db_sync,
                     false
             );
-
-            addPref(sp,
-                    prefSettingsActionsCat,
-                    prefKeyEnabled,
-                    backendID,
-                    R.string.pref_key_backend_config_suffix_db_refresh_search_index,
-                    R.string.pref_backend_config_db_refresh_search_index,
-                    false
+            APIClient apiClient = APIClient.getAPIClient(
+                    requireContext(),
+                    getSourceFromConfig(requireContext(), backendID)
             );
-
-            addPref(sp,
-                    prefSettingsActionsCat,
-                    prefKeyEnabled,
-                    backendID,
-                    R.string.pref_key_backend_config_suffix_db_refresh_playlists,
-                    R.string.pref_backend_config_db_refresh_playlists,
-                    false
-            );
+            List<CharSequence> syncPrefEntries = new ArrayList<>();
+            List<CharSequence> syncPrefEntryValues = new ArrayList<>();
+            if (apiClient != null) {
+                if (apiClient.hasLibrary()) {
+                    syncPrefEntries.add("Sync library");
+                    syncPrefEntryValues.add(BACKEND_SYNC_LIBRARY);
+                    syncPrefEntries.add("Reindex library");
+                    syncPrefEntryValues.add(BACKEND_REINDEX_LIBRARY);
+                }
+                if (apiClient.hasPlaylists()) {
+                    syncPrefEntries.add("Sync playlists");
+                    syncPrefEntryValues.add(BACKEND_SYNC_PLAYLISTS);
+                }
+            }
+            syncPref.setDialogTitle(R.string.pref_backend_config_db_sync);
+            syncPref.setEntries(syncPrefEntries.toArray(new CharSequence[0]));
+            syncPref.setEntryValues(syncPrefEntryValues.toArray(new CharSequence[0]));
+            syncPref.setOnPreferenceClickListener(preference -> {
+                if (isSyncWorking(backendID)) {
+                    // Manually trigger onSharedPreferenceChanged for pref onClick sync cancellation
+                    onSharedPreferenceChanged(sp, syncPref.getKey());
+                    // Dialog suppressed in onDisplayPreferenceDialog
+                } else {
+                    resetSyncValues = true;
+                    syncPref.setValues(Collections.emptySet());
+                    // Dialog shown in onDisplayPreferenceDialog
+                    // Dialog OK will trigger onSharedPreferenceChanged
+                }
+                return true;
+            });
 
             addPref(sp,
                     prefSettingsActionsCat,
@@ -1190,12 +1273,10 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
             case R.string.pref_key_backend_config_suffix_db_id:
             case R.string.pref_key_backend_config_suffix_db_enabled:
             case R.string.pref_key_backend_config_suffix_db_tag_delim:
-            case R.string.pref_key_backend_config_suffix_db_refresh_library:
-            case R.string.pref_key_backend_config_suffix_db_refresh_search_index:
-            case R.string.pref_key_backend_config_suffix_db_refresh_playlists:
-            case R.string.pref_key_backend_config_suffix_db_refresh_enabled:
-            case R.string.pref_key_backend_config_suffix_db_refresh_time:
-            case R.string.pref_key_backend_config_suffix_db_refresh_last_sync:
+            case R.string.pref_key_backend_config_suffix_db_sync:
+            case R.string.pref_key_backend_config_suffix_db_sync_scheduled_enabled:
+            case R.string.pref_key_backend_config_suffix_db_sync_scheduled_time:
+            case R.string.pref_key_backend_config_suffix_db_sync_complete_last_run:
             case R.string.pref_key_backend_config_suffix_db_delete:
             default:
                 prefKeyConfigGroup = MusicLibraryService.API_SRC_ID_DANCINGBUNNIES;
@@ -1468,21 +1549,13 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
     }
 
     private void enableAuthenticatedPrefs(long backendID, boolean enabled) {
-        Preference refreshPref = findPreference(getBackendConfigPrefKey(backendID, R.string.pref_key_backend_config_suffix_db_refresh_library));
-        Preference refreshSearchIndexPref = findPreference(getBackendConfigPrefKey(backendID, R.string.pref_key_backend_config_suffix_db_refresh_search_index));
-        Preference refreshPlaylistsPref = findPreference(getBackendConfigPrefKey(backendID, R.string.pref_key_backend_config_suffix_db_refresh_playlists));
-        if (refreshPref != null) {
-            refreshPref.setEnabled(enabled);
+        Preference syncCompletePref = findPreference(getBackendConfigPrefKey(backendID, R.string.pref_key_backend_config_suffix_db_sync));
+        if (syncCompletePref != null) {
+            syncCompletePref.setEnabled(enabled);
         }
-        if (refreshSearchIndexPref != null) {
-            refreshSearchIndexPref.setEnabled(enabled);
-        }
-        if (refreshPlaylistsPref != null) {
-            refreshPlaylistsPref.setEnabled(enabled);
-        }
-        Preference scheduledRefreshPref = findPreference(getBackendConfigPrefKey(backendID, R.string.pref_key_backend_config_suffix_db_refresh_time));
-        if (scheduledRefreshPref != null) {
-            scheduledRefreshPref.setEnabled(enabled);
+        Preference scheduledSyncPref = findPreference(getBackendConfigPrefKey(backendID, R.string.pref_key_backend_config_suffix_db_sync_scheduled_time));
+        if (scheduledSyncPref != null) {
+            scheduledSyncPref.setEnabled(enabled);
         }
         String api = getBackendAPI(requireContext(), backendID);
         if (api != null) {

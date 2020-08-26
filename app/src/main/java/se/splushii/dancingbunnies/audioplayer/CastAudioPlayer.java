@@ -1034,6 +1034,14 @@ public class CastAudioPlayer implements AudioPlayer {
         public void onAdBreakStatusUpdated() {
             Log.d(LC, "onAdBreakStatusUpdated");
         }
+
+        @Override
+        public void onMediaError(MediaError mediaError) {
+            if (mediaError != null) {
+                Log.e(LC, "onMediaError (" + mediaError.getDetailedErrorCode() + ")"
+                        + ": " + mediaError.getReason());
+            }
+        }
     }
 
     private String getStateString(int state, int idleReason) {

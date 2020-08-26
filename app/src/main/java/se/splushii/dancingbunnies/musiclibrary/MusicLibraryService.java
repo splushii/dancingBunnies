@@ -268,7 +268,7 @@ public class MusicLibraryService extends Service {
             return false;
         }
         long startTime = System.currentTimeMillis();
-        int numDocs = 0;
+        int numDocs;
         int size = metas.size();
         Log.d(LC, "Entries to index: " + size);
         numDocs = indexer.indexSongs(metas, progress -> {
