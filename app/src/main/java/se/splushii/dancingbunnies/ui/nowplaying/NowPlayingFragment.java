@@ -499,7 +499,7 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
             if (playlist == null) {
                 currentPlaylistView.setVisibility(GONE);
             } else {
-                currentPlaylistName.setText(playlist.name);
+                currentPlaylistName.setText(playlist.name());
                 currentPlaylistView.setVisibility(VISIBLE);
             }
         });

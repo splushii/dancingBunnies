@@ -1,0 +1,107 @@
+---
+
+$schema: https://dancingbunnies.splushii.se/meta-schema/2019-09/dancingbunnies
+$id: https://dancingbunnies.splushii.se/schemas/playlist/1.yaml
+
+definitions:
+  schema_version:
+    type: integer
+    const: 1
+  src:
+    type: string
+    format: src
+  id:
+    type: string
+  meta:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      patternProperties:
+        '.*':
+          type: string
+  playlist:
+    type: object
+    additionalProperties: false
+    required:
+      - type
+      - id
+    properties:
+      type:
+        type: string
+        enum:
+          - static
+          - smart
+      id:
+        $ref: '#/definitions/id'
+      meta:
+        $ref: '#/definitions/meta'
+
+type: object
+required:
+  - schema_version
+  - playlist
+  - entries
+properties:
+  playlist:
+    $ref: '#/definitions/playlist'
+allOf:
+  - if:
+      properties:
+        playlist:
+          properties:
+            type:
+              const: static
+    then:
+      additionalProperties: false
+      properties:
+        schema_version:
+          $ref: '#/definitions/schema_version'
+        playlist:
+          $ref: '#/definitions/playlist'
+        entries:
+          type: array
+          additionalItems: false
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - id
+              - entry
+            properties:
+              id:
+                $ref: '#/definitions/id'
+              entry:
+                type: object
+                additionalProperties: false
+                required:
+                  - src
+                  - id
+                  - type
+                properties:
+                  src:
+                    $ref: '#/definitions/src'
+                  id:
+                    $ref: '#/definitions/id'
+                  meta:
+                    $ref: '#/definitions/meta'
+                  type:
+                    type: string
+                    enum:
+                      - track
+                      - playlist
+  - if:
+      properties:
+        playlist:
+          properties:
+            type:
+              const: smart
+    then:
+      additionalProperties: false
+      properties:
+        schema_version:
+          $ref: '#/definitions/schema_version'
+        playlist:
+          $ref: '#/definitions/playlist'
+        entries:
+          type: string

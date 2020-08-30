@@ -1,16 +1,15 @@
 package se.splushii.dancingbunnies.jobs;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.util.Log;
 
 import java.time.Duration;
 import java.util.Calendar;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import androidx.annotation.NonNull;
-import androidx.preference.PreferenceManager;
 import androidx.work.Constraints;
 import androidx.work.Data;
 import androidx.work.ExistingWorkPolicy;
@@ -19,175 +18,186 @@ import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
-import se.splushii.dancingbunnies.SettingsActivityFragment;
 import se.splushii.dancingbunnies.backend.MusicLibraryRequestHandler;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
-import se.splushii.dancingbunnies.ui.TimePreference;
+import se.splushii.dancingbunnies.ui.settings.SettingsActivityFragment;
+import se.splushii.dancingbunnies.ui.settings.TimePreference;
 import se.splushii.dancingbunnies.util.Util;
 
 public class LibrarySyncWorker extends Worker {
     private static final String LC = Util.getLogContext(LibrarySyncWorker.class);
 
-    private static final String INPUT_KEY_API =
-            "se.splushii.dancingbunnies.librarysyncworker.input_key.api";
-    private static final String INPUT_KEY_PREF_BACKEND_ID =
+    private static final String DATA_KEY_PREF_BACKEND_ID =
             "se.splushii.dancingbunnies.librarysyncworker.input_key.pref_backend_id";
-    private static final String INPUT_KEY_REFRESH_LAST_SYNC_PREF_KEY =
-            "se.splushii.dancingbunnies.librarysyncworker.input_key.refresh_last_sync_pref_key";
-    private static final String INPUT_KEY_REFRESH_SCHEDULE_ENABLED_PREF_KEY =
-            "se.splushii.dancingbunnies.librarysyncworker.input_key.refresh_schedule_enabled_pref_key";
-    private static final String INPUT_KEY_REFRESH_SCHEDULE_TIME_PREF_KEY =
-            "se.splushii.dancingbunnies.librarysyncworker.input_key.refresh_schedule_time_pref_key";
+    private static final String DATA_KEY_PREF_FETCH_LIBRARY =
+            "se.splushii.dancingbunnies.librarysyncworker.input_key.pref_fetch_library";
+    private static final String DATA_KEY_PREF_INDEX_LIBRARY =
+            "se.splushii.dancingbunnies.librarysyncworker.input_key.pref_index_library";
+    private static final String DATA_KEY_PREF_FETCH_PLAYLISTS =
+            "se.splushii.dancingbunnies.librarysyncworker.input_key.pref_fetch_playlists";
+
+    private static final String UNIQUE_WORK_NAME_PREFIX = Jobs.WORK_NAME_LIBRARY_SYNC_TAG + ".backend_id_";
+
+    public static final String DATA_KEY_STATUS = "status";
+
+    private final long preferenceBackendID;
+    private final boolean fetchLibrary;
+    private final boolean indexLibrary;
+    private final boolean fetchPlaylists;
 
     public LibrarySyncWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
+        Data inputData = workerParams.getInputData();
+        preferenceBackendID = inputData.getLong(DATA_KEY_PREF_BACKEND_ID, SettingsActivityFragment.BACKEND_ID_INVALID);
+        fetchLibrary = inputData.getBoolean(DATA_KEY_PREF_FETCH_LIBRARY, true);
+        indexLibrary = inputData.getBoolean(DATA_KEY_PREF_INDEX_LIBRARY, true);
+        fetchPlaylists = inputData.getBoolean(DATA_KEY_PREF_FETCH_PLAYLISTS, true);
     }
 
     @NonNull
     @Override
     public Result doWork() {
-        Log.d(LC, "doWork");
-        String api = getInputData().getString(INPUT_KEY_API);
-        int preferenceBackendID = getInputData().getInt(INPUT_KEY_PREF_BACKEND_ID, SettingsActivityFragment.BACKEND_ID_INVALID);
-        int refreshLastSyncPrefKey = getInputData().getInt(INPUT_KEY_REFRESH_LAST_SYNC_PREF_KEY, 0);
-        int refreshScheduleEnabledPrefKey = getInputData().getInt(INPUT_KEY_REFRESH_SCHEDULE_ENABLED_PREF_KEY, 0);
-        int refreshScheduleTimePrefKey = getInputData().getInt(INPUT_KEY_REFRESH_SCHEDULE_TIME_PREF_KEY, 0);
         String src = SettingsActivityFragment.getSourceFromConfig(
                 getApplicationContext(),
-                api,
                 preferenceBackendID
         );
-        if (src == null
-                || preferenceBackendID == SettingsActivityFragment.BACKEND_ID_INVALID
-                || refreshLastSyncPrefKey == 0
-                || refreshScheduleEnabledPrefKey == 0
-                || refreshScheduleTimePrefKey == 0) {
-            return Result.failure();
+        if (src == null || preferenceBackendID == SettingsActivityFragment.BACKEND_ID_INVALID) {
+            return Result.failure(baseData()
+                    .putString(DATA_KEY_STATUS, "Failed to sync. Missing internal data.")
+                    .build());
         }
-        setLastRefresh(getApplicationContext(), refreshLastSyncPrefKey);
-        CompletableFuture<Void> fetchPlaylistsFuture = new CompletableFuture<>();
-        MusicLibraryService.fetchAPILibrary(
-                getApplicationContext(),
-                src,
-                new MusicLibraryRequestHandler() {
-                    @Override
-                    public void onProgress(String status) {
-                        String msg = "onProgress: " + status;
-                        Log.d(LC, msg);
-                        setProgress(msg);
+        Throwable e;
+        if (fetchLibrary) {
+            CompletableFuture<Throwable> fetchLibraryFuture = MusicLibraryService.fetchLibrary(
+                    getApplicationContext(),
+                    src,
+                    new MusicLibraryRequestHandler() {
+                        @Override
+                        public void onStart() {
+                            String msg = "Library sync started";
+                            setProgress(msg);
+                        }
+
+                        @Override
+                        public void onProgress(String status) {
+                            String msg = "Library sync progress: " + status;
+                            setProgress(msg);
+                        }
                     }
+            ).handle((aVoid, throwable) -> throwable);
+            e = fetchLibraryFuture.join();
+            if (e != null) {
+                return Result.failure(baseData()
+                        .putString(DATA_KEY_STATUS, "Failed to sync library: " + e.getMessage())
+                        .build()
+                );
+            }
+            SettingsActivityFragment.setSyncCompleteLastRun(getApplicationContext(), preferenceBackendID);
+        }
+        if (indexLibrary) {
+            CompletableFuture<Throwable> indexLibraryFuture = MusicLibraryService.indexLibrary(
+                    getApplicationContext(),
+                    src,
+                    new MusicLibraryRequestHandler() {
+                        @Override
+                        public void onStart() {
+                            String msg = "Library index started";
+                            setProgress(msg);
+                        }
 
-                    @Override
-                    public void onStart() {
-                        String msg = "onStart";
-                        Log.d(LC, msg);
-                        setProgress(msg);
+                        @Override
+                        public void onProgress(String status) {
+                            String msg = "Library index progress: " + status;
+                            setProgress(msg);
+                        }
                     }
+            ).handle((aVoid, throwable) -> throwable);
+            e = indexLibraryFuture.join();
+            if (e != null) {
+                return Result.failure(baseData()
+                        .putString(DATA_KEY_STATUS, "Failed to index library: " + e.getMessage())
+                        .build()
+                );
+            }
+        }
+        if (fetchPlaylists) {
+            CompletableFuture<Throwable> fetchPlaylistsFuture = MusicLibraryService.fetchPlayLists(
+                    getApplicationContext(),
+                    src,
+                    new MusicLibraryRequestHandler() {
+                        @Override
+                        public void onStart() {
+                            String msg = "Playlist sync started";
+                            setProgress(msg);
+                        }
 
-                    @Override
-                    public void onSuccess(String status) {
-                        String msg = "onSuccess: " + status;
-                        Log.d(LC, msg);
-                        setProgress(msg);
-                        MusicLibraryService.fetchPlayLists(
-                                getApplicationContext(),
-                                src,
-                                new MusicLibraryRequestHandler() {
-                                    @Override
-                                    public void onStart() {
-                                        String msg = "onStart fetchPlaylists";
-                                        Log.d(LC, msg);
-                                        setProgress(msg);
-                                    }
-
-                                    @Override
-                                    public void onSuccess(String status) {
-                                        String msg = "onSuccess fetchPlaylists: " + status;
-                                        Log.d(LC, msg);
-                                        setProgress(msg);
-                                        fetchPlaylistsFuture.complete(null);
-                                    }
-
-                                    @Override
-                                    public void onFailure(String status) {
-                                        String msg = "onFailure fetchPlaylists: " + status;
-                                        Log.e(LC, msg);
-                                        setProgress(msg);
-                                        fetchPlaylistsFuture.complete(null);
-                                    }
-                                });
+                        @Override
+                        public void onProgress(String status) {
+                            String msg = "Playlist sync progress: " + status;
+                            setProgress(msg);
+                        }
                     }
-
-                    @Override
-                    public void onFailure(String status) {
-                        String msg = "onFailure: " + status;
-                        Log.e(LC, msg);
-                        setProgress(msg);
-                    }
-                }
-        ).join();
-        fetchPlaylistsFuture.join();
+            ).handle((aVoid, throwable) -> throwable);
+            e = fetchPlaylistsFuture.join();
+            if (e != null) {
+                return Result.failure(baseData()
+                        .putString(DATA_KEY_STATUS, "Failed to sync playlists: " + e.getMessage())
+                        .build()
+                );
+            }
+        }
+        // Always requeue with all actions enabled despite last run's settings
         requeue(
                 getApplicationContext(),
-                api,
                 preferenceBackendID,
-                refreshLastSyncPrefKey,
-                refreshScheduleEnabledPrefKey,
-                refreshScheduleTimePrefKey
+                true,
+                true,
+                true
         );
-        return Result.success();
+        return Result.success(baseData()
+                .putString(DATA_KEY_STATUS, "Successfully synced")
+                .build());
     }
 
     private void setProgress(String status) {
-        setProgressAsync(new Data.Builder().putString("status", status).build());
+        setProgressAsync(
+                baseData()
+                        .putString(DATA_KEY_STATUS, status)
+                        .build()
+        );
+    }
+
+    private Data.Builder baseData() {
+        return baseData(
+                preferenceBackendID,
+                fetchLibrary,
+                indexLibrary,
+                fetchPlaylists
+        );
     }
 
     public static void runNow(Context context,
-                              String api,
-                              int preferenceBackendID,
-                              int refreshLastSyncPrefKey,
-                              int refreshScheduleEnabledPrefKey,
-                              int refreshScheduleTimePrefKey) {
-        requeue(
-                context,
-                api,
-                preferenceBackendID,
-                refreshLastSyncPrefKey,
-                refreshScheduleEnabledPrefKey,
-                refreshScheduleTimePrefKey,
-                true
-        );
+                              long preferenceBackendID,
+                              boolean fetchLibrary,
+                              boolean indexLibrary,
+                              boolean fetchPlaylists) {
+        requeue(context, preferenceBackendID, fetchLibrary, indexLibrary, fetchPlaylists, true);
     }
 
     public static void requeue(Context context,
-                               String api,
-                               int preferenceBackendID,
-                               int refreshLastSyncPrefKey,
-                               int refreshScheduleEnabledPrefKey,
-                               int refreshScheduleTimePrefKey) {
-        requeue(
-                context,
-                api,
-                preferenceBackendID,
-                refreshLastSyncPrefKey,
-                refreshScheduleEnabledPrefKey,
-                refreshScheduleTimePrefKey,
-                false
-        );
+                               long preferenceBackendID,
+                               boolean fetchLibrary,
+                               boolean indexLibrary,
+                               boolean fetchPlaylists) {
+        requeue(context, preferenceBackendID, fetchLibrary, indexLibrary, fetchPlaylists, false);
     }
 
     private static void requeue(Context context,
-                                String api,
-                                int preferenceBackendID,
-                                int refreshLastSyncPrefKey,
-                                int refreshScheduleEnabledPrefKey,
-                                int refreshScheduleTimePrefKey,
+                                long preferenceBackendID,
+                                boolean fetchLibrary,
+                                boolean indexLibrary,
+                                boolean fetchPlaylists,
                                 boolean forceRunNow) {
-        String src = SettingsActivityFragment.getSourceFromConfig(context, api, preferenceBackendID);
-        if (src == null) {
-            Log.e(LC, "requeue: src is null");
-            return;
-        }
         Constraints.Builder workConstraintsBuilder = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED);
         if (!forceRunNow) {
@@ -200,26 +210,20 @@ public class LibrarySyncWorker extends Worker {
         OneTimeWorkRequest.Builder workRequestBuilder =
                 new OneTimeWorkRequest.Builder(LibrarySyncWorker.class)
                         .setConstraints(workConstraints);
-        SharedPreferences sharedPreferences = PreferenceManager
-                .getDefaultSharedPreferences(context.getApplicationContext());
         if (forceRunNow) {
             Log.d(LC, "enqueueing work (now)");
         } else {
-            boolean enabled = sharedPreferences.getBoolean(
-                    context.getApplicationContext()
-                            .getResources()
-                            .getString(refreshScheduleEnabledPrefKey),
-                    false
+            boolean enabled = SettingsActivityFragment.getScheduledSyncEnabled(
+                    context,
+                    preferenceBackendID
             );
             if (!enabled) {
                 Log.d(LC, "scheduled refresh disabled, not enqueueing work");
                 return;
             }
-            String timeValue = sharedPreferences.getString(
-                    context.getApplicationContext()
-                            .getResources()
-                            .getString(refreshScheduleTimePrefKey),
-                    TimePreference.DEFAULT
+            String timeValue = SettingsActivityFragment.getScheduledSyncTime(
+                    context,
+                    preferenceBackendID
             );
             int nextHour = TimePreference.parseHour(timeValue);
             int nextMinute = TimePreference.parseMinute(timeValue);
@@ -240,42 +244,56 @@ public class LibrarySyncWorker extends Worker {
         }
         OneTimeWorkRequest workRequest = workRequestBuilder
                 .setInputData(
-                        new Data.Builder()
-                                .putString(INPUT_KEY_API, api)
-                                .putInt(INPUT_KEY_PREF_BACKEND_ID, preferenceBackendID)
-                                .putInt(INPUT_KEY_REFRESH_LAST_SYNC_PREF_KEY, refreshLastSyncPrefKey)
-                                .putInt(INPUT_KEY_REFRESH_SCHEDULE_ENABLED_PREF_KEY, refreshScheduleEnabledPrefKey)
-                                .putInt(INPUT_KEY_REFRESH_SCHEDULE_TIME_PREF_KEY, refreshScheduleTimePrefKey)
-                                .build()
+                        baseData(
+                                preferenceBackendID,
+                                fetchLibrary,
+                                indexLibrary,
+                                fetchPlaylists
+                        ).build()
                 )
                 .addTag(Jobs.WORK_NAME_LIBRARY_SYNC_TAG)
+                .addTag(uniqueWorkName(preferenceBackendID))
                 .build();
         WorkManager.getInstance(context.getApplicationContext())
                 .enqueueUniqueWork(
-                        src,
-                        ExistingWorkPolicy.REPLACE,
+                        uniqueWorkName(preferenceBackendID),
+                        ExistingWorkPolicy.KEEP,
                         workRequest
                 );
     }
 
-    private void setLastRefresh(Context context, int prefKey) {
-        SharedPreferences sharedPreferences = PreferenceManager
-                .getDefaultSharedPreferences(context.getApplicationContext());
-        sharedPreferences.edit()
-                .putLong(
-                        context.getApplicationContext().getResources().getString(prefKey),
-                        System.currentTimeMillis()
-                )
-                .apply();
+    public static void cancel(Context context, long preferenceBackendID) {
+        WorkManager.getInstance(context.getApplicationContext())
+                .cancelUniqueWork(uniqueWorkName(preferenceBackendID));
     }
 
-    public static long getLastRefresh(Context context, int prefKey) {
-        SharedPreferences sharedPreferences = PreferenceManager
-                .getDefaultSharedPreferences(context.getApplicationContext());
-        return sharedPreferences.getLong(
-                        context.getApplicationContext().getResources().getString(prefKey),
-                        -1
-                );
+    private static String uniqueWorkName(long preferenceBackendID) {
+        return UNIQUE_WORK_NAME_PREFIX + preferenceBackendID;
+    }
+
+
+    public static long getBackendIDFromTags(Set<String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return SettingsActivityFragment.BACKEND_ID_INVALID;
+        }
+        for (String tag: tags) {
+            String backendIDString = tag.replace(UNIQUE_WORK_NAME_PREFIX, "");
+            try {
+                return Long.parseLong(backendIDString);
+            } catch (NumberFormatException ignored) {}
+        }
+        return SettingsActivityFragment.BACKEND_ID_INVALID;
+    }
+
+    private static Data.Builder baseData(long preferenceBackendID,
+                                         boolean fetchLibrary,
+                                         boolean indexLibrary,
+                                         boolean fetchPlaylists) {
+        return new Data.Builder()
+                .putLong(DATA_KEY_PREF_BACKEND_ID, preferenceBackendID)
+                .putBoolean(DATA_KEY_PREF_FETCH_LIBRARY, fetchLibrary)
+                .putBoolean(DATA_KEY_PREF_INDEX_LIBRARY, indexLibrary)
+                .putBoolean(DATA_KEY_PREF_FETCH_PLAYLISTS, fetchPlaylists);
     }
 
     @Override

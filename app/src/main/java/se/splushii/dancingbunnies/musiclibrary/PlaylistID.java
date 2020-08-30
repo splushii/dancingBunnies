@@ -4,8 +4,6 @@ import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import se.splushii.dancingbunnies.storage.db.Playlist;
-
 public class PlaylistID implements Parcelable {
     public static final int TYPE_INVALID = -1;
     public static final int TYPE_STUPID = 0;
@@ -27,12 +25,6 @@ public class PlaylistID implements Parcelable {
         src = in.readString();
         id = in.readString();
         type = in.readInt();
-    }
-
-    public PlaylistID(Playlist playlist) {
-        src = playlist.src;
-        id = playlist.id;
-        type = playlist.type;
     }
 
     public static final Creator<PlaylistID> CREATOR = new Creator<PlaylistID>() {

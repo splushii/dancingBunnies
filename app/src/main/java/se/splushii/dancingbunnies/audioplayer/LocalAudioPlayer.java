@@ -77,7 +77,7 @@ class LocalAudioPlayer implements AudioPlayer {
     public CompletableFuture<Void> initialize() {
         Log.d(LC, "initialize");
         Log.d(LC, "initialized");
-        return Util.futureResult(null);
+        return Util.futureResult();
     }
 
     @Override
@@ -119,7 +119,7 @@ class LocalAudioPlayer implements AudioPlayer {
     @Override
     public CompletableFuture<Void> preload(List<PlaybackEntry> entries, int offset) {
         if (entries.isEmpty() || offset < 0 || offset > preloadPlayers.size()) {
-            return Util.futureResult(null);
+            return Util.futureResult();
         }
         addEntries(entries, offset);
         if (player == null) {
@@ -162,7 +162,7 @@ class LocalAudioPlayer implements AudioPlayer {
         }
         player.play();
         updatePlaybackState();
-        return Util.futureResult(null);
+        return Util.futureResult();
     }
 
     @Override
@@ -170,11 +170,11 @@ class LocalAudioPlayer implements AudioPlayer {
         playWhenReady = false;
         if (player == null) {
             updatePlaybackState();
-            return Util.futureResult(null);
+            return Util.futureResult();
         }
         player.pause();
         updatePlaybackState();
-        return Util.futureResult(null);
+        return Util.futureResult();
     }
 
     @Override
@@ -187,7 +187,7 @@ class LocalAudioPlayer implements AudioPlayer {
         // TODO: Also cancel any download
         preloadPlayers.forEach(MediaPlayerInstance::stop);
         updatePlaybackState();
-        return Util.futureResult(null);
+        return Util.futureResult();
     }
 
     @Override
@@ -251,7 +251,7 @@ class LocalAudioPlayer implements AudioPlayer {
         }
         player.seekTo(pos);
         updatePlaybackState();
-        return Util.futureResult(null);
+        return Util.futureResult();
     }
 
     @Override
@@ -290,7 +290,7 @@ class LocalAudioPlayer implements AudioPlayer {
     @Override
     public CompletableFuture<Void> dePreload(List<PlaybackEntry> playbackEntries) {
         if (playbackEntries.isEmpty()) {
-            return Util.futureResult(null);
+            return Util.futureResult();
         }
         HashSet<PlaybackEntry> entries = new HashSet<>(playbackEntries);
         List<MediaPlayerInstance> mediaPlayersToRemove = new ArrayList<>();

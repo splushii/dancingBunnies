@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies.ui;
+package se.splushii.dancingbunnies.ui.settings;
 
 import android.content.Context;
 import android.content.res.TypedArray;
@@ -10,8 +10,8 @@ import androidx.preference.DialogPreference;
 
 public class TimePreference extends DialogPreference {
     public static final String DEFAULT = "00:00";
-    int hour = 0;
-    int minute = 0;
+    private int hour = 0;
+    private int minute = 0;
 
     public TimePreference(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
@@ -81,11 +81,20 @@ public class TimePreference extends DialogPreference {
         notifyChanged();
     }
 
+    public void setHour(int hour) {
+        this.hour = hour;
+    }
+
     public int getHour() {
         return parseHour(getPersistedString(timeToString(0, 0)));
+    }
+
+    public void setMinute(int minute) {
+        this.minute = minute;
     }
 
     public int getMinute() {
         return parseMinute(getPersistedString(timeToString(0, 0)));
     }
+
 }

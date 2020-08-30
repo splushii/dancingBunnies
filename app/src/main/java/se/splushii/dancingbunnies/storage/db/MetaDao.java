@@ -69,6 +69,16 @@ public abstract class MetaDao {
             MetaLocalLong.class,
             MetaLocalDouble.class
     })
+    public abstract List<MetaValueEntry> getEntriesOnce(SupportSQLiteQuery query);
+    @RawQuery(observedEntities = {
+            Entry.class,
+            MetaString.class,
+            MetaLong.class,
+            MetaDouble.class,
+            MetaLocalString.class,
+            MetaLocalLong.class,
+            MetaLocalDouble.class
+    })
     public abstract LiveData<Integer> getNumEntries(SupportSQLiteQuery query);
     @Transaction
     public void insert(List<Meta> metaList, Consumer<String> progressHandler) {

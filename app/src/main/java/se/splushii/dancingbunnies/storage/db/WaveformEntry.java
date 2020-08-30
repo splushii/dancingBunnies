@@ -14,23 +14,25 @@ import se.splushii.dancingbunnies.util.Util;
 
 @Entity(tableName = DB.TABLE_WAVEFORM,
         indices = {
-                @Index(value = {DB.COLUMN_SRC, DB.COLUMN_ID}, unique = true)
+                @Index(value = {WaveformEntry.COLUMN_SRC, WaveformEntry.COLUMN_ID}, unique = true)
         },
-        primaryKeys = {DB.COLUMN_SRC, DB.COLUMN_ID}
+        primaryKeys = {WaveformEntry.COLUMN_SRC, WaveformEntry.COLUMN_ID}
 )
 public class WaveformEntry {
     private static final String LC = Util.getLogContext(WaveformEntry.class);
 
+    static final String COLUMN_SRC = "src";
+    static final String COLUMN_ID = "id";
     private static final String COLUMN_PEAK_POSITIVE = "peak_positive";
     private static final String COLUMN_PEAK_NEGATIVE = "peak_negative";
     private static final String COLUMN_RMS_POSITIVE = "rms_positive";
     private static final String COLUMN_RMS_NEGATIVE = "rms_negative";
 
     @NonNull
-    @ColumnInfo(name = DB.COLUMN_SRC)
+    @ColumnInfo(name = COLUMN_SRC)
     public String src;
     @NonNull
-    @ColumnInfo(name = DB.COLUMN_ID)
+    @ColumnInfo(name = COLUMN_ID)
     public String id;
     @NonNull
     @ColumnInfo(name = COLUMN_PEAK_POSITIVE, typeAffinity = ColumnInfo.BLOB)

@@ -5,77 +5,62 @@
         app:iconSpaceReserved="false"
         app:allowDividerBelow="true"
         android:title="Backends"
-        android:key="@string/pref_key_backends" >
-        <CheckBoxPreference
-            app:iconSpaceReserved="false"
-            android:key="@string/pref_key_subsonic"
-            android:title="@string/pref_subsonic"
-            android:defaultValue="false" />
-        <EditTextPreference
-            app:iconSpaceReserved="false"
-            android:dependency="@string/pref_key_subsonic"
-            android:key="@string/pref_key_subsonic_url"
-            android:title="@string/pref_subsonic_url" />
-        <EditTextPreference
-            app:iconSpaceReserved="false"
-            android:dependency="@string/pref_key_subsonic"
-            android:key="@string/pref_key_subsonic_usr"
-            android:title="@string/pref_subsonic_usr" />
-        <EditTextPreference
-            app:iconSpaceReserved="false"
-            android:dependency="@string/pref_key_subsonic"
-            android:key="@string/pref_key_subsonic_pwd"
-            android:title="@string/pref_subsonic_pwd" />
-        <EditTextPreference
-            app:iconSpaceReserved="false"
-            android:dependency="@string/pref_key_subsonic"
-            android:key="@string/pref_key_subsonic_tag_delim"
-            android:title="@string/pref_subsonic_tag_delim" />
-        <CheckBoxPreference
-            app:iconSpaceReserved="false"
-            android:dependency="@string/pref_key_subsonic"
-            android:key="@string/pref_key_subsonic_refresh_enabled"
-            android:title="Enable scheduled refresh"
-            android:enabled="false"
-            android:defaultValue="false" />
-        <se.splushii.dancingbunnies.ui.TimePreference
-            app:iconSpaceReserved="false"
-            android:dependency="@string/pref_key_subsonic_refresh_enabled"
-            android:key="@string/pref_key_subsonic_refresh_time"
-            android:title="@string/pref_subsonic_refresh_time" />
-        <Preference
-            app:iconSpaceReserved="false"
-            android:dependency="@string/pref_key_subsonic"
-            android:key="@string/pref_key_subsonic_refresh"
-            android:enabled="false"
-            android:title="@string/pref_subsonic_refresh" />
+        android:key="@string/pref_key_backend"
+        >
+        <ListPreference
+            android:key="@string/pref_key_backend_new"
+            android:title="@string/pref_backend_new"
+            android:icon="@drawable/settings_backends_add"
+            android:dialogTitle="@string/pref_backend_new_dialog_title"
+            android:entries="@array/empty_array"
+            android:entryValues="@array/empty_array"
+            android:defaultValue="@array/empty_array"
+            />
     </PreferenceCategory>
-    <MultiSelectListPreference
+    <PreferenceCategory
         app:iconSpaceReserved="false"
-        android:key="@string/pref_key_library_clear"
-        android:title="@string/pref_library_clear"
-        android:summary="@string/pref_library_clear_summary"
-        android:dialogTitle="@string/pref_library_clear_dialog_title"
-        android:entries="@array/empty_array"
-        android:entryValues="@array/empty_array"
-        android:defaultValue="@array/empty_array"
-        app:allowDividerAbove="true"
-        />
-    <MultiSelectListPreference
-        app:iconSpaceReserved="false"
-        android:key="@string/pref_key_library_clear_playlists"
-        android:title="@string/pref_library_clear_playlists"
-        android:summary="@string/pref_library_clear_playlists_summary"
-        android:dialogTitle="@string/pref_library_clear_playlists_dialog_title"
-        android:entries="@array/empty_array"
-        android:entryValues="@array/empty_array"
-        android:defaultValue="@array/empty_array"
         app:allowDividerBelow="true"
-        />
+        android:title="Global"
+        android:key="@string/pref_key_global"
+        >
+        <MultiSelectListPreference
+            app:iconSpaceReserved="false"
+            android:key="@string/pref_key_library_clear"
+            android:title="@string/pref_library_clear"
+            android:summary="@string/pref_library_clear_summary"
+            android:dialogTitle="@string/pref_library_clear_dialog_title"
+            android:entries="@array/empty_array"
+            android:entryValues="@array/empty_array"
+            android:defaultValue="@array/empty_array"
+            app:allowDividerAbove="true"
+            />
+        <MultiSelectListPreference
+            app:iconSpaceReserved="false"
+            android:key="@string/pref_key_library_clear_playlists"
+            android:title="@string/pref_library_clear_playlists"
+            android:summary="@string/pref_library_clear_playlists_summary"
+            android:dialogTitle="@string/pref_library_clear_playlists_dialog_title"
+            android:entries="@array/empty_array"
+            android:entryValues="@array/empty_array"
+            android:defaultValue="@array/empty_array"
+            app:allowDividerBelow="true"
+            />
+        <MultiSelectListPreference
+            app:iconSpaceReserved="false"
+            android:key="@string/pref_key_library_clear_search_index"
+            android:title="@string/pref_library_clear_search_index"
+            android:summary="@string/pref_library_clear_search_index_summary"
+            android:dialogTitle="@string/pref_library_clear_search_index_dialog_title"
+            android:entries="@array/empty_array"
+            android:entryValues="@array/empty_array"
+            android:defaultValue="@array/empty_array"
+            app:allowDividerBelow="true"
+            />
     <Preference
         app:iconSpaceReserved="false"
         android:key="@string/pref_key_about"
         android:title="@string/pref_about"
         app:allowDividerAbove="true"
         />
+    </PreferenceCategory>
 </androidx.preference.PreferenceScreen>

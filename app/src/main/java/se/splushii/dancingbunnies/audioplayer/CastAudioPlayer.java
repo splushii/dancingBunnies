@@ -383,7 +383,7 @@ public class CastAudioPlayer implements AudioPlayer {
         Log.d(LC, "destroy");
         callback = AudioPlayer.dummyCallback;
         Log.d(LC, "destroyed");
-        return Util.futureResult(null);
+        return Util.futureResult();
     }
 
     // Changes queue
@@ -391,7 +391,7 @@ public class CastAudioPlayer implements AudioPlayer {
     public CompletableFuture<Void> preload(List<PlaybackEntry> entries, int offset) {
         Log.d(LC, "preload()");
         if (entries == null || entries.isEmpty()) {
-            return Util.futureResult(null);
+            return Util.futureResult();
         }
         return CompletableFuture.completedFuture(null)
                 .thenComposeAsync(aVoid -> {
@@ -440,7 +440,7 @@ public class CastAudioPlayer implements AudioPlayer {
                 + queueItemIdsToRemove.size()
                 + ": " + queueItemIdsToRemove);
         if (queueItemIdsToRemove.size() <= 0) {
-            return Util.futureResult(null);
+            return Util.futureResult();
         }
         return CompletableFuture.completedFuture(null)
                 .thenComposeAsync(aVoid -> {
@@ -483,7 +483,7 @@ public class CastAudioPlayer implements AudioPlayer {
                             queueStateLock.unlockWrite(stamp);
                         }
                         Log.d(LC, "handleQueueReq: " + desc + " finished");
-                        return Util.futureResult(null);
+                        return Util.futureResult();
                     } catch (InterruptedException e) {
                         return Util.futureResult(e.getMessage());
                     }
@@ -599,7 +599,7 @@ public class CastAudioPlayer implements AudioPlayer {
     private CompletableFuture<Void> setQueue(List<PlaybackEntry> playbackEntries,
                                              long seekPosition) {
         if (playbackEntries == null || playbackEntries.isEmpty()) {
-            return Util.futureResult(null);
+            return Util.futureResult();
         }
         Log.d(LC, "setQueue, creating a new queue");
         int startIndex = 0;
@@ -1033,6 +1033,14 @@ public class CastAudioPlayer implements AudioPlayer {
         @Override
         public void onAdBreakStatusUpdated() {
             Log.d(LC, "onAdBreakStatusUpdated");
+        }
+
+        @Override
+        public void onMediaError(MediaError mediaError) {
+            if (mediaError != null) {
+                Log.e(LC, "onMediaError (" + mediaError.getDetailedErrorCode() + ")"
+                        + ": " + mediaError.getReason());
+            }
         }
     }
 

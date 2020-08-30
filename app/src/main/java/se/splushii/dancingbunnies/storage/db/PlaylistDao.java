@@ -1,5 +1,6 @@
 package se.splushii.dancingbunnies.storage.db;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -10,6 +11,7 @@ import androidx.room.Dao;
 import androidx.room.Insert;
 import androidx.room.Query;
 import androidx.room.Transaction;
+import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.util.Util;
 
 import static androidx.room.OnConflictStrategy.REPLACE;
@@ -18,15 +20,34 @@ import static androidx.room.OnConflictStrategy.REPLACE;
 public abstract class PlaylistDao {
     private static final String LC = Util.getLogContext(PlaylistDao.class);
 
+    private static final String isSpecifiedPlaylist =
+            Playlist.COLUMN_SRC + " = :src"
+                    + " AND " + Playlist.COLUMN_ID + " = :id"
+                    + " AND " + Playlist.COLUMN_TYPE + " = :type";
+
+    @Query("SELECT COUNT(" + Playlist.COLUMN_ID + ")"
+            + " FROM " + DB.TABLE_PLAYLISTS)
+    abstract int _num_entries();
+
+    private long[] getPlaylistPositions(List<Playlist> playlists) {
+        return DB.getPositions(playlists, playlist -> {
+            PlaylistID playlistID = playlist.playlistID();
+            return _get_position(playlistID.src, playlistID.id, playlist.type);
+        });
+    }
+    @Query("SELECT " + Playlist.COLUMN_POS
+            + " FROM " + DB.TABLE_PLAYLISTS
+            + " WHERE " + isSpecifiedPlaylist)
+    abstract long _get_position(String src, String id, int type);
+
     @Query("SELECT * FROM " + DB.TABLE_PLAYLISTS + " ORDER BY " + Playlist.COLUMN_POS)
     abstract public LiveData<List<Playlist>> getAll();
     @Query("SELECT * FROM " + DB.TABLE_PLAYLISTS + " ORDER BY " + Playlist.COLUMN_POS)
     abstract public List<Playlist> getAllSync();
 
     @Query("SELECT * FROM " + DB.TABLE_PLAYLISTS
-            + " WHERE " + DB.COLUMN_SRC + " = :src"
-            + " AND " + DB.COLUMN_ID + " = :id")
-    abstract public LiveData<Playlist> get(String src, String id);
+            + " WHERE " + isSpecifiedPlaylist)
+    abstract public LiveData<Playlist> get(String src, String id, int type);
 
     // Insert
     @Query("UPDATE " + DB.TABLE_PLAYLISTS
@@ -60,7 +81,7 @@ public abstract class PlaylistDao {
         }
     }
     @Transaction
-    @Query("DELETE FROM " + DB.TABLE_PLAYLISTS + " WHERE " + DB.COLUMN_SRC + " = :src")
+    @Query("DELETE FROM " + DB.TABLE_PLAYLISTS + " WHERE " + Playlist.COLUMN_SRC + " = :src")
     public void deleteWhereSourceIs(String src) {
         List<Playlist> playlists = getAllSync();
         delete(playlists.stream()
@@ -73,41 +94,32 @@ public abstract class PlaylistDao {
     // Move
     @Query("UPDATE " + DB.TABLE_PLAYLISTS
             + " SET " + Playlist.COLUMN_POS + " ="
-            + " CASE WHEN :newPos < :oldPos THEN "
-            + " CASE WHEN " + Playlist.COLUMN_POS + " >= :newPos AND " + Playlist.COLUMN_POS + " < :oldPos"
-            + " THEN " + Playlist.COLUMN_POS  + " + 1 ELSE "
-            + " CASE WHEN " + Playlist.COLUMN_POS + " = :oldPos THEN :newPos ELSE " + Playlist.COLUMN_POS + " END END"
+            + " CASE WHEN :newPos <= " + Playlist.COLUMN_POS + " AND " + Playlist.COLUMN_POS + " < :oldPos THEN"
+            + " " + Playlist.COLUMN_POS  + " + 1"
+            + " ELSE CASE WHEN :oldPos < " + Playlist.COLUMN_POS + " AND " + Playlist.COLUMN_POS + " <= :newPos THEN"
+            + " " + Playlist.COLUMN_POS + " - 1"
+            + " ELSE CASE WHEN " + Playlist.COLUMN_POS + " = :oldPos THEN"
+            + " :newPos"
             + " ELSE"
-            + " CASE WHEN " + Playlist.COLUMN_POS + " <= :newPos AND " + Playlist.COLUMN_POS + " > :oldPos"
-            + " THEN " + Playlist.COLUMN_POS + " - 1 ELSE "
-            + " CASE WHEN " + Playlist.COLUMN_POS + " = :oldPos THEN :newPos ELSE " + Playlist.COLUMN_POS + " END END"
-            + " END"
-            + " WHERE " + Playlist.COLUMN_POS + " BETWEEN MIN(:newPos, :oldPos) AND MAX(:newPos, :oldPos)")
+            + " " + Playlist.COLUMN_POS
+            + " END END END"
+            + " WHERE " + Playlist.COLUMN_POS + " BETWEEN MIN(:newPos, :oldPos) AND MAX(:newPos, :oldPos)"
+    )
     abstract void _move(long oldPos, long newPos);
     @Transaction
-    public void move(List<Long> positions, int pos) {
-        Collections.sort(positions);
-        int newPos = pos;
-        for (int i = 0; i < positions.size(); i++) {
-            long oldPos = positions.get(i);
-            long extraSteps = 0;
-            // Update position of remaining entries in same way as in _move()
-            for (int j = i + 1; j < positions.size(); j++) {
-                long otherPos = positions.get(j);
-                if (oldPos < otherPos && otherPos <= newPos + extraSteps) {
-                    positions.set(j, otherPos - 1);
-                    // If oldPos moves forward past otherPos, otherPos will move past newPos later,
-                    // because positions are sorted. So, need to move oldPos an extra step.
-                    extraSteps++;
-                } else if (newPos + extraSteps <= otherPos && otherPos < oldPos) {
-                    positions.set(j, otherPos + 1);
-                }
-            }
-            _move(oldPos, newPos + extraSteps);
-            newPos++;
-        }
+    public void move(List<Playlist> playlists, PlaylistID idAfterTargetPos) {
+        long[] playlistEntryPositions = getPlaylistPositions(playlists);
+        long targetPos = idAfterTargetPos != null ?
+                _get_position(idAfterTargetPos.src, idAfterTargetPos.id, idAfterTargetPos.type)
+                :
+                _num_entries();
+        DB.movePositions(
+                Arrays.stream(playlistEntryPositions).boxed().collect(Collectors.toList()),
+                targetPos,
+                this::_move
+        );
     }
 
-    @Query("SELECT DISTINCT \"" + DB.COLUMN_SRC + "\" FROM " + DB.TABLE_PLAYLISTS)
+    @Query("SELECT DISTINCT \"" + Playlist.COLUMN_SRC + "\" FROM " + DB.TABLE_PLAYLISTS)
     public abstract LiveData<List<String>> getSources();
 }

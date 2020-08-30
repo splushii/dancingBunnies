@@ -26,7 +26,7 @@ import se.splushii.dancingbunnies.ui.TrackItemView;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 
-import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.PLAYLIST_ENTRY_DELETE;
+import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_ENTRY_DELETE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_PLAYLIST;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_QUEUE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE;

@@ -1,0 +1,35 @@
+---
+
+schema_version: 1
+
+playlist:
+  type: smart
+  id: derp
+  meta:
+    - name: Dylan 1970-1980
+
+entries: |
+  schema_version: 1
+  type: tree
+  not: false
+  op: AND
+  children:
+  - type: leaf
+    not: false
+    key: artist
+    op: EQUALS
+    value: Bob Dylan
+  - type: tree
+    not: false
+    op: AND
+    children:
+    - type: leaf
+      not: false
+      key: year
+      op: LESS_OR_EQUALS
+      value: 1980
+    - type: leaf
+      not: false
+      key: year
+      op: GREATER_OR_EQUALS
+      value: 1970

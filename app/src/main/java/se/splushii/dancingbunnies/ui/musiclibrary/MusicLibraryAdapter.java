@@ -238,7 +238,7 @@ public class MusicLibraryAdapter extends
             }
             MusicLibraryQuery query = fragment.getCurrentQuery();
             andSortedByToQuery(query, holder);
-            return MetaStorage.getInstance(fragment.requireContext()).getNumSongEntries(
+            return MetaStorage.getInstance(fragment.requireContext()).getNumSongEntriesSum(
                     Collections.singletonList(e),
                     query.getQueryTree()
             );

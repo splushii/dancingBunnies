@@ -114,7 +114,7 @@ public class MusicLibraryQuery {
         }
         String sortByField = sortByFields.get(0);
         return sortByField.equals(showField)
-                || Meta.FIELD_SPECIAL_MEDIA_ID.equals(showField) && Meta.FIELD_TITLE.equals(sortByField);
+                || (Meta.FIELD_SPECIAL_MEDIA_ID.equals(showField) && Meta.FIELD_TITLE.equals(sortByField));
     }
 
     public void andEntryIDToQuery(EntryID entryID) {

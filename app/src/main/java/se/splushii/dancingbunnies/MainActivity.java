@@ -33,6 +33,7 @@ import se.splushii.dancingbunnies.ui.musiclibrary.MusicLibraryFragmentModel;
 import se.splushii.dancingbunnies.ui.nowplaying.NowPlayingFragment;
 import se.splushii.dancingbunnies.ui.playlist.PlaylistFragment;
 import se.splushii.dancingbunnies.ui.playlist.PlaylistFragmentModel;
+import se.splushii.dancingbunnies.ui.settings.SettingsActivity;
 import se.splushii.dancingbunnies.util.Util;
 
 public final class MainActivity extends AppCompatActivity {
@@ -60,6 +61,7 @@ public final class MainActivity extends AppCompatActivity {
     public static final int REQUEST_CODE_ADD_TO_PLAYLIST_DIALOG = 1338;
     public static final int REQUEST_CODE_ADD_TO_NEW_PLAYLIST_DIALOG = 1339;
     public static final int REQUEST_CODE_SORT_DIALOG = 1340;
+    public static final int REQUEST_CODE_CONFIRMATION_DIALOG = 1341;
 
     private ViewPager mViewPager;
     private SectionsPagerAdapter mSectionsPagerAdapter;

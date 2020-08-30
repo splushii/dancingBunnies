@@ -28,9 +28,12 @@ import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
+import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.ui.playlist.PlaylistAdapter;
 import se.splushii.dancingbunnies.ui.playlist.PlaylistFragmentModel;
 import se.splushii.dancingbunnies.util.Util;
+
+import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_ENTRY_ADD;
 
 public class AddToPlaylistDialogFragment
         extends DialogFragment
@@ -97,10 +100,14 @@ public class AddToPlaylistDialogFragment
         songEntries = MetaStorage.getInstance(requireContext()).getSongEntriesOnce(queryNodes);
         songEntries.thenAccept(songEntries -> filterPlaylists(model, songEntries));
         recViewAdapter.setOnItemClickListener(playlist ->
-                songEntries.thenAccept(songEntryIDs ->
-                        PlaylistStorage.getInstance(requireContext())
-                                .addToPlaylist(new PlaylistID(playlist), songEntryIDs)
-                ).thenRun(this::dismiss)
+                songEntries.thenAccept(songEntryIDs -> {
+                    List<PlaylistEntry> playlistEntries = PlaylistEntry.generatePlaylistEntries(
+                            playlist.playlistID(),
+                            songEntryIDs.toArray(new EntryID[0])
+                    );
+                    PlaylistStorage.getInstance(requireContext())
+                            .addToPlaylist(playlist.playlistID(), playlistEntries);
+                }).thenRun(this::dismiss)
         );
         recyclerView.setAdapter(recViewAdapter);
         View addToNewPlaylistView = rootView.findViewById(R.id.add_to_playlist_dialog_new);
@@ -134,16 +141,15 @@ public class AddToPlaylistDialogFragment
     }
 
     private boolean canBeAdded(EntryID entryID, Playlist playlist) {
-        if (playlist.type != PlaylistID.TYPE_STUPID) {
+        PlaylistID playlistID = playlist.playlistID();
+        if (playlistID.type != PlaylistID.TYPE_STUPID) {
             return false;
         }
-        if (MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL.equals(playlist.src)) {
+        if (MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL.equals(playlistID.src)) {
             return true;
         }
-        return playlist.src.equals(entryID.src) &&
-                MusicLibraryService.checkAPISupport(
-                        playlist.src,
-                        MusicLibraryService.PLAYLIST_ENTRY_ADD);
+        return playlistID.src.equals(entryID.src) &&
+                MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_ADD);
     }
 
     @Override

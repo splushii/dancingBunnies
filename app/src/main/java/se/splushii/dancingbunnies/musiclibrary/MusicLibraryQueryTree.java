@@ -98,7 +98,7 @@ public class MusicLibraryQueryTree extends MusicLibraryQueryNode implements Iter
 
     @Override
     public MusicLibraryQueryNode withEntryID(EntryID entryID) {
-        if (entryID.isUnknown()) {
+        if (entryID == null || entryID.isUnknown()) {
             return this;
         }
         MusicLibraryQueryTree queryTree;

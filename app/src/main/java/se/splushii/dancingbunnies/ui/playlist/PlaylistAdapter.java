@@ -8,9 +8,9 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Function;
 
 import androidx.annotation.NonNull;
@@ -32,7 +32,7 @@ import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
-import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.PLAYLIST_DELETE;
+import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_DELETE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_DELETE_MULTIPLE;
 
 public class PlaylistAdapter extends
@@ -58,7 +58,10 @@ public class PlaylistAdapter extends
     public void onSelectionDrop(Collection<Playlist> selection,
                                 int targetPos,
                                 Playlist idAfterTargetPos) {
-        playlistStorage.movePlaylists(selection, targetPos);
+        playlistStorage.movePlaylists(
+                new ArrayList<>(selection),
+                idAfterTargetPos == null ? null : idAfterTargetPos.playlistID()
+        );
     }
 
     @Override
@@ -81,7 +84,7 @@ public class PlaylistAdapter extends
         actionModeCallback.getActionMode().setTitle(selection.size() + " entries");
         boolean showDelete = true;
         for (Playlist playlist: selection) {
-            if (!MusicLibraryService.checkAPISupport(playlist.src, PLAYLIST_DELETE)) {
+            if (!MusicLibraryService.checkAPISupport(playlist.playlistID().src, PLAYLIST_DELETE)) {
                 showDelete = false;
             }
         }
@@ -131,8 +134,7 @@ public class PlaylistAdapter extends
 
     @Override
     public long getItemId(int position) {
-        Playlist playlist = getItem(position);
-        return Objects.hash(playlist.src, playlist.id, playlist.type);
+        return getItem(position).hashCode();
     }
 
     private void setPlaylists(List<Playlist> playlists) {
@@ -213,7 +215,7 @@ public class PlaylistAdapter extends
                 return;
             }
             boolean highlighted = playlist != null
-                    && new PlaylistID(playlist).equals(currentPlaylistEntry);
+                    && playlist.playlistID().equals(currentPlaylistEntry);
             if (highlighted) {
                 highlightView.setBackgroundColor(ContextCompat.getColor(
                         fragment.requireContext(),
@@ -239,14 +241,10 @@ public class PlaylistAdapter extends
             if (isStatic) {
                 return;
             }
-            playlistIDLiveData.setValue(new PlaylistID(
-                    playlist.src,
-                    playlist.id,
-                    playlist.type
-            ));
-            nameTextView.setText(playlist.name);
+            playlistIDLiveData.setValue(playlist.playlistID());
+            nameTextView.setText(playlist.name());
             String type;
-            switch (playlist.type) {
+            switch (playlist.playlistID().type) {
                 case PlaylistID.TYPE_STUPID:
                     type = "Static";
                     break;
@@ -328,7 +326,9 @@ public class PlaylistAdapter extends
             }
             onItemClickListener.accept(holder.playlist);
         });
-        holder.setSourceResourceID(MusicLibraryService.getAPIIconResourceFromSource(holder.playlist.src));
+        holder.setSourceResourceID(MusicLibraryService.getAPIIconResourceFromSource(
+                holder.playlist.playlistID().src
+        ));
         holder.updateHighlight(currentPlaylistEntryLiveData.getValue());
         holder.entry.setActivated(isSelected(holder.getKey()));
     }

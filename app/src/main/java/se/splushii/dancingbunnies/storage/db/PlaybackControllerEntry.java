@@ -27,6 +27,8 @@ public class PlaybackControllerEntry {
     static final String COLUMN_PLAYLIST_SELECTION_ID = "playlist_selection_id";
     static final String COLUMN_QUEUE_ID = "queue_id";
     static final String COLUMN_POS = "pos";
+    static final String COLUMN_ENTRY_SRC = "src";
+    static final String COLUMN_ENTRY_ID = "id";
 
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = COLUMN_ROW_ID)
@@ -49,10 +51,10 @@ public class PlaybackControllerEntry {
     @ColumnInfo(name = COLUMN_POS)
     int pos;
     @NonNull
-    @ColumnInfo(name = DB.COLUMN_SRC)
+    @ColumnInfo(name = COLUMN_ENTRY_SRC)
     public String src;
     @NonNull
-    @ColumnInfo(name = DB.COLUMN_ID)
+    @ColumnInfo(name = COLUMN_ENTRY_ID)
     public String id;
 
     @Override

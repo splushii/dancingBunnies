@@ -1,6 +1,8 @@
 package se.splushii.dancingbunnies.util;
 
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -8,8 +10,8 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 
 import java.math.BigInteger;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -20,6 +22,9 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 import androidx.core.util.Pair;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -73,6 +78,26 @@ public class Util {
         return new Pair<>(hPos, hPad - llm.getPaddingTop());
     }
 
+    public static void showDialog(Fragment fragment,
+                                  String tag,
+                                  int requestCode,
+                                  DialogFragment dialogFragment,
+                                  Bundle args) {
+        FragmentTransaction ft = fragment.getParentFragmentManager().beginTransaction();
+        Fragment prev = fragment.getParentFragmentManager().findFragmentByTag(tag);
+        if (prev != null) {
+            ft.remove(prev);
+        }
+        ft.addToBackStack(null);
+        dialogFragment.setTargetFragment(fragment, requestCode);
+        dialogFragment.setArguments(args);
+        dialogFragment.show(ft, tag);
+    }
+
+    public static String getString(Context context, int resourceId) {
+        return context.getResources().getString(resourceId);
+    }
+
     public static int dpToPixels(Context context, int dp) {
         float density = context.getResources().getDisplayMetrics().density;
         return (int) (density * dp);
@@ -95,13 +120,38 @@ public class Util {
             return null;
         }
         try {
-            return new URL(url).getHost();
-        } catch (MalformedURLException e) {
+            return new URI(url).getHost();
+        } catch (URISyntaxException e) {
+            Log.e(LC, "getHostFromUrl(" + url +"): " + e.getMessage());
             return null;
         }
     }
 
-    public static class FutureException extends Throwable {
+    public static String getPathFromUrl(String url) {
+        if (url == null) {
+            return null;
+        }
+        try {
+            return new URI(url).getPath();
+        } catch (URISyntaxException e) {
+            return null;
+        }
+    }
+
+    public static long getNextIDs(SharedPreferences sharedPrefs, String idCounterKey, int num) {
+        long id = sharedPrefs.getLong(idCounterKey, 0);
+        if (id + num < 0) { // overflow
+            id = 0;
+        }
+        if (!sharedPrefs.edit()
+                .putLong(idCounterKey, id + num)
+                .commit()) {
+            throw new RuntimeException("Could not update ID for: " + idCounterKey);
+        }
+        return id;
+    }
+
+    public static class FutureException extends RuntimeException {
         final String msg;
         public FutureException(String msg) {
             super(msg);
@@ -126,6 +176,14 @@ public class Util {
 
     public static <T> CompletableFuture<T> futureResult(String error) {
         return futureResult(error, null);
+    }
+
+    public static <T> CompletableFuture<T> futureResult(T value) {
+        return futureResult(null, value);
+    }
+
+    public static <T> CompletableFuture<T> futureResult() {
+        return futureResult(null, null);
     }
 
     public static <T> T printFutureError(T result, Throwable t) {
