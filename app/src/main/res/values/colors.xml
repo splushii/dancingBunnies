@@ -16,6 +16,12 @@
     <color name="grey950">#121212</color>
     <color name="bluegrey900">#263238</color>
     <color name="black">#000000</color>
+    <color name="red50">#ffebee</color>
+    <color name="red100">#ffcdd2</color>
+    <color name="red200">#ef9a9a</color>
+    <color name="red300">#e57373</color>
+    <color name="red800">#c62828</color>
+    <color name="red900">#b71c1c</color>
     <color name="red">#F44336</color>
     
     <color name="colorLogo">#ccf2ff</color>
@@ -56,6 +62,8 @@
 
     <color name="windowBackground">@color/white</color>
     <color name="windowBackgroundAlternate">@color/grey50</color>
+    <color name="windowBackgroundError">@color/red100</color>
+    <color name="windowBackgroundErrorAlternate">@color/red200</color>
     <color name="windowBackgroundLight">@color/grey100</color>
     <color name="popupBackground">@color/white</color>
     <color name="overlayBackground">@color/grey100</color>

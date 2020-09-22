@@ -18,7 +18,6 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -27,9 +26,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.util.Pair;
 import androidx.fragment.app.DialogFragment;
-import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
@@ -42,10 +39,11 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.storage.MetaStorage;
+import se.splushii.dancingbunnies.storage.TransactionStorage;
 import se.splushii.dancingbunnies.ui.selection.RecyclerViewActionModeSelectionTracker;
 import se.splushii.dancingbunnies.util.Util;
 
-import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.META_ADD;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.META_ADD;
 
 public class MetaDialogFragment extends DialogFragment {
     private static final String LC = Util.getLogContext(MetaDialogFragment.class);
@@ -71,19 +69,18 @@ public class MetaDialogFragment extends DialogFragment {
     private ArrayList<String> metaKeys;
     private ArrayAdapter<String> displayMetaKeysAdapter;
 
-    public static void showMeta(FragmentManager fragmentManager, EntryID entryID) {
+    public static void showDialog(FragmentManager fragmentManager, EntryID entryID) {
         if (entryID == null || entryID.isUnknown()) {
             return;
         }
-        FragmentTransaction ft = fragmentManager.beginTransaction();
-        Fragment prev = fragmentManager.findFragmentByTag(MetaDialogFragment.TAG);
-        if (prev != null) {
-            ft.remove(prev);
-        }
-        ft.addToBackStack(null);
-        DialogFragment dialogFragment = new MetaDialogFragment();
-        dialogFragment.setArguments(entryID.toBundle());
-        dialogFragment.show(ft, MetaDialogFragment.TAG);
+        Util.showDialog(
+                fragmentManager,
+                null,
+                TAG,
+                MainActivity.REQUEST_CODE_NONE,
+                new MetaDialogFragment(),
+                entryID.toBundle()
+        );
     }
 
     @Override
@@ -211,12 +208,12 @@ public class MetaDialogFragment extends DialogFragment {
                 if (isLocalUserTag()) {
                     // TODO: Support adding other local user tag types (long, double)
                     String userLocalKey = Meta.constructLocalUserStringKey(key);
-                    CompletableFuture.runAsync(() ->
-                            MetaStorage.getInstance(getContext()).insertLocalUserMeta(
-                                    entryID,
-                                    userLocalKey,
-                                    value
-                            )
+                    TransactionStorage.getInstance(getContext()).addMeta(
+                            requireContext(),
+                            MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL,
+                            entryID,
+                            userLocalKey,
+                            value
                     );
                 } else {
                     // TODO: Implement

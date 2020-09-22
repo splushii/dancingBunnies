@@ -31,22 +31,22 @@ import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
-import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_ENTRY_DELETE;
-import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_ENTRY_MOVE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_PLAYLIST;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_QUEUE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_PLAYLIST;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_QUEUE;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.PLAYLIST_ENTRY_DELETE;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.PLAYLIST_ENTRY_MOVE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_INFO;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_ENTRY_ADD;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_ENTRY_ADD_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_ENTRY_DELETE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_ENTRY_DELETE_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_SET_CURRENT;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_FROM_PLAYLIST;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_MULTIPLE_FROM_PLAYLIST;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SET_CURRENT_PLAYLIST;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_ADD;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_ADD_MULTIPLE;
 
 public class PlaylistEntriesAdapter extends
         SmartDiffSelectionRecyclerViewAdapter
@@ -110,17 +110,17 @@ public class PlaylistEntriesAdapter extends
         boolean showDelete = playlistID.type == PlaylistID.TYPE_STUPID
                 && MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_DELETE);
         int[] disabled = showDelete ? new int[0] :
-                new int[] { ACTION_REMOVE_MULTIPLE_FROM_PLAYLIST };
+                new int[] {ACTION_PLAYLIST_ENTRY_DELETE_MULTIPLE};
         actionModeCallback.setActions(
                 new int[] {
                         ACTION_PLAY_MULTIPLE,
-                        ACTION_ADD_MULTIPLE_TO_QUEUE
+                        ACTION_QUEUE_ADD_MULTIPLE
                 },
                 new int[] {
                         ACTION_PLAY_MULTIPLE,
-                        ACTION_ADD_MULTIPLE_TO_QUEUE,
-                        ACTION_ADD_MULTIPLE_TO_PLAYLIST,
-                        ACTION_REMOVE_MULTIPLE_FROM_PLAYLIST,
+                        ACTION_QUEUE_ADD_MULTIPLE,
+                        ACTION_PLAYLIST_ENTRY_ADD_MULTIPLE,
+                        ACTION_PLAYLIST_ENTRY_DELETE_MULTIPLE,
                         ACTION_CACHE_MULTIPLE,
                         ACTION_CACHE_DELETE_MULTIPLE
                 },
@@ -235,20 +235,20 @@ public class PlaylistEntriesAdapter extends
                 && playlistID.type == PlaylistID.TYPE_STUPID) {
             disabledActions = new int[0];
         } else {
-            disabledActions = new int[] { ACTION_REMOVE_FROM_PLAYLIST };
+            disabledActions = new int[] {ACTION_PLAYLIST_ENTRY_DELETE};
         }
         holder.actionsView.setActions(
                 new int[] {
-                        ACTION_SET_CURRENT_PLAYLIST,
-                        ACTION_ADD_TO_QUEUE,
+                        ACTION_PLAYLIST_SET_CURRENT,
+                        ACTION_QUEUE_ADD,
                         ACTION_INFO
                 },
                 new int[] {
                         ACTION_PLAY,
-                        ACTION_SET_CURRENT_PLAYLIST,
-                        ACTION_ADD_TO_QUEUE,
-                        ACTION_ADD_TO_PLAYLIST,
-                        ACTION_REMOVE_FROM_PLAYLIST,
+                        ACTION_PLAYLIST_SET_CURRENT,
+                        ACTION_QUEUE_ADD,
+                        ACTION_PLAYLIST_ENTRY_ADD,
+                        ACTION_PLAYLIST_ENTRY_DELETE,
                         ACTION_CACHE,
                         ACTION_CACHE_DELETE,
                         ACTION_INFO

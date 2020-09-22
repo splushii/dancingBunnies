@@ -57,6 +57,8 @@ public final class MainActivity extends AppCompatActivity {
     public static final String SELECTION_ID_PLAYLIST_PLAYBACK_ENTRIES = "dancingbunnies.selection_id.playlist_entries";
     public static final String SELECTION_ID_META_DIALOG = "dancingbunnies.selection_id.meta_dialog";
     public static final String SELECTION_ID_DOWNLOADS_DIALOG = "dancingbunnies.selection_id.downloads_dialog";
+    public static final String SELECTION_ID_TRANSACTIONS_DIALOG = "dancingbunnies.selection_id.transactions_dialog";
+    public static final int REQUEST_CODE_NONE = -1;
     public static final int REQUEST_CODE_META_DIALOG = 1337;
     public static final int REQUEST_CODE_ADD_TO_PLAYLIST_DIALOG = 1338;
     public static final int REQUEST_CODE_ADD_TO_NEW_PLAYLIST_DIALOG = 1339;
@@ -98,9 +100,7 @@ public final class MainActivity extends AppCompatActivity {
         CastButtonFactory.setUpMediaRouteButton(getApplicationContext(), mediaRouteButton);
 
         View logoView = findViewById(R.id.main_appbar_logo);
-        logoView.setOnClickListener(view -> {
-            DownloadsDialogFragment.showDialog(this);
-        });
+        logoView.setOnClickListener(view -> DownloadsDialogFragment.showDialog(this));
         logoDLImg = findViewById(R.id.main_appbar_logo_dl);
         downloadQueueLiveData = AudioStorage.getInstance(this).getDownloads();
         downloadQueueLiveData.observe(this, downloadQueue -> {

@@ -11,6 +11,8 @@ import android.support.v4.media.session.MediaSessionCompat.QueueItem;
 import com.google.android.gms.cast.MediaMetadata;
 
 import org.apache.lucene.document.Document;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.Objects;
 
@@ -20,6 +22,9 @@ public class EntryID implements Parcelable {
     static final String BUNDLE_KEY_SRC = "dancingbunnies.bundle.key.entryid.src";
     static final String BUNDLE_KEY_ID = "dancingbunnies.bundle.key.entryid.id";
     static final String BUNDLE_KEY_TYPE = "dancingbunnies.bundle.key.entryid.type";
+    static final String JSON_KEY_SRC = "src";
+    static final String JSON_KEY_ID = "id";
+    static final String JSON_KEY_TYPE = "type";
     public static final EntryID UNKOWN = new EntryID(
             "dancingbunnies.entryid.UNKNOWN_SRC",
             "dancingbunnies.entryid.UNKNOWN_ID",
@@ -78,6 +83,10 @@ public class EntryID implements Parcelable {
         return "{src: " + src + ", id: " + id + ", type: " + type + "}";
     }
 
+    public String getDisplayableString() {
+        return "id " + id + " from " + src;
+    }
+
     @Override
     public int hashCode() {
         return key().hashCode();
@@ -126,17 +135,17 @@ public class EntryID implements Parcelable {
     }
 
     public static EntryID from(Bundle b) {
-        String src = Objects.requireNonNull(b.getString(EntryID.BUNDLE_KEY_SRC));
-        String id = Objects.requireNonNull(b.getString(EntryID.BUNDLE_KEY_ID));
-        String type = Objects.requireNonNull(b.getString(EntryID.BUNDLE_KEY_TYPE));
+        String src = Objects.requireNonNull(b.getString(BUNDLE_KEY_SRC));
+        String id = Objects.requireNonNull(b.getString(BUNDLE_KEY_ID));
+        String type = Objects.requireNonNull(b.getString(BUNDLE_KEY_TYPE));
         return new EntryID(src, id, type);
     }
 
     public Bundle toBundle() {
         Bundle b = new Bundle();
-        b.putString(EntryID.BUNDLE_KEY_SRC, src);
-        b.putString(EntryID.BUNDLE_KEY_ID, id);
-        b.putString(EntryID.BUNDLE_KEY_TYPE, type);
+        b.putString(BUNDLE_KEY_SRC, src);
+        b.putString(BUNDLE_KEY_ID, id);
+        b.putString(BUNDLE_KEY_TYPE, type);
         return b;
     }
 
@@ -160,5 +169,25 @@ public class EntryID implements Parcelable {
 
     public static EntryID from(MediaMetadataCompat meta) {
         return EntryID.from(meta.getBundle());
+    }
+
+    public static EntryID from(JSONObject json) throws JSONException {
+        String src = json.getString(JSON_KEY_SRC);
+        String id = json.getString(JSON_KEY_ID);
+        String type = json.getString(JSON_KEY_TYPE);
+        return new EntryID(src, id, type);
+    }
+
+    public JSONObject toJSON() {
+        JSONObject root = new JSONObject();
+        try {
+            root.put(JSON_KEY_SRC, src);
+            root.put(JSON_KEY_ID, id);
+            root.put(JSON_KEY_TYPE, type);
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return null;
+        }
+        return root;
     }
 }

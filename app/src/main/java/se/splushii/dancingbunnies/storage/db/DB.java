@@ -12,6 +12,7 @@ import androidx.arch.core.util.Function;
 import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
+import androidx.room.TypeConverters;
 
 @Database(
         entities = {
@@ -25,10 +26,12 @@ import androidx.room.RoomDatabase;
                 WaveformEntry.class,
                 Playlist.class,
                 PlaylistEntry.class,
-                PlaybackControllerEntry.class
+                PlaybackControllerEntry.class,
+                Transaction.class
         },
         version = 1
 )
+@TypeConverters(Converters.class)
 public abstract class DB extends RoomDatabase {
     private static final String DB_NAME = "dB";
     static final String TABLE_ENTRY_ID = "entry_id";
@@ -38,6 +41,7 @@ public abstract class DB extends RoomDatabase {
     static final String TABLE_META_LOCAL_STRING = "meta_local_string";
     static final String TABLE_META_LOCAL_LONG = "meta_local_long";
     static final String TABLE_META_LOCAL_DOUBLE = "meta_local_double";
+    public static final String COLUMN_ROW_ID = "rowid";
     public static final String COLUMN_SRC = "src";
     public static final String COLUMN_ID = "id";
     public static final String COLUMN_KEY = "key";
@@ -61,6 +65,7 @@ public abstract class DB extends RoomDatabase {
     public abstract PlaylistDao playlistModel();
     public abstract PlaylistEntryDao playlistEntryModel();
     public abstract PlaybackControllerEntryDao playbackControllerEntryModel();
+    public abstract TransactionDao transactionModel();
 
     public static <T> long[] getPositions(List<T> entries, Function<T, Long> positionSupplier) {
         long[] playlistPositions = new long[entries.size()];

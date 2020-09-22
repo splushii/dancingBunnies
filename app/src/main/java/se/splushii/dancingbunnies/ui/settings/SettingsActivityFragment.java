@@ -46,13 +46,16 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.jobs.Jobs;
 import se.splushii.dancingbunnies.jobs.LibrarySyncWorker;
+import se.splushii.dancingbunnies.jobs.TransactionsWorker;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryLeaf;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.search.Searcher;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
+import se.splushii.dancingbunnies.storage.TransactionStorage;
 import se.splushii.dancingbunnies.ui.ConfirmationDialogFragment;
+import se.splushii.dancingbunnies.ui.transactions.TransactionsDialogFragment;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.musiclibrary.MusicLibraryService.API_SRC_ID_REGEX;
@@ -91,13 +94,16 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
 
     private boolean resetSyncValues = false;
 
+    private int pendingTransactions = 0;
+    private String transactionsWorkMsg;
+
     private ListPreference newBackendPref;
     private MultiSelectListPreference libraryClearPref;
     private MultiSelectListPreference libraryClearPlaylistsPref;
     private MultiSelectListPreference libraryClearSearchIndexPref;
+    private Preference showTransactionsPref;
 
-    public SettingsActivityFragment() {
-    }
+    public SettingsActivityFragment() {}
 
     public static Bundle getSettings(Context context, String src) {
         if (!isSourceEnabled(context, src)) {
@@ -370,6 +376,16 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
             libraryClearSearchIndexPref.setValues(Collections.emptySet());
             return false;
         });
+
+        String showTransactionsKey = getResources().getString(R.string.pref_key_library_show_transactions);
+        showTransactionsPref = findPreference(showTransactionsKey);
+        showTransactionsPref.setOnPreferenceClickListener(preference -> {
+            onSharedPreferenceChanged(
+                    getPreferenceManager().getSharedPreferences(),
+                    showTransactionsKey
+            );
+            return false;
+        });
     }
 
     @Override
@@ -418,6 +434,27 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                         }
                         setSyncCompleteStatus(backendID, status);
                     }
+                });
+        WorkManager.getInstance(requireContext())
+                .getWorkInfosByTagLiveData(Jobs.WORK_NAME_TRANSACTIONS_TAG)
+                .observe(getViewLifecycleOwner(), workInfos -> {
+                    StringBuilder msg = new StringBuilder();
+                    for (WorkInfo workInfo: workInfos) {
+                        if (workInfo != null &&
+                                (workInfo.getState() == WorkInfo.State.ENQUEUED ||
+                                        workInfo.getState() == WorkInfo.State.FAILED)) {
+                            String workMsg = workInfo.getOutputData()
+                                    .getString(TransactionsWorker.DATA_KEY_STATUS);
+                            if (workMsg != null) {
+                                if (msg.length() > 0) {
+                                    msg.append(", ");
+                                }
+                                msg.append(workMsg);
+                            }
+                        }
+                    }
+                    transactionsWorkMsg = msg.toString();
+                    setShowTransactionsSummary(pendingTransactions, transactionsWorkMsg);
                 });
         MetaStorage.getInstance(requireContext())
                 .getSources()
@@ -505,8 +542,22 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                             });
                     observeBackendIDToNumPlaylistsMap();
                 });
+        TransactionStorage.getInstance(requireContext())
+                .getTransactions()
+                .observe(getViewLifecycleOwner(), transactions -> {
+                    pendingTransactions = transactions.size();
+                    setShowTransactionsSummary(pendingTransactions, transactionsWorkMsg);
+                });
         renderBackendPreferences(PreferenceManager.getDefaultSharedPreferences(requireContext()));
         setDivider(null);
+    }
+
+    private void setShowTransactionsSummary(int pendingTransactions, String transactionsWorkMsg) {
+        String summary = "Pending transactions: " + pendingTransactions;
+        if (transactionsWorkMsg != null && !transactionsWorkMsg.isEmpty()) {
+            summary += "\nStatus:" + transactionsWorkMsg;
+        }
+        showTransactionsPref.setSummary(summary);
     }
 
     private void clearBackendIDToNumIndexedMap() {
@@ -697,23 +748,25 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                     }
                 }
             }
-        } else if (key.equals(getResources().getString(R.string.pref_key_library_clear))) {
+        } else if (key.equals(Util.getString(requireContext(), R.string.pref_key_library_clear))) {
             for (String src: libraryClearPref.getValues()) {
                 CompletableFuture.runAsync(() -> MetaStorage.getInstance(requireContext())
                         .clearAll(src))
                         .handle(Util::printFutureError);
             }
-        } else if (key.equals(getResources().getString(R.string.pref_key_library_clear_playlists))) {
+        } else if (key.equals(Util.getString(requireContext(), R.string.pref_key_library_clear_playlists))) {
             for (String src: libraryClearPlaylistsPref.getValues()) {
                 CompletableFuture.runAsync(() -> PlaylistStorage.getInstance(requireContext())
                         .clearAll(src))
                         .handle(Util::printFutureError);
             }
-        } else if (key.equals(getResources().getString(R.string.pref_key_library_clear_search_index))) {
-            for (String src: libraryClearSearchIndexPref.getValues()) {
+        } else if (key.equals(Util.getString(requireContext(), R.string.pref_key_library_clear_search_index))) {
+            for (String src : libraryClearSearchIndexPref.getValues()) {
                 CompletableFuture.runAsync(() -> MusicLibraryService.clearIndex(requireContext(), src, 10000))
                         .handle(Util::printFutureError);
             }
+        } else if (key.equals(Util.getString(requireContext(), R.string.pref_key_library_show_transactions))) {
+            TransactionsDialogFragment.showDialog(this);
         } else if (key.equals(Util.getString(requireContext(), R.string.pref_key_backend_id_counter))) {
             // No-op
         } else {

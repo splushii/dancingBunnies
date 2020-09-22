@@ -15,7 +15,6 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -82,18 +81,14 @@ public class EntryTypeSelectionDialogFragment extends DialogFragment {
                                    Bundle args,
                                    boolean onlyReturnConfig) {
         args.putBoolean(BUNDLE_KEY_ONLY_RETURN_CONFIG, onlyReturnConfig);
-        FragmentTransaction ft = fragmentManager.beginTransaction();
-        Fragment prev = fragmentManager.findFragmentByTag(EntryTypeSelectionDialogFragment.TAG);
-        if (prev != null) {
-            ft.remove(prev);
-        }
-        ft.addToBackStack(null);
-        DialogFragment dialogFragment = new EntryTypeSelectionDialogFragment();
-        if (targetFragment != null) {
-            dialogFragment.setTargetFragment(targetFragment, MainActivity.REQUEST_CODE_SORT_DIALOG);
-        }
-        dialogFragment.setArguments(args);
-        dialogFragment.show(ft, EntryTypeSelectionDialogFragment.TAG);
+        Util.showDialog(
+                fragmentManager,
+                targetFragment,
+                TAG,
+                MainActivity.REQUEST_CODE_SORT_DIALOG,
+                new EntryTypeSelectionDialogFragment(),
+                args
+        );
     }
 
     @Override

@@ -32,7 +32,7 @@ import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
-import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_DELETE;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.PLAYLIST_DELETE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_DELETE_MULTIPLE;
 
 public class PlaylistAdapter extends
@@ -89,10 +89,10 @@ public class PlaylistAdapter extends
             }
         }
         int[] disabled = showDelete ? new int[0] :
-                new int[] { ACTION_PLAYLIST_DELETE_MULTIPLE };
+                new int[] {ACTION_PLAYLIST_DELETE_MULTIPLE};
         actionModeCallback.setActions(
-                new int[] { ACTION_PLAYLIST_DELETE_MULTIPLE },
-                new int[] { ACTION_PLAYLIST_DELETE_MULTIPLE },
+                new int[] {ACTION_PLAYLIST_DELETE_MULTIPLE},
+                new int[] {ACTION_PLAYLIST_DELETE_MULTIPLE},
                 disabled
         );
     }

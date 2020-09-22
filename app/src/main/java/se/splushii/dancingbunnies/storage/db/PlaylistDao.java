@@ -1,8 +1,6 @@
 package se.splushii.dancingbunnies.storage.db;
 
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -65,19 +63,23 @@ public abstract class PlaylistDao {
 
     // Delete
     @Query("DELETE FROM " + DB.TABLE_PLAYLISTS
-            + " WHERE " + Playlist.COLUMN_POS + " = :position;")
-    abstract void _delete(long position);
+            + " WHERE " + isSpecifiedPlaylist)
+    abstract void _delete(String src, String id, int type);
     @Query(" UPDATE " + DB.TABLE_PLAYLISTS
             + " SET " + Playlist.COLUMN_POS + " = " + Playlist.COLUMN_POS + " - 1"
             + " WHERE " + Playlist.COLUMN_POS + " > :position")
     abstract void _update_pos_after_delete(long position);
     @Transaction
-    public void delete(List<Long> positions) {
-        // Start to remove highest pos (otherwise items at highest positions change position)
-        Collections.sort(positions, Comparator.reverseOrder());
-        for (long pos: positions) {
-            _delete(pos);
-            _update_pos_after_delete(pos);
+    public void delete(List<Playlist> playlists) {
+        long[] playlistPositions = getPlaylistPositions(playlists);
+        for (int i = 0; i < playlistPositions.length; i++) {
+            Playlist playlist = playlists.get(i);
+            _delete(
+                    playlist.src,
+                    playlist.id,
+                    playlist.type
+            );
+            _update_pos_after_delete(playlistPositions[i]);
         }
     }
     @Transaction
@@ -86,7 +88,6 @@ public abstract class PlaylistDao {
         List<Playlist> playlists = getAllSync();
         delete(playlists.stream()
                 .filter(playlist -> playlist.src.equals(src))
-                .map(playlist -> playlist.pos)
                 .collect(Collectors.toList())
         );
     }

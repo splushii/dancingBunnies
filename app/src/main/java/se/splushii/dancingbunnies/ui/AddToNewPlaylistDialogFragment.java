@@ -16,7 +16,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -46,7 +45,7 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
     public static void showDialog(Fragment fragment, MusicLibraryQueryNode queryTree) {
         Bundle args = new Bundle();
         args.putString(BUNDLE_KEY_QUERY, queryTree.toJSON().toString());
-        _showDialog(fragment, args);
+        showDialog(fragment, args);
     }
 
     static void showDialog(Fragment fragment, List<MusicLibraryQueryNode> queryTrees) {
@@ -55,20 +54,17 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
                 BUNDLE_KEY_QUERY_BUNDLES,
                 MusicLibraryQueryNode.toJSONStringArray(queryTrees)
         );
-        _showDialog(fragment, args);
+        showDialog(fragment, args);
     }
 
-    private static void _showDialog(Fragment fragment, Bundle args) {
-        FragmentTransaction ft = fragment.getFragmentManager().beginTransaction();
-        Fragment prev = fragment.getFragmentManager().findFragmentByTag(AddToNewPlaylistDialogFragment.TAG);
-        if (prev != null) {
-            ft.remove(prev);
-        }
-        ft.addToBackStack(null);
-        DialogFragment dialogFragment = new AddToNewPlaylistDialogFragment();
-        dialogFragment.setTargetFragment(fragment, MainActivity.REQUEST_CODE_ADD_TO_NEW_PLAYLIST_DIALOG);
-        dialogFragment.setArguments(args);
-        dialogFragment.show(ft, AddToNewPlaylistDialogFragment.TAG);
+    private static void showDialog(Fragment fragment, Bundle args) {
+        Util.showDialog(
+                fragment,
+                TAG,
+                MainActivity.REQUEST_CODE_ADD_TO_NEW_PLAYLIST_DIALOG,
+                new AddToNewPlaylistDialogFragment(),
+                args
+        );
     }
 
     @Override

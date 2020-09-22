@@ -32,6 +32,8 @@
 
     <color name="windowBackground">@color/grey950</color>
     <color name="windowBackgroundAlternate">@color/grey900</color>
+    <color name="windowBackgroundError">@color/red800</color>
+    <color name="windowBackgroundErrorAlternate">@color/red900</color>
     <color name="windowBackgroundLight">@color/grey800</color>
     <color name="popupBackground">@color/grey800</color>
     <color name="overlayBackground">@color/grey850</color>

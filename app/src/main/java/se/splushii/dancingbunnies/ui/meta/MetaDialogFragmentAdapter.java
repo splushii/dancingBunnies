@@ -20,6 +20,7 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.storage.MetaStorage;
+import se.splushii.dancingbunnies.storage.TransactionStorage;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.MenuActions;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
@@ -27,8 +28,8 @@ import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
-import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.META_DELETE;
-import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.META_EDIT;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.META_DELETE;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.META_EDIT;
 
 public class MetaDialogFragmentAdapter extends
         SmartDiffSelectionRecyclerViewAdapter<MetaTag, MetaDialogFragmentAdapter.ViewHolder> {
@@ -169,7 +170,9 @@ public class MetaDialogFragmentAdapter extends
                 if (actionId == EditorInfo.IME_ACTION_DONE) {
                     String newValue = editValueEditText.getText().toString();
                     if (Meta.isLocalUser(tag.key)) {
-                        MetaStorage.getInstance(fragment.getContext()).replaceLocalUserMeta(
+                        TransactionStorage.getInstance(fragment.requireContext()).editMeta(
+                                fragment.requireContext(),
+                                MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL,
                                 tag.entryID,
                                 tag.key,
                                 tag.value,
@@ -225,38 +228,40 @@ public class MetaDialogFragmentAdapter extends
                 disabledActions = new int[0];
             } else if (tagEditable) {
                 disabledActions = new int[] {
-                        MenuActions.ACTION_DELETE_META
+                        MenuActions.ACTION_META_DELETE
                 };
             } else if (tagDeletable) {
                 disabledActions = new int[] {
-                        MenuActions.ACTION_EDIT_META
+                        MenuActions.ACTION_META_EDIT
                 };
             } else {
                 disabledActions = new int[]{
-                        MenuActions.ACTION_EDIT_META,
-                        MenuActions.ACTION_DELETE_META
+                        MenuActions.ACTION_META_EDIT,
+                        MenuActions.ACTION_META_DELETE
                 };
             }
             actionsView.setActions(
                     new int[] {
-                            MenuActions.ACTION_GOTO_META,
-                            MenuActions.ACTION_EDIT_META
+                            MenuActions.ACTION_META_GOTO,
+                            MenuActions.ACTION_META_EDIT
                     },
                     new int[] {
-                            MenuActions.ACTION_GOTO_META,
-                            MenuActions.ACTION_EDIT_META,
-                            MenuActions.ACTION_DELETE_META
+                            MenuActions.ACTION_META_GOTO,
+                            MenuActions.ACTION_META_EDIT,
+                            MenuActions.ACTION_META_DELETE
                     },
                     disabledActions
             );
             actionsView.setPostAction(action -> {
-                if (action == MenuActions.ACTION_GOTO_META) {
+                if (action == MenuActions.ACTION_META_GOTO) {
                     fragment.dismiss();
-                } else if (action == MenuActions.ACTION_EDIT_META) {
+                } else if (action == MenuActions.ACTION_META_EDIT) {
                     showEdit();
-                } else if (action == MenuActions.ACTION_DELETE_META) {
+                } else if (action == MenuActions.ACTION_META_DELETE) {
                     if (Meta.isLocalUser(tag.key)) {
-                        MetaStorage.getInstance(fragment.getContext()).deleteLocalUserMeta(
+                        TransactionStorage.getInstance(fragment.getContext()).deleteMeta(
+                                fragment.requireContext(),
+                                MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL,
                                 tag.entryID,
                                 tag.key,
                                 tag.value

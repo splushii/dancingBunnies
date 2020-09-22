@@ -60,6 +60,7 @@ import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
+import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.MenuActions;
@@ -70,19 +71,19 @@ import se.splushii.dancingbunnies.util.Util;
 import static android.view.View.GONE;
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_PLAYLIST;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_QUEUE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_PLAYLIST;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_QUEUE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CLEAR_HISTORY;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CLEAR_QUEUE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_HISTORY_CLEAR;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_HISTORY_DELETE_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_INFO;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_ENTRY_ADD;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_ENTRY_ADD_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_ADD;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_ADD_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_CLEAR;
 
 public class NowPlayingFragment extends Fragment implements AudioBrowserCallback {
     private static final String LC = Util.getLogContext(NowPlayingFragment.class);
@@ -322,6 +323,11 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
                     }
 
                     @Override
+                    public List<Transaction> getTransactions() {
+                        return null;
+                    }
+
+                    @Override
                     public void onDestroyActionMode(ActionMode actionMode) {
                         selectionTracker.clearSelection();
                     }
@@ -363,8 +369,8 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
                         getContext(),
                         v,
                         new int[] {
-                                ACTION_CLEAR_QUEUE,
-                                ACTION_CLEAR_HISTORY
+                                ACTION_QUEUE_CLEAR,
+                                ACTION_HISTORY_CLEAR
                         },
                         new HashSet<>(),
                         menuItem -> MenuActions.doAction(
@@ -387,8 +393,8 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
                         getContext(),
                         v,
                         new int[] {
-                                ACTION_ADD_TO_QUEUE,
-                                ACTION_ADD_TO_PLAYLIST,
+                                ACTION_QUEUE_ADD,
+                                ACTION_PLAYLIST_ENTRY_ADD,
                                 ACTION_CACHE,
                                 ACTION_CACHE_DELETE,
                                 ACTION_INFO
@@ -451,6 +457,11 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
                     }
 
                     @Override
+                    public List<Transaction> getTransactions() {
+                        return null;
+                    }
+
+                    @Override
                     public void onDestroyActionMode(ActionMode actionMode) {
                         historySelectionTracker.clearSelection();
                     }
@@ -458,13 +469,13 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
         );
         historyActionModeCallback.setActions(
                 new int[] {
-                        ACTION_ADD_MULTIPLE_TO_QUEUE,
-                        ACTION_ADD_MULTIPLE_TO_PLAYLIST
+                        ACTION_QUEUE_ADD_MULTIPLE,
+                        ACTION_PLAYLIST_ENTRY_ADD_MULTIPLE
                 },
                 new int[] {
                         ACTION_PLAY_MULTIPLE,
-                        ACTION_ADD_MULTIPLE_TO_QUEUE,
-                        ACTION_ADD_MULTIPLE_TO_PLAYLIST,
+                        ACTION_QUEUE_ADD_MULTIPLE,
+                        ACTION_PLAYLIST_ENTRY_ADD_MULTIPLE,
                         ACTION_HISTORY_DELETE_MULTIPLE,
                         ACTION_CACHE_MULTIPLE,
                         ACTION_CACHE_DELETE_MULTIPLE

@@ -28,12 +28,12 @@ import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_PLAYLIST;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_QUEUE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_INFO;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_ENTRY_ADD;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_ADD;
 
 public class MusicLibrarySearchAdapter extends
         SmartDiffSelectionRecyclerViewAdapter<EntryID, MusicLibrarySearchAdapter.SongViewHolder> {
@@ -210,14 +210,14 @@ public class MusicLibrarySearchAdapter extends
         holder.actionsView.setEntryIDSupplier(() -> holder.entryIDLiveData.getValue());
         holder.actionsView.setActions(
                 new int[] {
-                        ACTION_ADD_TO_QUEUE,
-                        ACTION_ADD_TO_PLAYLIST,
+                        ACTION_QUEUE_ADD,
+                        ACTION_PLAYLIST_ENTRY_ADD,
                         ACTION_INFO
                 },
                 new int[] {
                         ACTION_PLAY,
-                        ACTION_ADD_TO_QUEUE,
-                        ACTION_ADD_TO_PLAYLIST,
+                        ACTION_QUEUE_ADD,
+                        ACTION_PLAYLIST_ENTRY_ADD,
                         ACTION_CACHE,
                         ACTION_CACHE_DELETE,
                         ACTION_INFO

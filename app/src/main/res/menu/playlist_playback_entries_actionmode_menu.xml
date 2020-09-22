@@ -6,6 +6,6 @@
         android:icon="@drawable/ic_play_arrow_white_24dp"/>
     <item
         android:id="@+id/playlist_playback_entries_actionmode_action_queue"
-        android:title="@string/item_action_queue"
+        android:title="@string/item_action_queue_add"
         android:icon="@drawable/ic_queue_white_24dp"/>
 </menu>

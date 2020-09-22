@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
@@ -58,9 +57,7 @@ public class PlaylistStorage {
 
     public CompletableFuture<Void> deletePlaylists(List<Playlist> playlistItems) {
         return CompletableFuture.runAsync(() ->
-                playlistModel.delete(playlistItems.stream()
-                        .map(Playlist::pos)
-                        .collect(Collectors.toList())) // Delete cascades to playlistEntries
+                playlistModel.delete(playlistItems) // Delete cascades to playlistEntries
         );
     }
 

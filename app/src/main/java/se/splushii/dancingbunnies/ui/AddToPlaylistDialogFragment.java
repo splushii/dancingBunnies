@@ -14,12 +14,11 @@ import java.util.concurrent.CompletableFuture;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
-import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
-import androidx.fragment.app.FragmentTransaction;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
@@ -33,7 +32,7 @@ import se.splushii.dancingbunnies.ui.playlist.PlaylistAdapter;
 import se.splushii.dancingbunnies.ui.playlist.PlaylistFragmentModel;
 import se.splushii.dancingbunnies.util.Util;
 
-import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_ENTRY_ADD;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.PLAYLIST_ENTRY_ADD;
 
 public class AddToPlaylistDialogFragment
         extends DialogFragment
@@ -57,19 +56,14 @@ public class AddToPlaylistDialogFragment
         }
         Bundle args = new Bundle();
         args.putStringArray(BUNDLE_KEY_QUERY_NODES, MusicLibraryQueryNode.toJSONStringArray(queryNodes));
-        showDialog(fragmentManager, args);
-    }
-
-    private static void showDialog(FragmentManager fragmentManager, Bundle args) {
-        FragmentTransaction ft = fragmentManager.beginTransaction();
-        Fragment prev = fragmentManager.findFragmentByTag(AddToPlaylistDialogFragment.TAG);
-        if (prev != null) {
-            ft.remove(prev);
-        }
-        ft.addToBackStack(null);
-        DialogFragment dialogFragment = new AddToPlaylistDialogFragment();
-        dialogFragment.setArguments(args);
-        dialogFragment.show(ft, AddToPlaylistDialogFragment.TAG);
+        Util.showDialog(
+                fragmentManager,
+                null,
+                TAG,
+                MainActivity.REQUEST_CODE_ADD_TO_PLAYLIST_DIALOG,
+                new AddToPlaylistDialogFragment(),
+                args
+        );
     }
 
     @Override

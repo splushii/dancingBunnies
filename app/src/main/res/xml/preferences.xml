@@ -56,6 +56,12 @@
             android:defaultValue="@array/empty_array"
             app:allowDividerBelow="true"
             />
+        <Preference
+            app:iconSpaceReserved="false"
+            android:key="@string/pref_key_library_show_transactions"
+            android:title="@string/pref_library_show_transactions"
+            app:allowDividerBelow="true"
+            />
     <Preference
         app:iconSpaceReserved="false"
         android:key="@string/pref_key_about"

@@ -40,6 +40,7 @@ public abstract class PlaylistEntryDao {
                 )
         );
     }
+
     @Query("SELECT " + PlaylistEntry.COLUMN_POS
             + " FROM " + DB.TABLE_PLAYLIST_ENTRIES
             + " WHERE " + PlaylistEntry.COLUMN_ID + " = :playlistEntryID"

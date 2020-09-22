@@ -60,6 +60,7 @@ import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
+import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.AddToNewPlaylistDialogFragment;
 import se.splushii.dancingbunnies.ui.EntryTypeSelectionDialogFragment;
@@ -70,16 +71,16 @@ import se.splushii.dancingbunnies.util.Util;
 
 import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_PLAYLIST;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_QUEUE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULTIPLE_QUERIES;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE_QUERIES;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_ENTRY_ADD_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_ENTRY_ADD_MULTIPLE_QUERIES;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE_QUERIES;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_ADD_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_ADD_MULTIPLE_QUERIES;
 
 public class MusicLibraryFragment
         extends Fragment
@@ -187,6 +188,11 @@ public class MusicLibraryFragment
                     }
 
                     @Override
+                    public List<Transaction> getTransactions() {
+                        return null;
+                    }
+
+                    @Override
                     public void onDestroyActionMode(ActionMode actionMode) {
                         searchSelectionTracker.clearSelection();
                     }
@@ -194,13 +200,13 @@ public class MusicLibraryFragment
         );
         searchActionModeCallback.setActions(
                 new int[]{
-                        ACTION_ADD_MULTIPLE_TO_QUEUE,
-                        ACTION_ADD_MULTIPLE_TO_PLAYLIST
+                        ACTION_QUEUE_ADD_MULTIPLE,
+                        ACTION_PLAYLIST_ENTRY_ADD_MULTIPLE
                 },
                 new int[]{
                         ACTION_PLAY_MULTIPLE,
-                        ACTION_ADD_MULTIPLE_TO_QUEUE,
-                        ACTION_ADD_MULTIPLE_TO_PLAYLIST,
+                        ACTION_QUEUE_ADD_MULTIPLE,
+                        ACTION_PLAYLIST_ENTRY_ADD_MULTIPLE,
                         ACTION_CACHE_MULTIPLE,
                         ACTION_CACHE_DELETE_MULTIPLE
                 },
@@ -250,6 +256,11 @@ public class MusicLibraryFragment
                     }
 
                     @Override
+                    public List<Transaction> getTransactions() {
+                        return null;
+                    }
+
+                    @Override
                     public void onDestroyActionMode(ActionMode actionMode) {
                         browseSelectionTracker.clearSelection();
                     }
@@ -257,13 +268,13 @@ public class MusicLibraryFragment
         );
         browseActionModeCallback.setActions(
                 new int[]{
-                        ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE,
-                        ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST
+                        ACTION_QUEUE_ADD_MULTIPLE_QUERIES,
+                        ACTION_PLAYLIST_ENTRY_ADD_MULTIPLE_QUERIES
                 },
                 new int[]{
                         ACTION_PLAY_MULTIPLE_QUERIES,
-                        ACTION_ADD_MULTIPLE_QUERIES_TO_QUEUE,
-                        ACTION_ADD_MULTIPLE_QUERIES_TO_PLAYLIST,
+                        ACTION_QUEUE_ADD_MULTIPLE_QUERIES,
+                        ACTION_PLAYLIST_ENTRY_ADD_MULTIPLE_QUERIES,
                         ACTION_CACHE_MULTIPLE_QUERIES,
                         ACTION_CACHE_DELETE_MULTIPLE_QUERIES
                 },

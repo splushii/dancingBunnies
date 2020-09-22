@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "9c334dcaddc71a1609ce5bfca28bc32a",
+    "identityHash": "0d75ab7813692a2cb3bcb15c924359e9",
     "entities": [
       {
         "tableName": "entry_id",
@@ -853,12 +853,78 @@
         },
         "indices": [],
         "foreignKeys": []
+      },
+      {
+        "tableName": "library_transactions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowid` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `date` INTEGER, `src` TEXT NOT NULL, `action` TEXT NOT NULL, `args` TEXT NOT NULL, `err` TEXT, `errnum` INTEGER NOT NULL DEFAULT 0)",
+        "fields": [
+          {
+            "fieldPath": "rowid",
+            "columnName": "rowid",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "src",
+            "columnName": "src",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "action",
+            "columnName": "action",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "args",
+            "columnName": "args",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "error",
+            "columnName": "err",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "numErrors",
+            "columnName": "errnum",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "rowid"
+          ],
+          "autoGenerate": true
+        },
+        "indices": [
+          {
+            "name": "index_library_transactions_src",
+            "unique": false,
+            "columnNames": [
+              "src"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_library_transactions_src` ON `${TABLE_NAME}` (`src`)"
+          }
+        ],
+        "foreignKeys": []
       }
     ],
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9c334dcaddc71a1609ce5bfca28bc32a')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0d75ab7813692a2cb3bcb15c924359e9')"
     ]
   }
 }

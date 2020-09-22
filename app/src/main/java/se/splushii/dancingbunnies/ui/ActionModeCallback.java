@@ -18,6 +18,7 @@ import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
+import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_MORE;
@@ -60,6 +61,7 @@ public class ActionModeCallback implements ActionMode.Callback, MenuItem.OnMenuI
         PlaylistID getPlaylistID();
         MusicLibraryQueryNode getQueryNode();
         List<MusicLibraryQueryNode> getQueryNodes();
+        List<Transaction> getTransactions();
         void onDestroyActionMode(ActionMode actionMode);
     }
 
@@ -177,7 +179,8 @@ public class ActionModeCallback implements ActionMode.Callback, MenuItem.OnMenuI
                 callback::getPlaylistEntrySelection,
                 callback::getPlaylistID,
                 callback::getPlaylistSelection,
-                callback::getQueryNodes
+                callback::getQueryNodes,
+                callback::getTransactions
         )) {
             return false;
         }

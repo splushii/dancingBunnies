@@ -41,6 +41,7 @@ import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
+import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.selection.RecyclerViewActionModeSelectionTracker;
@@ -49,13 +50,13 @@ import se.splushii.dancingbunnies.util.Util;
 import static android.view.View.GONE;
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_PLAYLIST;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_QUEUE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_ENTRY_ADD_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_PLAYBACK_ENTRY_SHUFFLE_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_PLAYBACK_ENTRY_SORT_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SORT_MULTIPLE_IN_PLAYLIST_PLAYBACK;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_ADD_MULTIPLE;
 
 public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
 
@@ -157,6 +158,11 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
                     }
 
                     @Override
+                    public List<Transaction> getTransactions() {
+                        return null;
+                    }
+
+                    @Override
                     public void onDestroyActionMode(ActionMode actionMode) {
                         playlistSelectionTracker.clearSelection();
                     }
@@ -217,6 +223,11 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
                     }
 
                     @Override
+                    public List<Transaction> getTransactions() {
+                        return null;
+                    }
+
+                    @Override
                     public void onDestroyActionMode(ActionMode actionMode) {
                         playlistEntriesSelectionTracker.clearSelection();
                     }
@@ -268,6 +279,11 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
                     }
 
                     @Override
+                    public List<Transaction> getTransactions() {
+                        return null;
+                    }
+
+                    @Override
                     public void onDestroyActionMode(ActionMode actionMode) {
                         playlistPlaybackEntriesSelectionTracker.clearSelection();
                     }
@@ -275,14 +291,14 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
         playlistPlaybackActionModeCallback.setActions(
                 new int[] {
                         ACTION_PLAY_MULTIPLE,
-                        ACTION_ADD_MULTIPLE_TO_QUEUE
+                        ACTION_QUEUE_ADD_MULTIPLE
                 },
                 new int[] {
                         ACTION_PLAY_MULTIPLE,
-                        ACTION_ADD_MULTIPLE_TO_QUEUE,
-                        ACTION_SHUFFLE_MULTIPLE_IN_PLAYLIST_PLAYBACK,
-                        ACTION_SORT_MULTIPLE_IN_PLAYLIST_PLAYBACK,
-                        ACTION_ADD_MULTIPLE_TO_PLAYLIST,
+                        ACTION_QUEUE_ADD_MULTIPLE,
+                        ACTION_PLAYLIST_PLAYBACK_ENTRY_SHUFFLE_MULTIPLE,
+                        ACTION_PLAYLIST_PLAYBACK_ENTRY_SORT_MULTIPLE,
+                        ACTION_PLAYLIST_ENTRY_ADD_MULTIPLE,
                         ACTION_CACHE_MULTIPLE,
                         ACTION_CACHE_DELETE_MULTIPLE
                 },

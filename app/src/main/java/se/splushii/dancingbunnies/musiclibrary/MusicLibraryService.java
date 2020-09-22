@@ -42,13 +42,13 @@ import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
 
-import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.META_ADD;
-import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.META_DELETE;
-import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.META_EDIT;
-import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_DELETE;
-import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_ENTRY_ADD;
-import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_ENTRY_DELETE;
-import static se.splushii.dancingbunnies.storage.db.LibraryTransaction.PLAYLIST_ENTRY_MOVE;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.META_ADD;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.META_DELETE;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.META_EDIT;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.PLAYLIST_DELETE;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.PLAYLIST_ENTRY_ADD;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.PLAYLIST_ENTRY_DELETE;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.PLAYLIST_ENTRY_MOVE;
 
 public class MusicLibraryService extends Service {
     private static final String LC = Util.getLogContext(MusicLibraryService.class);
@@ -151,10 +151,10 @@ public class MusicLibraryService extends Service {
                     case PLAYLIST_ENTRY_MOVE:
                     case PLAYLIST_DELETE:
                     case PLAYLIST_ENTRY_ADD:
-                        return true;
                     case META_EDIT:
                     case META_ADD:
                     case META_DELETE:
+                        return true;
                     default:
                         return false;
                 }

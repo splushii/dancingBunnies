@@ -6,19 +6,19 @@
     android:layout_height="wrap_content"
     android:background="@color/windowBackground">
     <androidx.appcompat.widget.Toolbar
-        android:id="@+id/downloads_dialog_toolbar"
+        android:id="@+id/transactions_dialog_toolbar"
         android:layout_width="match_parent"
         android:layout_height="?actionBarSize"
         android:background="@color/colorAccentDark"
         android:visibility="gone"/>
     <LinearLayout
-        android:id="@+id/downloads_dialog_header"
+        android:id="@+id/transactions_dialog_header"
         android:layout_width="match_parent"
         android:layout_height="?actionBarSize"
         android:background="@color/colorAccentDark"
         android:orientation="horizontal">
         <TextView
-            android:id="@+id/downloads_dialog_title"
+            android:id="@+id/transactions_dialog_title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -27,9 +27,9 @@
             android:textColor="@color/colorTextOnSecondary"
             android:fontFamily="sans-serif"
             android:textSize="18sp"
-            android:text="@string/downloads"/>
+            android:text="@string/transactions"/>
         <LinearLayout
-            android:id="@+id/downloads_dialog_clear"
+            android:id="@+id/transactions_dialog_apply"
             android:background="?android:selectableItemBackgroundBorderless"
             android:paddingTop="4dp"
             android:paddingBottom="4dp"
@@ -43,44 +43,44 @@
                 android:layout_height="wrap_content"
                 android:layout_width="wrap_content"
                 android:textColor="@color/colorTextOnSecondarySecondary"
-                android:text="@string/downloads_clear_all"/>
+                android:text="@string/transactions_apply"/>
             <ImageView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:src="@drawable/ic_clear_all_black_24dp"
+                android:src="@drawable/ic_baseline_emoji_symbols_24"
                 android:layout_marginStart="8dp"
                 android:layout_gravity="center_vertical"
-                android:contentDescription="@string/downloads_clear_all"
+                android:contentDescription="@string/transactions_apply"
                 app:tint="@color/colorTextOnSecondarySecondary" />
         </LinearLayout>
     </LinearLayout>
     <LinearLayout
-        android:id="@+id/downloads_dialog_content"
+        android:id="@+id/transactions_dialog_content"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:visibility="gone"
         android:orientation="horizontal">
         <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/downloads_dialog_content_entries"
+            android:id="@+id/transactions_dialog_content_entries"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:background="@color/windowBackground"/>
         <se.splushii.dancingbunnies.ui.FastScroller
-            android:id="@+id/downloads_dialog_content_fastscroller"
+            android:id="@+id/transactions_dialog_content_fastscroller"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:background="@color/windowBackgroundLight"
             android:layout_gravity="end" />
     </LinearLayout>
     <TextView
-        android:id="@+id/downloads_dialog_entries_empty"
+        android:id="@+id/transactions_dialog_entries_empty"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:gravity="center_horizontal|center_vertical"
-        android:text="@string/downloads_empty_queue"
+        android:text="@string/transactions_empty"
         android:textSize="24sp"
         android:textColor="@color/text_secondary_color"
         android:padding="8dp"

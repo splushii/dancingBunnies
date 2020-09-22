@@ -18,6 +18,7 @@
     <string name="pref_library_clear_search_index">Clear search index</string>
     <string name="pref_library_clear_search_index_summary">Clear local search index from selected library sources</string>
     <string name="pref_library_clear_search_index_dialog_title">Clear local search index</string>
+    <string name="pref_library_show_transactions">Show pending transactions</string>
     <string name="pref_about">About</string>
     <!--  Preference strings backend -->
     <string name="pref_backend_new">Add new backend</string>
@@ -64,6 +65,7 @@
     <string name="pref_key_library_clear">se.splushii.dancingbunnies.pref_library_clear</string>
     <string name="pref_key_library_clear_playlists">se.splushii.dancingbunnies.pref_library_clear_playlists</string>
     <string name="pref_key_library_clear_search_index">se.splushii.dancingbunnies.pref_library_clear_search_index</string>
+    <string name="pref_key_library_show_transactions">se.splushii.dancingbunnies.pref_library_show_transactions</string>
     <string name="pref_key_about">se.splushii.dancingbunnies.pref_about</string>
     <!--  Preference keys: backend  -->
     <string name="pref_key_backend_id_counter">se.splushii.dancingbunnies.pref_backend_id_counter</string>
@@ -120,7 +122,7 @@
     <string name="play">play</string>
     <string name="item_action_remove">Remove</string>
     <string name="item_action_play">Play</string>
-    <string name="item_action_queue">Queue</string>
+    <string name="item_action_queue_add">Queue</string>
     <string name="item_action_info">Info</string>
     <string name="item_action_delete">Delete</string>
     <string name="item_action_queue_delete">Remove from queue</string>
@@ -128,17 +130,18 @@
     <string name="item_action_cache">Cache</string>
     <string name="item_action_cache_delete">Delete cache</string>
     <string name="item_action_history_delete">Remove from history</string>
-    <string name="item_action_play_playlist">Play playlist from this position</string>
-    <string name="item_action_delete_playlist">Delete playlist</string>
-    <string name="item_action_add_to_playlist">Add to playlist</string>
-    <string name="item_action_remove_from_playlist">Remove from playlist</string>
-    <string name="item_action_edit_meta">Edit metadata tag</string>
-    <string name="item_action_delete_meta">Delete metadata tag</string>
-    <string name="item_action_goto_meta">Show all entries for tag</string>
+    <string name="item_action_playlist_set_current">Play playlist from this position</string>
+    <string name="item_action_playlist_delete">Delete playlist</string>
+    <string name="item_action_playlist_entry_add">Add to playlist</string>
+    <string name="item_action_playlist_entry_delete">Remove from playlist</string>
+    <string name="item_action_meta_edit">Edit metadata tag</string>
+    <string name="item_action_meta_delete">Delete metadata tag</string>
+    <string name="item_action_meta_goto">Show all entries for tag</string>
     <string name="item_action_shuffle_selection">Shuffle selected entries</string>
     <string name="item_action_sort_selection">Sort selected entries</string>
     <string name="item_action_queue_clear">Clear queue</string>
     <string name="item_action_history_clear">Clear history</string>
+    <string name="item_action_transaction_delete">Delete transactions</string>
     <string name="song_info" />
     <string name="search_hint">…</string>
     <string name="app_label">Dancing Bunnies</string>
@@ -216,4 +219,9 @@
     <string name="downloads_empty_queue">Download queue is empty</string>
     <string name="downloads_clear_all">Clear all downloads</string>
     <string name="empty" />
+    <string name="transactions">Pending transactions</string>
+    <string name="transactions_apply">Apply transactions</string>
+    <string name="transactions_empty">There are no pending transactions</string>
+    <string name="transactions_dialog_error_count">Error count:</string>
+    <string name="transactions_dialog_last_error">Last error:</string>
 </resources>

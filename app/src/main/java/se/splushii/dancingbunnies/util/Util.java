@@ -24,9 +24,11 @@ import java.util.regex.PatternSyntaxException;
 import androidx.core.util.Pair;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import se.splushii.dancingbunnies.MainActivity;
 
 public class Util {
     private static final String LC = getLogContext(Util.class);
@@ -83,14 +85,34 @@ public class Util {
                                   int requestCode,
                                   DialogFragment dialogFragment,
                                   Bundle args) {
-        FragmentTransaction ft = fragment.getParentFragmentManager().beginTransaction();
-        Fragment prev = fragment.getParentFragmentManager().findFragmentByTag(tag);
+        showDialog(
+                fragment.getParentFragmentManager(),
+                fragment,
+                tag,
+                requestCode,
+                dialogFragment,
+                args
+        );
+    }
+
+    public static void showDialog(FragmentManager fragmentManager,
+                                  Fragment targetFragment,
+                                  String tag,
+                                  int requestCode,
+                                  DialogFragment dialogFragment,
+                                  Bundle args) {
+        FragmentTransaction ft = fragmentManager.beginTransaction();
+        Fragment prev = fragmentManager.findFragmentByTag(tag);
         if (prev != null) {
             ft.remove(prev);
         }
         ft.addToBackStack(null);
-        dialogFragment.setTargetFragment(fragment, requestCode);
-        dialogFragment.setArguments(args);
+        if (requestCode != MainActivity.REQUEST_CODE_NONE && targetFragment != null) {
+            dialogFragment.setTargetFragment(targetFragment, requestCode);
+        }
+        if (args != null) {
+            dialogFragment.setArguments(args);
+        }
         dialogFragment.show(ft, tag);
     }
 

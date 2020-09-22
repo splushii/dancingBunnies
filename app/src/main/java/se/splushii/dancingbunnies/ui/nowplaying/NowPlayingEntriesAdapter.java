@@ -27,22 +27,22 @@ import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
 import se.splushii.dancingbunnies.util.Util;
 
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_PLAYLIST;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_MULTIPLE_TO_QUEUE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_PLAYLIST;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_ADD_TO_QUEUE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_INFO;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_ENTRY_ADD;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_ENTRY_ADD_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_SET_CURRENT;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_FROM_QUEUE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_REMOVE_MULTIPLE_FROM_QUEUE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SET_CURRENT_PLAYLIST;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SHUFFLE_MULTIPLE_IN_QUEUE;
-import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_SORT_MULTIPLE_IN_QUEUE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_ADD;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_ADD_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_DELETE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_DELETE_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_SHUFFLE_MULTIPLE;
+import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_SORT_MULTIPLE;
 
 public class NowPlayingEntriesAdapter extends
         SmartDiffSelectionRecyclerViewAdapter<PlaybackEntry, NowPlayingEntriesAdapter.ViewHolder> {
@@ -123,22 +123,22 @@ public class NowPlayingEntriesAdapter extends
         }
         int[] disabled = containsPlaylistEntries ?
                 new int[] {
-                        ACTION_REMOVE_MULTIPLE_FROM_QUEUE,
-                        ACTION_SHUFFLE_MULTIPLE_IN_QUEUE,
-                        ACTION_SORT_MULTIPLE_IN_QUEUE
+                        ACTION_QUEUE_DELETE_MULTIPLE,
+                        ACTION_QUEUE_SHUFFLE_MULTIPLE,
+                        ACTION_QUEUE_SORT_MULTIPLE
                 } : new int[0];
         actionModeCallback.setActions(
                 new int[] {
                         ACTION_PLAY_MULTIPLE,
-                        ACTION_ADD_MULTIPLE_TO_PLAYLIST
+                        ACTION_PLAYLIST_ENTRY_ADD_MULTIPLE
                 },
                 new int[] {
                         ACTION_PLAY_MULTIPLE,
-                        ACTION_ADD_MULTIPLE_TO_QUEUE,
-                        ACTION_SHUFFLE_MULTIPLE_IN_QUEUE,
-                        ACTION_SORT_MULTIPLE_IN_QUEUE,
-                        ACTION_ADD_MULTIPLE_TO_PLAYLIST,
-                        ACTION_REMOVE_MULTIPLE_FROM_QUEUE,
+                        ACTION_QUEUE_ADD_MULTIPLE,
+                        ACTION_QUEUE_SHUFFLE_MULTIPLE,
+                        ACTION_QUEUE_SORT_MULTIPLE,
+                        ACTION_PLAYLIST_ENTRY_ADD_MULTIPLE,
+                        ACTION_QUEUE_DELETE_MULTIPLE,
                         ACTION_CACHE_MULTIPLE,
                         ACTION_CACHE_DELETE_MULTIPLE
                 },
@@ -269,12 +269,12 @@ public class NowPlayingEntriesAdapter extends
         int[] disabledActions;
         if (isQueueEntry) {
             holder.itemContent.setPos(-1);
-            disabledActions = new int[] { ACTION_SET_CURRENT_PLAYLIST };
+            disabledActions = new int[] {ACTION_PLAYLIST_SET_CURRENT};
             holder.updateHighlight(null);
             holder.itemContent.setDragHandleListener(() -> startDrag(holder));
         } else {
             holder.itemContent.setPos(entry.playlistPos);
-            disabledActions = new int[] { ACTION_REMOVE_FROM_QUEUE };
+            disabledActions = new int[] {ACTION_QUEUE_DELETE};
             holder.updateHighlight(nowPlayingStateLiveData.getValue());
             holder.itemContent.setDragHandleListener(null);
         }
@@ -284,15 +284,15 @@ public class NowPlayingEntriesAdapter extends
         holder.actionsView.setActions(
                 new int[] {
                         ACTION_PLAY,
-                        ACTION_ADD_TO_PLAYLIST,
+                        ACTION_PLAYLIST_ENTRY_ADD,
                         ACTION_INFO
                 },
                 new int[] {
                         ACTION_PLAY,
-                        ACTION_SET_CURRENT_PLAYLIST,
-                        ACTION_ADD_TO_QUEUE,
-                        ACTION_ADD_TO_PLAYLIST,
-                        ACTION_REMOVE_FROM_QUEUE,
+                        ACTION_PLAYLIST_SET_CURRENT,
+                        ACTION_QUEUE_ADD,
+                        ACTION_PLAYLIST_ENTRY_ADD,
+                        ACTION_QUEUE_DELETE,
                         ACTION_CACHE,
                         ACTION_CACHE_DELETE,
                         ACTION_INFO

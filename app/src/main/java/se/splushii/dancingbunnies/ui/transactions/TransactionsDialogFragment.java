@@ -1,4 +1,4 @@
-package se.splushii.dancingbunnies.ui.downloads;
+package se.splushii.dancingbunnies.ui.transactions;
 
 import android.app.Dialog;
 import android.content.DialogInterface;
@@ -9,13 +9,12 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
 import androidx.recyclerview.selection.StorageStrategy;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -23,42 +22,40 @@ import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
+import se.splushii.dancingbunnies.jobs.TransactionsWorker;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
-import se.splushii.dancingbunnies.storage.AudioStorage;
-import se.splushii.dancingbunnies.storage.DownloadEntry;
+import se.splushii.dancingbunnies.storage.TransactionStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.MenuActions;
-import se.splushii.dancingbunnies.ui.downloads.DownloadsDialogAdapter.ViewHolder;
 import se.splushii.dancingbunnies.ui.selection.RecyclerViewActionModeSelectionTracker;
 import se.splushii.dancingbunnies.util.Util;
 
-public class DownloadsDialogFragment extends DialogFragment {
-    private static final String LC = Util.getLogContext(DownloadsDialogFragment.class);
+public class TransactionsDialogFragment extends DialogFragment {
+    private static final String LC = Util.getLogContext(TransactionsDialogFragment.class);
 
-    private static final String TAG = "dancingbunnies.splushii.se.fragment_tag.downloads_dialog";
+    private static final String TAG = "dancingbunnies.splushii.se.fragment_tag.transactions_dialog";
 
     private View header;
     private Toolbar toolbar;
     private View contentView;
     private View contentEmptyView;
-    private DownloadsDialogAdapter recyclerViewAdapter;
+    private TransactionsDialogAdapter recyclerViewAdapter;
     private RecyclerViewActionModeSelectionTracker
-            <DownloadEntry, ViewHolder, DownloadsDialogAdapter>
+            <Transaction, TransactionsDialogAdapter.ViewHolder, TransactionsDialogAdapter>
             selectionTracker;
 
-    public static void showDialog(AppCompatActivity activity) {
+    public static void showDialog(Fragment fragment) {
         Util.showDialog(
-                activity.getSupportFragmentManager(),
-                null,
+                fragment,
                 TAG,
                 MainActivity.REQUEST_CODE_NONE,
-                new DownloadsDialogFragment(),
+                new TransactionsDialogFragment(),
                 null
         );
     }
@@ -71,21 +68,21 @@ public class DownloadsDialogFragment extends DialogFragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View rootView = inflater.inflate(R.layout.downloads_dialog_fragment_layout, container, false);
-        header = rootView.findViewById(R.id.downloads_dialog_header);
-        toolbar = rootView.findViewById(R.id.downloads_dialog_toolbar);
-        contentEmptyView = rootView.findViewById(R.id.downloads_dialog_entries_empty);
-        contentView = rootView.findViewById(R.id.downloads_dialog_content);
-        RecyclerView recyclerView = rootView.findViewById(R.id.downloads_dialog_content_entries);
+        View rootView = inflater.inflate(R.layout.transactions_dialog_fragment_layout, container, false);
+        header = rootView.findViewById(R.id.transactions_dialog_header);
+        toolbar = rootView.findViewById(R.id.transactions_dialog_toolbar);
+        contentEmptyView = rootView.findViewById(R.id.transactions_dialog_entries_empty);
+        contentView = rootView.findViewById(R.id.transactions_dialog_content);
+        RecyclerView recyclerView = rootView.findViewById(R.id.transactions_dialog_content_entries);
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-        recyclerViewAdapter = new DownloadsDialogAdapter(this);
+        recyclerViewAdapter = new TransactionsDialogAdapter(this);
         recyclerView.setAdapter(recyclerViewAdapter);
         selectionTracker = new RecyclerViewActionModeSelectionTracker<>(
                 requireActivity(),
-                MainActivity.SELECTION_ID_DOWNLOADS_DIALOG,
+                MainActivity.SELECTION_ID_TRANSACTIONS_DIALOG,
                 recyclerView,
                 recyclerViewAdapter,
-                StorageStrategy.createParcelableStorage(DownloadEntry.class),
+                StorageStrategy.createParcelableStorage(Transaction.class),
                 savedInstanceState
         );
         ActionModeCallback actionModeCallback = new ActionModeCallback(
@@ -95,10 +92,7 @@ public class DownloadsDialogFragment extends DialogFragment {
                 new ActionModeCallback.Callback() {
                     @Override
                     public List<EntryID> getEntryIDSelection() {
-                        return selectionTracker.getSelection()
-                                .stream()
-                                .map(d -> d.entryID)
-                                .collect(Collectors.toList());
+                        return null;
                     }
 
                     @Override
@@ -133,7 +127,7 @@ public class DownloadsDialogFragment extends DialogFragment {
 
                     @Override
                     public List<Transaction> getTransactions() {
-                        return null;
+                        return selectionTracker.getSelection();
                     }
 
                     @Override
@@ -143,8 +137,8 @@ public class DownloadsDialogFragment extends DialogFragment {
                 }
         );
         actionModeCallback.setActions(
-                new int[] {MenuActions.ACTION_CACHE_DELETE_MULTIPLE},
-                new int[] {MenuActions.ACTION_CACHE_DELETE_MULTIPLE},
+                new int[] { MenuActions.ACTION_TRANSACTION_DELETE_MULTIPLE },
+                new int[] { MenuActions.ACTION_TRANSACTION_DELETE_MULTIPLE },
                 new int[] {}
         );
         toolbar.setOnMenuItemClickListener(item ->
@@ -152,20 +146,11 @@ public class DownloadsDialogFragment extends DialogFragment {
         );
         selectionTracker.setActionModeCallback(ActionMode.TYPE_PRIMARY, actionModeCallback);
         toolbar.setNavigationOnClickListener(view -> selectionTracker.clearSelection());
-        FastScroller fastScroller = rootView.findViewById(R.id.downloads_dialog_content_fastscroller);
+        FastScroller fastScroller = rootView.findViewById(R.id.transactions_dialog_content_fastscroller);
         fastScroller.setRecyclerView(recyclerView);
         contentEmptyView.setVisibility(View.VISIBLE);
-        rootView.findViewById(R.id.downloads_dialog_clear).setOnClickListener(view ->
-                recyclerViewAdapter.clearAll()
-        );
-        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
-                super.onScrollStateChanged(recyclerView, newState);
-                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
-                    recyclerViewAdapter.hideTrackItemActions();
-                }
-            }
+        rootView.findViewById(R.id.transactions_dialog_apply).setOnClickListener(view -> {
+            TransactionsWorker.requeue(requireContext(), true);
         });
         return rootView;
     }
@@ -174,19 +159,19 @@ public class DownloadsDialogFragment extends DialogFragment {
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         Dialog dialog = super.onCreateDialog(savedInstanceState);
-        dialog.setContentView(R.layout.downloads_dialog_fragment_layout);
+        dialog.setContentView(R.layout.transactions_dialog_fragment_layout);
         return dialog;
     }
 
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-        AudioStorage.getInstance(requireContext())
-                .getDownloads()
-                .observe(getViewLifecycleOwner(), downloads -> {
-                    recyclerViewAdapter.setDownloads(downloads);
-                    contentEmptyView.setVisibility(downloads.isEmpty() ? View.VISIBLE : View.GONE);
-                    contentView.setVisibility(downloads.isEmpty() ? View.GONE : View.VISIBLE);
+        TransactionStorage.getInstance(requireContext())
+                .getTransactions()
+                .observe(getViewLifecycleOwner(), transactions -> {
+                    recyclerViewAdapter.setTransactions(transactions);
+                    contentEmptyView.setVisibility(transactions.isEmpty() ? View.VISIBLE : View.GONE);
+                    contentView.setVisibility(transactions.isEmpty() ? View.GONE : View.VISIBLE);
                 });
     }
 
