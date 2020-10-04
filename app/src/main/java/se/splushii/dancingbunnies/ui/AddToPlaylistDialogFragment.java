@@ -20,14 +20,14 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
+import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.MetaStorage;
-import se.splushii.dancingbunnies.storage.PlaylistStorage;
+import se.splushii.dancingbunnies.storage.TransactionStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
-import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.ui.playlist.PlaylistAdapter;
 import se.splushii.dancingbunnies.ui.playlist.PlaylistFragmentModel;
 import se.splushii.dancingbunnies.util.Util;
@@ -95,12 +95,15 @@ public class AddToPlaylistDialogFragment
         songEntries.thenAccept(songEntries -> filterPlaylists(model, songEntries));
         recViewAdapter.setOnItemClickListener(playlist ->
                 songEntries.thenAccept(songEntryIDs -> {
-                    List<PlaylistEntry> playlistEntries = PlaylistEntry.generatePlaylistEntries(
-                            playlist.playlistID(),
-                            songEntryIDs.toArray(new EntryID[0])
-                    );
-                    PlaylistStorage.getInstance(requireContext())
-                            .addToPlaylist(playlist.playlistID(), playlistEntries);
+                    PlaylistID playlistID = playlist.playlistID();
+                    TransactionStorage.getInstance(requireContext())
+                            .addPlaylistEntries(
+                                    requireContext(),
+                                    playlistID.src,
+                                    playlistID,
+                                    songEntryIDs,
+                                    null
+                            );
                 }).thenRun(this::dismiss)
         );
         recyclerView.setAdapter(recViewAdapter);
@@ -136,14 +139,16 @@ public class AddToPlaylistDialogFragment
 
     private boolean canBeAdded(EntryID entryID, Playlist playlist) {
         PlaylistID playlistID = playlist.playlistID();
-        if (playlistID.type != PlaylistID.TYPE_STUPID) {
+        if (!PlaylistID.TYPE_STUPID.equals(playlistID.type)) {
             return false;
         }
         if (MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL.equals(playlistID.src)) {
             return true;
         }
-        return playlistID.src.equals(entryID.src) &&
-                MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_ADD);
+        return APIClient.getAPIClient(requireContext(), playlistID.src)
+                .checkAPISupport(PLAYLIST_ENTRY_ADD, entryID.src);
+//        return MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_ADD)
+//                && MusicLibraryService.checkAPISupportOtherSource(PLAYLIST_ENTRY_ADD, entryID.src);
     }
 
     @Override

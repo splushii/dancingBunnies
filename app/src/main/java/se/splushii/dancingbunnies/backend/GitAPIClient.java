@@ -15,6 +15,8 @@ import org.eclipse.jgit.api.CreateBranchCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.LsRemoteCommand;
 import org.eclipse.jgit.api.PullResult;
+import org.eclipse.jgit.api.ResetCommand;
+import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.TransportConfigCallback;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.errors.InvalidRemoteException;
@@ -33,18 +35,35 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import androidx.core.util.Consumer;
 import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.Playlist;
+import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
 import se.splushii.dancingbunnies.musiclibrary.export.SchemaValidator;
+import se.splushii.dancingbunnies.storage.transactions.TransactionPlaylistAdd;
+import se.splushii.dancingbunnies.storage.transactions.TransactionPlaylistDelete;
+import se.splushii.dancingbunnies.storage.transactions.TransactionPlaylistEntryAdd;
+import se.splushii.dancingbunnies.storage.transactions.TransactionPlaylistEntryDelete;
+import se.splushii.dancingbunnies.storage.transactions.TransactionPlaylistEntryMove;
 import se.splushii.dancingbunnies.util.Util;
+
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.PLAYLIST_ADD;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.PLAYLIST_DELETE;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.PLAYLIST_ENTRY_ADD;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.PLAYLIST_ENTRY_DELETE;
+import static se.splushii.dancingbunnies.storage.transactions.Transaction.PLAYLIST_ENTRY_MOVE;
 
 public class GitAPIClient extends APIClient {
     private static final String LC = Util.getLogContext(GitAPIClient.class);
@@ -65,8 +84,8 @@ public class GitAPIClient extends APIClient {
 
     private TransportConfigCallback transportConfigCallback;
 
-    public GitAPIClient(String src) {
-        super(src);
+    public GitAPIClient(String apiInstanceID) {
+        super(MusicLibraryService.API_SRC_ID_GIT, apiInstanceID);
     }
 
     @Override
@@ -106,6 +125,23 @@ public class GitAPIClient extends APIClient {
     }
 
     @Override
+    public boolean checkAPISupport(String action, String argumentSource) {
+        if (action == null) {
+            return false;
+        }
+        switch (action) {
+            case PLAYLIST_ADD: // TODO: Implement
+            case PLAYLIST_DELETE: // TODO: Implement
+            case PLAYLIST_ENTRY_ADD:
+            case PLAYLIST_ENTRY_DELETE:
+            case PLAYLIST_ENTRY_MOVE:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    @Override
     public CompletableFuture<Void> heartbeat() {
         return CompletableFuture.supplyAsync(() -> {
             LsRemoteCommand lsRemoteCommand = Git.lsRemoteRepository()
@@ -125,6 +161,11 @@ public class GitAPIClient extends APIClient {
             }
             return null;
         });
+    }
+
+    @Override
+    public AudioDataSource getAudioData(EntryID entryID) {
+        return null;
     }
 
     private void configureSSHTransport(Transport transport) {
@@ -155,46 +196,51 @@ public class GitAPIClient extends APIClient {
         });
     }
 
-    @Override
-    public CompletableFuture<Optional<List<Playlist>>> getPlaylists(
-            Context context,
-            APIClientRequestHandler handler
-    ) {
+    private String updateWorkDir() {
         Git git = null;
         File workDirFile = workDir.toFile();
         if (workDirFile.exists() && workDirFile.isDirectory()) {
-            Log.d(LC, "getPlaylists: Existing workdir at: " + workDir.toString());
+            Log.d(LC, "Existing workdir at: " + workDir.toString());
             if (!workDirFile.canRead() || !workDirFile.canWrite() || !workDirFile.canExecute()) {
-                return Util.futureResult(
-                        "getPlaylists: Not enough permissions to use workdir: "
-                                + workDir.toString()
-                );
+                return "Not enough permissions to use workdir: " + workDir.toString();
             }
             try {
-                Log.d(LC, "getPlaylists: Trying to use existing repository at: "
+                Log.d(LC, "Trying to use existing repository at: "
                         + workDir.toString());
                 git = Git.open(workDir.toFile());
             } catch (RepositoryNotFoundException e) {
-                Log.d(LC, "getPlaylists: Repository not found at: " + workDir.toString());
+                Log.d(LC, "Repository not found at: " + workDir.toString());
                 git = null;
             } catch (IOException e) {
-                return Util.futureResult(
-                        "getPlaylists: Could not reuse repository: " + workDir.toString()
-                                + " : " + e.getMessage()
-                );
+                return "Could not reuse repository: " + workDir.toString()
+                        + " : " + e.getMessage();
             }
             if (git != null) {
-                Log.d(LC, "getPlaylists: Using existing repository at: " + workDir.toString());
+                Log.d(LC, "Using existing repository at: " + workDir.toString());
+                Status gitStatus;
+                try {
+                    gitStatus = git.status().call();
+                } catch (GitAPIException e) {
+                    return "Could not get git status: " + e.getMessage();
+                }
+                if (!gitStatus.isClean()) {
+                    Log.d(LC, "Working tree is not clean. Resetting...");
+                    try {
+                        git.reset()
+                                .setMode(ResetCommand.ResetType.HARD)
+                                .call();
+                    } catch (GitAPIException e) {
+                        return "Could not reset working tree: " + e.getMessage();
+                    }
+                }
                 String currentBranch;
                 try {
                     currentBranch = git.getRepository().getBranch();
                 } catch (IOException e) {
-                    return Util.futureResult(
-                            "getPlaylists: Could not get current branch: " + e.getMessage()
-                    );
+                    return "Could not get current branch: " + e.getMessage();
                 }
                 if (!currentBranch.equals(gitBranch)) {
-                    Log.d(LC, "getPlaylists: Current branch \"" + currentBranch + "\""
+                    Log.d(LC, "Current branch \"" + currentBranch + "\""
                             + " does not match target branch \"" + gitBranch + "\"."
                             + " Checking out target branch.");
                     try {
@@ -205,13 +251,11 @@ public class GitAPIClient extends APIClient {
                                 .setStartPoint(REMOTE + "/" + gitBranch)
                                 .call();
                     } catch (GitAPIException e) {
-                        return Util.futureResult(
-                                "getPlaylists: Could not checkout target branch: " + e.getMessage()
-                        );
+                        return "Could not checkout target branch: " + e.getMessage();
                     }
-                    Log.d(LC, "getPlaylists: Successfully checked out target branch \"" + gitBranch + "\"");
+                    Log.d(LC, "Successfully checked out target branch \"" + gitBranch + "\"");
                 }
-                Log.d(LC, "getPlaylists: Trying to pull latest changes");
+                Log.d(LC, "Trying to pull latest changes");
                 try {
                     PullResult pullResult = git.pull()
                             .setTransportConfigCallback(transportConfigCallback)
@@ -219,29 +263,24 @@ public class GitAPIClient extends APIClient {
                             .setRebase(true)
                             .call();
                     if (!pullResult.isSuccessful()) {
-                        return Util.futureResult(
-                                "getPlaylists: Could not pull changes"
-                                        + "\nfetch: "
-                                        + pullResult.getFetchResult().getMessages()
-                                        + "\nrebase success: "
-                                        + pullResult.getRebaseResult().getStatus().isSuccessful()
-                                        + "\nmerge success: "
-                                        + pullResult.getMergeResult().getMergeStatus().isSuccessful()
-                        );
+                        return "Could not pull changes"
+                                + "\nfetch: "
+                                + pullResult.getFetchResult().getMessages()
+                                + "\nrebase success: "
+                                + pullResult.getRebaseResult().getStatus().isSuccessful()
+                                + "\nmerge success: "
+                                + pullResult.getMergeResult().getMergeStatus().isSuccessful();
                     } else {
-                        Log.d(LC, "getPlaylists:"
-                                + " Successfully pulled and rebased against latest changes");
+                        Log.d(LC, "Successfully pulled and rebased against latest changes");
                     }
                 } catch (GitAPIException e) {
-                    return Util.futureResult(
-                            "getPlaylists: Could not pull and rebase against "
-                                    + "\"" + gitBranch + "\": " + e.getMessage()
-                    );
+                    return "Could not pull and rebase against "
+                            + "\"" + gitBranch + "\": " + e.getMessage();
                 }
             }
         }
         if (git == null) {
-            Log.d(LC, "getPlaylists: Trying to clone the remote repository");
+            Log.d(LC, "Trying to clone the remote repository");
             CloneCommand cloneCommand = Git.cloneRepository()
                     .setDirectory(workDir.toFile())
                     .setTransportConfigCallback(transportConfigCallback)
@@ -249,14 +288,45 @@ public class GitAPIClient extends APIClient {
                     .setURI(gitURI);
             try {
                 git = cloneCommand.call();
-                Log.d(LC, "getPlaylists: Successfully cloned the remote repository");
+                Log.d(LC, "Successfully cloned the remote repository");
             } catch (GitAPIException e) {
-                return Util.futureResult(
-                        "getPlaylists: Could not clone repository: " + e.getMessage()
-                );
+                return "Could not clone repository: " + e.getMessage();
             }
         }
-        Log.d(LC, "getPlaylist: Local working tree is up to date. Traversing files...");
+        git.close();
+        return null;
+    }
+
+    private String getLocalChanges() {
+        Git git;
+        try {
+            git = Git.open(workDir.toFile());
+        } catch (IOException e) {
+            return "Git open error: " + e.getMessage();
+        }
+        Status gitStatus;
+        try {
+            gitStatus = git.status().call();
+        } catch (GitAPIException e) {
+            return "Git status error: " + e.getMessage();
+        }
+        return "Git status"
+                + "\nAdded: " + gitStatus.getAdded()
+                + "\nRemoved: " + gitStatus.getRemoved()
+                + "\nChanged: " + gitStatus.getChanged()
+                + "\nModified:" + gitStatus.getModified()
+                + "\nUntracked" + gitStatus.getUntracked()
+                + "\nUncommitted: " + gitStatus.getUncommittedChanges();
+    }
+
+    private String getPlaylists(Context context, boolean fetch, Consumer<PlaylistPath> consumer) {
+        if (fetch) {
+            String error = updateWorkDir();
+            if (error != null) {
+                return error;
+            }
+            Log.d(LC, "Local working tree is up to date. Traversing files...");
+        }
         List<Path> playlistPaths;
         try (Stream<Path> walk = Files.walk(Paths.get(workDir.toUri()))) {
             playlistPaths = walk
@@ -265,24 +335,289 @@ public class GitAPIClient extends APIClient {
                     .filter(path -> FilenameUtils.isExtension(path.toString(), SchemaValidator.PLAYLIST_SUFFIX))
                     .collect(Collectors.toList());
         } catch (IOException e) {
-            git.close();
-            return Util.futureResult("getPlaylists: Could not traverse repository"
-                    + " for playlist files: " + e.getMessage());
+            return "Could not traverse repository"
+                    + " for playlist files: " + e.getMessage();
         }
-        Log.d(LC, "getPlaylists: Valid playlist files:\n"
+        Log.d(LC, "Valid playlist files:\n"
                 + playlistPaths.stream()
                 .map(Path::toString)
                 .collect(Collectors.joining("\n"))
         );
-        List<Playlist> playlists = playlistPaths.stream()
-                .map(path -> StupidPlaylist.from(context, src, path))
-                .collect(Collectors.toList());
-        git.close();
-        return CompletableFuture.completedFuture(Optional.of(playlists));
+        playlistPaths.forEach(path -> consumer.accept(new PlaylistPath(
+                path,
+                Playlist.from(context, src, path)))
+        );
+        return null;
     }
 
     @Override
-    public AudioDataSource getAudioData(EntryID entryID) {
+    public CompletableFuture<Optional<List<Playlist>>> getPlaylists(
+            Context context,
+            APIClientRequestHandler handler
+    ) {
+        List<Playlist> playlists = new ArrayList<>();
+        String error = getPlaylists(context, true, p -> playlists.add(p.playlist));
+        if (error != null) {
+            return Util.futureResult(error);
+        }
+        return Util.futureResult(Optional.of(playlists));
+    }
+
+    @Override
+    public APIClient.Batch startBatch(Context context) throws BatchException {
+        return new Batch(context, this);
+    }
+
+    public static class Batch extends APIClient.Batch {
+        private final GitAPIClient api;
+        private final HashMap<PlaylistID, PlaylistPath> playlistPaths = new HashMap<>();
+        private final List<String> commitMessages = new ArrayList<>();
+
+        Batch(Context context, GitAPIClient api) throws BatchException {
+            this.api = api;
+            updatePlaylistPaths(context, true);
+        }
+
+        private void updatePlaylistPaths(Context context, boolean fetch) throws BatchException {
+            playlistPaths.clear();
+            String error = api.getPlaylists(
+                    context,
+                    fetch,
+                    p -> playlistPaths.put(p.playlist.id, p)
+            );
+            if (error != null) {
+                throw new BatchException("Could not get playlists from local workdir: " + error);
+            }
+        }
+
+        private Path getPath(PlaylistID playlistID) throws APIClient.BatchException {
+            PlaylistPath playlistPath = playlistPaths.get(playlistID);
+            if (playlistPath == null) {
+                throw new BatchException("Could not find playlist with id " + playlistID.getDisplayableString());
+            }
+            return playlistPath.path;
+        }
+
+        @Override
+        public void addPlaylist(Context context,
+                                PlaylistID playlistID,
+                                String name,
+                                String query,
+                                PlaylistID beforePlaylistID
+        ) throws BatchException {
+            if (playlistPaths.containsKey(playlistID)) {
+                throw new BatchException("Playlist with id " + playlistID.getDisplayableString()
+                + " already exists");
+            }
+            String fileName = playlistID.id + ".yaml";
+            int counter = 1;
+            while (true) {
+                Path path = api.workDir.resolve(fileName);
+                if (!playlistPaths.values().stream()
+                        .map(p -> p.path)
+                        .anyMatch(p -> p.equals(path))) {
+                    break;
+                }
+                fileName = playlistID.id + "-" + counter + ".yaml";
+            }
+            Path path = api.workDir.resolve(fileName);
+            String error = StupidPlaylist.addPlaylistInFile(
+                    context,
+                    path,
+                    playlistID,
+                    name,
+                    query
+            );
+            if (error != null) {
+                throw new BatchException("Could not update local workdir: " + error);
+            }
+            commitMessages.add(new TransactionPlaylistAdd(
+                    0,
+                    null,
+                    null,
+                    0,
+                    null,
+                    playlistID,
+                    name,
+                    query,
+                    beforePlaylistID
+            ).getDisplayableDetails());
+            updatePlaylistPaths(context, false);
+        }
+
+        @Override
+        public void deletePlaylist(Context context, PlaylistID playlistID) throws BatchException {
+            if (!playlistPaths.containsKey(playlistID)) {
+                throw new BatchException("Can not find playlist "
+                        + playlistID.getDisplayableString());
+            }
+            PlaylistPath playlistPath = playlistPaths.get(playlistID);
+            if (playlistPath == null) {
+                throw new BatchException("Can not find path for playlist "
+                        + playlistID.getDisplayableString());
+            }
+            File playlistFile = playlistPath.path.toFile();
+            if (!playlistFile.isFile()) {
+                throw new BatchException("Could not delete playlist "
+                        + playlistID.getDisplayableString() + " in local workdir. Not a file.");
+            }
+            if (!playlistFile.delete()) {
+                throw new BatchException("Could not delete playlist "
+                        + playlistID.getDisplayableString() + " in local workdir");
+            }
+            commitMessages.add(new TransactionPlaylistDelete(
+                    0,
+                    null,
+                    null,
+                    0,
+                    null,
+                    playlistID
+            ).getDisplayableDetails());
+            updatePlaylistPaths(context, false);
+        }
+
+        @Override
+        public void addPlaylistEntry(Context context,
+                                     PlaylistID playlistID,
+                                     EntryID entryID,
+                                     String beforePlaylistEntryID,
+                                     Meta metaSnapshot
+        ) throws BatchException {
+            String error = StupidPlaylist.addEntryInFile(
+                    context,
+                    getPath(playlistID),
+                    entryID,
+                    beforePlaylistEntryID,
+                    metaSnapshot
+            );
+            if (error != null) {
+                throw new BatchException("Could not update local workdir: " + error);
+            }
+            commitMessages.add(new TransactionPlaylistEntryAdd(
+                    0,
+                    null,
+                    null,
+                    0,
+                    null,
+                    playlistID,
+                    entryID,
+                    beforePlaylistEntryID,
+                    metaSnapshot
+            ).getDisplayableDetails());
+        }
+
+        @Override
+        public void deletePlaylistEntry(Context context,
+                                        PlaylistID playlistID,
+                                        String playlistEntryID,
+                                        EntryID entryID
+        ) throws BatchException {
+            String error = StupidPlaylist.deleteEntryInFile(
+                    context,
+                    getPath(playlistID),
+                    playlistEntryID
+            );
+            if (error != null) {
+                throw new BatchException("Could not update local workdir: " + error);
+            }
+            commitMessages.add(new TransactionPlaylistEntryDelete(
+                    0,
+                    null,
+                    null,
+                    0,
+                    null,
+                    playlistID,
+                    playlistEntryID,
+                    entryID
+            ).getDisplayableDetails());
+        }
+
+        @Override
+        public void movePlaylistEntry(Context context,
+                                      PlaylistID playlistID,
+                                      String playlistEntryID,
+                                      EntryID entryID,
+                                      String beforePlaylistEntryID
+        ) throws BatchException {
+            String error = StupidPlaylist.moveEntryInFile(
+                    context,
+                    getPath(playlistID),
+                    playlistEntryID,
+                    beforePlaylistEntryID
+            );
+            if (error != null) {
+                throw new BatchException("Could not update local workdir: " + error);
+            }
+            commitMessages.add(new TransactionPlaylistEntryMove(
+                    0,
+                    null,
+                    null,
+                    0,
+                    null,
+                    playlistID,
+                    playlistEntryID,
+                    entryID,
+                    beforePlaylistEntryID
+            ).getDisplayableDetails());
+        }
+
+        @Override
+        CompletableFuture<Void> commit() {
+            if (commitMessages.isEmpty()) {
+                return Util.futureResult();
+            }
+            String message;
+            if (commitMessages.size() == 1) {
+                message = commitMessages.get(0);
+            } else {
+                message = "Multiple changes (" + commitMessages.size() + ")\n\n";
+                message += String.join("\n", commitMessages);
+            }
+            String error = api.pushWorkDir(message);
+            if (error != null) {
+                return Util.futureResult("Could not push changes: " + error);
+            }
+            return Util.futureResult();
+        }
+    }
+
+    private String pushWorkDir(String message) {
+        try {
+            Git git = Git.open(workDir.toFile());
+            git.add()
+                    .addFilepattern(".")
+                    .call();
+            git.add()
+                    .setUpdate(true)
+                    .addFilepattern(".")
+                    .call();
+            if (git.status().call().isClean()) {
+                return "No changes to commit";
+            }
+            git.commit()
+                    .setAll(true)
+                    .setAllowEmpty(false)
+                    .setCommitter("dancingBunnies", "dancingBunnies@splushii.se")
+                    .setMessage(message)
+                    .call();
+            git.push()
+                    .setRemote(gitURI)
+                    .setTransportConfigCallback(transportConfigCallback)
+                    .call();
+
+        } catch (IOException | GitAPIException e) {
+            e.printStackTrace();
+            return e.getMessage();
+        }
         return null;
+    }
+
+    private static class PlaylistPath {
+        final Path path;
+        final Playlist playlist;
+        PlaylistPath(Path path, Playlist playlist) {
+            this.path = path;
+            this.playlist = playlist;
+        }
     }
 }

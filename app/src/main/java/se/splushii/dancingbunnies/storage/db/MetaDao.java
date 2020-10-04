@@ -124,45 +124,87 @@ public abstract class MetaDao {
         }
     }
 
-    private boolean isValidLocalMetaTag(String expectedTable,
-                                        String expectedType,
-                                        boolean userKey,
-                                        String key) {
-        if (!Meta.isLocal(key)) {
-            Log.e(LC, "isValidLocalMetaTag. Key is not reserved for local use: + " + key);
-            return false;
-        }
-        if (userKey && !Meta.isLocalUser(key)) {
-            Log.e(LC, "isValidLocalMetaTag. Key is not reserved for local user use: " + key);
-            return false;
-        }
+    public void insertMeta(EntryID entryID, String key, String value) {
         String table = getTable(key);
-        if (!expectedTable.equals(table)) {
-            Log.e(LC, "isValidLocalMetaTag: Trying to insert tag"
-                    + " with wrong value type for key: " + key
-                    + " expected type: " + Meta.getType(key) + " actual type: " + expectedType);
-            return false;
+        switch (table) {
+            case DB.TABLE_META_STRING:
+            case DB.TABLE_META_LONG:
+            case DB.TABLE_META_DOUBLE:
+                switch (Meta.getType(key)) {
+                    case STRING:
+                        insert(MetaString.from(entryID.src, entryID.id, key, value));
+                        break;
+                    case LONG:
+                        insert(MetaLong.from(entryID.src, entryID.id, key, Long.parseLong(value)));
+                        break;
+                    case DOUBLE:
+                        insert(MetaDouble.from(entryID.src, entryID.id, key, Double.parseDouble(value)));
+                        break;
+                }
+                break;
+            case DB.TABLE_META_LOCAL_STRING:
+            case DB.TABLE_META_LOCAL_LONG:
+            case DB.TABLE_META_LOCAL_DOUBLE:
+                switch (Meta.getType(key)) {
+                    case STRING:
+                        insert(MetaLocalString.from(entryID.src, entryID.id, key, value));
+                        break;
+                    case LONG:
+                        insert(MetaLocalLong.from(entryID.src, entryID.id, key, Long.parseLong(value)));
+                        break;
+                    case DOUBLE:
+                        insert(MetaLocalDouble.from(entryID.src, entryID.id, key, Double.parseDouble(value)));
+                        break;
+                }
+                break;
+            case DB.TABLE_ENTRY_ID:
+                // NOPE
+            default:
+                Log.e(LC, "Tried to delete meta for invalid table \"" + table + "\""
+                        + ", key: " + key);
+                break;
         }
-        return true;
     }
-    public void insertLocalMeta(EntryID entryID, String key, String value, boolean userKey) {
-        if (!isValidLocalMetaTag(DB.TABLE_META_LOCAL_STRING, "string", userKey, key)) {
-            return;
-        }
-        insert(MetaLocalString.from(entryID.src, entryID.id, key, value));
-    }
-    public void insertLocalMeta(EntryID entryID, String key, long value, boolean userKey) {
-        if (!isValidLocalMetaTag(DB.TABLE_META_LOCAL_LONG, "long", userKey, key)) {
-            return;
-        }
-        insert(MetaLocalLong.from(entryID.src, entryID.id, key, value));
-    }
-    public void insertLocalMeta(EntryID entryID, String key, double value, boolean userKey) {
-        if (!isValidLocalMetaTag(DB.TABLE_META_LOCAL_DOUBLE, "double", userKey, key)) {
-            return;
-        }
-        insert(MetaLocalDouble.from(entryID.src, entryID.id, key, value));
-    }
+
+//    private boolean isValidLocalMetaTag(String expectedTable,
+//                                        String expectedType,
+//                                        boolean userKey,
+//                                        String key) {
+//        if (!Meta.isLocal(key)) {
+//            Log.e(LC, "isValidLocalMetaTag. Key is not reserved for local use: + " + key);
+//            return false;
+//        }
+//        if (userKey && !Meta.isLocalUser(key)) {
+//            Log.e(LC, "isValidLocalMetaTag. Key is not reserved for local user use: " + key);
+//            return false;
+//        }
+//        String table = getTable(key);
+//        if (!expectedTable.equals(table)) {
+//            Log.e(LC, "isValidLocalMetaTag: Trying to insert tag"
+//                    + " with wrong value type for key: " + key
+//                    + " expected type: " + Meta.getType(key) + " actual type: " + expectedType);
+//            return false;
+//        }
+//        return true;
+//    }
+//    public void insertLocalMeta(EntryID entryID, String key, String value, boolean userKey) {
+//        if (!isValidLocalMetaTag(DB.TABLE_META_LOCAL_STRING, "string", userKey, key)) {
+//            return;
+//        }
+//        insert(MetaLocalString.from(entryID.src, entryID.id, key, value));
+//    }
+//    public void insertLocalMeta(EntryID entryID, String key, long value, boolean userKey) {
+//        if (!isValidLocalMetaTag(DB.TABLE_META_LOCAL_LONG, "long", userKey, key)) {
+//            return;
+//        }
+//        insert(MetaLocalLong.from(entryID.src, entryID.id, key, value));
+//    }
+//    public void insertLocalMeta(EntryID entryID, String key, double value, boolean userKey) {
+//        if (!isValidLocalMetaTag(DB.TABLE_META_LOCAL_DOUBLE, "double", userKey, key)) {
+//            return;
+//        }
+//        insert(MetaLocalDouble.from(entryID.src, entryID.id, key, value));
+//    }
     @Insert(onConflict = REPLACE)
     abstract void insert(MetaLocalString... values);
     @Insert(onConflict = REPLACE)
@@ -170,26 +212,73 @@ public abstract class MetaDao {
     @Insert(onConflict = REPLACE)
     abstract void insert(MetaLocalDouble... values);
 
-    public void deleteLocalMeta(EntryID entryID, String key, String value, boolean userKey) {
-        if (!isValidLocalMetaTag(DB.TABLE_META_LOCAL_STRING, "string", userKey, key)) {
-            return;
+    public void deleteMeta(EntryID entryID, String key, String value) {
+        String table = getTable(key);
+        switch (table) {
+            case DB.TABLE_META_STRING:
+            case DB.TABLE_META_LONG:
+            case DB.TABLE_META_DOUBLE:
+                switch (Meta.getType(key)) {
+                    case STRING:
+                        deleteString(entryID.src, entryID.id, key, value);
+                        break;
+                    case LONG:
+                        deleteLong(entryID.src, entryID.id, key, Long.parseLong(value));
+                        break;
+                    case DOUBLE:
+                        deleteDouble(entryID.src, entryID.id, key, Double.parseDouble(value));
+                        break;
+                }
+                break;
+            case DB.TABLE_META_LOCAL_STRING:
+            case DB.TABLE_META_LOCAL_LONG:
+            case DB.TABLE_META_LOCAL_DOUBLE:
+                switch (Meta.getType(key)) {
+                    case STRING:
+                        deleteLocalString(entryID.src, entryID.id, key, value);
+                        break;
+                    case LONG:
+                        deleteLocalLong(entryID.src, entryID.id, key, Long.parseLong(value));
+                        break;
+                    case DOUBLE:
+                        deleteLocalDouble(entryID.src, entryID.id, key, Double.parseDouble(value));
+                        break;
+                }
+                break;
+            case DB.TABLE_ENTRY_ID:
+                // NOPE
+            default:
+                Log.e(LC, "Tried to delete meta for invalid table \"" + table + "\""
+                        + ", key: " + key);
+                break;
         }
-        deleteLocalString(entryID.src, entryID.id, key, value);
     }
-    public void deleteLocalMeta(EntryID entryID, String key, long value, boolean userKey) {
-        if (!isValidLocalMetaTag(DB.TABLE_META_LOCAL_LONG, "long", userKey, key)) {
-            return;
-        }
-        deleteLocalLong(entryID.src, entryID.id, key, value);
-    }
-    public void deleteLocalMeta(EntryID entryID, String key, double value, boolean userKey) {
-        if (!isValidLocalMetaTag(DB.TABLE_META_LOCAL_DOUBLE, "double", userKey, key)) {
-            return;
-        }
-        deleteLocalDouble(entryID.src, entryID.id, key, value);
-    }
+//    public void deleteLocalMeta(EntryID entryID, String key, String value, boolean userKey) {
+//        if (!isValidLocalMetaTag(DB.TABLE_META_LOCAL_STRING, "string", userKey, key)) {
+//            return;
+//        }
+//        deleteLocalString(entryID.src, entryID.id, key, value);
+//    }
+//    public void deleteLocalMeta(EntryID entryID, String key, long value, boolean userKey) {
+//        if (!isValidLocalMetaTag(DB.TABLE_META_LOCAL_LONG, "long", userKey, key)) {
+//            return;
+//        }
+//        deleteLocalLong(entryID.src, entryID.id, key, value);
+//    }
+//    public void deleteLocalMeta(EntryID entryID, String key, double value, boolean userKey) {
+//        if (!isValidLocalMetaTag(DB.TABLE_META_LOCAL_DOUBLE, "double", userKey, key)) {
+//            return;
+//        }
+//        deleteLocalDouble(entryID.src, entryID.id, key, value);
+//    }
     private static final String isTag = "\"" + DB.COLUMN_KEY + "\" = :key"
         + " AND \"" + DB.COLUMN_VALUE + "\" = :value";
+    @Query("DELETE FROM " + DB.TABLE_META_STRING + " WHERE " + isEntryID + " AND " + isTag)
+    abstract void deleteString(String src, String id, String key, String value);
+    @Query("DELETE FROM " + DB.TABLE_META_LONG + " WHERE " + isEntryID + " AND " + isTag)
+    abstract void deleteLong(String src, String id, String key, long value);
+    @Query("DELETE FROM " + DB.TABLE_META_DOUBLE + " WHERE " + isEntryID + " AND " + isTag)
+    abstract void deleteDouble(String src, String id, String key, double value);
     @Query("DELETE FROM " + DB.TABLE_META_LOCAL_STRING + " WHERE " + isEntryID + " AND " + isTag)
     abstract void deleteLocalString(String src, String id, String key, String value);
     @Query("DELETE FROM " + DB.TABLE_META_LOCAL_LONG + " WHERE " + isEntryID + " AND " + isTag)
@@ -197,23 +286,35 @@ public abstract class MetaDao {
     @Query("DELETE FROM " + DB.TABLE_META_LOCAL_DOUBLE + " WHERE " + isEntryID + " AND " + isTag)
     abstract void deleteLocalDouble(String src, String id, String key, double value);
     @Transaction
-    public void replaceLocalMeta(EntryID entryID, String key, String oldValue, String newValue, boolean userKey) {
-        deleteLocalMeta(entryID, key, oldValue, userKey);
-        insertLocalMeta(entryID, key, newValue, userKey);
+    public void replaceMeta(EntryID entryID, String key, String oldValue, String newValue) {
+        deleteMeta(entryID, key, oldValue);
+        insertMeta(entryID, key, newValue);
     }
-    @Transaction
-    public void replaceLocalMeta(EntryID entryID, String key, long oldValue, long newValue, boolean userKey) {
-        deleteLocalMeta(entryID, key, oldValue, userKey);
-        insertLocalMeta(entryID, key, newValue, userKey);
-    }
-    @Transaction
-    public void replaceLocalMeta(EntryID entryID, String key, double oldValue, double newValue, boolean userKey) {
-        deleteLocalMeta(entryID, key, oldValue, userKey);
-        insertLocalMeta(entryID, key, newValue, userKey);
-    }
+//    @Transaction
+//    public void replaceLocalMeta(EntryID entryID, String key, String oldValue, String newValue, boolean userKey) {
+//        deleteLocalMeta(entryID, key, oldValue, userKey);
+//        insertLocalMeta(entryID, key, newValue, userKey);
+//    }
+//    @Transaction
+//    public void replaceLocalMeta(EntryID entryID, String key, long oldValue, long newValue, boolean userKey) {
+//        deleteLocalMeta(entryID, key, oldValue, userKey);
+//        insertLocalMeta(entryID, key, newValue, userKey);
+//    }
+//    @Transaction
+//    public void replaceLocalMeta(EntryID entryID, String key, double oldValue, double newValue, boolean userKey) {
+//        deleteLocalMeta(entryID, key, oldValue, userKey);
+//        insertLocalMeta(entryID, key, newValue, userKey);
+//    }
 
     @Query("DELETE FROM " + DB.TABLE_ENTRY_ID + " WHERE " + DB.COLUMN_SRC + " = :src")
     public abstract void deleteWhereSourceIs(String src);
+
+    @Transaction
+    public void replaceWith(String src, List<Meta> metaList, Consumer<String> progressHandler) {
+        progressHandler.accept("Clearing old entries...");
+        deleteWhereSourceIs(src);
+        insert(metaList, progressHandler);
+    }
 
     private static final String getStringMeta
             = "SELECT * FROM " + DB.TABLE_META_STRING + " WHERE " + isEntryID

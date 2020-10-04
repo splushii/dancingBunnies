@@ -7,15 +7,19 @@ import org.json.JSONObject;
 
 import java.util.Date;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
+import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.util.Util;
 
 public class TransactionMetaEdit extends Transaction {
     private static final String LC = Util.getLogContext(TransactionMetaEdit.class);
+
+    private static final String GROUP = Transaction.GROUP_LIBRARY;
+    private static final String ACTION = Transaction.META_EDIT;
 
     private static final String JSON_KEY_ENTRYID = "entryid";
     private static final String JSON_KEY_KEY = "key";
@@ -34,7 +38,7 @@ public class TransactionMetaEdit extends Transaction {
                                String errorMessage,
                                JSONObject args
     ) throws JSONException {
-        super(id, src, date, errorCount, errorMessage, Transaction.META_EDIT);
+        super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
         entryID = EntryID.from(args.getJSONObject(JSON_KEY_ENTRYID));
         key = args.getString(JSON_KEY_KEY);
         oldValue = args.getString(JSON_KEY_OLD_VALUE);
@@ -51,7 +55,7 @@ public class TransactionMetaEdit extends Transaction {
                                String oldValue,
                                String newValue
     ) {
-        super(id, src, date, errorCount, errorMessage, Transaction.META_EDIT);
+        super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
         this.entryID = entryID;
         this.key = key;
         this.oldValue = oldValue;
@@ -75,6 +79,11 @@ public class TransactionMetaEdit extends Transaction {
             return null;
         }
         return args;
+    }
+
+    @Override
+    public String getArgsSource() {
+        return entryID.src;
     }
 
     @Override
@@ -107,20 +116,19 @@ public class TransactionMetaEdit extends Transaction {
     }
 
     @Override
-    String apply(Context context, String api) {
-        switch (api) {
-            case MusicLibraryService.API_SRC_ID_DANCINGBUNNIES:
-                MetaStorage.getInstance(context).replaceLocalUserMeta(
-                        entryID,
-                        key,
-                        oldValue,
-                        newValue
-                );
-                return null;
-            case MusicLibraryService.API_SRC_ID_SUBSONIC:
-            case MusicLibraryService.API_SRC_ID_GIT:
-            default:
-                return "Transaction not supported for api: " + api;
-        }
+    public CompletableFuture<Void> applyLocally(Context context) {
+        return MetaStorage.getInstance(context)
+                .replaceMeta(entryID, key, oldValue, newValue);
     }
+
+    @Override
+    public void addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
+        batch.editMeta(context, entryID, key, oldValue, newValue);
+    }
+//
+//    @Override
+//    CompletableFuture<Void> applyViaAPI(Context context) {
+//        return APIClient.getAPIClient(context, getSrc())
+//                .editMeta(context, entryID, key, oldValue, newValue);
+//    }
 }

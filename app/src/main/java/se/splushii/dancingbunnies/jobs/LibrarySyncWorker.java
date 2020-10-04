@@ -20,6 +20,8 @@ import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 import se.splushii.dancingbunnies.backend.MusicLibraryRequestHandler;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
+import se.splushii.dancingbunnies.storage.TransactionStorage;
+import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.ui.settings.SettingsActivityFragment;
 import se.splushii.dancingbunnies.ui.settings.TimePreference;
 import se.splushii.dancingbunnies.util.Util;
@@ -84,6 +86,20 @@ public class LibrarySyncWorker extends Worker {
                             setProgress(msg);
                         }
                     }
+            ).thenRun(() ->
+                    TransactionStorage.getInstance(getApplicationContext())
+                            .getTransactionsOnce(src, Transaction.GROUP_LIBRARY)
+                            .thenAccept(transactions -> {
+                                int size = transactions.size();
+                                for (int i = 0; i < size; i++) {
+                                    setProgress("Library sync progress:"
+                                            + " Applying "
+                                            + (i + 1) + " / " + size
+                                            + " transactions."
+                                    );
+                                    transactions.get(i).applyLocally(getApplicationContext());
+                                }
+                            })
             ).handle((aVoid, throwable) -> throwable);
             e = fetchLibraryFuture.join();
             if (e != null) {
@@ -137,6 +153,20 @@ public class LibrarySyncWorker extends Worker {
                             setProgress(msg);
                         }
                     }
+            ).thenRun(() ->
+                    TransactionStorage.getInstance(getApplicationContext())
+                            .getTransactionsOnce(src, Transaction.GROUP_PLAYLISTS)
+                            .thenAccept(transactions -> {
+                                int size = transactions.size();
+                                for (int i = 0; i < size; i++) {
+                                    setProgress("Playlist sync progress:"
+                                            + " Applying "
+                                            + (i + 1) + " / " + size
+                                            + " transactions."
+                                    );
+                                    transactions.get(i).applyLocally(getApplicationContext());
+                                }
+                            })
             ).handle((aVoid, throwable) -> throwable);
             e = fetchPlaylistsFuture.join();
             if (e != null) {

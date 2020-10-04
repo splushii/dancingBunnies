@@ -26,6 +26,7 @@ import androidx.core.util.Pair;
 import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.Playlist;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
@@ -110,8 +111,8 @@ public class SubsonicAPIClient extends APIClient {
     private String baseURL = "";
     private String tagDelimiter = null;
 
-    public SubsonicAPIClient(String src, Context context) {
-        super(src);
+    public SubsonicAPIClient(String apiInstanceID, Context context) {
+        super(MusicLibraryService.API_SRC_ID_SUBSONIC, apiInstanceID);
         this.context = context;
         retries = new HashMap<>();
         SecureRandom tmpRand;
@@ -734,6 +735,22 @@ public class SubsonicAPIClient extends APIClient {
         username = settings.getString(APIClient.SETTINGS_KEY_SUBSONIC_USERNAME);
         password = settings.getString(APIClient.SETTINGS_KEY_SUBSONIC_PASSWORD);
         tagDelimiter = settings.getString(APIClient.SETTINGS_KEY_DB_TAG_DELIM);
+    }
+
+    @Override
+    public boolean checkAPISupport(String action, String argumentSource) {
+        if (action == null) {
+            return false;
+        }
+        switch (action) {
+            default:
+                return false;
+        }
+    }
+
+    @Override
+    public Batch startBatch(Context context) throws BatchException {
+        throw new BatchException("Not implemented");
     }
 
     private String statusOK(String resp) {

@@ -11,7 +11,6 @@ import androidx.room.Entity;
 import androidx.room.Index;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.SmartPlaylist;
-import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
 
 @Entity(tableName = DB.TABLE_PLAYLISTS,
 // Not possible to constrain the pos because of inserts, because incrementing COLUMN_POS
@@ -44,7 +43,7 @@ public class Playlist implements Parcelable {
     String id;
     @NonNull
     @ColumnInfo(name = COLUMN_TYPE)
-    int type;
+    String type;
     @NonNull
     @ColumnInfo(name = COLUMN_NAME)
     String name;
@@ -60,14 +59,14 @@ public class Playlist implements Parcelable {
         init(
                 in.readString(),
                 in.readString(),
-                in.readInt(),
+                in.readString(),
                 in.readString(),
                 in.readString(),
                 in.readLong()
         );
     }
 
-    private void init(String src, String id, int type, String name, String query, long pos) {
+    private void init(String src, String id, String type, String name, String query, long pos) {
         this.src = src;
         this.id = id;
         this.type = type;
@@ -105,7 +104,7 @@ public class Playlist implements Parcelable {
     };
 
     private static Playlist from(se.splushii.dancingbunnies.musiclibrary.Playlist playlist,
-                                 int pos,
+                                 long pos,
                                  String query) {
         Playlist roomPlaylist = new Playlist();
         roomPlaylist.init(
@@ -119,12 +118,27 @@ public class Playlist implements Parcelable {
         return roomPlaylist;
     }
 
-    public static Playlist from(StupidPlaylist playlist, int pos) {
-        return from(playlist, pos, null);
+    public static Playlist from(Playlist playlist, long pos) {
+        Playlist roomPlaylist = new Playlist();
+        roomPlaylist.init(
+                playlist.src,
+                playlist.id,
+                playlist.type,
+                playlist.name,
+                playlist.query,
+                pos
+        );
+        return roomPlaylist;
     }
 
-    public static Playlist from(SmartPlaylist playlist, int pos) {
-        return from(playlist, pos, playlist.getJSONQueryString());
+    public static Playlist from(se.splushii.dancingbunnies.musiclibrary.Playlist playlist, long pos) {
+        if (playlist instanceof SmartPlaylist) {
+            return from(
+                    playlist,
+                    pos,
+                    ((SmartPlaylist)playlist).getJSONQueryString());
+        }
+        return from(playlist, pos, null);
     }
 
     @Override
@@ -136,7 +150,7 @@ public class Playlist implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(src);
         dest.writeString(id);
-        dest.writeInt(type);
+        dest.writeString(type);
         dest.writeString(name);
         dest.writeString(query);
         dest.writeLong(pos);
@@ -149,7 +163,7 @@ public class Playlist implements Parcelable {
         Playlist playlist = (Playlist) o;
         return src.equals(playlist.src)
                 && id.equals(playlist.id)
-                && type == playlist.type;
+                && type.equals(playlist.type);
     }
 
     @Override

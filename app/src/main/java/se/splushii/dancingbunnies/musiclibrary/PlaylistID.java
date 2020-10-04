@@ -4,18 +4,25 @@ import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import se.splushii.dancingbunnies.util.Util;
+
 public class PlaylistID implements Parcelable {
-    public static final int TYPE_INVALID = -1;
-    public static final int TYPE_STUPID = 0;
-    public static final int TYPE_SMART = 1;
+    public static final String TYPE_STUPID = "static";
+    public static final String TYPE_SMART = "smart";
+    static final String JSON_KEY_SRC = "src";
+    static final String JSON_KEY_ID = "id";
+    static final String JSON_KEY_TYPE = "type";
     private static final String BUNDLE_KEY_SRC = "dancingbunnies.bundle.key.playlistid.src";
     private static final String BUNDLE_KEY_ID = "dancingbunnies.bundle.key.playlistid.id";
     private static final String BUNDLE_KEY_TYPE = "dancingbunnies.bundle.key.playlistid.type";
     public final String src;
     public final String id;
-    public final int type;
+    public final String type;
 
-    public PlaylistID(String src, String id, int type) {
+    public PlaylistID(String src, String id, String type) {
         this.src = src;
         this.id = id;
         this.type = type;
@@ -24,7 +31,15 @@ public class PlaylistID implements Parcelable {
     public PlaylistID(Parcel in) {
         src = in.readString();
         id = in.readString();
-        type = in.readInt();
+        type = in.readString();
+    }
+
+    public static PlaylistID generate(String src, String type) {
+        return new PlaylistID(
+                src,
+                Util.generateID(),
+                type
+        );
     }
 
     public static final Creator<PlaylistID> CREATOR = new Creator<PlaylistID>() {
@@ -39,21 +54,9 @@ public class PlaylistID implements Parcelable {
         }
     };
 
-    private String typeToString() {
-        switch (type) {
-            default:
-            case TYPE_INVALID:
-                return "invalid";
-            case TYPE_STUPID:
-                return "stupid";
-            case TYPE_SMART:
-                return "smart";
-        }
-    }
-
     @Override
     public String toString() {
-        return "{src: " + src + ", id: " + id + ", type: " + typeToString() + "}";
+        return "{src: " + src + ", id: " + id + ", type: " + type + "}";
     }
 
     @Override
@@ -73,7 +76,7 @@ public class PlaylistID implements Parcelable {
             return false;
         }
         PlaylistID e = (PlaylistID) obj;
-        return src.equals(e.src) && id.equals(e.id) && type == e.type;
+        return src.equals(e.src) && id.equals(e.id) && type.equals(e.type);
     }
 
     private String key() {
@@ -83,7 +86,7 @@ public class PlaylistID implements Parcelable {
     public static PlaylistID from(Bundle extras) {
         String src = extras.getString(BUNDLE_KEY_SRC);
         String id = extras.getString(BUNDLE_KEY_ID);
-        int type = extras.getInt(BUNDLE_KEY_TYPE);
+        String type = extras.getString(BUNDLE_KEY_TYPE);
         return new PlaylistID(src, id, type);
     }
 
@@ -91,8 +94,28 @@ public class PlaylistID implements Parcelable {
         Bundle b = new Bundle();
         b.putString(BUNDLE_KEY_SRC, src);
         b.putString(BUNDLE_KEY_ID, id);
-        b.putInt(BUNDLE_KEY_TYPE, type);
+        b.putString(BUNDLE_KEY_TYPE, type);
         return b;
+    }
+
+    public static PlaylistID from(JSONObject json) throws JSONException {
+        String src = json.getString(JSON_KEY_SRC);
+        String id = json.getString(JSON_KEY_ID);
+        String type = json.getString(JSON_KEY_TYPE);
+        return new PlaylistID(src, id, type);
+    }
+
+    public JSONObject toJSON() {
+        JSONObject root = new JSONObject();
+        try {
+            root.put(JSON_KEY_SRC, src);
+            root.put(JSON_KEY_ID, id);
+            root.put(JSON_KEY_TYPE, type);
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return null;
+        }
+        return root;
     }
 
     @Override
@@ -104,6 +127,10 @@ public class PlaylistID implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(src);
         dest.writeString(id);
-        dest.writeInt(type);
+        dest.writeString(type);
+    }
+
+    public String getDisplayableString() {
+        return id + " from " + src;
     }
 }

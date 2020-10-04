@@ -51,11 +51,12 @@ public class MetaStorage {
         metaModel = DB.getDB(context).metaModel();
     }
 
-    public void insertSongs(List<Meta> metaList, Consumer<String> progressHandler) {
+
+    public void replaceWith(String src, List<Meta> metaList, Consumer<String> progressHandler) {
         long start = System.currentTimeMillis();
-        Log.d(LC, "insertSongs start");
-        metaModel.insert(metaList, progressHandler);
-        Log.d(LC, "insertSongs finish. " + (System.currentTimeMillis() - start) + "ms");
+        Log.d(LC, "replaceWith start");
+        metaModel.replaceWith(src, metaList, progressHandler);
+        Log.d(LC, "replaceWith finish. " + (System.currentTimeMillis() - start) + "ms");
     }
 
     public CompletableFuture<List<LibraryEntry>> getEntriesOnce(String primaryField,
@@ -716,13 +717,12 @@ public class MetaStorage {
         CompletableFuture<List<MetaDouble>> doubleFuture = CompletableFuture.supplyAsync(() ->
                 metaModel.getDoubleMetaSync(entryID.src, entryID.id)
         );
-        CompletableFuture[] futures = new CompletableFuture[] {
+        CompletableFuture<Meta> ret = new CompletableFuture<>();
+        CompletableFuture.allOf(new CompletableFuture[] {
                 stringFuture,
                 longFuture,
                 doubleFuture
-        };
-        CompletableFuture<Meta> ret = new CompletableFuture<>();
-        CompletableFuture.allOf(futures).thenRunAsync(() -> {
+        }).thenRunAsync(() -> {
             Meta meta = new Meta(entryID);
             stringFuture.getNow(Collections.emptyList()).forEach(v ->
                     meta.addString(v.key, v.value)
@@ -848,36 +848,21 @@ public class MetaStorage {
         return allKeys;
     }
 
-    public CompletableFuture<Void> insertLocalMeta(EntryID entryID, String field, String value) {
+    public CompletableFuture<Void> insertMeta(EntryID entryID, String key, String value) {
         return CompletableFuture.runAsync(() ->
-                metaModel.insertLocalMeta(entryID, field, value, false)
+                metaModel.insertMeta(entryID, key, value)
         );
     }
 
-    CompletableFuture<Void> deleteLocalMeta(EntryID entryID, String field, String value) {
+    public CompletableFuture<Void> deleteMeta(EntryID entryID, String key, String value) {
         return CompletableFuture.runAsync(() ->
-                metaModel.deleteLocalMeta(entryID, field, value, false)
+                metaModel.deleteMeta(entryID, key, value)
         );
     }
 
-    public CompletableFuture<Void> insertLocalUserMeta(EntryID entryID, String field, String value) {
+    public CompletableFuture<Void> replaceMeta(EntryID entryID, String key, String oldValue, String newValue) {
         return CompletableFuture.runAsync(() ->
-                metaModel.insertLocalMeta(entryID, field, value, true)
-        );
-    }
-
-    public CompletableFuture<Void> replaceLocalUserMeta(EntryID entryID,
-                                                        String field,
-                                                        String oldValue,
-                                                        String newValue) {
-        return CompletableFuture.runAsync(() ->
-                metaModel.replaceLocalMeta(entryID, field, oldValue, newValue, true)
-        );
-    }
-
-    public CompletableFuture<Void> deleteLocalUserMeta(EntryID entryID, String field, String value) {
-        return CompletableFuture.runAsync(() ->
-                metaModel.deleteLocalMeta(entryID, field, value, true)
+                metaModel.replaceMeta(entryID, key, oldValue, newValue)
         );
     }
 }

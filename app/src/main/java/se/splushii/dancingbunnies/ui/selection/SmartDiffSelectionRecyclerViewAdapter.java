@@ -1,6 +1,7 @@
 package se.splushii.dancingbunnies.ui.selection;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiFunction;
@@ -17,6 +18,10 @@ public abstract class SmartDiffSelectionRecyclerViewAdapter<ID, ViewHolder exten
     private static final String LC = Util.getLogContext(SmartDiffSelectionRecyclerViewAdapter.class);
 
     private List<ID> dataSet = new ArrayList<>();
+
+    protected List<ID> getDataSet() {
+        return Collections.unmodifiableList(dataSet);
+    }
 
     protected void setDataSet(List<ID> items) {
         setDataSet(items, Objects::equals);

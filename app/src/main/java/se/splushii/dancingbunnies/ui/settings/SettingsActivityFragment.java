@@ -44,6 +44,7 @@ import androidx.work.WorkInfo;
 import androidx.work.WorkManager;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.backend.APIClient;
+import se.splushii.dancingbunnies.backend.DummyAPIClient;
 import se.splushii.dancingbunnies.jobs.Jobs;
 import se.splushii.dancingbunnies.jobs.LibrarySyncWorker;
 import se.splushii.dancingbunnies.jobs.TransactionsWorker;
@@ -702,20 +703,22 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                             resetSyncValues = false;
                         } else {
                             MultiSelectListPreference syncPref = findPreference(key);
-                            Set<String> selected = syncPref.getValues();
-                            boolean fetchLibrary = selected.contains(BACKEND_SYNC_LIBRARY);
-                            boolean indexLibrary = selected.contains(BACKEND_REINDEX_LIBRARY);
-                            boolean fetchPlaylists = selected.contains(BACKEND_SYNC_PLAYLISTS);
-                            if (isSyncWorking(backendID)) {
-                                LibrarySyncWorker.cancel(requireContext(), backendID);
-                            } else {
-                                LibrarySyncWorker.runNow(
-                                        requireContext(),
-                                        backendID,
-                                        fetchLibrary,
-                                        indexLibrary,
-                                        fetchPlaylists
-                                );
+                            if (syncPref != null) {
+                                Set<String> selected = syncPref.getValues();
+                                boolean fetchLibrary = selected.contains(BACKEND_SYNC_LIBRARY);
+                                boolean indexLibrary = selected.contains(BACKEND_REINDEX_LIBRARY);
+                                boolean fetchPlaylists = selected.contains(BACKEND_SYNC_PLAYLISTS);
+                                if (isSyncWorking(backendID)) {
+                                    LibrarySyncWorker.cancel(requireContext(), backendID);
+                                } else {
+                                    LibrarySyncWorker.runNow(
+                                            requireContext(),
+                                            backendID,
+                                            fetchLibrary,
+                                            indexLibrary,
+                                            fetchPlaylists
+                                    );
+                                }
                             }
                         }
                     } else if (suffix.equals(Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_tag_delim))) {
@@ -1062,7 +1065,7 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                 }
             }
             String prefAPISummary = "";
-            if (apiClient == null) {
+            if (apiClient instanceof DummyAPIClient) {
                 prefAPISummary += "? entries"
                         + "\n? playlists";
             } else {
@@ -1383,17 +1386,30 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
     }
 
     private List<Long> getBackendConfigIDs(SharedPreferences sp) {
+        return getBackendConfigIDs(requireContext(), sp);
+    }
+
+    private static List<Long> getBackendConfigIDs(Context context, SharedPreferences sp) {
         return sp.getAll()
                 .keySet()
                 .stream()
                 .filter(key -> matchesBackendConfigPrefKey(
+                        context,
                         key,
                         BACKEND_ID_ANY,
                         MusicLibraryService.API_SRC_ID_DANCINGBUNNIES,
-                        Util.getString(requireContext(), R.string.pref_key_backend_config_suffix_db_api)
+                        Util.getString(context, R.string.pref_key_backend_config_suffix_db_api)
                 ))
-                .map(this::getBackendConfigID)
+                .map(key -> getBackendConfigID(context, key)
+                )
                 .collect(Collectors.toList());
+    }
+
+    public static long getBackendConfigIDFromSource(Context context, String src) {
+        return getBackendConfigIDFromAPIInstanceID(
+                context,
+                MusicLibraryService.getAPIInstanceIDFromSource(src)
+        );
     }
 
     private static long getBackendConfigIDFromAPIInstanceID(Context context, String apiInstanceID) {
@@ -1508,6 +1524,9 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
     }
 
     public static boolean isSourceEnabled(Context context, String api, String apiInstanceID) {
+        if (MusicLibraryService.API_SRC_ID_DANCINGBUNNIES.equals(api)) {
+            return true;
+        }
         long backendID = getBackendConfigIDFromAPIInstanceID(context, apiInstanceID);
         return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
                 getBackendConfigPrefKey(context, backendID, R.string.pref_key_backend_config_suffix_db_enabled),
@@ -1550,6 +1569,19 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
         );
     }
 
+    public static List<String> getSources(Context context) {
+        List<String> sources = new ArrayList<>(Collections.singletonList(
+                MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL
+        ));
+        sources.addAll(
+                getBackendConfigIDs(context, PreferenceManager.getDefaultSharedPreferences(context))
+                        .stream()
+                        .map(backendID -> getSourceFromConfig(context, backendID))
+                        .collect(Collectors.toList())
+        );
+        return sources;
+    }
+
     private static String getGitAPIInstanceID(Context context, long backendID) {
         return GitRepoPreference.getInstanceID(
                 PreferenceManager.getDefaultSharedPreferences(context),
@@ -1584,7 +1616,7 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
         }
         String src = getSourceFromConfig(requireContext(), backendID);
         APIClient apiClient = APIClient.getAPIClient(requireContext(), src);
-        if (apiClient == null) {
+        if (apiClient instanceof DummyAPIClient) {
             enableAuthenticatedPrefs(backendID, false);
             if (enabledPref != null) {
                 enabledPref.setSummary("");

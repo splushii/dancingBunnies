@@ -86,17 +86,18 @@ public class MusicLibraryFragment
         extends Fragment
         implements AudioBrowserCallback, EntryTypeSelectionDialogFragment.ConfigHandler {
     private static final String LC = Util.getLogContext(MusicLibraryFragment.class);
-    private static final int SORT_BY_HEADER_ID_VALUE = 1;
-    private static final int SORT_BY_GROUP_ID_HEADER = 0;
-    private static final int SORT_BY_GROUP_ID_CUSTOM = 1;
-    private static final int SORT_BY_GROUP_ID_SINGLE = 2;
-    private static final int SORT_BY_GROUP_ORDER_HEADER = Menu.FIRST;
-    private static final int SORT_BY_GROUP_ORDER_CUSTOM = Menu.FIRST + 1;
-    private static final int SORT_BY_GROUP_ORDER_SINGLE = Menu.FIRST + 2;
-    private static final int SHOW_GROUP_ID_HEADER = 0;
-    private static final int SHOW_GROUP_ID_SINGLE = 1;
-    private static final int SHOW_GROUP_ORDER_HEADER = Menu.FIRST;
-    private static final int SHOW_GROUP_ORDER_SINGLE = Menu.FIRST + 1;
+    private static final int MENU_ITEM_ID_SORT_BY_HEADER = 1;
+    private static final int MENU_GROUP_ID_SORT_BY_HEADER = 0;
+    private static final int MENU_GROUP_ID_SORT_BY_CUSTOM = 1;
+    private static final int MENU_GROUP_ID_SORT_BY_SINGLE = 2;
+    private static final int MENU_GROUP_ORDER_SORT_BY_HEADER = Menu.FIRST;
+    private static final int MENU_GROUP_ORDER_SORT_BY_CUSTOM = Menu.FIRST + 1;
+    private static final int MENU_GROUP_ORDER_SORT_BY_SINGLE = Menu.FIRST + 2;
+
+    private static final int MENU_GROUP_ID_SHOW_HEADER = 0;
+    private static final int MENU_GROUP_ID_SHOW_SINGLE = 1;
+    private static final int MENU_GROUP_ORDER_SHOW_HEADER = Menu.FIRST;
+    private static final int MENU_GROUP_ORDER_SHOW_SINGLE = Menu.FIRST + 1;
 
     private AudioBrowser remote;
 
@@ -871,9 +872,9 @@ public class MusicLibraryFragment
         final PopupMenu browseHeaderSortedByPopup = new PopupMenu(requireContext(), browseHeaderSortedBy);
         browseHeaderSortedByMenu = browseHeaderSortedByPopup.getMenu();
         browseHeaderSortedByMenu.add(
-                SORT_BY_GROUP_ID_CUSTOM,
+                MENU_GROUP_ID_SORT_BY_CUSTOM,
                 Menu.NONE,
-                SORT_BY_GROUP_ORDER_CUSTOM,
+                MENU_GROUP_ORDER_SORT_BY_CUSTOM,
                 "Custom sort"
         ).setIcon(
                 R.drawable.ic_edit_black_24dp
@@ -960,21 +961,21 @@ public class MusicLibraryFragment
                     );
                     browseFilterTypeAdapter.clear();
                     browseFilterTypeAdapter.addAll(metaKeysForDisplay);
-                    browseHeaderShowMenu.removeGroup(SHOW_GROUP_ID_SINGLE);
+                    browseHeaderShowMenu.removeGroup(MENU_GROUP_ID_SHOW_SINGLE);
                     for (int i = 0; i < metaKeysForDisplay.size(); i++) {
                         browseHeaderShowMenu.add(
-                                SHOW_GROUP_ID_SINGLE,
+                                MENU_GROUP_ID_SHOW_SINGLE,
                                 i,
-                                SHOW_GROUP_ORDER_SINGLE,
+                                MENU_GROUP_ORDER_SHOW_SINGLE,
                                 metaKeysForDisplay.get(i)
                         );
                     }
-                    browseHeaderSortedByMenu.removeGroup(SORT_BY_GROUP_ID_SINGLE);
+                    browseHeaderSortedByMenu.removeGroup(MENU_GROUP_ID_SORT_BY_SINGLE);
                     for (int i = 0; i < metaKeysForDisplay.size(); i++) {
                         browseHeaderSortedByMenu.add(
-                                SORT_BY_GROUP_ID_SINGLE,
+                                MENU_GROUP_ID_SORT_BY_SINGLE,
                                 i,
-                                SORT_BY_GROUP_ORDER_SINGLE,
+                                MENU_GROUP_ORDER_SORT_BY_SINGLE,
                                 metaKeysForDisplay.get(i)
                         );
                     }
@@ -1002,7 +1003,7 @@ public class MusicLibraryFragment
     private boolean onShowSelected(MenuItem item, List<String> displayedFields) {
         int position = item.getItemId();
         int groupId = item.getGroupId();
-        if (groupId != SHOW_GROUP_ID_SINGLE) {
+        if (groupId != MENU_GROUP_ID_SHOW_SINGLE) {
             return false;
         }
         String field = metaKeys.get(position);
@@ -1018,17 +1019,17 @@ public class MusicLibraryFragment
     }
 
     private void setShowMenuHeader(String header) {
-        browseHeaderShowMenu.removeGroup(SHOW_GROUP_ID_HEADER);
+        browseHeaderShowMenu.removeGroup(MENU_GROUP_ID_SHOW_HEADER);
         browseHeaderShowMenu.add(
-                SHOW_GROUP_ID_HEADER,
+                MENU_GROUP_ID_SHOW_HEADER,
                 Menu.NONE,
-                SHOW_GROUP_ORDER_HEADER,
+                MENU_GROUP_ORDER_SHOW_HEADER,
                 "Showing entries of type:"
         ).setEnabled(false);
         browseHeaderShowMenu.add(
-                SHOW_GROUP_ID_HEADER,
+                MENU_GROUP_ID_SHOW_HEADER,
                 Menu.NONE,
-                SHOW_GROUP_ORDER_HEADER,
+                MENU_GROUP_ORDER_SHOW_HEADER,
                 Meta.getDisplayKey(header)
         ).setEnabled(false);
     }
@@ -1036,7 +1037,7 @@ public class MusicLibraryFragment
     private boolean onSortedBySelected(MenuItem item, List<String> displayedFields) {
         int groupId = item.getGroupId();
         int itemId = item.getItemId();
-        if (groupId == SORT_BY_GROUP_ID_HEADER && itemId == SORT_BY_HEADER_ID_VALUE) {
+        if (groupId == MENU_GROUP_ID_SORT_BY_HEADER && itemId == MENU_ITEM_ID_SORT_BY_HEADER) {
             item.setIcon(!isSortedAscending() ?
                     R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp
             ).setIconTintList(
@@ -1045,7 +1046,7 @@ public class MusicLibraryFragment
             setSortOrder(!isSortedAscending());
             return true;
         }
-        if (groupId == SORT_BY_GROUP_ID_CUSTOM) {
+        if (groupId == MENU_GROUP_ID_SORT_BY_CUSTOM) {
             MusicLibraryQuery query = getCurrentQuery();
             EntryTypeSelectionDialogFragment.showDialogForSortConfig(
                     this,
@@ -1053,7 +1054,7 @@ public class MusicLibraryFragment
             );
             return true;
         }
-        if (groupId != SORT_BY_GROUP_ID_SINGLE) {
+        if (groupId != MENU_GROUP_ID_SORT_BY_SINGLE) {
             return false;
         }
         String field = metaKeys.get(itemId);
@@ -1069,24 +1070,23 @@ public class MusicLibraryFragment
     }
 
     private void setSortByMenuHeader(String header) {
-        browseHeaderSortedByMenu.removeGroup(SORT_BY_GROUP_ID_HEADER);
+        browseHeaderSortedByMenu.removeGroup(MENU_GROUP_ID_SORT_BY_HEADER);
         browseHeaderSortedByMenu.add(
-                SORT_BY_GROUP_ID_HEADER,
+                MENU_GROUP_ID_SORT_BY_HEADER,
                 Menu.NONE,
-                SORT_BY_GROUP_ORDER_HEADER,
+                MENU_GROUP_ORDER_SORT_BY_HEADER,
                 "Sorting shown entries by:"
         ).setEnabled(false);
         browseHeaderSortedByMenu.add(
-                SORT_BY_GROUP_ID_HEADER,
-                SORT_BY_HEADER_ID_VALUE,
-                SORT_BY_GROUP_ORDER_HEADER,
+                MENU_GROUP_ID_SORT_BY_HEADER,
+                MENU_ITEM_ID_SORT_BY_HEADER,
+                MENU_GROUP_ORDER_SORT_BY_HEADER,
                 header
         ).setIcon(isSortedAscending() ?
                 R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp
         ).setIconTintList(
                 ContextCompat.getColorStateList(requireContext(), R.color.text_primary_color)
         );
-
     }
 
     public boolean onBackPressed() {

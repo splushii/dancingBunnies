@@ -8,10 +8,10 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -22,6 +22,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.recyclerview.selection.Selection;
 import se.splushii.dancingbunnies.R;
+import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
@@ -59,7 +60,7 @@ public class PlaylistAdapter extends
                                 int targetPos,
                                 Playlist idAfterTargetPos) {
         playlistStorage.movePlaylists(
-                new ArrayList<>(selection),
+                selection.stream().map(Playlist::playlistID).collect(Collectors.toList()),
                 idAfterTargetPos == null ? null : idAfterTargetPos.playlistID()
         );
     }
@@ -84,7 +85,9 @@ public class PlaylistAdapter extends
         actionModeCallback.getActionMode().setTitle(selection.size() + " entries");
         boolean showDelete = true;
         for (Playlist playlist: selection) {
-            if (!MusicLibraryService.checkAPISupport(playlist.playlistID().src, PLAYLIST_DELETE)) {
+            String src = playlist.playlistID().src;
+            if (!APIClient.getAPIClient(fragment.requireContext(), src)
+                    .checkAPISupport(PLAYLIST_DELETE, src)) {
                 showDelete = false;
             }
         }
@@ -251,7 +254,6 @@ public class PlaylistAdapter extends
                 case PlaylistID.TYPE_SMART:
                     type = "Dynamic";
                     break;
-                case PlaylistID.TYPE_INVALID:
                 default:
                     type = "Unkown playlist type";
                     break;
