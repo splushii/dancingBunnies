@@ -33,6 +33,11 @@ public abstract class TransactionDao {
     public abstract List<Transaction> getTransactionsOnce();
     @Query("SELECT * FROM " + DB.TABLE_LIBRARY_TRANSACTIONS
             + " WHERE " + Transaction.COLUMN_SRC + " = :src"
+            + " AND " + Transaction.COLUMN_GROUP + " = :group"
+            + " ORDER BY " + Transaction.COLUMN_DATE + " ASC;")
+    public abstract List<Transaction> getTransactionsOnce(String src, String group);
+    @Query("SELECT * FROM " + DB.TABLE_LIBRARY_TRANSACTIONS
+            + " WHERE " + Transaction.COLUMN_SRC + " = :src"
             + " ORDER BY " + Transaction.COLUMN_DATE + " ASC;")
     public abstract LiveData<List<Transaction>> getTransactions(String src);
 

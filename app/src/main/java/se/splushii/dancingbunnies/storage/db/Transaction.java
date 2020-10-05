@@ -17,6 +17,7 @@ public class Transaction {
     static final String COLUMN_ROW_ID = DB.COLUMN_ROW_ID;
     static final String COLUMN_DATE = "date";
     static final String COLUMN_SRC = "src";
+    static final String COLUMN_GROUP = "grp";
     private static final String COLUMN_ACTION = "action";
     private static final String COLUMN_ARGS = "args";
     static final String COLUMN_ERROR = "err";
@@ -31,6 +32,9 @@ public class Transaction {
     @ColumnInfo(name = COLUMN_SRC)
     public String src;
     @NonNull
+    @ColumnInfo(name = COLUMN_GROUP)
+    public String group;
+    @NonNull
     @ColumnInfo(name = COLUMN_ACTION)
     public String action;
     @NonNull
@@ -42,10 +46,11 @@ public class Transaction {
     @ColumnInfo(name = COLUMN_ERROR_NUM, defaultValue = "0")
     public long numErrors;
 
-    public static Transaction from(String src, Date date, String action, String args) {
+    public static Transaction from(String src, Date date, String group, String action, String args) {
         Transaction transaction = new Transaction();
         transaction.date = date;
         transaction.src = src;
+        transaction.group = group;
         transaction.action = action;
         transaction.args = args;
         return transaction;

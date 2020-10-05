@@ -24,30 +24,32 @@ public abstract class PlaylistEntryDao {
                     + " AND " + PlaylistEntry.COLUMN_PLAYLIST_ID + " = :playlistId"
                     + " AND " + PlaylistEntry.COLUMN_PLAYLIST_TYPE + " = :playlistType";
 
+    private static final String isSpecifiedPlaylistEntry =
+            isSpecifiedPlaylist + " AND " + PlaylistEntry.COLUMN_ID + " = :playlistEntryID";
+
     @Query("SELECT COUNT(" + PlaylistEntry.COLUMN_ID + ")"
             + " FROM " + DB.TABLE_PLAYLIST_ENTRIES
             + " WHERE " + isSpecifiedPlaylist)
-    abstract int _num_entries(String playlistSrc, String playlistId, int playlistType);
+    abstract int _num_entries(String playlistSrc, String playlistId, String playlistType);
 
-    private long[] getPlaylistEntryPositions(PlaylistID playlistID, List<PlaylistEntry> playlistEntries) {
+    private long[] getPlaylistEntryPositions(PlaylistID playlistID, List<String> playlistEntryIDs) {
         return DB.getPositions(
-                playlistEntries,
-                playlistEntry -> _get_position(
+                playlistEntryIDs,
+                playlistEntryID -> _get_position(
                         playlistID.src,
                         playlistID.id,
                         playlistID.type,
-                        playlistEntry.playlist_entry_id
+                        playlistEntryID
                 )
         );
     }
 
     @Query("SELECT " + PlaylistEntry.COLUMN_POS
             + " FROM " + DB.TABLE_PLAYLIST_ENTRIES
-            + " WHERE " + PlaylistEntry.COLUMN_ID + " = :playlistEntryID"
-            + " AND " + isSpecifiedPlaylist)
+            + " WHERE " + isSpecifiedPlaylistEntry)
     abstract long _get_position(String playlistSrc,
                                 String playlistId,
-                                int playlistType,
+                                String playlistType,
                                 String playlistEntryID);
 
     @Query("SELECT * FROM " + DB.TABLE_PLAYLIST_ENTRIES
@@ -60,11 +62,18 @@ public abstract class PlaylistEntryDao {
     @Query(getEntries)
     public abstract LiveData<List<PlaylistEntry>> getEntries(String playlistSrc,
                                                              String playlistId,
-                                                             int playlistType);
+                                                             String playlistType);
     @Query(getEntries)
     public abstract List<PlaylistEntry> getEntriesOnce(String playlistSrc,
                                                        String playlistId,
-                                                       int playlistType);
+                                                       String playlistType);
+    @Query("SELECT * FROM " + DB.TABLE_PLAYLIST_ENTRIES
+            + " WHERE "  + isSpecifiedPlaylistEntry
+            + " LIMIT 1")
+    abstract PlaylistEntry getEntry(String playlistSrc,
+                                    String playlistId,
+                                    String playlistType,
+                                    String playlistEntryID);
 
     // Insert
     @Query("UPDATE " + DB.TABLE_PLAYLIST_ENTRIES
@@ -74,28 +83,43 @@ public abstract class PlaylistEntryDao {
             + " AND " + isSpecifiedPlaylist)
     public abstract void _update_pos_before_insert(String playlistSrc,
                                                    String playlistId,
-                                                   int playlistType,
+                                                   String playlistType,
                                                    long fromPosition,
                                                    long increment);
     @Insert(onConflict = REPLACE)
     abstract void _insert(List<PlaylistEntry> entries);
     @Transaction
-    public void addLast(PlaylistID playlistID, List<PlaylistEntry> playlistEntries) {
-        int size = _num_entries(playlistID.src, playlistID.id, playlistID.type);
+    public void add(PlaylistID playlistID,
+                    List<PlaylistEntry> playlistEntries,
+                    String beforePlaylistEntryID) {
+        int numNewEntries = playlistEntries.size();
+        PlaylistEntry entry = beforePlaylistEntryID == null
+                ? null
+                : getEntry(playlistID.src, playlistID.id, playlistID.type, beforePlaylistEntryID);
+        long toPosition = entry == null
+                ? _num_entries(playlistID.src, playlistID.id, playlistID.type)
+                : entry.pos;
         List<PlaylistEntry> entries = new ArrayList<>();
+        long entryPosition = toPosition;
         for (PlaylistEntry playlistEntry: playlistEntries) {
-            entries.add(PlaylistEntry.from(playlistEntry, size++));
+            entries.add(PlaylistEntry.from(playlistEntry, entryPosition++));
         }
+        _update_pos_before_insert(
+                playlistID.src,
+                playlistID.id,
+                playlistID.type,
+                toPosition,
+                numNewEntries
+        );
         _insert(entries);
     }
 
     // Remove
     @Query("DELETE FROM " + DB.TABLE_PLAYLIST_ENTRIES
-            + " WHERE " + PlaylistEntry.COLUMN_ID + " = :playlistEntryID"
-            + " AND " + isSpecifiedPlaylist)
+            + " WHERE " + isSpecifiedPlaylistEntry)
     abstract void _delete(String playlistSrc,
                           String playlistId,
-                          int playlistType,
+                          String playlistType,
                           String playlistEntryID);
     @Query("UPDATE " + DB.TABLE_PLAYLIST_ENTRIES
             + " SET " + PlaylistEntry.COLUMN_POS + " = "
@@ -104,18 +128,17 @@ public abstract class PlaylistEntryDao {
             + " AND " + isSpecifiedPlaylist)
     abstract void _update_pos_after_delete(String playlistSrc,
                                            String playlistId,
-                                           int playlistType,
+                                           String playlistType,
                                            long position);
     @Transaction
-    public void remove(PlaylistID playlistID, List<PlaylistEntry> playlistEntries) {
-        long[] playlistEntryPositions = getPlaylistEntryPositions(playlistID, playlistEntries);
+    public void remove(PlaylistID playlistID, List<String> playlistEntryIDs) {
+        long[] playlistEntryPositions = getPlaylistEntryPositions(playlistID, playlistEntryIDs);
         for (int i = 0; i < playlistEntryPositions.length; i++) {
-            PlaylistEntry playlistEntry = playlistEntries.get(i);
             _delete(
                     playlistID.src,
                     playlistID.id,
                     playlistID.type,
-                    playlistEntry.playlist_entry_id
+                    playlistEntryIDs.get(i)
             );
             _update_pos_after_delete(
                     playlistID.src,
@@ -142,18 +165,17 @@ public abstract class PlaylistEntryDao {
             + " AND " + isSpecifiedPlaylist)
     abstract void _move(String playlistSrc,
                         String playlistId,
-                        int playlistType,
+                        String playlistType,
                         long oldPos,
                         long newPos);
     @Transaction
     public void move(PlaylistID playlistID,
-                     List<PlaylistEntry> playlistEntries,
+                     List<String> playlistEntryIDs,
                      String idAfterTargetPos) {
-        long[] playlistEntryPositions = getPlaylistEntryPositions(playlistID, playlistEntries);
-        long targetPos = idAfterTargetPos != null ?
-                _get_position(playlistID.src, playlistID.id, playlistID.type, idAfterTargetPos)
-                :
-                _num_entries(playlistID.src, playlistID.id, playlistID.type);
+        long[] playlistEntryPositions = getPlaylistEntryPositions(playlistID, playlistEntryIDs);
+        long targetPos = idAfterTargetPos == null
+                ? _num_entries(playlistID.src, playlistID.id, playlistID.type)
+                : _get_position(playlistID.src, playlistID.id, playlistID.type, idAfterTargetPos);
         DB.movePositions(
                 Arrays.stream(playlistEntryPositions).boxed().collect(Collectors.toList()),
                 targetPos,

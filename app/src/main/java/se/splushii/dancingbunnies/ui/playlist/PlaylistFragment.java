@@ -1,20 +1,25 @@
 package se.splushii.dancingbunnies.ui.playlist;
 
 import android.annotation.SuppressLint;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 import android.view.ActionMode;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -22,6 +27,9 @@ import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.view.menu.MenuBuilder;
+import androidx.appcompat.view.menu.MenuPopupHelper;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
@@ -34,17 +42,20 @@ import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserCallback;
 import se.splushii.dancingbunnies.audioplayer.PlaybackController;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
+import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
+import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
-import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
+import se.splushii.dancingbunnies.storage.TransactionStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.selection.RecyclerViewActionModeSelectionTracker;
+import se.splushii.dancingbunnies.ui.settings.SettingsActivityFragment;
 import se.splushii.dancingbunnies.util.Util;
 
 import static android.view.View.GONE;
@@ -61,6 +72,11 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_ADD_MULTIPL
 public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
 
     private static final String LC = Util.getLogContext(PlaylistFragment.class);
+
+    private static final int MENU_GROUP_ID_NEW_PLAYLIST_BACKEND_HEADER = 0;
+    private static final int MENU_GROUP_ID_NEW_PLAYLIST_BACKEND_SINGLE = 1;
+    private static final int MENU_GROUP_ORDER_NEW_PLAYLIST_BACKEND_HEADER = Menu.FIRST;
+    private static final int MENU_GROUP_ORDER_NEW_PLAYLIST_BACKEND_SINGLE = Menu.FIRST + 1;
 
     private View playlistRootView;
     private RecyclerView playlistRecView;
@@ -106,6 +122,9 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
     private FloatingActionButton newPlaylistFAB;
     private View newPlaylistView;
     private EditText newPlaylistName;
+    private TextView newPlaylistBackendId;
+    private ImageView newPlaylistBackendIcon;
+    private Menu newPlaylistBackendMenu;
 
     private AudioBrowser remote;
     private PlaylistFragmentModel model;
@@ -617,9 +636,57 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
         playlistPlaybackEntriesFastScroller = rootView.findViewById(R.id.playlist_playback_entries_fastscroller);
         playlistPlaybackEntriesFastScroller.setRecyclerView(playlistPlaybackEntriesRecView);
 
-
         newPlaylistView = rootView.findViewById(R.id.playlist_new_playlist);
         newPlaylistName = rootView.findViewById(R.id.playlist_new_playlist_name);
+
+        View newPlaylistBackend = rootView.findViewById(R.id.playlist_new_playlist_backend);
+        newPlaylistBackendId = rootView.findViewById(R.id.playlist_new_playlist_backend_id);
+        newPlaylistBackendIcon = rootView.findViewById(R.id.playlist_new_playlist_backend_icon);
+        final PopupMenu newPlaylistBackendPopup = new PopupMenu(requireContext(), newPlaylistBackend);
+        newPlaylistBackendMenu = newPlaylistBackendPopup.getMenu();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            newPlaylistBackendMenu.setGroupDividerEnabled(true);
+        }
+        MenuPopupHelper newPlaylistBackendPopupHelper = new MenuPopupHelper(
+                requireContext(),
+                (MenuBuilder) newPlaylistBackendMenu,
+                newPlaylistBackend
+        );
+        newPlaylistBackendPopupHelper.setForceShowIcon(true);
+        List<String> sources = new ArrayList<>();
+        String defaultNewPlaylistBackendSource = MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL;
+        newPlaylistBackendId.setText(defaultNewPlaylistBackendSource);
+        newPlaylistBackendIcon.setImageResource(
+                MusicLibraryService.getAPIIconResourceFromSource(defaultNewPlaylistBackendSource)
+        );
+        setNewPlaylistBackendMenuHeader(defaultNewPlaylistBackendSource);
+        newPlaylistBackendPopup.setOnMenuItemClickListener(item -> {
+            clearSelection();
+            return onNewPlaylistBackendMenuSelected(item, sources);
+        });
+        newPlaylistBackend.setOnClickListener(view -> {
+            sources.clear();
+            sources.addAll(
+                    SettingsActivityFragment.getSources(requireContext())
+                            .stream()
+                            .filter(src -> APIClient.getAPIClient(requireContext(), src)
+                                    .supports(Transaction.PLAYLIST_ADD, src))
+                            .collect(Collectors.toList())
+            );
+            newPlaylistBackendMenu.removeGroup(MENU_GROUP_ID_NEW_PLAYLIST_BACKEND_SINGLE);
+            for (int i = 0; i < sources.size(); i++) {
+                String src = sources.get(i);
+                MenuItem menuItem = newPlaylistBackendMenu.add(
+                        MENU_GROUP_ID_NEW_PLAYLIST_BACKEND_SINGLE,
+                        i,
+                        MENU_GROUP_ORDER_NEW_PLAYLIST_BACKEND_SINGLE,
+                        src
+                );
+                menuItem.setIcon(MusicLibraryService.getAPIIconResourceFromSource(src));
+            }
+            newPlaylistBackendPopupHelper.show();
+        });
+
         newPlaylistFAB = rootView.findViewById(R.id.playlist_new_playlist_fab);
         rootView.getViewTreeObserver().addOnGlobalFocusChangeListener((oldFocus, newFocus) -> {
             if (newFocus == null && model.getUserStateValue().showPlaylists) {
@@ -636,14 +703,19 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
         newPlaylistName.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 String name = newPlaylistName.getText().toString();
-                playlistStorage.insertPlaylists(
-                        0,
-                        Collections.singletonList(new StupidPlaylist(
-                                PlaylistStorage.generatePlaylistID(PlaylistID.TYPE_STUPID),
-                                name,
-                                Collections.emptyList())
-                        )
+                String src = newPlaylistBackendId.getText().toString();
+                PlaylistID playlistID = PlaylistID.generate(
+                        src,
+                        PlaylistID.TYPE_STUPID
                 );
+                TransactionStorage.getInstance(requireContext())
+                        .addPlaylist(
+                                requireContext(),
+                                playlistID,
+                                name,
+                                null,
+                                null
+                        );
                 newPlaylistName.setText("");
                 newPlaylistName.clearFocus();
                 Util.hideSoftInput(requireActivity(), newPlaylistName);
@@ -653,6 +725,37 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
             return false;
         });
         return rootView;
+    }
+
+    private boolean onNewPlaylistBackendMenuSelected(MenuItem item, List<String> sources) {
+        int position = item.getItemId();
+        int groupId = item.getGroupId();
+        if (groupId != MENU_GROUP_ID_NEW_PLAYLIST_BACKEND_SINGLE) {
+            return false;
+        }
+        String src = sources.get(position);
+        newPlaylistBackendIcon.setImageResource(
+                MusicLibraryService.getAPIIconResourceFromSource(src)
+        );
+        newPlaylistBackendId.setText(src);
+        setNewPlaylistBackendMenuHeader(src);
+        return true;
+    }
+
+    private void setNewPlaylistBackendMenuHeader(String src) {
+        newPlaylistBackendMenu.removeGroup(MENU_GROUP_ID_NEW_PLAYLIST_BACKEND_HEADER);
+        newPlaylistBackendMenu.add(
+                MENU_GROUP_ID_NEW_PLAYLIST_BACKEND_HEADER,
+                Menu.NONE,
+                MENU_GROUP_ORDER_NEW_PLAYLIST_BACKEND_HEADER,
+                "Creating playlist on backend:"
+        ).setEnabled(false);
+        newPlaylistBackendMenu.add(
+                MENU_GROUP_ID_NEW_PLAYLIST_BACKEND_HEADER,
+                Menu.NONE,
+                MENU_GROUP_ORDER_NEW_PLAYLIST_BACKEND_HEADER,
+                src
+        ).setEnabled(false);
     }
 
     @Override

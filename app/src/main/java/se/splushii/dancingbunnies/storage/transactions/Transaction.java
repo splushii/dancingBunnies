@@ -9,8 +9,9 @@ import org.json.JSONObject;
 
 import java.util.Date;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
+import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.util.Util;
 
 public abstract class Transaction implements Parcelable {
@@ -18,61 +19,51 @@ public abstract class Transaction implements Parcelable {
 
     public static final long ID_NONE = -1;
 
-    // Transactions
-    //
-    //
-    // Playlist transactions
-    //
-    // PLAYLIST_DELETE(playlist_id)
+    // Transaction groups
+    public static final String GROUP_LIBRARY = "library";
+    public static final String GROUP_PLAYLISTS = "playlists";
+
+    // Library group actions
+    public static final String META_ADD = "meta_add";
+    public static final String META_DELETE = "meta_delete";
+    public static final String META_EDIT = "meta_edit";
+
+    // Playlist group actions
+    public static final String PLAYLIST_ADD = "playlist_add";
     public static final String PLAYLIST_DELETE = "playlist_delete";
     // PLAYLIST_META_ADD(playlist_id, key, value)
     public static final String PLAYLIST_META_ADD = "playlist_meta_add";
     // PLAYLIST_META_DELETE(playlist_id, key, value)
     public static final String PLAYLIST_META_DELETE = "playlist_meta_delete";
-    // PLAYLIST_META_DELETE(playlist_id, key) [currently used? needed?]
-    public static final String PLAYLIST_META_DELETE_ALL = "playlist_meta_delete_all";
     // PLAYLIST_META_EDIT(playlist_id, key, oldValue, newValue) -> PLAYLIST_META_DELETE(playlist_id, key, oldValue) + PLAYLIST_META_ADD(playlist_id, key, newValue)
     public static final String PLAYLIST_META_EDIT = "playlist_meta_edit";
-    //
-    // PLAYLIST_ENTRY_ADD(playlist_id, beforePlaylistEntryID, beforePos, entryID, metaSnapshot) [entryID or PlaylistEntry as argument?]
     public static final String PLAYLIST_ENTRY_ADD = "playlist_entry_add";
-    // PLAYLIST_ENTRY_DELETE(playlist_id, playlistEntryID, playlistEntryPositions)
     public static final String PLAYLIST_ENTRY_DELETE = "playlist_entry_delete";
-    // PLAYLIST_ENTRY_MOVE(playlist_id, playlistEntryID, beforePlaylistEntryID, beforePos)
     public static final String PLAYLIST_ENTRY_MOVE = "playlist_entry_move";
-    //
-    //
-    // Entry transactions
-    //
-    // META_ADD(entry_id, key, value)
-    public static final String META_ADD = "meta_add";
-    // META_DELETE(entry_id, key, value)
-    public static final String META_DELETE = "meta_delete";
-    // META_DELETE_ALL(entry_id, key)
-    public static final String META_DELETE_ALL = "meta_delete_all";
-    // META_EDIT(entry_id, key, oldValue, newValue) -> META_DELETE(key, oldValue) + META_ADD(key, newValue)
-    public static final String META_EDIT = "meta_edit";
 
     private final long id;
     private final String src;
     private final Date date;
     private final long errorCount;
     private final String errorMessage;
-    private final String type;
+    private final String group;
+    private final String action;
 
     public Transaction(long id,
                        String src,
                        Date date,
                        long errorCount,
                        String errorMessage,
-                       String type
+                       String group,
+                       String action
     ) {
         this.id = id;
         this.src = src;
         this.date = date;
         this.errorCount = errorCount;
         this.errorMessage = errorMessage;
-        this.type = type;
+        this.group = group;
+        this.action = action;
     }
 
     public static Transaction from(long id,
@@ -80,11 +71,12 @@ public abstract class Transaction implements Parcelable {
                                    Date date,
                                    long errorCount,
                                    String errorMessage,
+                                   String group,
                                    String action,
                                    String args
     ) {
         Transaction transaction = new TransactionUnknown(
-                id, src, date, action, args, errorCount, errorMessage
+                id, src, date, group, action, args, errorCount, errorMessage
         );
         JSONObject jsonArgs;
         try {
@@ -110,6 +102,31 @@ public abstract class Transaction implements Parcelable {
                             id, src, date, errorCount, errorMessage, jsonArgs
                     );
                     break;
+                case PLAYLIST_ADD:
+                    transaction = new TransactionPlaylistAdd(
+                            id, src, date, errorCount, errorMessage, jsonArgs
+                    );
+                    break;
+                case PLAYLIST_DELETE:
+                    transaction = new TransactionPlaylistDelete(
+                            id, src, date, errorCount, errorMessage, jsonArgs
+                    );
+                    break;
+                case PLAYLIST_ENTRY_ADD:
+                    transaction = new TransactionPlaylistEntryAdd(
+                            id, src, date, errorCount, errorMessage, jsonArgs
+                    );
+                    break;
+                case PLAYLIST_ENTRY_DELETE:
+                    transaction = new TransactionPlaylistEntryDelete(
+                            id, src, date, errorCount, errorMessage, jsonArgs
+                    );
+                    break;
+                case PLAYLIST_ENTRY_MOVE:
+                    transaction = new TransactionPlaylistEntryMove(
+                            id, src, date, errorCount, errorMessage, jsonArgs
+                    );
+                    break;
             }
         } catch (JSONException e) {
             e.printStackTrace();
@@ -129,7 +146,6 @@ public abstract class Transaction implements Parcelable {
         return date;
     }
 
-
     public long getErrorCount() {
         return errorCount;
     }
@@ -138,8 +154,12 @@ public abstract class Transaction implements Parcelable {
         return errorMessage;
     }
 
-    public String getType() {
-        return type;
+    public String getGroup() {
+        return group;
+    }
+
+    public String getAction() {
+        return action;
     }
 
     abstract JSONObject jsonArgs();
@@ -148,12 +168,14 @@ public abstract class Transaction implements Parcelable {
         return jsonArgs().toString();
     }
 
+    public abstract String getArgsSource();
+
     @Override
     public abstract boolean equals(Object o);
 
     @Override
     public int hashCode() {
-        return Objects.hash(src, type);
+        return Objects.hash(src, action);
     }
 
     public static final Creator<Transaction> CREATOR = new Creator<Transaction>() {
@@ -164,9 +186,10 @@ public abstract class Transaction implements Parcelable {
             Date date = new Date(in.readLong());
             long errorCount = in.readLong();
             String errorMessage = in.readString();
-            String type = in.readString();
+            String group = in.readString();
+            String action = in.readString();
             String args = in.readString();
-            return Transaction.from(id, src, date, errorCount, errorMessage, type, args);
+            return Transaction.from(id, src, date, errorCount, errorMessage, group, action, args);
         }
 
         @Override
@@ -187,19 +210,18 @@ public abstract class Transaction implements Parcelable {
         parcel.writeLong(date.getTime());
         parcel.writeLong(getErrorCount());
         parcel.writeString(getErrorMessage());
-        parcel.writeString(getType());
+        parcel.writeString(getGroup());
+        parcel.writeString(getAction());
         parcel.writeString(getArgs());
     }
 
     public abstract String getDisplayableAction();
     public abstract String getDisplayableDetails();
 
-    public String apply(Context context) {
-        if (!MusicLibraryService.checkAPISupport(getSrc(), getType())) {
-            return "Transaction " + getType() + " not supported for " + getSrc();
-        }
-        return apply(context, MusicLibraryService.getAPIFromSource(getSrc()));
-    }
+    // Optimistically apply changes locally
+    public abstract CompletableFuture<Void> applyLocally(Context context);
 
-    abstract String apply(Context context, String api);
+    // Batch changes to be applied to the actual backend
+    public abstract void addToBatch(Context context, APIClient.Batch batch)
+            throws APIClient.BatchException;
 }

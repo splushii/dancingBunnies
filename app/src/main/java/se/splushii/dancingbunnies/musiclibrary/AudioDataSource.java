@@ -163,7 +163,7 @@ public class AudioDataSource extends MediaDataSource {
                     cacheFile.toPath(),
                     StandardCopyOption.REPLACE_EXISTING
             );
-            metaStorage.insertLocalMeta(
+            metaStorage.insertMeta(
                     entryID, Meta.FIELD_LOCAL_CACHED,
                     Meta.FIELD_LOCAL_CACHED_VALUE_YES
             ).join();

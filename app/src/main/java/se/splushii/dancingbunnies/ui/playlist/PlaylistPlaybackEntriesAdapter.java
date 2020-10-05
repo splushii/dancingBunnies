@@ -15,6 +15,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.recyclerview.selection.Selection;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
+import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
@@ -308,8 +309,9 @@ public class PlaylistPlaybackEntriesAdapter extends
         int[] disabledActions;
         PlaylistID playlistID = currentPlaylistIDLiveData.getValue();
         if (playlistID != null
-                && MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_DELETE)
-                && playlistID.type == PlaylistID.TYPE_STUPID) {
+                && PlaylistID.TYPE_STUPID.equals(playlistID.type)
+                && APIClient.getAPIClient(fragment.requireContext(), playlistID.src)
+                .supports(PLAYLIST_ENTRY_DELETE, entry.entryID.src)) {
             disabledActions = new int[0];
         } else {
             disabledActions = new int[] {ACTION_PLAYLIST_ENTRY_DELETE};

@@ -35,6 +35,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
+import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
@@ -173,7 +174,8 @@ public class MetaDialogFragment extends DialogFragment {
             }
         });
 
-        boolean metaAddSupported = MusicLibraryService.checkAPISupport(entryID.src, META_ADD);
+        boolean metaAddSupported = APIClient.getAPIClient(requireContext(), entryID.src)
+                .supports(META_ADD, entryID.src);
         addLocalTagSwitch.setEnabled(metaAddSupported);
         addLocalTagSwitch.setChecked(!metaAddSupported);
         AtomicBoolean userSelectedLocalTag = new AtomicBoolean(false);

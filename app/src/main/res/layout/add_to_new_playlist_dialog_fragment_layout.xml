@@ -28,4 +28,44 @@
         android:textSize="14sp"
         android:textStyle="bold"
         android:autofillHints="" />
+    <LinearLayout
+        android:id="@+id/add_to_new_playlist_backend"
+        android:background="?android:selectableItemBackground"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:paddingStart="16sp"
+        android:paddingEnd="16dp"
+        >
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:textColor="@color/text_primary_color"
+            android:text="@string/playlist_new_playlist_backend"
+            />
+        <TextView
+            android:id="@+id/add_to_new_playlist_backend_id"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:textColor="@color/text_primary_color"
+            android:text="@string/empty"
+            android:labelFor="@id/playlist_new_playlist_backend_icon"
+            />
+        <ImageView
+            android:id="@+id/add_to_new_playlist_backend_icon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"/>
+    </LinearLayout>
 </LinearLayout>

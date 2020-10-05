@@ -150,8 +150,9 @@ public abstract class PlaybackControllerEntryDao {
                      List<PlaybackEntry> entries,
                      long idAfterTargetPos) {
         long[] entryPositions = getEntryPositions(queueID, entries);
-        long targetPos = idAfterTargetPos > PlaybackEntry.PLAYBACK_ID_INVALID ?
-                _get_position(queueID, idAfterTargetPos) : _num_entries(queueID);
+        long targetPos = idAfterTargetPos <= PlaybackEntry.PLAYBACK_ID_INVALID
+                ? _num_entries(queueID)
+                : _get_position(queueID, idAfterTargetPos);
         DB.movePositions(
                 Arrays.stream(entryPositions).boxed().collect(Collectors.toList()),
                 targetPos,

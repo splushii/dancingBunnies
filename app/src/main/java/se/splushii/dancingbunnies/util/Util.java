@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.regex.Pattern;
@@ -171,6 +172,10 @@ public class Util {
             throw new RuntimeException("Could not update ID for: " + idCounterKey);
         }
         return id;
+    }
+
+    public static String generateID() {
+        return UUID.randomUUID().toString();
     }
 
     public static class FutureException extends RuntimeException {

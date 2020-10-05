@@ -17,6 +17,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.recyclerview.selection.Selection;
 import se.splushii.dancingbunnies.R;
+import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.storage.MetaStorage;
@@ -217,10 +218,9 @@ public class MetaDialogFragmentAdapter extends
             keyTextView.setText(displayKey);
             valueTextView.setText(displayValue);
 
-            boolean metaDelSupported = MusicLibraryService
-                    .checkAPISupport(tag.entryID.src, META_DELETE);
-            boolean metaEditSupported = MusicLibraryService
-                    .checkAPISupport(tag.entryID.src, META_EDIT);
+            APIClient apiClient = APIClient.getAPIClient(fragment.requireContext(), tag.entryID.src);
+            boolean metaDelSupported = apiClient.supports(META_DELETE, null);
+            boolean metaEditSupported = apiClient.supports(META_EDIT, null);
             boolean tagEditable = Meta.isLocalUser(tag.key) || metaEditSupported;
             boolean tagDeletable = Meta.isLocalUser(tag.key) || metaDelSupported;
             int[] disabledActions;

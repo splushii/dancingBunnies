@@ -297,8 +297,8 @@ public class PlaybackControllerStorage {
     public PlaylistID getCurrentPlaylist() {
         String src = preferences.getString(playlist_src_key, null);
         String id = preferences.getString(playlist_id_key, null);
-        int type = preferences.getInt(playlist_type_key, PlaylistID.TYPE_INVALID);
-        if (src == null || id == null || type == PlaylistID.TYPE_INVALID) {
+        String type = preferences.getString(playlist_type_key, null);
+        if (src == null || id == null || type == null) {
             return null;
         }
         return new PlaylistID(src, id, type);
@@ -307,7 +307,7 @@ public class PlaybackControllerStorage {
     public void setCurrentPlaylist(PlaylistID playlistID) {
         String src = null;
         String id = null;
-        int type = PlaylistID.TYPE_INVALID;
+        String type = null;
         if (playlistID != null) {
             src = playlistID.src;
             id = playlistID.id;
@@ -316,7 +316,7 @@ public class PlaybackControllerStorage {
         preferences.edit()
                 .putString(playlist_src_key, src)
                 .putString(playlist_id_key, id)
-                .putInt(playlist_type_key, type)
+                .putString(playlist_type_key, type)
                 .apply();
     }
 

@@ -154,6 +154,7 @@
     <string name="playlist_item_more_actions">Playlist item more actions</string>
     <string name="playlist_new_playlist_name">Name:</string>
     <string name="playlist_new_playlist_name_hint">New playlist name</string>
+    <string name="playlist_new_playlist_backend">Backend:</string>
     <string name="playlist_action_select">Select</string>
     <string name="nowplaying_buffering">buffering…</string>
     <string name="nowplaying_previous_contentdesc">Skip to previous</string>

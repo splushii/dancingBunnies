@@ -429,7 +429,7 @@ public class AudioStorage {
         }
         AudioStorage.deleteCacheFile(context, entryID);
         return AudioStorage.getInstance(context).deleteWaveform(entryID)
-                .thenCompose(aVoid -> MetaStorage.getInstance(context).deleteLocalMeta(
+                .thenCompose(aVoid -> MetaStorage.getInstance(context).deleteMeta(
                         entryID,
                         Meta.FIELD_LOCAL_CACHED,
                         Meta.FIELD_LOCAL_CACHED_VALUE_YES

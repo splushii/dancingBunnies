@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "0d75ab7813692a2cb3bcb15c924359e9",
+    "identityHash": "92ff611ab22d8c9f85d6c03530baf2bf",
     "entities": [
       {
         "tableName": "entry_id",
@@ -632,7 +632,7 @@
       },
       {
         "tableName": "playlists",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `type` INTEGER NOT NULL, `name` TEXT NOT NULL, `query` TEXT, `pos` INTEGER NOT NULL, PRIMARY KEY(`src`, `id`, `type`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `type` TEXT NOT NULL, `name` TEXT NOT NULL, `query` TEXT, `pos` INTEGER NOT NULL, PRIMARY KEY(`src`, `id`, `type`))",
         "fields": [
           {
             "fieldPath": "src",
@@ -649,7 +649,7 @@
           {
             "fieldPath": "type",
             "columnName": "type",
-            "affinity": "INTEGER",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -695,7 +695,7 @@
       },
       {
         "tableName": "playlist_entries",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`playlist_src` TEXT NOT NULL, `playlist_id` TEXT NOT NULL, `playlist_type` INTEGER NOT NULL, `id` TEXT NOT NULL, `entry_src` TEXT NOT NULL, `entry_id` TEXT NOT NULL, `entry_type` TEXT NOT NULL, `pos` INTEGER NOT NULL, PRIMARY KEY(`playlist_src`, `playlist_id`, `playlist_type`, `id`), FOREIGN KEY(`playlist_src`, `playlist_id`, `playlist_type`) REFERENCES `playlists`(`src`, `id`, `type`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`playlist_src` TEXT NOT NULL, `playlist_id` TEXT NOT NULL, `playlist_type` TEXT NOT NULL, `id` TEXT NOT NULL, `entry_src` TEXT NOT NULL, `entry_id` TEXT NOT NULL, `entry_type` TEXT NOT NULL, `pos` INTEGER NOT NULL, PRIMARY KEY(`playlist_src`, `playlist_id`, `playlist_type`, `id`), FOREIGN KEY(`playlist_src`, `playlist_id`, `playlist_type`) REFERENCES `playlists`(`src`, `id`, `type`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "playlist_src",
@@ -712,7 +712,7 @@
           {
             "fieldPath": "playlist_type",
             "columnName": "playlist_type",
-            "affinity": "INTEGER",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -856,7 +856,7 @@
       },
       {
         "tableName": "library_transactions",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowid` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `date` INTEGER, `src` TEXT NOT NULL, `action` TEXT NOT NULL, `args` TEXT NOT NULL, `err` TEXT, `errnum` INTEGER NOT NULL DEFAULT 0)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`rowid` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `date` INTEGER, `src` TEXT NOT NULL, `grp` TEXT NOT NULL, `action` TEXT NOT NULL, `args` TEXT NOT NULL, `err` TEXT, `errnum` INTEGER NOT NULL DEFAULT 0)",
         "fields": [
           {
             "fieldPath": "rowid",
@@ -873,6 +873,12 @@
           {
             "fieldPath": "src",
             "columnName": "src",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "group",
+            "columnName": "grp",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -924,7 +930,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0d75ab7813692a2cb3bcb15c924359e9')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '92ff611ab22d8c9f85d6c03530baf2bf')"
     ]
   }
 }

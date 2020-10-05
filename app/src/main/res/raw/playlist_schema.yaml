@@ -41,7 +41,6 @@ type: object
 required:
   - schema_version
   - playlist
-  - entries
 properties:
   playlist:
     $ref: '#/definitions/playlist'
@@ -54,6 +53,10 @@ allOf:
               const: static
     then:
       additionalProperties: false
+      required:
+        - schema_version
+        - playlist
+        - entries
       properties:
         schema_version:
           $ref: '#/definitions/schema_version'
@@ -98,10 +101,14 @@ allOf:
               const: smart
     then:
       additionalProperties: false
+      required:
+        - schema_version
+        - playlist
+        - query
       properties:
         schema_version:
           $ref: '#/definitions/schema_version'
         playlist:
           $ref: '#/definitions/playlist'
-        entries:
+        query:
           type: string

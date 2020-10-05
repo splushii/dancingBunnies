@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import androidx.appcompat.view.menu.MenuBuilder;
 import androidx.appcompat.view.menu.MenuPopupHelper;
@@ -32,7 +33,6 @@ import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
-import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.TransactionStorage;
 import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
@@ -195,10 +195,13 @@ public class MenuActions {
                             Collections.singletonList(playbackEntrySupplier.get())
                     );
         } else if (action == ACTION_PLAYLIST_ENTRY_DELETE) {
-            PlaylistStorage.getInstance(context)
-                    .removeFromPlaylist(
-                            playlistIDSupplier.get(),
-                            Collections.singletonList(playlistEntrySupplier.get())
+            PlaylistID playlistID = playlistIDSupplier.get();
+            TransactionStorage.getInstance(context)
+                    .deletePlaylistEntry(
+                            context,
+                            playlistID.src,
+                            playlistID,
+                            playlistEntrySupplier.get()
                     );
         } else if (action == ACTION_PLAYLIST_SET_CURRENT) {
             remote.setCurrentPlaylist(
@@ -294,14 +297,23 @@ public class MenuActions {
                             playbackEntrySupplier.get()
                     );
         } else if (action == ACTION_PLAYLIST_ENTRY_DELETE_MULTIPLE) {
-            PlaylistStorage.getInstance(context)
-                    .removeFromPlaylist(
-                            playlistIDSupplier.get(),
+            PlaylistID playlistID = playlistIDSupplier.get();
+            TransactionStorage.getInstance(context)
+                    .deletePlaylistEntries(
+                            context,
+                            playlistID.src,
+                            playlistID,
                             playlistEntrySupplier.get()
                     );
         } else if (action == ACTION_PLAYLIST_DELETE_MULTIPLE) {
-            PlaylistStorage.getInstance(context)
-                    .deletePlaylists(playlistSupplier.get());
+            TransactionStorage.getInstance(context)
+                    .deletePlaylists(
+                            context,
+                            playlistSupplier.get()
+                                    .stream()
+                                    .map(Playlist::playlistID)
+                                    .collect(Collectors.toList())
+                    );
         } else if (action == ACTION_QUEUE_SHUFFLE_MULTIPLE) {
             remote.shuffleQueueItems(playbackEntrySupplier.get());
         } else if (action == ACTION_PLAYLIST_PLAYBACK_ENTRY_SHUFFLE_MULTIPLE) {

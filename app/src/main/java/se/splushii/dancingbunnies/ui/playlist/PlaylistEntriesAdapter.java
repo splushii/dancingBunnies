@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -18,11 +19,12 @@ import androidx.lifecycle.Transformations;
 import androidx.recyclerview.selection.Selection;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
+import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
-import se.splushii.dancingbunnies.storage.PlaylistStorage;
+import se.splushii.dancingbunnies.storage.TransactionStorage;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
@@ -53,7 +55,6 @@ public class PlaylistEntriesAdapter extends
                 <PlaylistEntry, PlaylistEntriesAdapter.PlaylistEntryHolder> {
     private static final String LC = Util.getLogContext(PlaylistEntriesAdapter.class);
     private final PlaylistFragment fragment;
-    private final PlaylistStorage playlistStorage;
 
     private PlaylistID playlistID;
     private TrackItemActionsView selectedActionView;
@@ -66,7 +67,6 @@ public class PlaylistEntriesAdapter extends
 
     PlaylistEntriesAdapter(PlaylistFragment playlistFragment) {
         fragment = playlistFragment;
-        playlistStorage = PlaylistStorage.getInstance(fragment.getContext());
         setHasStableIds(true);
     }
 
@@ -82,11 +82,14 @@ public class PlaylistEntriesAdapter extends
     public void onSelectionDrop(Collection<PlaylistEntry> selection,
                                 int targetPos,
                                 PlaylistEntry idAfterTargetPos) {
-        playlistStorage.movePlaylistEntries(
-                playlistID,
-                new ArrayList<>(selection),
-                idAfterTargetPos == null ? null : idAfterTargetPos.playlistEntryID()
-        );
+        TransactionStorage.getInstance(fragment.requireContext())
+                .movePlaylistEntries(
+                        fragment.requireContext(),
+                        playlistID.src,
+                        playlistID,
+                        new ArrayList<>(selection),
+                        idAfterTargetPos == null ? null : idAfterTargetPos.playlistEntryID()
+                );
     }
 
     @Override
@@ -107,8 +110,11 @@ public class PlaylistEntriesAdapter extends
     private void updateActionModeView(ActionModeCallback actionModeCallback,
                                       Selection<PlaylistEntry> selection) {
         actionModeCallback.getActionMode().setTitle(selection.size() + " entries");
-        boolean showDelete = playlistID.type == PlaylistID.TYPE_STUPID
-                && MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_DELETE);
+        HashSet<String> selectionSources = new HashSet<>();
+        selection.forEach(p -> selectionSources.add(p.entryID().src));
+        boolean showDelete = PlaylistID.TYPE_STUPID.equals(playlistID.type)
+                && APIClient.getAPIClient(fragment.requireContext(), playlistID.src)
+                .supportsAll(PLAYLIST_ENTRY_DELETE, selectionSources);
         int[] disabled = showDelete ? new int[0] :
                 new int[] {ACTION_PLAYLIST_ENTRY_DELETE_MULTIPLE};
         actionModeCallback.setActions(
@@ -145,12 +151,15 @@ public class PlaylistEntriesAdapter extends
 
     @Override
     public boolean validDrag(Selection<PlaylistEntry> selection) {
-        return dragSupported();
+        HashSet<String> sources = new HashSet<>();
+        selection.forEach(p -> sources.add(p.entryID().src));
+        return dragSupported(sources);
     }
 
-    private boolean dragSupported() {
-        return playlistID.type == PlaylistID.TYPE_STUPID
-                && MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_MOVE);
+    private boolean dragSupported(Set<String> sources) {
+        return PlaylistID.TYPE_STUPID.equals(playlistID.type)
+                && APIClient.getAPIClient(fragment.requireContext(), playlistID.src)
+                .supportsAll(PLAYLIST_ENTRY_MOVE, sources);
     }
 
     @Override
@@ -222,7 +231,9 @@ public class PlaylistEntriesAdapter extends
         holder.playlistEntry = playlistEntry;
         EntryID entryID = playlistEntry.entryID();
         holder.itemContent.setEntryID(entryID);
-        holder.itemContent.setDragHandleListener(dragSupported() ? () -> startDrag(holder) : null);
+        holder.itemContent.setDragHandleListener(dragSupported(Collections.singleton(entryID.src)) ?
+                () -> startDrag(holder) : null
+        );
         holder.itemContent.setPos(position);
         holder.updateHighlight(
                 currentEntryLiveData.getValue(),
@@ -231,8 +242,9 @@ public class PlaylistEntriesAdapter extends
         );
         holder.entry.setActivated(isSelected(holder.getKey()));
         int[] disabledActions;
-        if (MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_DELETE)
-                && playlistID.type == PlaylistID.TYPE_STUPID) {
+        if (PlaylistID.TYPE_STUPID.equals(playlistID.type)
+                && APIClient.getAPIClient(fragment.requireContext(), playlistID.src)
+                .supports(PLAYLIST_ENTRY_DELETE, entryID.src)) {
             disabledActions = new int[0];
         } else {
             disabledActions = new int[] {ACTION_PLAYLIST_ENTRY_DELETE};

@@ -31,7 +31,13 @@ public class TransactionsDialogAdapter extends
     }
 
     void setTransactions(List<Transaction> transactions) {
-        setDataSet(transactions);
+        setDataSet(
+                transactions,
+                (a, b) -> a.equals(b)
+                        && a.getErrorCount() == b.getErrorCount()
+                        && ((a.getErrorMessage() == null && b.getErrorMessage() == null)
+                        || (a.getErrorMessage() != null && a.getErrorMessage().equals(b.getErrorMessage())))
+        );
     }
 
     @NonNull

@@ -5,14 +5,23 @@ import android.os.Bundle;
 import android.support.v4.media.MediaMetadataCompat;
 import android.text.InputType;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.android.gms.cast.MediaMetadata;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -72,6 +81,10 @@ public class Meta {
 
     private static final String DELIM = "; ";
 
+    private static final String JSON_KEY_ENTRY_ID = "entry_id";
+    private static final String JSON_KEY_STRINGS = "strings";
+    private static final String JSON_KEY_LONGS = "longs";
+    private static final String JSON_KEY_DOUBLES = "doubles";
     private static final String BUNDLE_KEY_STRINGS = "dancingbunnies.bundle.key.meta.strings";
     private static final String BUNDLE_KEY_LONGS = "dancingbunnies.bundle.key.meta.longs";
     private static final String BUNDLE_KEY_DOUBLES = "dancingbunnies.bundle.key.meta.doubles";
@@ -230,6 +243,17 @@ public class Meta {
         tagDelimiter = null;
     }
 
+    private Meta(EntryID entryID,
+                 HashMap<String, List<String>> stringMap,
+                 HashMap<String, List<Long>> longMap,
+                 HashMap<String, List<Double>> doubleMap) {
+        this.entryID = entryID;
+        this.stringMap = stringMap;
+        this.longMap = longMap;
+        this.doubleMap = doubleMap;
+        tagDelimiter = null;
+    }
+
     @SuppressWarnings("unchecked")
     public Meta(Bundle b) {
         entryID = EntryID.from(b);
@@ -237,6 +261,33 @@ public class Meta {
         longMap = (HashMap<String, List<Long>>) b.getSerializable(BUNDLE_KEY_LONGS);
         doubleMap = (HashMap<String, List<Double>>) b.getSerializable(BUNDLE_KEY_DOUBLES);
         tagDelimiter = null;
+    }
+
+    public static Meta from(JSONObject json) {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            JSONObject jsonEntryIDJSON = json.getJSONObject(JSON_KEY_ENTRY_ID);
+            EntryID entryID = EntryID.from(jsonEntryIDJSON);
+            JSONObject jsonStringsJSON = json.getJSONObject(JSON_KEY_STRINGS);
+            HashMap<String, List<String>> stringMap = mapper.readValue(
+                    jsonStringsJSON.toString(),
+                    new TypeReference<HashMap<String, List<String>>>() {}
+            );
+            JSONObject jsonLongsJSON = json.getJSONObject(JSON_KEY_LONGS);
+            HashMap<String, List<Long>> longMap = mapper.readValue(
+                    jsonLongsJSON.toString(),
+                    new TypeReference<HashMap<String, List<Long>>>() {}
+                    );
+            JSONObject jsonDoublesJSON = json.getJSONObject(JSON_KEY_DOUBLES);
+            HashMap<String, List<Double>> doubleMap = mapper.readValue(
+                    jsonDoublesJSON.toString(),
+                    new TypeReference<HashMap<String, List<Double>>>() {}
+            );
+            return new Meta(entryID, stringMap, longMap, doubleMap);
+        } catch (JSONException | JsonProcessingException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     public boolean has(String key) {
@@ -426,6 +477,51 @@ public class Meta {
         b.putSerializable(BUNDLE_KEY_LONGS, longMap);
         b.putSerializable(BUNDLE_KEY_DOUBLES, doubleMap);
         return b;
+    }
+
+    public JSONObject toJSON() {
+        JSONObject root = new JSONObject();
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            root.put(JSON_KEY_ENTRY_ID, entryID.toJSON());
+            root.put(JSON_KEY_STRINGS, new JSONObject(mapper.writeValueAsString(stringMap)));
+            root.put(JSON_KEY_LONGS, new JSONObject(mapper.writeValueAsString(longMap)));
+            root.put(JSON_KEY_DOUBLES, new JSONObject(mapper.writeValueAsString(doubleMap)));
+        } catch (JSONException | JsonProcessingException e) {
+            e.printStackTrace();
+            return null;
+        }
+        return root;
+    }
+
+    public List<Map<String, String>> toStringMapList(Set<String> includedMetaKeys) {
+        List<Map<String, String>> jMetas = new ArrayList<>();
+        for (String key: keySet()) {
+            if (includedMetaKeys == null || !includedMetaKeys.contains(key)) {
+                continue;
+            }
+            List<String> values = new ArrayList<>();
+            switch (Meta.getType(key)) {
+                case STRING:
+                    values = getStrings(key);
+                    break;
+                case LONG:
+                    values = getLongs(key).stream()
+                            .map(String::valueOf)
+                            .collect(Collectors.toList());
+                    break;
+                case DOUBLE:
+                    values = getDoubles(key).stream()
+                            .map(String::valueOf)
+                            .collect(Collectors.toList());
+                    break;
+            }
+            jMetas.addAll(values.stream()
+                    .map(v -> new LinkedHashMap<>(Collections.singletonMap(key, v)))
+                    .collect(Collectors.toList())
+            );
+        }
+        return jMetas;
     }
 
     @SuppressLint("WrongConstant")

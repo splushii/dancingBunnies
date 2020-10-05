@@ -6,7 +6,6 @@ import android.os.Parcelable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 
 import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
@@ -15,6 +14,7 @@ import androidx.room.ForeignKey;
 import androidx.room.Index;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.util.Util;
 
 import static androidx.room.ForeignKey.CASCADE;
 
@@ -69,6 +69,8 @@ public class PlaylistEntry implements Parcelable {
     static final String COLUMN_ENTRY_TYPE = "entry_type";
     static final String COLUMN_POS = "pos";
 
+    public static final String TYPE_TRACK = "track";
+
     @NonNull
     @ColumnInfo(name = COLUMN_PLAYLIST_SRC)
     String playlist_src;
@@ -77,7 +79,7 @@ public class PlaylistEntry implements Parcelable {
     String playlist_id;
     @NonNull
     @ColumnInfo(name = COLUMN_PLAYLIST_TYPE)
-    int playlist_type;
+    String playlist_type;
     @NonNull
     @ColumnInfo(name = COLUMN_ID)
     String playlist_entry_id;
@@ -100,7 +102,7 @@ public class PlaylistEntry implements Parcelable {
         init(
                 Objects.requireNonNull(in.readString()),
                 Objects.requireNonNull(in.readString()),
-                in.readInt(),
+                Objects.requireNonNull(in.readString()),
                 Objects.requireNonNull(in.readString()),
                 Objects.requireNonNull(in.readString()),
                 Objects.requireNonNull(in.readString()),
@@ -109,9 +111,13 @@ public class PlaylistEntry implements Parcelable {
         );
     }
 
+    public static String generatePlaylistEntryID() {
+        return Util.generateID();
+    }
+
     private void init(String playlist_src,
                       String playlist_id,
-                      int playlist_type,
+                      String playlist_type,
                       String playlist_entry_id,
                       String entry_src,
                       String entry_id,
@@ -141,7 +147,7 @@ public class PlaylistEntry implements Parcelable {
 
     public static PlaylistEntry from(String playlistSrc,
                                      String playlistID,
-                                     int playlistType,
+                                     String playlistType,
                                      String playlistEntryID,
                                      String entryIDSrc,
                                      String entryIDID,
@@ -205,7 +211,7 @@ public class PlaylistEntry implements Parcelable {
             EntryID entryID = entryIDs[index];
             playlistEntries.add(PlaylistEntry.from(
                     playlistID,
-                    UUID.randomUUID().toString(),
+                    generatePlaylistEntryID(),
                     entryID,
                     index
             ));
@@ -222,7 +228,7 @@ public class PlaylistEntry implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(playlist_src);
         dest.writeString(playlist_id);
-        dest.writeInt(playlist_type);
+        dest.writeString(playlist_type);
         dest.writeString(playlist_entry_id);
         dest.writeString(entry_src);
         dest.writeString(entry_id);

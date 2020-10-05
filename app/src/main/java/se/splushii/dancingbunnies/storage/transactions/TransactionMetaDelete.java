@@ -7,15 +7,19 @@ import org.json.JSONObject;
 
 import java.util.Date;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
+import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.util.Util;
 
 public class TransactionMetaDelete extends Transaction {
     private static final String LC = Util.getLogContext(TransactionMetaDelete.class);
+
+    private static final String GROUP = Transaction.GROUP_LIBRARY;
+    private static final String ACTION = Transaction.META_DELETE;
 
     private static final String JSON_KEY_ENTRYID = "entryid";
     private static final String JSON_KEY_KEY = "key";
@@ -32,7 +36,7 @@ public class TransactionMetaDelete extends Transaction {
                                  String errorMessage,
                                  JSONObject args
     ) throws JSONException {
-        super(id, src, date, errorCount, errorMessage, Transaction.META_DELETE);
+        super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
         entryID = EntryID.from(args.getJSONObject(JSON_KEY_ENTRYID));
         key = args.getString(JSON_KEY_KEY);
         value = args.getString(JSON_KEY_VALUE);
@@ -47,7 +51,7 @@ public class TransactionMetaDelete extends Transaction {
                                  String key,
                                  String value
     ) {
-        super(id, src, date, errorCount, errorMessage, Transaction.META_DELETE);
+        super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
         this.entryID = entryID;
         this.key = key;
         this.value = value;
@@ -69,6 +73,11 @@ public class TransactionMetaDelete extends Transaction {
             return null;
         }
         return args;
+    }
+
+    @Override
+    public String getArgsSource() {
+        return entryID.src;
     }
 
     @Override
@@ -99,15 +108,13 @@ public class TransactionMetaDelete extends Transaction {
     }
 
     @Override
-    String apply(Context context, String api) {
-        switch (api) {
-            case MusicLibraryService.API_SRC_ID_DANCINGBUNNIES:
-                MetaStorage.getInstance(context).deleteLocalUserMeta(entryID, key, value);
-                return null;
-            case MusicLibraryService.API_SRC_ID_SUBSONIC:
-            case MusicLibraryService.API_SRC_ID_GIT:
-            default:
-                return "Transaction not supported for api: " + api;
-        }
+    public CompletableFuture<Void> applyLocally(Context context) {
+        return MetaStorage.getInstance(context)
+                .deleteMeta(entryID, key, value);
+    }
+
+    @Override
+    public void addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
+        batch.deleteMeta(context, entryID, key, value);
     }
 }
