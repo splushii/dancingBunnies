@@ -311,7 +311,7 @@ public class PlaylistPlaybackEntriesAdapter extends
         if (playlistID != null
                 && PlaylistID.TYPE_STUPID.equals(playlistID.type)
                 && APIClient.getAPIClient(fragment.requireContext(), playlistID.src)
-                .checkAPISupport(PLAYLIST_ENTRY_DELETE, entry.entryID.src)) {
+                .supports(PLAYLIST_ENTRY_DELETE, entry.entryID.src)) {
             disabledActions = new int[0];
         } else {
             disabledActions = new int[] {ACTION_PLAYLIST_ENTRY_DELETE};

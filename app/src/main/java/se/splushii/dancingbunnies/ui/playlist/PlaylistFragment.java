@@ -670,7 +670,7 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
                     SettingsActivityFragment.getSources(requireContext())
                             .stream()
                             .filter(src -> APIClient.getAPIClient(requireContext(), src)
-                                    .checkAPISupport(Transaction.PLAYLIST_ADD, src))
+                                    .supports(Transaction.PLAYLIST_ADD, src))
                             .collect(Collectors.toList())
             );
             newPlaylistBackendMenu.removeGroup(MENU_GROUP_ID_NEW_PLAYLIST_BACKEND_SINGLE);

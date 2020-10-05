@@ -125,10 +125,4 @@ public class TransactionMetaEdit extends Transaction {
     public void addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
         batch.editMeta(context, entryID, key, oldValue, newValue);
     }
-//
-//    @Override
-//    CompletableFuture<Void> applyViaAPI(Context context) {
-//        return APIClient.getAPIClient(context, getSrc())
-//                .editMeta(context, entryID, key, oldValue, newValue);
-//    }
 }

@@ -125,13 +125,22 @@ public class GitAPIClient extends APIClient {
     }
 
     @Override
-    public boolean checkAPISupport(String action, String argumentSource) {
+    public boolean supports(String action, String argumentSource) {
         if (action == null) {
             return false;
         }
+        String argumentAPI = MusicLibraryService.getAPIFromSource(argumentSource);
+        switch (argumentAPI) {
+            default:
+                return false;
+            case MusicLibraryService.API_SRC_ID_DANCINGBUNNIES:
+            case MusicLibraryService.API_SRC_ID_SUBSONIC:
+            case MusicLibraryService.API_SRC_ID_GIT:
+                break;
+        }
         switch (action) {
-            case PLAYLIST_ADD: // TODO: Implement
-            case PLAYLIST_DELETE: // TODO: Implement
+            case PLAYLIST_ADD:
+            case PLAYLIST_DELETE:
             case PLAYLIST_ENTRY_ADD:
             case PLAYLIST_ENTRY_DELETE:
             case PLAYLIST_ENTRY_MOVE:
@@ -139,6 +148,11 @@ public class GitAPIClient extends APIClient {
             default:
                 return false;
         }
+    }
+
+    @Override
+    public boolean supportsDancingBunniesSmartPlaylist() {
+        return true;
     }
 
     @Override

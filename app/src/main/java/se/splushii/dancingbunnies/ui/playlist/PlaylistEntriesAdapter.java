@@ -115,7 +115,7 @@ public class PlaylistEntriesAdapter extends
         selection.forEach(p -> selectionSources.add(p.entryID().src));
         boolean showDelete = PlaylistID.TYPE_STUPID.equals(playlistID.type)
                 && APIClient.getAPIClient(fragment.requireContext(), playlistID.src)
-                .checkAPISupportForAll(PLAYLIST_ENTRY_DELETE, selectionSources);
+                .supportsAll(PLAYLIST_ENTRY_DELETE, selectionSources);
         int[] disabled = showDelete ? new int[0] :
                 new int[] {ACTION_PLAYLIST_ENTRY_DELETE_MULTIPLE};
         actionModeCallback.setActions(
@@ -160,7 +160,7 @@ public class PlaylistEntriesAdapter extends
     private boolean dragSupported(Set<String> sources) {
         return PlaylistID.TYPE_STUPID.equals(playlistID.type)
                 && APIClient.getAPIClient(fragment.requireContext(), playlistID.src)
-                .checkAPISupportForAll(PLAYLIST_ENTRY_MOVE, sources);
+                .supportsAll(PLAYLIST_ENTRY_MOVE, sources);
     }
 
     @Override
@@ -248,7 +248,7 @@ public class PlaylistEntriesAdapter extends
         int[] disabledActions;
         if (PlaylistID.TYPE_STUPID.equals(playlistID.type)
                 && APIClient.getAPIClient(fragment.requireContext(), playlistID.src)
-                .checkAPISupport(PLAYLIST_ENTRY_DELETE, entryID.src)) {
+                .supports(PLAYLIST_ENTRY_DELETE, entryID.src)) {
             disabledActions = new int[0];
         } else {
             disabledActions = new int[] {ACTION_PLAYLIST_ENTRY_DELETE};

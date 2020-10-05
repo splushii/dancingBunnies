@@ -30,13 +30,15 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
-import se.splushii.dancingbunnies.musiclibrary.Playlist;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.TransactionStorage;
 import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.ui.settings.SettingsActivityFragment;
 import se.splushii.dancingbunnies.util.Util;
+
+import static se.splushii.dancingbunnies.musiclibrary.PlaylistID.TYPE_SMART;
+import static se.splushii.dancingbunnies.musiclibrary.PlaylistID.TYPE_STUPID;
 
 public class AddToNewPlaylistDialogFragment extends DialogFragment {
     private static final String LC = Util.getLogContext(AddToNewPlaylistDialogFragment.class);
@@ -98,11 +100,21 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.add_to_new_playlist_dialog_fragment_layout, container, false);
+
+        String playlistType;
+        if (queries != null && !queries.isEmpty()) {
+            playlistType = TYPE_STUPID;
+        } else if (query != null) {
+            playlistType = TYPE_SMART;
+        } else {
+            playlistType = null;
+        }
+
         addToNewPlaylistEditText = rootView.findViewById(R.id.add_to_new_playlist_dialog_input);
         addToNewPlaylistEditText.setOnEditorActionListener((textView, actionId, keyEvent) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 String name = addToNewPlaylistEditText.getText().toString();
-                createPlaylist(name);
+                createPlaylist(name, playlistType);
                 return true;
             }
             return false;
@@ -137,8 +149,12 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
             sources.addAll(
                     SettingsActivityFragment.getSources(requireContext())
                             .stream()
-                            .filter(src -> APIClient.getAPIClient(requireContext(), src)
-                                    .checkAPISupport(Transaction.PLAYLIST_ADD, src))
+                            .filter(src -> {
+                                APIClient apiClient = APIClient.getAPIClient(requireContext(), src);
+                                return apiClient.supports(Transaction.PLAYLIST_ADD, src)
+                                        && (TYPE_STUPID.equals(playlistType)
+                                        || apiClient.supportsDancingBunniesSmartPlaylist());
+                            })
                             .collect(Collectors.toList())
             );
             newPlaylistBackendMenu.removeGroup(MENU_GROUP_ID_NEW_PLAYLIST_BACKEND_SINGLE);
@@ -202,55 +218,41 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
         ).setEnabled(false);
     }
 
-    private void createPlaylist(String name) {
-        CompletableFuture<Void> completableFuture = CompletableFuture.completedFuture(null);
-        Playlist playlist = null;
+    private void createPlaylist(String name, String playlistType) {
+        CompletableFuture<Void> completableFuture;
         String src = newPlaylistBackendId.getText().toString();
-        if (queries != null && !queries.isEmpty()) {
-            // Create a StupidPlaylist
-            PlaylistID playlistID = PlaylistID.generate(src, PlaylistID.TYPE_STUPID);
-            TransactionStorage.getInstance(requireContext())
-                    .addPlaylist(requireContext(), playlistID, name, null, null);
-            completableFuture = MetaStorage.getInstance(requireContext())
-                    .getSongEntriesOnce(queries)
-                    .thenAccept(songEntryIDs ->
-                            TransactionStorage.getInstance(requireContext())
-                                    .addPlaylistEntries(
-                                            requireContext(),
-                                            playlistID.src,
-                                            playlistID,
-                                            songEntryIDs,
-                                            null
-                                    )
-                    );
-//            completableFuture = MetaStorage.getInstance(requireContext())
-//                    .getSongEntriesOnce(queries)
-//                    .thenCompose(songEntryIDs -> {
-//                        PlaylistID playlistID = PlaylistStorage.generatePlaylistID(PlaylistID.TYPE_STUPID);
-//                        return PlaylistStorage.getInstance(requireContext()).addPlaylists(
-//                                Collections.singletonList(new StupidPlaylist(
-//                                        playlistID,
-//                                        name,
-//                                        Collections.emptyList()
-//                                )),
-//                                null
-//                        ).thenCompose(aVoid -> PlaylistStorage.getInstance(requireContext())
-//                                .addToPlaylist(playlistID, songEntryIDs, null)
-//                        );
-//                    });
-        } else if (query != null) {
-            // Create a SmartPlaylist
-            PlaylistID playlistID = PlaylistID.generate(src, PlaylistID.TYPE_SMART);
-            TransactionStorage.getInstance(requireContext())
-                    .addPlaylist(requireContext(), playlistID, name, query.toString(), null);
-//            completableFuture = PlaylistStorage.getInstance(requireContext()).addPlaylists(
-//                    Collections.singletonList(new SmartPlaylist(
-//                            PlaylistStorage.generatePlaylistID(PlaylistID.TYPE_SMART),
-//                            name,
-//                            query
-//                    )),
-//                    null
-//            );
+        switch (playlistType) {
+            case TYPE_STUPID:
+                PlaylistID playlistID = PlaylistID.generate(src, TYPE_STUPID);
+                completableFuture = TransactionStorage.getInstance(requireContext())
+                        .addPlaylist(requireContext(), playlistID, name, null, null)
+                        .thenCompose(aVoid -> MetaStorage.getInstance(requireContext())
+                                .getSongEntriesOnce(queries)
+                        )
+                        .thenCompose(songEntryIDs -> TransactionStorage.getInstance(requireContext())
+                                .addPlaylistEntries(
+                                        requireContext(),
+                                        playlistID.src,
+                                        playlistID,
+                                        songEntryIDs,
+                                        null
+                                )
+                        );
+                break;
+            case TYPE_SMART:
+                PlaylistID smartPlaylistID = PlaylistID.generate(src, TYPE_SMART);
+                completableFuture = TransactionStorage.getInstance(requireContext())
+                        .addPlaylist(
+                                requireContext(),
+                                smartPlaylistID,
+                                name,
+                                query.toString(),
+                                null
+                        );
+                break;
+            default:
+                completableFuture = CompletableFuture.completedFuture(null);
+                break;
         }
         completableFuture
                 .thenRunAsync(this::dismiss, Util.getMainThreadExecutor())

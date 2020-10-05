@@ -738,8 +738,12 @@ public class SubsonicAPIClient extends APIClient {
     }
 
     @Override
-    public boolean checkAPISupport(String action, String argumentSource) {
+    public boolean supports(String action, String argumentSource) {
         if (action == null) {
+            return false;
+        }
+        String argumentAPI = MusicLibraryService.getAPIFromSource(argumentSource);
+        if (!MusicLibraryService.API_SRC_ID_SUBSONIC.equals(argumentAPI)) {
             return false;
         }
         switch (action) {

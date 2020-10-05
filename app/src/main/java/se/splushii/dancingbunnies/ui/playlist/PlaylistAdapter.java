@@ -87,7 +87,7 @@ public class PlaylistAdapter extends
         for (Playlist playlist: selection) {
             String src = playlist.playlistID().src;
             if (!APIClient.getAPIClient(fragment.requireContext(), src)
-                    .checkAPISupport(PLAYLIST_DELETE, src)) {
+                    .supports(PLAYLIST_DELETE, src)) {
                 showDelete = false;
             }
         }

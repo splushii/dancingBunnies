@@ -124,10 +124,4 @@ public class TransactionPlaylistEntryDelete extends Transaction {
     public void addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
         batch.deletePlaylistEntry(context, playlistID, playlistEntryID, entryID);
     }
-
-//    @Override
-//    CompletableFuture<Void> applyViaAPI(Context context) {
-//        return APIClient.getAPIClient(context, getSrc())
-//                .deletePlaylistEntry(context, playlistID, playlistEntryID, entryID);
-//    }
 }

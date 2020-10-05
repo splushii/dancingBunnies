@@ -219,8 +219,8 @@ public class MetaDialogFragmentAdapter extends
             valueTextView.setText(displayValue);
 
             APIClient apiClient = APIClient.getAPIClient(fragment.requireContext(), tag.entryID.src);
-            boolean metaDelSupported = apiClient.checkAPISupport(META_DELETE, null);
-            boolean metaEditSupported = apiClient.checkAPISupport(META_EDIT, null);
+            boolean metaDelSupported = apiClient.supports(META_DELETE, null);
+            boolean metaEditSupported = apiClient.supports(META_EDIT, null);
             boolean tagEditable = Meta.isLocalUser(tag.key) || metaEditSupported;
             boolean tagDeletable = Meta.isLocalUser(tag.key) || metaDelSupported;
             int[] disabledActions;

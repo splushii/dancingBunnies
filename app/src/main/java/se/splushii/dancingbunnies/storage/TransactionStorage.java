@@ -46,7 +46,11 @@ public class TransactionStorage {
         transactionDao = DB.getDB(context).transactionModel();
     }
 
-    public void addMeta(Context context, String src, EntryID entryID, String key, String value) {
+    public CompletableFuture<Void> addMeta(Context context,
+                                           String src,
+                                           EntryID entryID,
+                                           String key,
+                                           String value) {
         Transaction t = new TransactionMetaAdd(
                 Transaction.ID_NONE,
                 src,
@@ -57,17 +61,17 @@ public class TransactionStorage {
                 key,
                 value
         );
-        addTransaction(context, t).thenRun(() ->
+        return addTransaction(context, t).thenRun(() ->
                 TransactionsWorker.requeue(context, true)
         );
     }
 
-    public void editMeta(Context context,
-                         String src,
-                         EntryID entryID,
-                         String key,
-                         String oldValue,
-                         String newValue
+    public CompletableFuture<Void> editMeta(Context context,
+                                            String src,
+                                            EntryID entryID,
+                                            String key,
+                                            String oldValue,
+                                            String newValue
     ) {
         Transaction t = new TransactionMetaEdit(
                 Transaction.ID_NONE,
@@ -80,12 +84,16 @@ public class TransactionStorage {
                 oldValue,
                 newValue
         );
-        addTransaction(context, t).thenRun(() ->
+        return addTransaction(context, t).thenRun(() ->
                 TransactionsWorker.requeue(context, true)
         );
     }
 
-    public void deleteMeta(Context context, String src, EntryID entryID, String key, String value) {
+    public CompletableFuture<Void> deleteMeta(Context context,
+                                              String src,
+                                              EntryID entryID,
+                                              String key,
+                                              String value) {
         Transaction t = new TransactionMetaDelete(
                 Transaction.ID_NONE,
                 src,
@@ -96,16 +104,16 @@ public class TransactionStorage {
                 key,
                 value
         );
-        addTransaction(context, t).thenRun(() ->
+        return addTransaction(context, t).thenRun(() ->
                 TransactionsWorker.requeue(context, true)
         );
     }
 
-    public void addPlaylist(Context context,
-                            PlaylistID playlistID,
-                            String name,
-                            String query,
-                            PlaylistID beforePlaylistID) {
+    public CompletableFuture<Void> addPlaylist(Context context,
+                                               PlaylistID playlistID,
+                                               String name,
+                                               String query,
+                                               PlaylistID beforePlaylistID) {
         Transaction t = new TransactionPlaylistAdd(
                 Transaction.ID_NONE,
                 playlistID.src,
@@ -117,12 +125,13 @@ public class TransactionStorage {
                 query,
                 beforePlaylistID
         );
-        addTransaction(context, t).thenRun(() ->
+        return addTransaction(context, t).thenRun(() ->
                 TransactionsWorker.requeue(context, true)
         );
     }
 
-    public CompletableFuture<Void> deletePlaylists(Context context, List<PlaylistID> playlistIDs) {
+    public CompletableFuture<Void> deletePlaylists(Context context,
+                                                   List<PlaylistID> playlistIDs) {
         CompletableFuture<Void> future = CompletableFuture.completedFuture(null);
         for (PlaylistID playlistID: playlistIDs) {
             future = future.thenCompose(aVoid -> addTransaction(

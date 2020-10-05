@@ -51,9 +51,18 @@ public class LocalAPIClient extends APIClient {
     public void loadSettings(Context context, Path workDir, Bundle settings) {}
 
     @Override
-    public boolean checkAPISupport(String action, String argumentSource) {
+    public boolean supports(String action, String argumentSource) {
         if (action == null) {
             return false;
+        }
+        String argumentAPI = MusicLibraryService.getAPIFromSource(argumentSource);
+        switch (argumentAPI) {
+            default:
+                return false;
+            case MusicLibraryService.API_SRC_ID_DANCINGBUNNIES:
+            case MusicLibraryService.API_SRC_ID_SUBSONIC:
+            case MusicLibraryService.API_SRC_ID_GIT:
+                break;
         }
         switch (action) {
             case META_ADD:
@@ -68,6 +77,11 @@ public class LocalAPIClient extends APIClient {
             default:
                 return false;
         }
+    }
+
+    @Override
+    public boolean supportsDancingBunniesSmartPlaylist() {
+        return true;
     }
 
     @Override

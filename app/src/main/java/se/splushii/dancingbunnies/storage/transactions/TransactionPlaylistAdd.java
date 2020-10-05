@@ -141,10 +141,4 @@ public class TransactionPlaylistAdd extends Transaction {
                 beforePlaylistID
         );
     }
-//
-//    @Override
-//    CompletableFuture<Void> applyViaAPI(Context context) {
-//        return APIClient.getAPIClient(context, getSrc())
-//                .deletePlaylist(context, playlistID);
-//    }
 }

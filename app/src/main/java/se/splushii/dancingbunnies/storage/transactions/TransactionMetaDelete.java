@@ -117,10 +117,4 @@ public class TransactionMetaDelete extends Transaction {
     public void addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
         batch.deleteMeta(context, entryID, key, value);
     }
-//
-//    @Override
-//    CompletableFuture<Void> applyViaAPI(Context context) {
-//        return APIClient.getAPIClient(context, getSrc())
-//                .deleteMeta(context, entryID, key, value);
-//    }
 }

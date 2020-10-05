@@ -141,18 +141,6 @@ public class TransactionPlaylistEntryAdd extends Transaction {
                 );
     }
 
-//    @Override
-//    CompletableFuture<Void> applyViaAPI(Context context) {
-//        return APIClient.getAPIClient(context, getSrc())
-//                .addPlaylistEntry(
-//                        context,
-//                        playlistID,
-//                        entryID,
-//                        beforePlaylistEntryID,
-//                        metaSnapshot
-//                );
-//    }
-
     @Override
     public void addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
         batch.addPlaylistEntry(

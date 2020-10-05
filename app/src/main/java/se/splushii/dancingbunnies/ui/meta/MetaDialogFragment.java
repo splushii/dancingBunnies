@@ -175,7 +175,7 @@ public class MetaDialogFragment extends DialogFragment {
         });
 
         boolean metaAddSupported = APIClient.getAPIClient(requireContext(), entryID.src)
-                .checkAPISupport(META_ADD, entryID.src);
+                .supports(META_ADD, entryID.src);
         addLocalTagSwitch.setEnabled(metaAddSupported);
         addLocalTagSwitch.setChecked(!metaAddSupported);
         AtomicBoolean userSelectedLocalTag = new AtomicBoolean(false);

@@ -9,7 +9,6 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.CompletableFuture;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -23,7 +22,6 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.TransactionStorage;
@@ -48,7 +46,6 @@ public class AddToPlaylistDialogFragment
     private PlaylistAdapter recViewAdapter;
 
     private List<MusicLibraryQueryNode> queryNodes;
-    private CompletableFuture<List<EntryID>> songEntries;
 
     static void showDialog(FragmentManager fragmentManager, List<MusicLibraryQueryNode> queryNodes) {
         if (queryNodes == null || queryNodes.isEmpty()) {
@@ -70,7 +67,11 @@ public class AddToPlaylistDialogFragment
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
         model = new ViewModelProvider(requireActivity()).get(PlaylistFragmentModel.class);
-        filterPlaylists(model, songEntries.getNow(null));
+        MetaStorage.getInstance(requireContext()).getSongEntriesOnce(queryNodes)
+                .thenAcceptAsync(
+                        songEntries -> filterPlaylists(model, songEntries),
+                        Util.getMainThreadExecutor()
+                );
     }
 
     @Override
@@ -91,21 +92,6 @@ public class AddToPlaylistDialogFragment
         LinearLayoutManager recViewLayoutManager = new LinearLayoutManager(requireContext());
         recyclerView.setLayoutManager(recViewLayoutManager);
         recViewAdapter = new PlaylistAdapter(this);
-        songEntries = MetaStorage.getInstance(requireContext()).getSongEntriesOnce(queryNodes);
-        songEntries.thenAccept(songEntries -> filterPlaylists(model, songEntries));
-        recViewAdapter.setOnItemClickListener(playlist ->
-                songEntries.thenAccept(songEntryIDs -> {
-                    PlaylistID playlistID = playlist.playlistID();
-                    TransactionStorage.getInstance(requireContext())
-                            .addPlaylistEntries(
-                                    requireContext(),
-                                    playlistID.src,
-                                    playlistID,
-                                    songEntryIDs,
-                                    null
-                            );
-                }).thenRun(this::dismiss)
-        );
         recyclerView.setAdapter(recViewAdapter);
         View addToNewPlaylistView = rootView.findViewById(R.id.add_to_playlist_dialog_new);
         addToNewPlaylistView.setOnClickListener(v ->
@@ -119,6 +105,18 @@ public class AddToPlaylistDialogFragment
             return;
         }
         numEntriesTextView.setText(String.format(Locale.getDefault(), "(%d entries)", songEntries.size()));
+        recViewAdapter.setOnItemClickListener(playlist -> {
+            PlaylistID playlistID = playlist.playlistID();
+            TransactionStorage.getInstance(requireContext())
+                    .addPlaylistEntries(
+                            requireContext(),
+                            playlistID.src,
+                            playlistID,
+                            songEntries,
+                            null
+                    )
+                    .thenRun(this::dismiss);
+        });
         recViewAdapter.setModel(model, playlists -> {
             List<Playlist> applicablePlaylists = new ArrayList<>();
             for (Playlist playlist: playlists) {
@@ -142,13 +140,8 @@ public class AddToPlaylistDialogFragment
         if (!PlaylistID.TYPE_STUPID.equals(playlistID.type)) {
             return false;
         }
-        if (MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL.equals(playlistID.src)) {
-            return true;
-        }
         return APIClient.getAPIClient(requireContext(), playlistID.src)
-                .checkAPISupport(PLAYLIST_ENTRY_ADD, entryID.src);
-//        return MusicLibraryService.checkAPISupport(playlistID.src, PLAYLIST_ENTRY_ADD)
-//                && MusicLibraryService.checkAPISupportOtherSource(PLAYLIST_ENTRY_ADD, entryID.src);
+                .supports(PLAYLIST_ENTRY_ADD, entryID.src);
     }
 
     @Override

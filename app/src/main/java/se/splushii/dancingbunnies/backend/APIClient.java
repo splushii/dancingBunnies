@@ -130,60 +130,15 @@ public abstract class APIClient {
         return apiClient.getAudioData(entryID);
     }
 
-    public abstract boolean checkAPISupport(String action, String argumentSource);
+    public abstract boolean supports(String action, String argumentSource);
 
-    public boolean checkAPISupportForAll(String action, Set<String> argumentSources) {
+    public boolean supportsAll(String action, Set<String> argumentSources) {
         return argumentSources.stream()
-                .allMatch(argumentSource -> checkAPISupport(action, argumentSource));
+                .allMatch(argumentSource -> supports(action, argumentSource));
     }
 
-    public CompletableFuture<Void> deleteMeta(Context context,
-                                              EntryID entryID,
-                                              String key,
-                                              String value) {
-        return Util.futureResult("Not implemented");
-    }
-
-    public CompletableFuture<Void> addMeta(Context context,
-                                           EntryID entryID,
-                                           String key,
-                                           String value) {
-        return Util.futureResult("Not implemented");
-    }
-
-    public CompletableFuture<Void> editMeta(Context context,
-                                            EntryID entryID,
-                                            String key,
-                                            String oldValue,
-                                            String newValue) {
-        return Util.futureResult("Not implemented");
-    }
-
-    public CompletableFuture<Void> deletePlaylist(Context context, PlaylistID playlistID) {
-        return Util.futureResult("Not implemented");
-    }
-
-    public CompletableFuture<Void> addPlaylistEntry(Context context,
-                                                    PlaylistID playlistID,
-                                                    EntryID entryID,
-                                                    String beforePlaylistEntryID,
-                                                    Meta metaSnapshot) {
-        return Util.futureResult("Not implemented");
-    }
-
-    public CompletableFuture<Void> deletePlaylistEntry(Context context,
-                                                       PlaylistID playlistID,
-                                                       String playlistEntryID,
-                                                       EntryID entryID) {
-        return Util.futureResult("Not implemented");
-    }
-
-    public CompletableFuture<Void> movePlaylistEntry(Context context,
-                                                     PlaylistID playlistID,
-                                                     String playlistEntryID,
-                                                     EntryID entryID,
-                                                     String beforePlaylistEntryID) {
-        return Util.futureResult("Not implemented");
+    public boolean supportsDancingBunniesSmartPlaylist() {
+        return false;
     }
 
     public CompletableFuture<List<TransactionResult>> applyTransactions(
@@ -199,7 +154,7 @@ public abstract class APIClient {
         List<TransactionResult> transactionResults = new ArrayList<>();
         TransactionResult failedToBatchTransactionResult = null;
         for (Transaction t: transactions) {
-            if (!checkAPISupport(t.getAction(), t.getArgsSource())) {
+            if (!supports(t.getAction(), t.getArgsSource())) {
                 failedToBatchTransactionResult = new TransactionResult(
                         t,
                         "Transaction " + t.getAction()

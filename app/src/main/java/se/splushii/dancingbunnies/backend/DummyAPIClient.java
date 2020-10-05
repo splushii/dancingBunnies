@@ -41,7 +41,7 @@ public class DummyAPIClient extends APIClient {
     public void loadSettings(Context context, Path workDir, Bundle settings) {}
 
     @Override
-    public boolean checkAPISupport(String action, String argumentSource) {
+    public boolean supports(String action, String argumentSource) {
         return false;
     }
 

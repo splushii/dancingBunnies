@@ -150,16 +150,4 @@ public class TransactionPlaylistEntryMove extends Transaction {
                 beforePlaylistEntryID
         );
     }
-//
-//    @Override
-//    CompletableFuture<Void> applyViaAPI(Context context) {
-//        return APIClient.getAPIClient(context, getSrc())
-//                .movePlaylistEntry(
-//                        context,
-//                        playlistID,
-//                        playlistEntryID,
-//                        entryID,
-//                        beforePlaylistEntryID
-//                );
-//    }
 }
