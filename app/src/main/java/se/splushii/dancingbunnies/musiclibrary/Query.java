@@ -11,39 +11,39 @@ import java.util.List;
 import androidx.annotation.NonNull;
 import se.splushii.dancingbunnies.util.Util;
 
-public class MusicLibraryQuery {
-    private static final String LC = Util.getLogContext(MusicLibraryQuery.class);
+public class Query {
+    private static final String LC = Util.getLogContext(Query.class);
     public static final String DEFAULT_SHOW_FIELD = Meta.FIELD_ARTIST;
     public static final ArrayList<String> DEFAULT_SORT_FIELDS = new ArrayList<>(Collections.singletonList(Meta.FIELD_ARTIST));
-    public static final String BUNDLE_KEY_SHOW = "dancingbunnies.bundle.key.musiclibraryquery.show";
-    public static final String BUNDLE_KEY_SORT = "dancingbunnies.bundle.key.musiclibraryquery.sort";
-    public static final String BUNDLE_KEY_QUERY_TREE = "dancingbunnies.bundle.key.musiclibraryquery.query_tree";
-    public static final String BUNDLE_KEY_SORT_ORDER = "dancingbunnies.bundle.key.musiclibraryquery.sort_order";
+    public static final String BUNDLE_KEY_SHOW = "dancingbunnies.bundle.key.query.show";
+    public static final String BUNDLE_KEY_SORT = "dancingbunnies.bundle.key.query.sort";
+    public static final String BUNDLE_KEY_QUERY_TREE = "dancingbunnies.bundle.key.query.query_tree";
+    public static final String BUNDLE_KEY_SORT_ORDER = "dancingbunnies.bundle.key.query.sort_order";
 
-    public enum MusicLibraryQueryType {
+    public enum Type {
         SUBSCRIPTION,
         SEARCH
     }
-    private final MusicLibraryQueryType type;
-    private MusicLibraryQueryTree queryTree;
+    private final Type type;
+    private QueryTree queryTree;
     private String searchQuery;
     private String showField;
     private ArrayList<String> sortByFields;
     private boolean sortOrderAscending;
 
-    public MusicLibraryQuery() {
-        this.type = MusicLibraryQueryType.SUBSCRIPTION;
+    public Query() {
+        this.type = Type.SUBSCRIPTION;
         init();
     }
 
-    public MusicLibraryQuery(MusicLibraryQuery query) {
-        this.type = query == null ? MusicLibraryQueryType.SUBSCRIPTION : query.type;
+    public Query(Query query) {
+        this.type = query == null ? Type.SUBSCRIPTION : query.type;
         if (query == null) {
             init();
             return;
         }
         if (query.queryTree == null) {
-            this.queryTree = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND, false);
+            this.queryTree = new QueryTree(QueryTree.Op.AND, false);
         } else {
             this.queryTree = query.queryTree.deepCopy();
         }
@@ -61,24 +61,24 @@ public class MusicLibraryQuery {
         this.searchQuery = query.searchQuery;
     }
 
-    public MusicLibraryQuery(String searchQuery) {
-        this.type = MusicLibraryQueryType.SEARCH;
+    public Query(String searchQuery) {
+        this.type = Type.SEARCH;
         this.searchQuery = searchQuery;
         this.showField = Meta.FIELD_TITLE;
     }
 
     private void init() {
-        this.queryTree = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND, false);
+        this.queryTree = new QueryTree(QueryTree.Op.AND, false);
         this.showField = DEFAULT_SHOW_FIELD;
         this.sortByFields = DEFAULT_SORT_FIELDS;
         this.sortOrderAscending = true;
     }
 
-    public MusicLibraryQueryTree getQueryTree() {
+    public QueryTree getQueryTree() {
         return queryTree;
     }
 
-    public void setQueryTree(MusicLibraryQueryTree queryTree) {
+    public void setQueryTree(QueryTree queryTree) {
         this.queryTree = queryTree;
     }
 
@@ -114,7 +114,8 @@ public class MusicLibraryQuery {
         }
         String sortByField = sortByFields.get(0);
         return sortByField.equals(showField)
-                || (Meta.FIELD_SPECIAL_MEDIA_ID.equals(showField) && Meta.FIELD_TITLE.equals(sortByField));
+                || (Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(showField)
+                && Meta.FIELD_TITLE.equals(sortByField));
     }
 
     public void andEntryIDToQuery(EntryID entryID) {
@@ -124,19 +125,19 @@ public class MusicLibraryQuery {
     }
 
     public void and(String key, String value) {
-        if (type != MusicLibraryQueryType.SUBSCRIPTION) {
+        if (type != Type.SUBSCRIPTION) {
             Log.e(LC, "and on type: " + type.name());
             return;
         }
-        if (queryTree.getOperator() != MusicLibraryQueryTree.Op.AND) {
-            MusicLibraryQueryTree newRoot = new MusicLibraryQueryTree(
-                    MusicLibraryQueryTree.Op.AND,
+        if (queryTree.getOperator() != QueryTree.Op.AND) {
+            QueryTree newRoot = new QueryTree(
+                    QueryTree.Op.AND,
                     false
             );
             newRoot.addChild(queryTree);
             queryTree = newRoot;
         }
-        queryTree.addChild(new MusicLibraryQueryLeaf(key, value));
+        queryTree.addChild(new QueryLeaf(key, value));
     }
 
     public void andSortedByValuesToQuery(List<String> sortedByKeys,
@@ -163,7 +164,7 @@ public class MusicLibraryQuery {
     }
 
     private boolean isSubscription() {
-        return type == MusicLibraryQueryType.SUBSCRIPTION;
+        return type == Type.SUBSCRIPTION;
     }
 
     public boolean isSearchQuery() {
@@ -179,16 +180,16 @@ public class MusicLibraryQuery {
     }
 
     public String query(MediaBrowserCompat mediaBrowser,
-                        MusicLibraryQueryCallback musicLibraryQueryCallback) {
+                        QueryCallback queryCallback) {
         if (isSubscription()) {
-            return subscribe(mediaBrowser, musicLibraryQueryCallback);
+            return subscribe(mediaBrowser, queryCallback);
         } else {
-            search(mediaBrowser, musicLibraryQueryCallback);
+            search(mediaBrowser, queryCallback);
         }
         return null;
     }
 
-    private String subscribe(MediaBrowserCompat mediaBrowser, MusicLibraryQueryCallback callback) {
+    private String subscribe(MediaBrowserCompat mediaBrowser, QueryCallback callback) {
         if (!mediaBrowser.isConnected()) {
             Log.w(LC, "MediaBrowser not connected.");
             return null;
@@ -213,7 +214,7 @@ public class MusicLibraryQuery {
         return subscriptionID();
     }
 
-    private void search(MediaBrowserCompat mediaBrowser, MusicLibraryQueryCallback callback) {
+    private void search(MediaBrowserCompat mediaBrowser, QueryCallback callback) {
         if (searchQuery == null || searchQuery.isEmpty()) {
             callback.onQueryResult(new ArrayList<>());
             return;
@@ -238,7 +239,7 @@ public class MusicLibraryQuery {
         });
     }
 
-    public static abstract class MusicLibraryQueryCallback {
+    public static abstract class QueryCallback {
         public abstract void onQueryResult(@NonNull List<MediaBrowserCompat.MediaItem> items);
     }
 }

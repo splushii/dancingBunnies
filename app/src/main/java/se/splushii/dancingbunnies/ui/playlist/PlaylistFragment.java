@@ -44,12 +44,12 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackController;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.QueryNode;
+import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.TransactionStorage;
-import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
@@ -84,7 +84,7 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
     private LinearLayoutManager playlistRecViewLayoutManager;
     private FastScroller playlistFastScroller;
     private RecyclerViewActionModeSelectionTracker
-            <Playlist, PlaylistAdapter.PlaylistHolder, PlaylistAdapter>
+            <EntryID, PlaylistAdapter.PlaylistHolder, PlaylistAdapter>
             playlistSelectionTracker;
 
     private View playlistContentRootView;
@@ -157,22 +157,22 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
                     }
 
                     @Override
-                    public List<Playlist> getPlaylistSelection() {
+                    public List<EntryID> getPlaylistSelection() {
                         return playlistSelectionTracker.getSelection();
                     }
 
                     @Override
-                    public MusicLibraryQueryNode getQueryNode() {
+                    public QueryNode getQueryNode() {
                         return null;
                     }
 
                     @Override
-                    public PlaylistID getPlaylistID() {
+                    public EntryID getPlaylistID() {
                         return null;
                     }
 
                     @Override
-                    public List<MusicLibraryQueryNode> getQueryNodes() {
+                    public List<QueryNode> getQueryNodes() {
                         return Collections.emptyList();
                     }
 
@@ -222,22 +222,22 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
                     }
 
                     @Override
-                    public List<Playlist> getPlaylistSelection() {
+                    public List<EntryID> getPlaylistSelection() {
                         return Collections.emptyList();
                     }
 
                     @Override
-                    public MusicLibraryQueryNode getQueryNode() {
+                    public QueryNode getQueryNode() {
                         return null;
                     }
 
                     @Override
-                    public PlaylistID getPlaylistID() {
+                    public EntryID getPlaylistID() {
                         return model.getUserStateValue().browsedPlaylistID;
                     }
 
                     @Override
-                    public List<MusicLibraryQueryNode> getQueryNodes() {
+                    public List<QueryNode> getQueryNodes() {
                         return Collections.emptyList();
                     }
 
@@ -278,22 +278,22 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
                     }
 
                     @Override
-                    public List<Playlist> getPlaylistSelection() {
+                    public List<EntryID> getPlaylistSelection() {
                         return Collections.emptyList();
                     }
 
                     @Override
-                    public MusicLibraryQueryNode getQueryNode() {
+                    public QueryNode getQueryNode() {
                         return null;
                     }
 
                     @Override
-                    public PlaylistID getPlaylistID() {
+                    public EntryID getPlaylistID() {
                         return remote.getCurrentPlaylist();
                     }
 
                     @Override
-                    public List<MusicLibraryQueryNode> getQueryNodes() {
+                    public List<QueryNode> getQueryNodes() {
                         return Collections.emptyList();
                     }
 
@@ -333,7 +333,7 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
         model.getCurrentPlaylistID().observe(getViewLifecycleOwner(), currentPlaylistID ->
                 refreshView(model.getUserStateValue())
         );
-        playlistRecViewAdapter.setModel(model, playlists -> playlists);
+        playlistRecViewAdapter.setModel(model, null, playlists -> playlists);
         playlistEntriesRecViewAdapter.setModel(model);
         playlistPlaybackEntriesRecViewAdapter.setModel(model);
         playlistStorage = PlaylistStorage.getInstance(getContext());
@@ -425,7 +425,7 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
     public void onQueueChanged(List<PlaybackEntry> queue) {}
 
     @Override
-    public void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {
+    public void onPlaylistSelectionChanged(EntryID playlistID, long pos) {
         model.setCurrentPlaylist(playlistID);
         model.setCurrentPlaylistPos(pos);
     }
@@ -477,7 +477,7 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
             playlistShowPlaybackOrderSwitch.setVisibility(INVISIBLE);
             playlistRootView.setVisibility(VISIBLE);
         } else {
-            PlaylistID playlistID = state.browsedPlaylistID;
+            EntryID playlistID = state.browsedPlaylistID;
             newPlaylistFAB.hide();
             playlistRootView.setVisibility(GONE);
             if (model.isBrowsedCurrent()) {
@@ -508,10 +508,11 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
             }
             playlistContentRootView.setVisibility(VISIBLE);
             playlistContentInfo.setVisibility(VISIBLE);
-            model.getPlaylist(getContext(), playlistID)
-                    .observe(getViewLifecycleOwner(), playlist -> {
-                        if (playlist != null) {
-                            playlistContentInfoName.setText(playlist.name());
+            MetaStorage.getInstance(requireContext())
+                    .getPlaylistMeta(playlistID)
+                    .observe(getViewLifecycleOwner(), meta -> {
+                        if (meta != null) {
+                            playlistContentInfoName.setText(meta.getAsString(Meta.FIELD_TITLE));
                         }
                     });
         }
@@ -538,8 +539,7 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
         playlistRecViewLayoutManager = new LinearLayoutManager(this.getContext());
         playlistRecView.setLayoutManager(playlistRecViewLayoutManager);
         playlistRecViewAdapter = new PlaylistAdapter(this);
-        playlistRecViewAdapter.setOnItemClickListener(playlist -> {
-            PlaylistID playlistID = playlist.playlistID();
+        playlistRecViewAdapter.setOnItemClickListener(playlistID -> {
             Log.d(LC, "browse playlist: " + playlistID);
             model.browsePlaylist(playlistID);
         });
@@ -549,7 +549,7 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
                 MainActivity.SELECTION_ID_PLAYLIST,
                 playlistRecView,
                 playlistRecViewAdapter,
-                StorageStrategy.createParcelableStorage(Playlist.class),
+                StorageStrategy.createParcelableStorage(EntryID.class),
                 savedInstanceState
         );
 
@@ -704,16 +704,15 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 String name = newPlaylistName.getText().toString();
                 String src = newPlaylistBackendId.getText().toString();
-                PlaylistID playlistID = PlaylistID.generate(
+                EntryID playlistID = EntryID.generate(
                         src,
-                        PlaylistID.TYPE_STUPID
+                        Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST
                 );
                 TransactionStorage.getInstance(requireContext())
                         .addPlaylist(
                                 requireContext(),
                                 playlistID,
                                 name,
-                                null,
                                 null
                         );
                 newPlaylistName.setText("");

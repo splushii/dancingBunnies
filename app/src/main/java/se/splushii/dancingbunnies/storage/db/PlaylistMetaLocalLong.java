@@ -3,12 +3,9 @@ package se.splushii.dancingbunnies.storage.db;
 import androidx.annotation.NonNull;
 import androidx.room.ColumnInfo;
 import androidx.room.Entity;
-import androidx.room.ForeignKey;
 import androidx.room.Index;
 
-import static androidx.room.ForeignKey.CASCADE;
-
-@Entity(tableName = DB.TABLE_META_DOUBLE,
+@Entity(tableName = DB.TABLE_PLAYLIST_META_LOCAL_LONG,
         indices = {
                 @Index(value = {
                         DB.COLUMN_SRC,
@@ -33,15 +30,9 @@ import static androidx.room.ForeignKey.CASCADE;
                 DB.COLUMN_ID,
                 DB.COLUMN_KEY,
                 DB.COLUMN_VALUE
-        },
-        foreignKeys = @ForeignKey(
-                entity = Track.class,
-                parentColumns = { DB.COLUMN_SRC, DB.COLUMN_ID },
-                childColumns = { DB.COLUMN_SRC, DB.COLUMN_ID },
-                onDelete = CASCADE
-        )
+        }
 )
-public class MetaDouble {
+public class PlaylistMetaLocalLong {
     @NonNull
     @ColumnInfo(name = DB.COLUMN_SRC)
     public String src;
@@ -53,10 +44,10 @@ public class MetaDouble {
     public String key;
     @NonNull
     @ColumnInfo(name = DB.COLUMN_VALUE)
-    public double value;
+    public long value;
 
-    public static MetaDouble from(String src, String id, String key, double value) {
-        MetaDouble t = new MetaDouble();
+    public static PlaylistMetaLocalLong from(String src, String id, String key, long value) {
+        PlaylistMetaLocalLong t = new PlaylistMetaLocalLong();
         t.src = src;
         t.id = id;
         t.key = key;

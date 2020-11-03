@@ -21,9 +21,9 @@ import androidx.recyclerview.selection.Selection;
 import androidx.recyclerview.widget.RecyclerView;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
+import se.splushii.dancingbunnies.musiclibrary.Query;
+import se.splushii.dancingbunnies.musiclibrary.QueryEntry;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.FastScrollerBubble;
@@ -40,7 +40,7 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_ENTRY_AD
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_ADD;
 
 public class MusicLibraryAdapter extends
-        SmartDiffSelectionRecyclerViewAdapter<LibraryEntry, MusicLibraryAdapter.SongViewHolder> {
+        SmartDiffSelectionRecyclerViewAdapter<QueryEntry, MusicLibraryAdapter.SongViewHolder> {
     private static final String LC = Util.getLogContext(MusicLibraryAdapter.class);
 
     private final MusicLibraryFragment fragment;
@@ -82,24 +82,24 @@ public class MusicLibraryAdapter extends
 
     void setModel(MusicLibraryFragmentModel model) {
         initialScrolled = false;
-        model.getLibraryEntries().observe(fragment.getViewLifecycleOwner(), libraryEntries -> {
+        model.getQueryEntries().observe(fragment.getViewLifecycleOwner(), queryEntries -> {
             MusicLibraryUserState state = model.getUserState().getValue();
-            if (state.query.isSearchQuery() || libraryEntries.isEmpty()) {
-                setLibraryEntries(new ArrayList<>());
+            if (state.query.isSearchQuery() || queryEntries.isEmpty()) {
+                setQueryEntries(new ArrayList<>());
             } else {
                 if (fragment.showAllEntriesRow()) {
-                    libraryEntries.add(
+                    queryEntries.add(
                             0,
-                            new LibraryEntry(EntryID.UNKOWN, "All entries...", null)
+                            new QueryEntry(EntryID.UNKOWN, "All entries...", null)
                     );
                 }
-                setLibraryEntries(libraryEntries);
+                setQueryEntries(queryEntries);
             }
-            updateScrollPos(state, libraryEntries);
+            updateScrollPos(state, queryEntries);
         });
     }
 
-    private void updateScrollPos(MusicLibraryUserState userState, List<LibraryEntry> entries) {
+    private void updateScrollPos(MusicLibraryUserState userState, List<QueryEntry> entries) {
         if (!initialScrolled && !entries.isEmpty()) {
             initialScrolled = true;
             fragment.scrollBrowseTo(userState.pos, userState.pad);
@@ -122,12 +122,12 @@ public class MusicLibraryAdapter extends
     }
 
     @Override
-    public void onSelectionDrop(Collection<LibraryEntry> selection, int targetPos, LibraryEntry idAfterTargetPos) {
+    public void onSelectionDrop(Collection<QueryEntry> selection, int targetPos, QueryEntry idAfterTargetPos) {
         throw new RuntimeException("Not supported");
     }
 
     @Override
-    public void onUseViewHolderForDrag(SongViewHolder dragViewHolder, Collection<LibraryEntry> selection) {
+    public void onUseViewHolderForDrag(SongViewHolder dragViewHolder, Collection<QueryEntry> selection) {
         throw new RuntimeException("Not supported");
     }
 
@@ -137,17 +137,17 @@ public class MusicLibraryAdapter extends
     }
 
     @Override
-    public void onActionModeStarted(ActionModeCallback actionModeCallback, Selection<LibraryEntry> selection) {
+    public void onActionModeStarted(ActionModeCallback actionModeCallback, Selection<QueryEntry> selection) {
         updateActionModeView(actionModeCallback, selection);
     }
 
     @Override
-    public void onActionModeSelectionChanged(ActionModeCallback actionModeCallback, Selection<LibraryEntry> selection) {
+    public void onActionModeSelectionChanged(ActionModeCallback actionModeCallback, Selection<QueryEntry> selection) {
         updateActionModeView(actionModeCallback, selection);
     }
 
     private void updateActionModeView(ActionModeCallback actionModeCallback,
-                                      Selection<LibraryEntry> selection) {
+                                      Selection<QueryEntry> selection) {
         actionModeCallback.getActionMode().setTitle(selection.size() + " entries");
     }
 
@@ -155,7 +155,7 @@ public class MusicLibraryAdapter extends
     public void onActionModeEnding(ActionModeCallback actionModeCallback) {}
 
     @Override
-    public boolean validSelect(LibraryEntry key) {
+    public boolean validSelect(QueryEntry key) {
         return true;
     }
 
@@ -170,45 +170,45 @@ public class MusicLibraryAdapter extends
     }
 
     @Override
-    public boolean validDrag(Selection<LibraryEntry> selection) {
+    public boolean validDrag(Selection<QueryEntry> selection) {
         return false;
     }
 
-    public class SongViewHolder extends ItemDetailsViewHolder<LibraryEntry> {
-        private final View libraryEntry;
-        private final TextView libraryEntryShow;
-        private final LinearLayout libraryEntrySortedBy;
-        private final LinearLayout libraryEntrySortedByKeys;
+    public class SongViewHolder extends ItemDetailsViewHolder<QueryEntry> {
+        private final View queryEntry;
+        private final TextView queryEntryShow;
+        private final LinearLayout queryEntrySortedBy;
+        private final LinearLayout queryEntrySortedByKeys;
         private final TrackItemActionsView actionsView;
-        private final TextView libraryEntryNum;
+        private final TextView queryEntryNum;
         private LiveData<Integer> numSubEntriesLiveData;
         private MutableLiveData<EntryID> entryIDLiveData;
-        private LibraryEntry entry;
+        private QueryEntry entry;
         private boolean browsable = false;
 
         SongViewHolder(View view) {
             super(view);
             entryIDLiveData = new MutableLiveData<>();
-            libraryEntry = view.findViewById(R.id.library_entry);
-            libraryEntryShow = view.findViewById(R.id.library_entry_show);
-            libraryEntryNum = view.findViewById(R.id.library_entry_num);
-            libraryEntrySortedBy = view.findViewById(R.id.library_entry_sortedby);
-            libraryEntrySortedByKeys = view.findViewById(R.id.library_entry_sortedby_keys);
+            queryEntry = view.findViewById(R.id.library_entry);
+            queryEntryShow = view.findViewById(R.id.library_entry_show);
+            queryEntryNum = view.findViewById(R.id.library_entry_num);
+            queryEntrySortedBy = view.findViewById(R.id.library_entry_sortedby);
+            queryEntrySortedByKeys = view.findViewById(R.id.library_entry_sortedby_keys);
             actionsView = view.findViewById(R.id.library_entry_actions);
         }
 
         @Override
-        protected LibraryEntry getSelectionKeyOf() {
+        protected QueryEntry getSelectionKeyOf() {
             return entry;
         }
 
-        void update(LibraryEntry libraryEntry, boolean browsable) {
-            entry = libraryEntry;
+        void update(QueryEntry queryEntry, boolean browsable) {
+            entry = queryEntry;
             this.browsable = browsable;
-            fragment.addSortedByColumns(libraryEntrySortedBy, libraryEntrySortedByKeys, entry.sortedByValues(), false);
-            libraryEntryShow.setText(getShowDisplayValue(entry.name()));
-            libraryEntryNum.setVisibility(browsable ? View.VISIBLE : View.GONE);
-            entryIDLiveData.setValue(libraryEntry.entryID);
+            fragment.addSortedByColumns(queryEntrySortedBy, queryEntrySortedByKeys, entry.sortedByValues(), false);
+            queryEntryShow.setText(getShowDisplayValue(entry.name()));
+            queryEntryNum.setVisibility(browsable ? View.VISIBLE : View.GONE);
+            entryIDLiveData.setValue(queryEntry.entryID);
         }
 
         String getShowDisplayValue(String value) {
@@ -236,15 +236,15 @@ public class MusicLibraryAdapter extends
                 ret.setValue(-1);
                 return ret;
             }
-            MusicLibraryQuery query = fragment.getCurrentQuery();
+            Query query = fragment.getCurrentQuery();
             andSortedByToQuery(query, holder);
-            return MetaStorage.getInstance(fragment.requireContext()).getNumSongEntriesSum(
+            return MetaStorage.getInstance(fragment.requireContext()).getNumTracksSum(
                     Collections.singletonList(e),
                     query.getQueryTree()
             );
         });
         holder.numSubEntriesLiveData.observe(fragment.getViewLifecycleOwner(), numSubEntries ->
-                holder.libraryEntryNum.setText(String.valueOf(numSubEntries))
+                holder.queryEntryNum.setText(String.valueOf(numSubEntries))
         );
 
         holder.actionsView.setAudioBrowser(fragment.getRemote());
@@ -270,7 +270,7 @@ public class MusicLibraryAdapter extends
         return holder;
     }
 
-    private void andSortedByToQuery(MusicLibraryQuery query, SongViewHolder holder) {
+    private void andSortedByToQuery(Query query, SongViewHolder holder) {
         if (holder.isBrowsable() && !fragment.querySortedByShow()) {
             // If the entries are sorted by a key (other than the entries' type),
             // then add it to the query
@@ -283,15 +283,15 @@ public class MusicLibraryAdapter extends
 
     @Override
     public void onBindViewHolder(@NonNull final SongViewHolder holder, int position) {
-        holder.libraryEntry.setBackgroundResource(position % 2 == 0 ?
+        holder.queryEntry.setBackgroundResource(position % 2 == 0 ?
                 R.color.background_active_accent : R.color.backgroundalternate_active_accent
         );
-        LibraryEntry libraryEntry = getItem(position);
-        final boolean browsable = libraryEntry.isBrowsable();
-        holder.libraryEntryNum.setText("");
-        holder.update(libraryEntry, browsable);
-        holder.libraryEntry.setActivated(isSelected(holder.getKey()));
-        holder.libraryEntry.setOnClickListener(view -> {
+        QueryEntry queryEntry = getItem(position);
+        final boolean browsable = queryEntry.isBrowsable();
+        holder.queryEntryNum.setText("");
+        holder.update(queryEntry, browsable);
+        holder.queryEntry.setActivated(isSelected(holder.getKey()));
+        holder.queryEntry.setOnClickListener(view -> {
             if (hasSelection()) {
                 return;
             }
@@ -299,13 +299,13 @@ public class MusicLibraryAdapter extends
                 fragment.addBackStackHistory();
                 fragment.clearFocus();
                 EntryID entryID = holder.entryIDLiveData.getValue();
-                MusicLibraryQuery query = fragment.getCurrentQuery();
+                Query query = fragment.getCurrentQuery();
                 andSortedByToQuery(query, holder);
                 String showField = Meta.FIELD_ARTIST.equals(entryID.type) ?
-                        Meta.FIELD_ALBUM : Meta.FIELD_SPECIAL_MEDIA_ID;
+                        Meta.FIELD_ALBUM : Meta.FIELD_SPECIAL_ENTRY_ID_TRACK;
                 query.setShowField(showField);
                 ArrayList<String> sortFields = new ArrayList<>();
-                if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(showField)) {
+                if (Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(showField)) {
                     sortFields.add(Meta.FIELD_TITLE);
                     sortFields.add(Meta.FIELD_ARTIST);
                 } else {
@@ -323,25 +323,25 @@ public class MusicLibraryAdapter extends
         });
     }
 
-    private void setLibraryEntries(List<LibraryEntry> items) {
+    private void setQueryEntries(List<QueryEntry> items) {
         String showKey = fragment.getCurrentQuery().getShowField();
-        List<LibraryEntry> newItems;
-        if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(showKey)) {
+        List<QueryEntry> newItems;
+        if (Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(showKey)) {
             HashMap<EntryID, ArrayList<String>> newSet = new HashMap<>();
             newItems = new ArrayList<>();
-            for (LibraryEntry libraryEntry: items) {
-                ArrayList<String> sortByValues = newSet.get(libraryEntry.entryID);
+            for (QueryEntry queryEntry : items) {
+                ArrayList<String> sortByValues = newSet.get(queryEntry.entryID);
                 if (sortByValues == null) {
-                    sortByValues = new ArrayList<>(libraryEntry.sortedByValues());
-                    LibraryEntry newLibraryEntry = new LibraryEntry(
-                            libraryEntry.entryID,
-                            libraryEntry.name(),
+                    sortByValues = new ArrayList<>(queryEntry.sortedByValues());
+                    QueryEntry newQueryEntry = new QueryEntry(
+                            queryEntry.entryID,
+                            queryEntry.name(),
                             sortByValues
                     );
-                    newSet.put(newLibraryEntry.entryID, sortByValues);
-                    newItems.add(newLibraryEntry);
+                    newSet.put(newQueryEntry.entryID, sortByValues);
+                    newItems.add(newQueryEntry);
                 } else {
-                    List<String> newSortByValues = libraryEntry.sortedByValues();
+                    List<String> newSortByValues = queryEntry.sortedByValues();
                     for (int i = 0; i < sortByValues.size() && i < newSortByValues.size(); i++) {
                         sortByValues.set(i, String.format(
                                 Locale.getDefault(),

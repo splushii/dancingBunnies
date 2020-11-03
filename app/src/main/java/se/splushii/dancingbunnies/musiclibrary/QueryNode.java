@@ -14,9 +14,9 @@ import java.util.stream.Collectors;
 import androidx.annotation.NonNull;
 import se.splushii.dancingbunnies.util.Util;
 
-public abstract class MusicLibraryQueryNode {
+public abstract class QueryNode {
 
-    private static final String LC = Util.getLogContext(MusicLibraryQueryNode.class);
+    private static final String LC = Util.getLogContext(QueryNode.class);
 
     static final String JSON_KEY_NODE_TYPE = "type";
     static final String JSON_VALUE_NODE_TYPE_LEAF = "leaf";
@@ -25,17 +25,17 @@ public abstract class MusicLibraryQueryNode {
     private boolean negated = false;
     private String nodeType;
 
-    MusicLibraryQueryNode(MusicLibraryQueryNode source) {
+    QueryNode(QueryNode source) {
         this.nodeType = source.nodeType;
         this.negated = source.negated;
     }
 
-    MusicLibraryQueryNode(String nodeType, boolean negate) {
+    QueryNode(String nodeType, boolean negate) {
         this.nodeType = nodeType;
         this.negated = negate;
     }
 
-    MusicLibraryQueryNode(JSONObject jsonRoot) {
+    QueryNode(JSONObject jsonRoot) {
         try {
             nodeType = jsonRoot.getString(JSON_KEY_NODE_TYPE);
             negated = jsonRoot.getBoolean(JSON_KEY_NEGATE);
@@ -52,7 +52,7 @@ public abstract class MusicLibraryQueryNode {
         return negated;
     }
 
-    public static MusicLibraryQueryNode fromJSON(String query) {
+    public static QueryNode fromJSON(String query) {
         if (query == null) {
             return null;
         }
@@ -65,7 +65,7 @@ public abstract class MusicLibraryQueryNode {
         return null;
     }
 
-    static MusicLibraryQueryNode fromJSON(JSONObject jsonObject) {
+    static QueryNode fromJSON(JSONObject jsonObject) {
         String nodeType;
         try {
             nodeType = jsonObject.getString(JSON_KEY_NODE_TYPE);
@@ -73,43 +73,43 @@ public abstract class MusicLibraryQueryNode {
             e.printStackTrace();
             return null;
         }
-        MusicLibraryQueryNode node;
+        QueryNode node;
         if (nodeType.equals(JSON_VALUE_NODE_TYPE_LEAF)) {
-            // JSONObject is MusicLibraryQueryLeaf
-            node = new MusicLibraryQueryLeaf(jsonObject);
+            // JSONObject is QueryLeaf
+            node = new QueryLeaf(jsonObject);
         } else if (nodeType.equals(JSON_VALUE_NODE_TYPE_TREE)){
-            // Try to parse JSONObject as MusicLibraryQueryTree
-            node = new MusicLibraryQueryTree(jsonObject);
+            // Try to parse JSONObject as QueryTree
+            node = new QueryTree(jsonObject);
         } else {
-            Log.e(LC, "Unknown MusicLibraryQueryNode type: " + nodeType);
+            Log.e(LC, "Unknown QueryNode type: " + nodeType);
             return null;
         }
         return node;
     }
 
-    public static MusicLibraryQueryNode fromEntryID(EntryID entryID) {
+    public static QueryNode fromEntryID(EntryID entryID) {
         if (entryID.isUnknown()) {
-            return new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND, false);
+            return new QueryTree(QueryTree.Op.AND, false);
         }
-        return new MusicLibraryQueryLeaf(entryID.type, entryID.id);
+        return new QueryLeaf(entryID.type, entryID.id);
     }
 
-    public static String[] toJSONStringArray(List<MusicLibraryQueryNode> queryNodes) {
+    public static String[] toJSONStringArray(List<QueryNode> queryNodes) {
         return queryNodes.stream()
                 .map(queryNode -> queryNode.toJSON().toString())
                 .toArray(String[]::new);
     }
 
-    public static List<MusicLibraryQueryNode> fromJSONStringArray(String[] queryNodeJSONs) {
+    public static List<QueryNode> fromJSONStringArray(String[] queryNodeJSONs) {
         if (queryNodeJSONs == null || queryNodeJSONs.length <= 0) {
             return Collections.emptyList();
         }
         return Arrays.stream(queryNodeJSONs)
-                .map(MusicLibraryQueryNode::fromJSON)
+                .map(QueryNode::fromJSON)
                 .collect(Collectors.toList());
     }
 
-    public List<MusicLibraryQueryNode> withEntryIDs(List<EntryID> entryIDs) {
+    public List<QueryNode> withEntryIDs(List<EntryID> entryIDs) {
         return entryIDs.stream()
                 .map(entryID -> this.deepCopy().withEntryID(entryID))
                 .collect(Collectors.toList());
@@ -118,8 +118,8 @@ public abstract class MusicLibraryQueryNode {
     public JSONObject toJSON() {
         JSONObject jsonRoot = new JSONObject();
         try {
-            jsonRoot.put(MusicLibraryQueryNode.JSON_KEY_NODE_TYPE, nodeType);
-            jsonRoot.put(MusicLibraryQueryNode.JSON_KEY_NEGATE, negated);
+            jsonRoot.put(QueryNode.JSON_KEY_NODE_TYPE, nodeType);
+            jsonRoot.put(QueryNode.JSON_KEY_NEGATE, negated);
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -133,7 +133,7 @@ public abstract class MusicLibraryQueryNode {
         return toJSON().toString();
     }
 
-    public abstract MusicLibraryQueryNode deepCopy();
-    public abstract MusicLibraryQueryNode withEntryID(EntryID entryID);
+    public abstract QueryNode deepCopy();
+    public abstract QueryNode withEntryID(EntryID entryID);
     public abstract HashSet<String> getKeys();
 }

@@ -197,7 +197,7 @@ public class MetaDialogFragmentAdapter extends
             editValueKeyLiveData = new MutableLiveData<>();
             Transformations.switchMap(
                     editValueKeyLiveData,
-                    key -> MetaStorage.getInstance(v.getContext()).getMetaValuesAsStrings(key)
+                    key -> MetaStorage.getInstance(v.getContext()).getTrackMetaValuesAsStrings(key)
             ).observe(fragment.getViewLifecycleOwner(), values -> {
                 editValueAdapter.clear();
                 editValueAdapter.addAll(values);

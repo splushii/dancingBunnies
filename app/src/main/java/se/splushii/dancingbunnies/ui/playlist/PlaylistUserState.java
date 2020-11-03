@@ -1,11 +1,11 @@
 package se.splushii.dancingbunnies.ui.playlist;
 
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 
 class PlaylistUserState {
     final boolean showPlaylists;
     final boolean showPlaybackEntries;
-    final PlaylistID browsedPlaylistID;
+    final EntryID browsedPlaylistID;
     final int playlistPos;
     final int playlistPad;
     final int playlistEntriesPos;
@@ -16,7 +16,7 @@ class PlaylistUserState {
 
     private PlaylistUserState(boolean showPlaylists,
                               boolean showPlaybackEntries,
-                              PlaylistID browsedPlaylistID,
+                              EntryID browsedPlaylistID,
                               int playlistPos,
                               int playlistPad,
                               int playlistEntriesPos,
@@ -36,7 +36,7 @@ class PlaylistUserState {
         this.scrollPlaylistPlaybackToPlaylistPos = scrollPlaylistPlaybackToPlaylistPos;
     }
 
-    boolean isBrowsedCurrent(PlaylistID currentPlaylistID) {
+    boolean isBrowsedCurrent(EntryID currentPlaylistID) {
         if (browsedPlaylistID == null || currentPlaylistID == null) {
             return false;
         }
@@ -46,7 +46,7 @@ class PlaylistUserState {
     static class Builder {
         private boolean showPlaylists = true;
         private boolean showPlaybackEntries = false;
-        private PlaylistID browsedPlaylistID = null;
+        private EntryID browsedPlaylistID = null;
         private int playlistPos;
         private int playlistPad;
         private int playlistEntriesPos;
@@ -76,7 +76,7 @@ class PlaylistUserState {
             return this;
         }
 
-        Builder setBrowsedPlaylist(PlaylistID playlistID) {
+        Builder setBrowsedPlaylist(EntryID playlistID) {
             browsedPlaylistID = playlistID;
             showPlaylists = false;
             return this;

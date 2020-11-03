@@ -19,7 +19,6 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.ui.meta.MetaDialogFragment;
 import se.splushii.dancingbunnies.ui.meta.MetaTag;
@@ -36,7 +35,7 @@ public class TrackItemActionsView extends LinearLayoutCompat {
 
     private Supplier<EntryID> entryIDSupplier;
     private Supplier<PlaybackEntry> playbackEntrySupplier;
-    private Supplier<PlaylistID> playlistIDSupplier;
+    private Supplier<EntryID> playlistIDSupplier;
     private Supplier<PlaylistEntry> playlistEntrySupplier;
     private Supplier<Long> playlistPositionSupplier;
     private Supplier<MetaTag> metaTagSupplier;
@@ -182,7 +181,7 @@ public class TrackItemActionsView extends LinearLayoutCompat {
         this.playbackEntrySupplier = playbackEntrySupplier;
     }
 
-    public void setPlaylistIDSupplier(Supplier<PlaylistID> playlistIDSupplier) {
+    public void setPlaylistIDSupplier(Supplier<EntryID> playlistIDSupplier) {
         this.playlistIDSupplier = playlistIDSupplier;
     }
 

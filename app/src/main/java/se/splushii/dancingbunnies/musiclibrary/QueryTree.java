@@ -11,13 +11,13 @@ import java.util.Iterator;
 
 import androidx.annotation.NonNull;
 
-public class MusicLibraryQueryTree extends MusicLibraryQueryNode implements Iterable<MusicLibraryQueryNode> {
+public class QueryTree extends QueryNode implements Iterable<QueryNode> {
     private static final String JSON_KEY_OP = "op";
     private static final String JSON_KEY_CHILDREN = "children";
 
     @NonNull
     @Override
-    public Iterator<MusicLibraryQueryNode> iterator() {
+    public Iterator<QueryNode> iterator() {
         return Collections.unmodifiableList(children).iterator();
     }
 
@@ -26,24 +26,24 @@ public class MusicLibraryQueryTree extends MusicLibraryQueryNode implements Iter
         OR
     }
     private Op operator;
-    private final ArrayList<MusicLibraryQueryNode> children;
+    private final ArrayList<QueryNode> children;
 
-    private MusicLibraryQueryTree(MusicLibraryQueryTree source) {
+    private QueryTree(QueryTree source) {
         super(source);
         this.operator = source.operator;
         children = new ArrayList<>();
-        for (MusicLibraryQueryNode child: source.children) {
+        for (QueryNode child: source.children) {
             addChild(child.deepCopy());
         }
     }
 
-    public MusicLibraryQueryTree(Op operator, boolean negate) {
-        super(MusicLibraryQueryNode.JSON_VALUE_NODE_TYPE_TREE, negate);
+    public QueryTree(Op operator, boolean negate) {
+        super(QueryNode.JSON_VALUE_NODE_TYPE_TREE, negate);
         this.operator = operator;
         children = new ArrayList<>();
     }
 
-    MusicLibraryQueryTree(JSONObject jsonRoot) {
+    QueryTree(JSONObject jsonRoot) {
         super(jsonRoot);
         operator = Op.AND;
         children = new ArrayList<>();
@@ -51,18 +51,18 @@ public class MusicLibraryQueryTree extends MusicLibraryQueryNode implements Iter
             operator = Op.valueOf(jsonRoot.getString(JSON_KEY_OP));
             JSONArray jsonChildren = jsonRoot.getJSONArray(JSON_KEY_CHILDREN);
             for (int i = 0; i < jsonChildren.length(); i++) {
-                children.add(MusicLibraryQueryNode.fromJSON(jsonChildren.getJSONObject(i)));
+                children.add(QueryNode.fromJSON(jsonChildren.getJSONObject(i)));
             }
         } catch (JSONException e) {
             e.printStackTrace();
         }
     }
 
-    public void addChild(MusicLibraryQueryNode node) {
+    public void addChild(QueryNode node) {
         children.add(node);
     }
 
-    public void removeChild(MusicLibraryQueryNode node) {
+    public void removeChild(QueryNode node) {
         children.remove(node);
     }
 
@@ -74,8 +74,8 @@ public class MusicLibraryQueryTree extends MusicLibraryQueryNode implements Iter
         return operator;
     }
 
-    public MusicLibraryQueryTree deepCopy() {
-        return new MusicLibraryQueryTree(this);
+    public QueryTree deepCopy() {
+        return new QueryTree(this);
     }
 
     @Override
@@ -84,7 +84,7 @@ public class MusicLibraryQueryTree extends MusicLibraryQueryNode implements Iter
         try {
             jsonRoot.put(JSON_KEY_OP, operator.name());
             JSONArray jsonChildren = new JSONArray();
-            for (MusicLibraryQueryNode node: children) {
+            for (QueryNode node: children) {
                 if (node != null) {
                     jsonChildren.put(node.toJSON());
                 }
@@ -97,25 +97,25 @@ public class MusicLibraryQueryTree extends MusicLibraryQueryNode implements Iter
     }
 
     @Override
-    public MusicLibraryQueryNode withEntryID(EntryID entryID) {
+    public QueryNode withEntryID(EntryID entryID) {
         if (entryID == null || entryID.isUnknown()) {
             return this;
         }
-        MusicLibraryQueryTree queryTree;
+        QueryTree queryTree;
         if (operator == Op.AND) {
             queryTree = this;
         } else {
-            queryTree = new MusicLibraryQueryTree(Op.AND, false);
+            queryTree = new QueryTree(Op.AND, false);
             queryTree.addChild(this);
         }
-        queryTree.addChild(new MusicLibraryQueryLeaf(entryID.type, entryID.id));
+        queryTree.addChild(new QueryLeaf(entryID.type, entryID.id));
         return queryTree;
     }
 
     @Override
     public HashSet<String> getKeys() {
         HashSet<String> keys = new HashSet<>();
-        for (MusicLibraryQueryNode node: children) {
+        for (QueryNode node: children) {
             if (node != null) {
                 keys.addAll(node.getKeys());
             }

@@ -16,13 +16,19 @@ import androidx.room.TypeConverters;
 
 @Database(
         entities = {
-                Entry.class,
+                Track.class,
                 MetaString.class,
                 MetaLong.class,
                 MetaDouble.class,
                 MetaLocalString.class,
                 MetaLocalLong.class,
                 MetaLocalDouble.class,
+                PlaylistMetaString.class,
+                PlaylistMetaLong.class,
+                PlaylistMetaDouble.class,
+                PlaylistMetaLocalString.class,
+                PlaylistMetaLocalLong.class,
+                PlaylistMetaLocalDouble.class,
                 WaveformEntry.class,
                 Playlist.class,
                 PlaylistEntry.class,
@@ -33,24 +39,36 @@ import androidx.room.TypeConverters;
 )
 @TypeConverters(Converters.class)
 public abstract class DB extends RoomDatabase {
+
     private static final String DB_NAME = "dB";
-    static final String TABLE_ENTRY_ID = "entry_id";
+
+    static final String TABLE_TRACK_ID = "track_id";
     static final String TABLE_META_STRING = "meta_string";
     static final String TABLE_META_LONG = "meta_long";
     static final String TABLE_META_DOUBLE = "meta_double";
     static final String TABLE_META_LOCAL_STRING = "meta_local_string";
     static final String TABLE_META_LOCAL_LONG = "meta_local_long";
     static final String TABLE_META_LOCAL_DOUBLE = "meta_local_double";
+
+    static final String TABLE_PLAYLIST_ID = "playlist_id";
+    static final String TABLE_PLAYLIST_META_STRING = "playlist_meta_string";
+    static final String TABLE_PLAYLIST_META_LONG = "playlist_meta_long";
+    static final String TABLE_PLAYLIST_META_DOUBLE = "playlist_meta_double";
+    static final String TABLE_PLAYLIST_META_LOCAL_STRING = "playlist_meta_local_string";
+    static final String TABLE_PLAYLIST_META_LOCAL_LONG = "playlist_meta_local_long";
+    static final String TABLE_PLAYLIST_META_LOCAL_DOUBLE = "playlist_meta_local_double";
+    static final String TABLE_PLAYLIST_ENTRIES = "playlist_entries";
+
+    static final String TABLE_WAVEFORM = "waveform";
+    static final String TABLE_PLAYBACK_CONTROLLER_ENTRIES = "playback_controller_entries";
+    static final String TABLE_LIBRARY_TRANSACTIONS = "library_transactions";
+
     public static final String COLUMN_ROW_ID = "rowid";
     public static final String COLUMN_SRC = "src";
     public static final String COLUMN_ID = "id";
     public static final String COLUMN_KEY = "key";
     public static final String COLUMN_VALUE = "value";
-    static final String TABLE_WAVEFORM = "waveform";
-    static final String TABLE_PLAYLISTS = "playlists";
-    static final String TABLE_PLAYLIST_ENTRIES = "playlist_entries";
-    static final String TABLE_PLAYBACK_CONTROLLER_ENTRIES = "playback_controller_entries";
-    static final String TABLE_LIBRARY_TRANSACTIONS = "library_transactions";
+
     private static volatile DB instance;
 
     public static DB getDB(Context context) {
@@ -62,7 +80,6 @@ public abstract class DB extends RoomDatabase {
 
     public abstract MetaDao metaModel();
     public abstract WaveformDao waveformModel();
-    public abstract PlaylistDao playlistModel();
     public abstract PlaylistEntryDao playlistEntryModel();
     public abstract PlaybackControllerEntryDao playbackControllerEntryModel();
     public abstract TransactionDao transactionModel();

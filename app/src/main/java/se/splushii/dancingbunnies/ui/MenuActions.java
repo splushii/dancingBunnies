@@ -15,7 +15,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 import androidx.appcompat.view.menu.MenuBuilder;
 import androidx.appcompat.view.menu.MenuPopupHelper;
@@ -27,14 +26,12 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryTree;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.QueryNode;
+import se.splushii.dancingbunnies.musiclibrary.QueryTree;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.storage.TransactionStorage;
-import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.ui.meta.MetaDialogFragment;
@@ -164,7 +161,7 @@ public class MenuActions {
                                    Supplier<EntryID> entryIDSupplier,
                                    Supplier<PlaybackEntry> playbackEntrySupplier,
                                    Supplier<PlaylistEntry> playlistEntrySupplier,
-                                   Supplier<PlaylistID> playlistIDSupplier,
+                                   Supplier<EntryID> playlistIDSupplier,
                                    Supplier<Long> playlistPositionSupplier,
                                    MetaDialogFragment metaDialogFragment,
                                    Supplier<MetaTag> metaTagSupplier
@@ -176,12 +173,12 @@ public class MenuActions {
         } else if (action == ACTION_PLAYLIST_ENTRY_ADD) {
             AddToPlaylistDialogFragment.showDialog(
                     fragmentManager,
-                    Collections.singletonList(MusicLibraryQueryNode.fromEntryID(entryIDSupplier.get()))
+                    Collections.singletonList(QueryNode.fromEntryID(entryIDSupplier.get()))
             );
         } else if (action == ACTION_CACHE) {
             remote.downloadAudioData(
                     context,
-                    Collections.singletonList(MusicLibraryQueryNode.fromEntryID(entryIDSupplier.get())),
+                    Collections.singletonList(QueryNode.fromEntryID(entryIDSupplier.get())),
                     AudioStorage.DOWNLOAD_PRIO_LOW
             );
         } else if (action == ACTION_CACHE_DELETE) {
@@ -195,7 +192,7 @@ public class MenuActions {
                             Collections.singletonList(playbackEntrySupplier.get())
                     );
         } else if (action == ACTION_PLAYLIST_ENTRY_DELETE) {
-            PlaylistID playlistID = playlistIDSupplier.get();
+            EntryID playlistID = playlistIDSupplier.get();
             TransactionStorage.getInstance(context)
                     .deletePlaylistEntry(
                             context,
@@ -234,12 +231,12 @@ public class MenuActions {
                                      Context context,
                                      FragmentManager fragmentManager,
                                      Supplier<List<EntryID>> entryIDSupplier,
-                                     Supplier<MusicLibraryQueryNode> queryNodeSupplier,
+                                     Supplier<QueryNode> queryNodeSupplier,
                                      Supplier<List<PlaybackEntry>> playbackEntrySupplier,
                                      Supplier<List<PlaylistEntry>> playlistEntrySupplier,
-                                     Supplier<PlaylistID> playlistIDSupplier,
-                                     Supplier<List<Playlist>> playlistSupplier,
-                                     Supplier<List<MusicLibraryQueryNode>> queryNodesSupplier,
+                                     Supplier<EntryID> playlistIDSupplier,
+                                     Supplier<List<EntryID>> playlistSupplier,
+                                     Supplier<List<QueryNode>> queryNodesSupplier,
                                      Supplier<List<Transaction>> transactionsSupplier
     ) {
         if (action == ACTION_PLAY_MULTIPLE) {
@@ -297,7 +294,7 @@ public class MenuActions {
                             playbackEntrySupplier.get()
                     );
         } else if (action == ACTION_PLAYLIST_ENTRY_DELETE_MULTIPLE) {
-            PlaylistID playlistID = playlistIDSupplier.get();
+            EntryID playlistID = playlistIDSupplier.get();
             TransactionStorage.getInstance(context)
                     .deletePlaylistEntries(
                             context,
@@ -307,13 +304,7 @@ public class MenuActions {
                     );
         } else if (action == ACTION_PLAYLIST_DELETE_MULTIPLE) {
             TransactionStorage.getInstance(context)
-                    .deletePlaylists(
-                            context,
-                            playlistSupplier.get()
-                                    .stream()
-                                    .map(Playlist::playlistID)
-                                    .collect(Collectors.toList())
-                    );
+                    .deletePlaylists(context, playlistSupplier.get());
         } else if (action == ACTION_QUEUE_SHUFFLE_MULTIPLE) {
             remote.shuffleQueueItems(playbackEntrySupplier.get());
         } else if (action == ACTION_PLAYLIST_PLAYBACK_ENTRY_SHUFFLE_MULTIPLE) {
@@ -343,9 +334,9 @@ public class MenuActions {
         return true;
     }
 
-    private static MusicLibraryQueryNode getQueryNodeOrDefault(MusicLibraryQueryNode queryNode) {
+    private static QueryNode getQueryNodeOrDefault(QueryNode queryNode) {
         return queryNode == null ?
-                new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND, false) : queryNode;
+                new QueryTree(QueryTree.Op.AND, false) : queryNode;
     }
 
     private static int getStringResource(int action) {

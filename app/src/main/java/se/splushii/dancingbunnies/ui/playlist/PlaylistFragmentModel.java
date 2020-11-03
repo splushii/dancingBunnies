@@ -1,17 +1,11 @@
 package se.splushii.dancingbunnies.ui.playlist;
 
-import android.content.Context;
-
-import java.util.List;
-
 import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
-import se.splushii.dancingbunnies.storage.PlaylistStorage;
-import se.splushii.dancingbunnies.storage.db.Playlist;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.util.Util;
 
 public class PlaylistFragmentModel extends ViewModel {
@@ -19,7 +13,7 @@ public class PlaylistFragmentModel extends ViewModel {
 
     private MutableLiveData<PlaylistUserState> userState;
 
-    private MutableLiveData<PlaylistID> currentPlaylistID;
+    private MutableLiveData<EntryID> currentPlaylistID;
     private MutableLiveData<PlaybackEntry> currentEntry;
     private MutableLiveData<Long> currentPlaylistPos;
 
@@ -66,26 +60,18 @@ public class PlaylistFragmentModel extends ViewModel {
         );
     }
 
-    LiveData<List<Playlist>> getPlaylists(Context context) {
-        return PlaylistStorage.getInstance(context).getPlaylists();
-    }
-
-    LiveData<Playlist> getPlaylist(Context context, PlaylistID playlistID) {
-        return PlaylistStorage.getInstance(context).getPlaylist(playlistID);
-    }
-
-    private synchronized MutableLiveData<PlaylistID> getMutableCurrentPlaylist() {
+    private synchronized MutableLiveData<EntryID> getMutableCurrentPlaylist() {
         if (currentPlaylistID == null) {
             currentPlaylistID = new MutableLiveData<>();
         }
         return currentPlaylistID;
     }
 
-    void setCurrentPlaylist(PlaylistID playlistID) {
+    void setCurrentPlaylist(EntryID playlistID) {
         getMutableCurrentPlaylist().setValue(playlistID);
     }
 
-    LiveData<PlaylistID> getCurrentPlaylistID() {
+    LiveData<EntryID> getCurrentPlaylistID() {
         return getMutableCurrentPlaylist();
     }
 
@@ -120,12 +106,12 @@ public class PlaylistFragmentModel extends ViewModel {
     }
 
     boolean isBrowsedCurrent() {
-        PlaylistID currentPlaylistID = getCurrentPlaylistID().getValue();
+        EntryID currentPlaylistID = getCurrentPlaylistID().getValue();
         PlaylistUserState userState = getUserStateValue();
         return userState != null && userState.isBrowsedCurrent(currentPlaylistID);
     }
 
-    public void goToPlaylistPlaybackAtPlaylistPos(PlaylistID playlistID, long playlistPos) {
+    public void goToPlaylistPlaybackAtPlaylistPos(EntryID playlistID, long playlistPos) {
         getMutableUserState().setValue(new PlaylistUserState.Builder()
                 .fromState(getUserStateValue())
                 .setBrowsedPlaylist(playlistID)
@@ -152,7 +138,7 @@ public class PlaylistFragmentModel extends ViewModel {
         );
     }
 
-    void browsePlaylist(PlaylistID playlistID) {
+    void browsePlaylist(EntryID playlistID) {
         getMutableUserState().setValue(new PlaylistUserState.Builder()
                 .fromState(getUserStateValue())
                 .setBrowsedPlaylist(playlistID)

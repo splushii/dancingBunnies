@@ -4,10 +4,10 @@ import se.splushii.dancingbunnies.util.Util;
 
 public class SmartPlaylist extends Playlist {
     private static final String LC = Util.getLogContext(SmartPlaylist.class);
-    private final MusicLibraryQueryNode queryNode;
+    private final QueryNode queryNode;
 
-    public SmartPlaylist(PlaylistID playlistID, String name, MusicLibraryQueryNode queryNode) {
-        super(playlistID, name);
+    public SmartPlaylist(Meta meta, QueryNode queryNode) {
+        super(meta);
         this.queryNode = queryNode;
     }
 

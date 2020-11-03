@@ -22,7 +22,6 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.TransactionStorage;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
@@ -56,12 +55,13 @@ public class PlaylistEntriesAdapter extends
     private static final String LC = Util.getLogContext(PlaylistEntriesAdapter.class);
     private final PlaylistFragment fragment;
 
-    private PlaylistID playlistID;
+    private EntryID playlistID;
     private TrackItemActionsView selectedActionView;
     private LiveData<HashSet<EntryID>> cachedEntriesLiveData;
     private LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> fetchStateLiveData;
     private LiveData<Long> currentPlaylistPosLiveData;
-    private LiveData<PlaylistID> currentPlaylistIDLiveData;
+    private LiveData<EntryID> currentPlaylistIDLiveData;
+    private LiveData<Boolean> currentPlaylistIDIsSmartLiveData;
     private LiveData<PlaybackEntry> currentEntryLiveData;
     private boolean initialScrolled;
 
@@ -112,7 +112,7 @@ public class PlaylistEntriesAdapter extends
         actionModeCallback.getActionMode().setTitle(selection.size() + " entries");
         HashSet<String> selectionSources = new HashSet<>();
         selection.forEach(p -> selectionSources.add(p.entryID().src));
-        boolean showDelete = PlaylistID.TYPE_STUPID.equals(playlistID.type)
+        boolean showDelete = !isCurrentPlaylistSmart()
                 && APIClient.getAPIClient(fragment.requireContext(), playlistID.src)
                 .supportsAll(PLAYLIST_ENTRY_DELETE, selectionSources);
         int[] disabled = showDelete ? new int[0] :
@@ -132,6 +132,14 @@ public class PlaylistEntriesAdapter extends
                 },
                 disabled
         );
+    }
+
+    private boolean isCurrentPlaylistSmart() {
+        Boolean isSmart = currentPlaylistIDIsSmartLiveData.getValue();
+        if (isSmart == null) {
+            return false;
+        }
+        return isSmart;
     }
 
     @Override
@@ -157,7 +165,7 @@ public class PlaylistEntriesAdapter extends
     }
 
     private boolean dragSupported(Set<String> sources) {
-        return PlaylistID.TYPE_STUPID.equals(playlistID.type)
+        return !isCurrentPlaylistSmart()
                 && APIClient.getAPIClient(fragment.requireContext(), playlistID.src)
                 .supportsAll(PLAYLIST_ENTRY_MOVE, sources);
     }
@@ -208,6 +216,47 @@ public class PlaylistEntriesAdapter extends
                         currentPlaylistIDLiveData.getValue()
                 )
         );
+        Transformations.switchMap(
+                currentEntryLiveData,
+                playbackEntry -> {
+                    if (playbackEntry == null) {
+                        return new MutableLiveData<>(false);
+                    }
+                    return MusicLibraryService.isSmartPlaylist(
+                            fragment.requireContext(),
+                            playbackEntry.entryID
+                    );
+                }
+        ).observe(fragment.getViewLifecycleOwner(), playlistIsSmart -> {
+            int[] disabledActions;
+            if (!playlistIsSmart
+                    && playlistID != null
+                    && holder.playlistEntry != null
+                    && APIClient.getAPIClient(fragment.requireContext(), playlistID.src)
+                    .supports(PLAYLIST_ENTRY_DELETE, holder.playlistEntry.entryID().src)) {
+                disabledActions = new int[0];
+            } else {
+                disabledActions = new int[] {ACTION_PLAYLIST_ENTRY_DELETE};
+            }
+            holder.actionsView.setActions(
+                    new int[] {
+                            ACTION_PLAYLIST_SET_CURRENT,
+                            ACTION_QUEUE_ADD,
+                            ACTION_INFO
+                    },
+                    new int[] {
+                            ACTION_PLAY,
+                            ACTION_PLAYLIST_SET_CURRENT,
+                            ACTION_QUEUE_ADD,
+                            ACTION_PLAYLIST_ENTRY_ADD,
+                            ACTION_PLAYLIST_ENTRY_DELETE,
+                            ACTION_CACHE,
+                            ACTION_CACHE_DELETE,
+                            ACTION_INFO
+                    },
+                    disabledActions
+            );
+        });
         holder.itemContent.initMetaObserver(fragment.requireContext());
         holder.itemContent.observeMeta(fragment.getViewLifecycleOwner());
         holder.itemContent.observeCachedLiveData(cachedEntriesLiveData, fragment.getViewLifecycleOwner());
@@ -241,38 +290,12 @@ public class PlaylistEntriesAdapter extends
                 currentPlaylistIDLiveData.getValue()
         );
         holder.entry.setActivated(isSelected(holder.getKey()));
-        int[] disabledActions;
-        if (PlaylistID.TYPE_STUPID.equals(playlistID.type)
-                && APIClient.getAPIClient(fragment.requireContext(), playlistID.src)
-                .supports(PLAYLIST_ENTRY_DELETE, entryID.src)) {
-            disabledActions = new int[0];
-        } else {
-            disabledActions = new int[] {ACTION_PLAYLIST_ENTRY_DELETE};
-        }
-        holder.actionsView.setActions(
-                new int[] {
-                        ACTION_PLAYLIST_SET_CURRENT,
-                        ACTION_QUEUE_ADD,
-                        ACTION_INFO
-                },
-                new int[] {
-                        ACTION_PLAY,
-                        ACTION_PLAYLIST_SET_CURRENT,
-                        ACTION_QUEUE_ADD,
-                        ACTION_PLAYLIST_ENTRY_ADD,
-                        ACTION_PLAYLIST_ENTRY_DELETE,
-                        ACTION_CACHE,
-                        ACTION_CACHE_DELETE,
-                        ACTION_INFO
-                },
-                disabledActions
-        );
         if (isDragViewHolder(holder)) {
             onUseViewHolderForDrag(holder, getSelection());
         }
     }
 
-    private void setDataSet(PlaylistID playlistID, List<PlaylistEntry> entries) {
+    private void setDataSet(EntryID playlistID, List<PlaylistEntry> entries) {
         this.playlistID = playlistID;
         setDataSet(entries, (a, b) -> a.equals(b) && a.samePos(b));
     }
@@ -298,6 +321,13 @@ public class PlaylistEntriesAdapter extends
         currentPlaylistPosLiveData = model.getCurrentPlaylistPos();
         currentPlaylistIDLiveData = model.getCurrentPlaylistID();
         currentEntryLiveData = model.getCurrentEntry();
+        currentPlaylistIDIsSmartLiveData = Transformations.switchMap(
+                currentPlaylistIDLiveData,
+                playlistID -> MusicLibraryService.isSmartPlaylist(
+                        fragment.requireContext(),
+                        playlistID
+                )
+        );
     }
 
     private void updateScrollPos(PlaylistUserState userState, List<PlaylistEntry> entries) {
@@ -352,7 +382,7 @@ public class PlaylistEntriesAdapter extends
 
         void updateHighlight(PlaybackEntry currentEntry,
                              Long currentPlaylistPos,
-                             PlaylistID currentPlaylistID) {
+                             EntryID currentPlaylistID) {
             boolean isCurrentPlaylist = playlistID != null
                     && playlistID.equals(currentPlaylistID);
             boolean isCurrentEntry = playlistEntry != null

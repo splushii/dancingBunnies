@@ -89,7 +89,7 @@ public class MetaDialogFragment extends DialogFragment {
         setCancelable(false);
         Bundle args = getArguments();
         entryID = args == null ? EntryID.UNKOWN : EntryID.from(args);
-        metaLiveData = MetaStorage.getInstance(requireContext()).getMeta(entryID);
+        metaLiveData = MetaStorage.getInstance(requireContext()).getTrackMeta(entryID);
         super.onCreate(savedInstanceState);
     }
 
@@ -122,7 +122,7 @@ public class MetaDialogFragment extends DialogFragment {
         );
         addKeyEditText.setAdapter(displayMetaKeysAdapter);
         MetaStorage.getInstance(requireContext())
-                .getMetaFields()
+                .getTrackMetaKeys()
                 .observe(getViewLifecycleOwner(), newFields -> {
                     metaKeys.clear();
                     metaKeys.addAll(newFields);
@@ -138,7 +138,7 @@ public class MetaDialogFragment extends DialogFragment {
         addValueKeyLiveData = new MutableLiveData<>();
         Transformations.switchMap(
                 addValueKeyLiveData,
-                key -> MetaStorage.getInstance(requireContext()).getMetaValuesAsStrings(key)
+                key -> MetaStorage.getInstance(requireContext()).getTrackMetaValuesAsStrings(key)
         ).observe(getViewLifecycleOwner(), values -> {
             addValueAdapter.clear();
             addValueAdapter.addAll(values);
@@ -284,8 +284,8 @@ public class MetaDialogFragment extends DialogFragment {
 
     private void populateData(Meta meta) {
         data = new ArrayList<>();
-        data.add(new Pair<>(Meta.FIELD_SPECIAL_MEDIA_SRC, entryID.src));
-        data.add(new Pair<>(Meta.FIELD_SPECIAL_MEDIA_ID, entryID.id));
+        data.add(new Pair<>(Meta.FIELD_SPECIAL_ENTRY_SRC, entryID.src));
+        data.add(new Pair<>(Meta.FIELD_SPECIAL_ENTRY_ID_TRACK, entryID.id));
         for (String key: meta.keySet()) {
             switch (Meta.getType(key)) {
                 case STRING:

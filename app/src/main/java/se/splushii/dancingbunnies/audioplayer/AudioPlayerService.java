@@ -49,13 +49,13 @@ import androidx.media.session.MediaButtonReceiver;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryTree;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.Query;
+import se.splushii.dancingbunnies.musiclibrary.QueryEntry;
+import se.splushii.dancingbunnies.musiclibrary.QueryNode;
+import se.splushii.dancingbunnies.musiclibrary.QueryTree;
+import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -163,31 +163,31 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         return new BrowserRoot(MEDIA_ID_ROOT, null);
     }
 
-    private HashSet<String> subscriptionIDs = new HashSet<>();
-    private HashMap<String, List<MediaBrowserCompat.MediaItem>> subscriptionResults = new HashMap<>();
-    private HashMap<String, Observer<List<LibraryEntry>>> subscriptionObservers = new HashMap<>();
-    private HashMap<String, LiveData<List<LibraryEntry>>> subscriptionLiveData = new HashMap<>();
+    private final HashSet<String> subscriptionIDs = new HashSet<>();
+    private final HashMap<String, List<MediaBrowserCompat.MediaItem>> subscriptionResults = new HashMap<>();
+    private final HashMap<String, Observer<List<QueryEntry>>> subscriptionObservers = new HashMap<>();
+    private final HashMap<String, LiveData<List<QueryEntry>>> subscriptionLiveData = new HashMap<>();
     @Override
     public void onSubscribe(String id, Bundle options) {
         subscriptionIDs.add(id);
         subscriptionResults.put(id, new ArrayList<>());
-        String showField = options.getString(MusicLibraryQuery.BUNDLE_KEY_SHOW);
-        List<String> sortFields = options.getStringArrayList(MusicLibraryQuery.BUNDLE_KEY_SORT);
-        boolean sortOrderAscending = options.getBoolean(MusicLibraryQuery.BUNDLE_KEY_SORT_ORDER);
-        MusicLibraryQueryNode queryNode = MusicLibraryQueryNode.fromJSON(
-                options.getString(MusicLibraryQuery.BUNDLE_KEY_QUERY_TREE)
+        String showField = options.getString(Query.BUNDLE_KEY_SHOW);
+        List<String> sortFields = options.getStringArrayList(Query.BUNDLE_KEY_SORT);
+        boolean sortOrderAscending = options.getBoolean(Query.BUNDLE_KEY_SORT_ORDER);
+        QueryNode queryNode = QueryNode.fromJSON(
+                options.getString(Query.BUNDLE_KEY_QUERY_TREE)
         );
-        LiveData<List<LibraryEntry>> entries = musicLibraryService.getSubscriptionEntries(
+        LiveData<List<QueryEntry>> entries = musicLibraryService.getSubscriptionEntries(
                 showField,
                 sortFields,
                 sortOrderAscending,
                 queryNode
         );
         subscriptionLiveData.put(id, entries);
-        Observer<List<LibraryEntry>> observer = libraryEntries -> {
+        Observer<List<QueryEntry>> observer = queryEntries -> {
             List<MediaBrowserCompat.MediaItem> mediaItems = new ArrayList<>();
-            Log.d(LC, "onSubscribe(" + id + ") entries: " + libraryEntries.size());
-            for (LibraryEntry entry: libraryEntries) {
+            Log.d(LC, "onSubscribe(" + id + ") entries: " + queryEntries.size());
+            for (QueryEntry entry: queryEntries) {
                 MediaBrowserCompat.MediaItem item = generateMediaItem(entry);
                 mediaItems.add(item);
             }
@@ -205,8 +205,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     public void onUnsubscribe(String id) {
         subscriptionIDs.remove(id);
         subscriptionResults.remove(id);
-        LiveData<List<LibraryEntry>> liveData = subscriptionLiveData.remove(id);
-        Observer<List<LibraryEntry>> observer = subscriptionObservers.remove(id);
+        LiveData<List<QueryEntry>> liveData = subscriptionLiveData.remove(id);
+        Observer<List<QueryEntry>> observer = subscriptionObservers.remove(id);
         if (liveData != null && observer != null) {
             liveData.removeObserver(observer);
         }
@@ -234,12 +234,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     @Override
     public void onSearch(@NonNull String query, Bundle extras, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
         result.sendResult(musicLibraryService.getSearchEntries(query).stream()
-                .map(e -> generateMediaItem(new LibraryEntry(e, e.id, null)))
+                .map(e -> generateMediaItem(new QueryEntry(e, e.id, null)))
                 .collect(Collectors.toList())
         );
     }
 
-    public static MediaBrowserCompat.MediaItem generateMediaItem(LibraryEntry entry) {
+    public static MediaBrowserCompat.MediaItem generateMediaItem(QueryEntry entry) {
         Bundle extras = entry.toBundle();
         MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
                 .setMediaId(entry.entryID.key())
@@ -247,7 +247,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 .setTitle(entry.name())
                 .build();
         int flags = MediaBrowserCompat.MediaItem.FLAG_PLAYABLE;
-        if (!Meta.FIELD_SPECIAL_MEDIA_ID.equals(entry.entryID.type)) {
+        if (!Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(entry.entryID.type)) {
             flags |= MediaBrowserCompat.MediaItem.FLAG_BROWSABLE;
         }
         return new MediaBrowserCompat.MediaItem(desc, flags);
@@ -579,18 +579,26 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         }
 
         private void setToast(EntryID entryID, String format) {
-            String type = Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type) ?
+            String type = Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(entryID.type) ?
                     Meta.FIELD_TITLE : entryID.type;
-            MusicLibraryService.getSongMeta(getBaseContext(), entryID).thenAcceptAsync(meta -> {
-                        String title = meta.getAsString(Meta.FIELD_TITLE);
-                        String message = String.format(Locale.getDefault(), format, type, title);
-                        Toast.makeText(
-                                AudioPlayerService.this,
-                                message,
-                                Toast.LENGTH_SHORT
-                        ).show();
-                    },
-                    Util.getMainThreadExecutor());
+            MetaStorage.getInstance(getApplicationContext())
+                    .getTrackMetaOnce(entryID)
+                    .thenAcceptAsync(meta -> {
+                                String title = meta.getAsString(Meta.FIELD_TITLE);
+                                String message = String.format(
+                                        Locale.getDefault(),
+                                        format,
+                                        type,
+                                        title
+                                );
+                                Toast.makeText(
+                                        AudioPlayerService.this,
+                                        message,
+                                        Toast.LENGTH_SHORT
+                                ).show();
+                            },
+                            Util.getMainThreadExecutor()
+                    );
         }
 
         @Override
@@ -726,7 +734,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     public static CompletableFuture<Boolean> play(MediaControllerCompat mediaController,
                                                   List<EntryID> entryIDs,
-                                                  MusicLibraryQueryNode queryNode) {
+                                                  QueryNode queryNode) {
         Bundle params = new Bundle();
         params.putParcelableArrayList("entryids", new ArrayList<>(entryIDs));
         params.putString("queryJSON", queryNode.toJSON().toString());
@@ -746,7 +754,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void play(ResultReceiver cb, Bundle b) {
         ArrayList<EntryID> entryIDs = b.getParcelableArrayList("entryids");
-        MusicLibraryQueryNode queryNode = MusicLibraryQueryNode.fromJSON(b.getString("queryJSON"));
+        QueryNode queryNode = QueryNode.fromJSON(b.getString("queryJSON"));
         if (entryIDs == null || entryIDs.isEmpty()) {
             cb.send(-1, null);
             return;
@@ -765,7 +773,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     public static CompletableFuture<Boolean> playQueryBundles(MediaControllerCompat mediaController,
-                                                              List<MusicLibraryQueryNode> queryNodes) {
+                                                              List<QueryNode> queryNodes) {
         Bundle params = new Bundle();
         putQueryNodesToBundle(params, queryNodes);
         CompletableFuture<Boolean> future = new CompletableFuture<>();
@@ -783,7 +791,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void playQueryBundles(ResultReceiver cb, Bundle b) {
-        List<MusicLibraryQueryNode> queryNodes = getQueryNodesFromBundle(b);
+        List<QueryNode> queryNodes = getQueryNodesFromBundle(b);
         if (queryNodes == null || queryNodes.isEmpty()) {
             cb.send(-1, null);
             return;
@@ -803,11 +811,11 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     public static CompletableFuture<Boolean> queue(MediaControllerCompat mediaController,
                                                    List<EntryID> entryIDs,
-                                                   MusicLibraryQueryNode queryNode) {
+                                                   QueryNode queryNode) {
         Bundle params = new Bundle();
         params.putParcelableArrayList("entryids", new ArrayList<>(entryIDs));
         if (queryNode == null) {
-            queryNode = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND, false);
+            queryNode = new QueryTree(QueryTree.Op.AND, false);
         }
         params.putString("queryJSON", queryNode.toJSON().toString());
         CompletableFuture<Boolean> future = new CompletableFuture<>();
@@ -826,7 +834,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void queue(ResultReceiver cb, Bundle b) {
         ArrayList<EntryID> entryIDs = b.getParcelableArrayList("entryids");
-        MusicLibraryQueryNode queryNode = MusicLibraryQueryNode.fromJSON(b.getString("queryJSON"));
+        QueryNode queryNode = QueryNode.fromJSON(b.getString("queryJSON"));
         if (entryIDs == null || entryIDs.isEmpty()) {
             cb.send(-1, null);
             return;
@@ -846,7 +854,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     public static CompletableFuture<Boolean> queueQueryBundles(
             MediaControllerCompat mediaController,
-            List<MusicLibraryQueryNode> queryNodes
+            List<QueryNode> queryNodes
     ) {
         Bundle params = new Bundle();
         putQueryNodesToBundle(params, queryNodes);
@@ -865,19 +873,19 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private static void putQueryNodesToBundle(Bundle bundle,
-                                              List<MusicLibraryQueryNode> queryNodes) {
+                                              List<QueryNode> queryNodes) {
         bundle.putStringArray(
                 "queryNodeJSONs",
-                MusicLibraryQueryNode.toJSONStringArray(queryNodes)
+                QueryNode.toJSONStringArray(queryNodes)
         );
     }
 
-    private List<MusicLibraryQueryNode> getQueryNodesFromBundle(Bundle b) {
-        return MusicLibraryQueryNode.fromJSONStringArray(b.getStringArray("queryNodeJSONs"));
+    private List<QueryNode> getQueryNodesFromBundle(Bundle b) {
+        return QueryNode.fromJSONStringArray(b.getStringArray("queryNodeJSONs"));
     }
 
     private void queueQueryBundles(ResultReceiver cb, Bundle b) {
-        List<MusicLibraryQueryNode> queryNodes = getQueryNodesFromBundle(b);
+        List<QueryNode> queryNodes = getQueryNodesFromBundle(b);
         if (queryNodes == null || queryNodes.isEmpty()) {
             cb.send(-1, null);
             return;
@@ -1031,7 +1039,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     public static CompletableFuture<Boolean> setCurrentPlaylist(MediaControllerCompat mediaController,
-                                                                PlaylistID playlistID,
+                                                                EntryID playlistID,
                                                                 long pos) {
         Bundle params = new Bundle();
         params.putParcelable("playlistID", playlistID);
@@ -1051,7 +1059,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void setPlaylist(ResultReceiver cb, Bundle extras) {
-        PlaylistID playlistID = extras.getParcelable("playlistID");
+        EntryID playlistID = extras.getParcelable("playlistID");
         long pos = extras.getLong("playlistPos");
         playbackController.setPlaylist(playlistID, pos)
                 .thenRunAsync(() -> cb.send(0, null), Util.getMainThreadExecutor());
@@ -1193,10 +1201,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         @Override
         public void onMetaChanged(EntryID entryID) {
-            MusicLibraryService.getSongMeta(getBaseContext(), entryID).thenAcceptAsync(
-                    meta -> mediaSession.setMetadata(meta.toMediaMetadataCompat()),
-                    Util.getMainThreadExecutor()
-            );
+            MetaStorage.getInstance(getApplicationContext())
+                    .getTrackMetaOnce(entryID)
+                    .thenAcceptAsync(
+                            meta -> mediaSession.setMetadata(meta.toMediaMetadataCompat()),
+                            Util.getMainThreadExecutor()
+                    );
         }
 
         @Override
@@ -1237,7 +1247,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         }
 
         @Override
-        public void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {
+        public void onPlaylistSelectionChanged(EntryID playlistID, long pos) {
             synchronized (mediaSessionExtrasLock) {
                 Bundle extras = mediaSession.getController().getExtras();
                 if (extras == null) {

@@ -50,15 +50,13 @@ import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserCallback;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryLeaf;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryTree;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.Query;
+import se.splushii.dancingbunnies.musiclibrary.QueryEntry;
+import se.splushii.dancingbunnies.musiclibrary.QueryLeaf;
+import se.splushii.dancingbunnies.musiclibrary.QueryNode;
+import se.splushii.dancingbunnies.musiclibrary.QueryTree;
 import se.splushii.dancingbunnies.storage.MetaStorage;
-import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
@@ -123,7 +121,7 @@ public class MusicLibraryFragment
     private MusicLibraryAdapter browseRecyclerViewAdapter;
     private LinearLayoutManager browseRecyclerViewLayoutManager;
     private RecyclerViewActionModeSelectionTracker
-            <LibraryEntry, MusicLibraryAdapter.SongViewHolder, MusicLibraryAdapter>
+            <QueryEntry, MusicLibraryAdapter.SongViewHolder, MusicLibraryAdapter>
             browseSelectionTracker;
     private FastScroller browseFastScroller;
     private FastScrollerBubble browseFastScrollerBubble;
@@ -169,22 +167,22 @@ public class MusicLibraryFragment
                     }
 
                     @Override
-                    public List<Playlist> getPlaylistSelection() {
+                    public List<EntryID> getPlaylistSelection() {
                         return Collections.emptyList();
                     }
 
                     @Override
-                    public MusicLibraryQueryNode getQueryNode() {
+                    public QueryNode getQueryNode() {
                         return null;
                     }
 
                     @Override
-                    public PlaylistID getPlaylistID() {
+                    public EntryID getPlaylistID() {
                         return null;
                     }
 
                     @Override
-                    public List<MusicLibraryQueryNode> getQueryNodes() {
+                    public List<QueryNode> getQueryNodes() {
                         return Collections.emptyList();
                     }
 
@@ -237,22 +235,22 @@ public class MusicLibraryFragment
                     }
 
                     @Override
-                    public List<Playlist> getPlaylistSelection() {
+                    public List<EntryID> getPlaylistSelection() {
                         return Collections.emptyList();
                     }
 
                     @Override
-                    public MusicLibraryQueryNode getQueryNode() {
+                    public QueryNode getQueryNode() {
                         return getCurrentQueryTree();
                     }
 
                     @Override
-                    public PlaylistID getPlaylistID() {
+                    public EntryID getPlaylistID() {
                         return null;
                     }
 
                     @Override
-                    public List<MusicLibraryQueryNode> getQueryNodes() {
+                    public List<QueryNode> getQueryNodes() {
                         return getSelectedQueryTrees();
                     }
 
@@ -339,7 +337,7 @@ public class MusicLibraryFragment
     public void onQueueChanged(List<PlaybackEntry> queue) {}
 
     @Override
-    public void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {}
+    public void onPlaylistSelectionChanged(EntryID playlistID, long pos) {}
 
     @Override
     public void onPlaylistPlaybackOrderModeChanged(int playbackOrderMode) {}
@@ -390,7 +388,7 @@ public class MusicLibraryFragment
             browseHeaderSortedByOrder.setImageResource(sortOrderResource);
 
             queryRootView.removeAllViews();
-            MusicLibraryQueryTree queryTree = newUserState.query.getQueryTree();
+            QueryTree queryTree = newUserState.query.getQueryTree();
             addFilterGroupToView(queryRootView, queryTree, 1);
 
             browseView.setVisibility(VISIBLE);
@@ -400,7 +398,7 @@ public class MusicLibraryFragment
     }
 
     private void addFilterGroupToView(LinearLayout browseQueryView,
-                                      MusicLibraryQueryTree queryTree,
+                                      QueryTree queryTree,
                                       int depth) {
         MusicLibraryFilterGroup filterGroup = new MusicLibraryFilterGroup(requireContext());
         filterGroup.setOperator(queryTree.getOperator(), queryTree.isNegated());
@@ -436,9 +434,9 @@ public class MusicLibraryFragment
                     }
 
                     @Override
-                    public MusicLibraryQueryLeaf.Op onOpSelected(int typePos, int pos) {
+                    public QueryLeaf.Op onOpSelected(int typePos, int pos) {
                         String typeValue = metaKeys.get(typePos);
-                        return MusicLibraryQueryLeaf.getOps(typeValue).get(pos);
+                        return QueryLeaf.getOps(typeValue).get(pos);
                     }
 
                     @Override
@@ -448,8 +446,8 @@ public class MusicLibraryFragment
                         }
                         String field = metaKeys.get(typePos);
                         String displayedField = metaKeysForDisplay.get(typePos);
-                        MusicLibraryQueryLeaf.Op op = MusicLibraryQueryLeaf.getOps(field).get(opPos);
-                        String displayedOp = MusicLibraryQueryLeaf.getDisplayableOps(field).get(opPos);
+                        QueryLeaf.Op op = QueryLeaf.getOps(field).get(opPos);
+                        String displayedOp = QueryLeaf.getDisplayableOps(field).get(opPos);
                         Log.d(LC, "Applying filter: " + displayedField + " " + displayedOp + " " + input);
                         Toast.makeText(
                                 getContext(),
@@ -460,17 +458,17 @@ public class MusicLibraryFragment
                                 Util.getRecyclerViewPosition(browseRecyclerView),
                                 getCurrentQueryTree()
                         );
-                        queryTree.addChild(new MusicLibraryQueryLeaf(field, op, input, negate));
+                        queryTree.addChild(new QueryLeaf(field, op, input, negate));
                         setQuery(getCurrentQuery());
                     }
 
                     @Override
-                    public void onSubQuerySubmit(MusicLibraryQueryTree.Op op, boolean negate) {
+                    public void onSubQuerySubmit(QueryTree.Op op, boolean negate) {
                         model.addBackStackHistory(
                                 Util.getRecyclerViewPosition(browseRecyclerView),
                                 getCurrentQueryTree()
                         );
-                        queryTree.addChild(new MusicLibraryQueryTree(op, negate));
+                        queryTree.addChild(new QueryTree(op, negate));
                         setQuery(getCurrentQuery());
                     }
                 }
@@ -480,14 +478,14 @@ public class MusicLibraryFragment
         List<Integer> queryTreeSelection = model.getQueryTreeSelection();
         int selectedIndex = depth > queryTreeSelection.size() ? -1 : queryTreeSelection.get(depth - 1);
         int index = 0;
-        for (MusicLibraryQueryNode node: queryTree) {
+        for (QueryNode node: queryTree) {
             final int nodeIndex = index;
-            if (node instanceof MusicLibraryQueryLeaf) {
-                MusicLibraryQueryLeaf leaf = (MusicLibraryQueryLeaf) node;
+            if (node instanceof QueryLeaf) {
+                QueryLeaf leaf = (QueryLeaf) node;
                 boolean negated = leaf.isNegated();
                 String key = leaf.getKey();
                 String value = leaf.getValue();
-                MusicLibraryQueryLeaf.Op op = leaf.getOperator();
+                QueryLeaf.Op op = leaf.getOperator();
                 filterGroup.addLeafFilter(
                         key,
                         op,
@@ -508,9 +506,9 @@ public class MusicLibraryFragment
 
                             @Override
                             public void onSubmit(int opPos, String input, boolean negated) {
-                                MusicLibraryQueryLeaf.Op op = MusicLibraryQueryLeaf.getOps(key).get(opPos);
+                                QueryLeaf.Op op = QueryLeaf.getOps(key).get(opPos);
                                 String displayedField = Meta.getDisplayKey(key);
-                                String displayedOp = MusicLibraryQueryLeaf.getDisplayableOps(key).get(opPos);
+                                String displayedOp = QueryLeaf.getDisplayableOps(key).get(opPos);
                                 String msg = "Applying filter: "
                                         + (negated ? "! " : "")
                                         + displayedField + " " + displayedOp + " " + input;
@@ -537,8 +535,8 @@ public class MusicLibraryFragment
                             }
                         }
                 );
-            } else if (node instanceof MusicLibraryQueryTree) {
-                MusicLibraryQueryTree tree = (MusicLibraryQueryTree) node;
+            } else if (node instanceof QueryTree) {
+                QueryTree tree = (QueryTree) node;
                 filterGroup.addTreeFilter(
                         tree.getOperator(),
                         tree.isNegated(),
@@ -661,7 +659,8 @@ public class MusicLibraryFragment
         for (int i = 0; i < sortKeys.size(); i++) {
             String key = sortKeys.get(i);
             if (showKey.equals(key)
-                    || Meta.FIELD_SPECIAL_MEDIA_ID.equals(showKey) && Meta.FIELD_TITLE.equals(key)) {
+                    || Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(showKey)
+                    && Meta.FIELD_TITLE.equals(key)) {
                 continue;
             }
             TextView tv = new TextView(requireContext());
@@ -703,7 +702,7 @@ public class MusicLibraryFragment
     }
 
     private boolean isBrowsable(String field) {
-        return !Meta.FIELD_SPECIAL_MEDIA_ID.equals(field);
+        return !Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(field);
     }
 
     @Override
@@ -825,7 +824,7 @@ public class MusicLibraryFragment
                 MainActivity.SELECTION_ID_MUSICLIBRARY_BROWSE,
                 browseRecyclerView,
                 browseRecyclerViewAdapter,
-                StorageStrategy.createParcelableStorage(LibraryEntry.class),
+                StorageStrategy.createParcelableStorage(QueryEntry.class),
                 savedInstanceState
         );
         browseRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
@@ -921,7 +920,7 @@ public class MusicLibraryFragment
         browseFilterSelectedKeyLiveData = new MutableLiveData<>();
         Transformations.switchMap(
                 browseFilterSelectedKeyLiveData,
-                key -> MetaStorage.getInstance(requireContext()).getMetaValuesAsStrings(key)
+                key -> MetaStorage.getInstance(requireContext()).getTrackMetaValuesAsStrings(key)
         ).observe(getViewLifecycleOwner(), values -> {
             browseFilterAutoCompleteValuesAdapter.clear();
             browseFilterAutoCompleteValuesAdapter.addAll(values);
@@ -929,15 +928,15 @@ public class MusicLibraryFragment
         });
         browseFilterSelectedKeyLiveData.observe(getViewLifecycleOwner(), key -> {
             browseFilterOperatorAdapter.clear();
-            browseFilterOperatorAdapter.addAll(MusicLibraryQueryLeaf.getDisplayableOps(key));
+            browseFilterOperatorAdapter.addAll(QueryLeaf.getDisplayableOps(key));
             browseFilterOperatorAdapter.notifyDataSetChanged();
         });
 
         MetaStorage.getInstance(requireContext())
-                .getMetaFields()
+                .getTrackMetaKeys()
                 .observe(getViewLifecycleOwner(), newFields -> {
-                    newFields.add(Meta.FIELD_SPECIAL_MEDIA_ID);
-                    newFields.add(Meta.FIELD_SPECIAL_MEDIA_SRC);
+                    newFields.add(Meta.FIELD_SPECIAL_ENTRY_ID_TRACK);
+                    newFields.add(Meta.FIELD_SPECIAL_ENTRY_SRC);
                     Collections.sort(newFields, (f1, f2) -> {
                         if (f1.equals(f2)) {
                             return 0;
@@ -1047,7 +1046,7 @@ public class MusicLibraryFragment
             return true;
         }
         if (groupId == MENU_GROUP_ID_SORT_BY_CUSTOM) {
-            MusicLibraryQuery query = getCurrentQuery();
+            Query query = getCurrentQuery();
             EntryTypeSelectionDialogFragment.showDialogForSortConfig(
                     this,
                     query.getSortByFields()
@@ -1115,38 +1114,38 @@ public class MusicLibraryFragment
         model.addBackStackHistory(Util.getRecyclerViewPosition(browseRecyclerView));
     }
 
-    void setQuery(MusicLibraryQuery query) {
+    void setQuery(Query query) {
         model.setQuery(query);
     }
 
-    private ArrayList<MusicLibraryQueryNode> getSelectedQueryTrees() {
-        ArrayList<MusicLibraryQueryNode> queryTrees = new ArrayList<>();
+    private ArrayList<QueryNode> getSelectedQueryTrees() {
+        ArrayList<QueryNode> queryTrees = new ArrayList<>();
         List<String> sortedByKeys = querySortedByKeys();
-        browseSelectionTracker.getSelection().forEach(libraryEntry -> {
-            MusicLibraryQuery query = getCurrentQuery();
-            query.andEntryIDToQuery(libraryEntry.entryID);
-            query.andSortedByValuesToQuery(sortedByKeys, libraryEntry.sortedByValues());
+        browseSelectionTracker.getSelection().forEach(queryEntry -> {
+            Query query = getCurrentQuery();
+            query.andEntryIDToQuery(queryEntry.entryID);
+            query.andSortedByValuesToQuery(sortedByKeys, queryEntry.sortedByValues());
             queryTrees.add(query.getQueryTree());
         });
         return queryTrees;
     }
 
-    MusicLibraryQuery getCurrentQuery() {
+    Query getCurrentQuery() {
         MusicLibraryUserState state = model.getUserState().getValue();
-        return state == null ? null : new MusicLibraryQuery(state.query);
+        return state == null ? null : new Query(state.query);
     }
     
-    private MusicLibraryQueryTree getCurrentQueryTree() {
-        MusicLibraryQuery query = getCurrentQuery();
+    private QueryTree getCurrentQueryTree() {
+        Query query = getCurrentQuery();
         if (query == null) {
             return null;
         }
-        MusicLibraryQueryTree queryTree = query.getQueryTree();
+        QueryTree queryTree = query.getQueryTree();
         return queryTree.deepCopy();
     }
 
     boolean querySortedByShow() {
-        MusicLibraryQuery query = getCurrentQuery();
+        Query query = getCurrentQuery();
         if (query == null) {
             return false;
         }
@@ -1154,7 +1153,7 @@ public class MusicLibraryFragment
     }
 
     private boolean isSortedAscending() {
-        MusicLibraryQuery query = getCurrentQuery();
+        Query query = getCurrentQuery();
         if (query == null) {
             return false;
         }
@@ -1162,7 +1161,7 @@ public class MusicLibraryFragment
     }
 
     List<String> querySortedByKeys() {
-        MusicLibraryQuery query = getCurrentQuery();
+        Query query = getCurrentQuery();
         if (query == null) {
             return null;
         }
@@ -1193,8 +1192,9 @@ public class MusicLibraryFragment
     }
 
     boolean showAllEntriesRow() {
-        MusicLibraryQuery query = getCurrentQuery();
-        return !query.isSearchQuery() && !Meta.FIELD_SPECIAL_MEDIA_ID.equals(query.getShowField());
+        Query query = getCurrentQuery();
+        return !query.isSearchQuery()
+                && !Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(query.getShowField());
     }
 
     boolean isSearchQuery() {

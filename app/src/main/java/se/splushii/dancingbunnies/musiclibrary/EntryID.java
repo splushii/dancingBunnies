@@ -17,19 +17,26 @@ import org.json.JSONObject;
 import java.util.Objects;
 
 import androidx.annotation.NonNull;
+import se.splushii.dancingbunnies.storage.db.Entry;
+import se.splushii.dancingbunnies.util.Util;
 
 public class EntryID implements Parcelable {
+    public static final String TYPE_TRACK = "track";
+    public static final String TYPE_PLAYLIST = "playlist";
+
     static final String BUNDLE_KEY_SRC = "dancingbunnies.bundle.key.entryid.src";
     static final String BUNDLE_KEY_ID = "dancingbunnies.bundle.key.entryid.id";
     static final String BUNDLE_KEY_TYPE = "dancingbunnies.bundle.key.entryid.type";
     static final String JSON_KEY_SRC = "src";
     static final String JSON_KEY_ID = "id";
     static final String JSON_KEY_TYPE = "type";
+
     public static final EntryID UNKOWN = new EntryID(
             "dancingbunnies.entryid.UNKNOWN_SRC",
             "dancingbunnies.entryid.UNKNOWN_ID",
             "dancingbunnies.entryid.UNKNOWN_TYPE"
     );
+
     @NonNull public final String src;
     @NonNull public final String id;
     @NonNull public final String type;
@@ -44,6 +51,14 @@ public class EntryID implements Parcelable {
         src = Objects.requireNonNull(in.readString());
         id = Objects.requireNonNull(in.readString());
         type = Objects.requireNonNull(in.readString());
+    }
+
+    public static EntryID generate(String src, String type) {
+        return new EntryID(
+                src,
+                Util.generateID(),
+                type
+        );
     }
 
     private static boolean isUnknown(EntryID entryID) {
@@ -149,14 +164,14 @@ public class EntryID implements Parcelable {
         return b;
     }
 
-    public static EntryID from(LibraryEntry e) {
+    public static EntryID from(QueryEntry e) {
         return new EntryID(e.src(), e.id(), e.type());
     }
 
     public static EntryID from(Document doc) {
-        String src = doc.get(Meta.FIELD_SPECIAL_MEDIA_SRC);
-        String id = doc.get(Meta.FIELD_SPECIAL_MEDIA_ID);
-        String type = Meta.FIELD_SPECIAL_MEDIA_ID;
+        String src = doc.get(Meta.FIELD_SPECIAL_ENTRY_SRC);
+        String id = doc.get(Meta.FIELD_SPECIAL_ENTRY_ID_TRACK);
+        String type = Meta.FIELD_SPECIAL_ENTRY_ID_TRACK;
         return new EntryID(src, id, type);
     }
 
@@ -176,6 +191,10 @@ public class EntryID implements Parcelable {
         String id = json.getString(JSON_KEY_ID);
         String type = json.getString(JSON_KEY_TYPE);
         return new EntryID(src, id, type);
+    }
+
+    public static EntryID from(Entry entry, String entryType) {
+        return new EntryID(entry.src, entry.id, entryType);
     }
 
     public JSONObject toJSON() {

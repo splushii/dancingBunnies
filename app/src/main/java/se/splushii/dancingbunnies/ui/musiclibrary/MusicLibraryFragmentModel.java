@@ -10,10 +10,10 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
-import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryTree;
+import se.splushii.dancingbunnies.musiclibrary.Query;
+import se.splushii.dancingbunnies.musiclibrary.QueryEntry;
+import se.splushii.dancingbunnies.musiclibrary.QueryTree;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryFragmentModel extends ViewModel {
@@ -22,12 +22,12 @@ public class MusicLibraryFragmentModel extends ViewModel {
     private MutableLiveData<MusicLibraryUserState> userState;
     private LinkedList<MusicLibraryUserState> backStack;
     private String currentSubscriptionID;
-    private MutableLiveData<List<LibraryEntry>> libraryEntries;
+    private MutableLiveData<List<QueryEntry>> queryEntries;
     private MutableLiveData<PlaybackEntry> currentEntry;
     private List<Integer> queryTreeSelection;
 
     private static MusicLibraryUserState initialUserState() {
-        return new MusicLibraryUserState(new MusicLibraryQuery(), 0, 0);
+        return new MusicLibraryUserState(new Query(), 0, 0);
     }
 
     private MutableLiveData<MusicLibraryUserState> getMutableUserState() {
@@ -49,12 +49,12 @@ public class MusicLibraryFragmentModel extends ViewModel {
         ));
     }
 
-    private MusicLibraryQuery getMusicLibraryQuery() {
+    private Query getMusicLibraryQuery() {
         MusicLibraryUserState state = getUserState().getValue();
         if (state == null) {
-            return new MusicLibraryQuery();
+            return new Query();
         }
-        return new MusicLibraryQuery(state.query);
+        return new Query(state.query);
     }
 
     private LinkedList<MusicLibraryUserState> getBackStack() {
@@ -70,8 +70,8 @@ public class MusicLibraryFragmentModel extends ViewModel {
     }
 
     public void addBackStackHistory(Pair<Integer, Integer> currentPosition,
-                                    MusicLibraryQueryTree queryTree) {
-        MusicLibraryQuery query = getMusicLibraryQuery();
+                                    QueryTree queryTree) {
+        Query query = getMusicLibraryQuery();
         query.setQueryTree(queryTree);
         getBackStack().push(new MusicLibraryUserState(query, currentPosition));
     }
@@ -88,25 +88,25 @@ public class MusicLibraryFragmentModel extends ViewModel {
         getMutableUserState().setValue(initialUserState());
     }
 
-    void setQuery(MusicLibraryQuery query) {
-        resetLibraryEntries();
+    void setQuery(Query query) {
+        resetQueryEntries();
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0 , 0));
     }
 
     void displayType(String displayType) {
-        MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
+        Query query = new Query(getMusicLibraryQuery());
         query.setShowField(displayType);
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 
     void sortBy(List<String> fields) {
-        MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
+        Query query = new Query(getMusicLibraryQuery());
         query.setSortByFields(new ArrayList<>(fields));
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
 
     void setSortOrder(boolean ascending) {
-        MusicLibraryQuery query = new MusicLibraryQuery(getMusicLibraryQuery());
+        Query query = new Query(getMusicLibraryQuery());
         query.setSortOrder(ascending);
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
@@ -134,11 +134,11 @@ public class MusicLibraryFragmentModel extends ViewModel {
     public void query(String filterType, String filter) {
         addBackStackHistory(new Pair<>(0, 0));
         showOnly(filterType, filter);
-        displayType(Meta.FIELD_SPECIAL_MEDIA_ID);
+        displayType(Meta.FIELD_SPECIAL_ENTRY_ID_TRACK);
     }
 
     private void showOnly(String filterType, String filter) {
-        MusicLibraryQuery query = new MusicLibraryQuery();
+        Query query = new Query();
         query.and(filterType, filter);
         getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
     }
@@ -148,7 +148,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
             addBackStackHistory(new Pair<>(0, 0));
         }
         getMutableUserState().setValue(new MusicLibraryUserState(
-                new MusicLibraryQuery(query), 0, 0
+                new Query(query), 0, 0
         ));
     }
 
@@ -157,20 +157,20 @@ public class MusicLibraryFragmentModel extends ViewModel {
                 && getMusicLibraryQuery().getSearchQuery().isEmpty();
     }
 
-    private MutableLiveData<List<LibraryEntry>> getMutableLibraryEntries() {
-        if (libraryEntries == null) {
-            libraryEntries = new MutableLiveData<>();
-            libraryEntries.setValue(new LinkedList<>());
+    private MutableLiveData<List<QueryEntry>> getMutableQueryEntries() {
+        if (queryEntries == null) {
+            queryEntries = new MutableLiveData<>();
+            queryEntries.setValue(new LinkedList<>());
         }
-        return libraryEntries;
+        return queryEntries;
     }
 
-    LiveData<List<LibraryEntry>> getLibraryEntries() {
-        return getMutableLibraryEntries();
+    LiveData<List<QueryEntry>> getQueryEntries() {
+        return getMutableQueryEntries();
     }
 
-    private void resetLibraryEntries() {
-        getMutableLibraryEntries().setValue(new ArrayList<>());
+    private void resetQueryEntries() {
+        getMutableQueryEntries().setValue(new ArrayList<>());
     }
 
     void query(AudioBrowser remote) {
@@ -178,7 +178,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
         currentSubscriptionID = remote.query(
                 currentSubscriptionID,
                 getMusicLibraryQuery(),
-                items -> getMutableLibraryEntries().setValue(items)
+                items -> getMutableQueryEntries().setValue(items)
         );
         setCurrentSubscriptionID(currentSubscriptionID);
     }

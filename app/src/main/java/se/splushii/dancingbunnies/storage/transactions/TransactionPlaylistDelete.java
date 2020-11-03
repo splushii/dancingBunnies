@@ -11,8 +11,8 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 import se.splushii.dancingbunnies.backend.APIClient;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
-import se.splushii.dancingbunnies.storage.PlaylistStorage;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.util.Util;
 
 public class TransactionPlaylistDelete extends Transaction {
@@ -23,7 +23,7 @@ public class TransactionPlaylistDelete extends Transaction {
 
     private static final String JSON_KEY_PLAYLIST_ID = "playlist_id";
 
-    private final PlaylistID playlistID;
+    private final EntryID playlistID;
 
     public TransactionPlaylistDelete(long id,
                                      String src,
@@ -33,7 +33,7 @@ public class TransactionPlaylistDelete extends Transaction {
                                      JSONObject args
     ) throws JSONException {
         super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
-        playlistID = PlaylistID.from(args.getJSONObject(JSON_KEY_PLAYLIST_ID));
+        playlistID = EntryID.from(args.getJSONObject(JSON_KEY_PLAYLIST_ID));
     }
 
     public TransactionPlaylistDelete(long id,
@@ -41,7 +41,7 @@ public class TransactionPlaylistDelete extends Transaction {
                                      Date date,
                                      long errorCount,
                                      String errorMessage,
-                                     PlaylistID playlistID
+                                     EntryID playlistID
     ) {
         super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
         this.playlistID = playlistID;
@@ -93,7 +93,7 @@ public class TransactionPlaylistDelete extends Transaction {
 
     @Override
     public CompletableFuture<Void> applyLocally(Context context) {
-        return PlaylistStorage.getInstance(context)
+        return MetaStorage.getInstance(context)
                 .deletePlaylists(Collections.singletonList(playlistID));
     }
 

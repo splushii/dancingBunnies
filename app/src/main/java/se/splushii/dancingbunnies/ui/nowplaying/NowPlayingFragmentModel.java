@@ -6,7 +6,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.util.Util;
 
 public class NowPlayingFragmentModel extends ViewModel {
@@ -41,7 +41,7 @@ public class NowPlayingFragmentModel extends ViewModel {
         );
     }
 
-    void setCurrentPlaylist(PlaylistID playlistID) {
+    void setCurrentPlaylist(EntryID playlistID) {
         getMutableState().setValue(new NowPlayingState.Builder()
                 .fromState(getStateValue())
                 .setCurrentPlaylist(playlistID)

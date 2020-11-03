@@ -13,10 +13,10 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -135,49 +135,91 @@ public class MusicLibraryService extends Service {
         return getAPIIconResourceFromAPI(api);
     }
 
-    public static LiveData<List<PlaylistEntry>> getSmartPlaylistEntries(Context context,
-                                                                        PlaylistID playlistID) {
+    public static LiveData<Boolean> isSmartPlaylist(Context context, EntryID playlistID) {
         return Transformations.map(
-                Transformations.switchMap(
-                        PlaylistStorage.getInstance(context).getPlaylist(playlistID),
-                        playlist -> playlist == null ?
-                                new MutableLiveData<>(Collections.emptyList())
-                                :
-                                MetaStorage.getInstance(context).getEntries(
-                                        Meta.FIELD_SPECIAL_MEDIA_ID,
-                                        Collections.singletonList(Meta.FIELD_TITLE),
-                                        true,
-                                        MusicLibraryQueryNode.fromJSON(playlist.query()),
-                                        false
-                                )
+                MusicLibraryService.getSmartPlaylistQuery(
+                        context,
+                        playlistID
                 ),
-                libraryEntries -> {
-                    // Generate mock ID:s for playlist entries
+                Objects::nonNull
+        );
+    }
+
+    private static LiveData<QueryNode> getSmartPlaylistQuery(Context context,
+                                                             EntryID playlistID) {
+        return Transformations.map(
+                MetaStorage.getInstance(context).getPlaylistMeta(playlistID),
+                meta -> {
+                    List<String> queries = meta.getStrings(Meta.FIELD_QUERY);
+                    if (queries == null || queries.isEmpty()) {
+                        return null;
+                    }
+                    // TODO: Support multiple queries?
+                    return QueryNode.fromJSON(queries.get(0));
+                }
+        );
+    }
+
+    private static LiveData<List<PlaylistEntry>> getSmartPlaylistEntries(
+            Context context,
+            EntryID playlistID,
+            QueryNode query
+    ) {
+        return Transformations.map(
+                MetaStorage.getInstance(context).getTracks(query),
+                entryIDs -> {
+                    // Generate mock ID:s for smart playlist entries
                     return PlaylistEntry.generatePlaylistEntries(
                             playlistID,
-                            libraryEntries.stream()
-                                    .map(libraryEntry -> libraryEntry.entryID)
-                                    .toArray(EntryID[]::new)
+                            entryIDs.toArray(new EntryID[0])
                     );
                 }
         );
     }
 
+    private static LiveData<Integer> getNumSmartPlaylistEntries(Context context,
+                                                                QueryNode query) {
+        return Transformations.map(
+                MetaStorage.getInstance(context).getTracks(query),
+                List::size
+        );
+    }
+
     public static LiveData<List<PlaylistEntry>> getPlaylistEntries(Context context,
-                                                                   PlaylistID playlistID) {
+                                                                   EntryID playlistID) {
         if (playlistID == null) {
             MutableLiveData<List<PlaylistEntry>> entries = new MutableLiveData<>();
             entries.setValue(Collections.emptyList());
             return entries;
         }
-        if (PlaylistID.TYPE_STUPID.equals(playlistID.type)) {
-            return PlaylistStorage.getInstance(context).getPlaylistEntries(playlistID);
-        } else if (PlaylistID.TYPE_SMART.equals(playlistID.type)) {
-            return MusicLibraryService.getSmartPlaylistEntries(context, playlistID);
+        return Transformations.switchMap(
+                getSmartPlaylistQuery(context, playlistID),
+                query -> {
+                    if (query == null) {
+                        // static playlist
+                        return PlaylistStorage.getInstance(context).getPlaylistEntries(playlistID);
+                    }
+                    // smart playlist
+                    return getSmartPlaylistEntries(context, playlistID, query);
+                });
+    }
+
+    public static LiveData<Integer> getNumPlaylistEntries(Context context, EntryID playlistID) {
+        if (playlistID == null) {
+            MutableLiveData<Integer> entries = new MutableLiveData<>();
+            entries.setValue(0);
+            return entries;
         }
-        MutableLiveData<List<PlaylistEntry>> ret = new MutableLiveData<>();
-        ret.setValue(Collections.emptyList());
-        return ret;
+        return Transformations.switchMap(
+                getSmartPlaylistQuery(context, playlistID),
+                query -> {
+                    if (query == null) {
+                        // static playlist
+                        return PlaylistStorage.getInstance(context).getNumPlaylistEntries(playlistID);
+                    }
+                    // smart playlist
+                    return getNumSmartPlaylistEntries(context, query);
+                });
     }
 
     public class MusicLibraryBinder extends Binder {
@@ -253,7 +295,7 @@ public class MusicLibraryService extends Service {
 
     public static CompletableFuture<Void> downloadAudioData(
             Context context,
-            List<MusicLibraryQueryNode> queryNodes,
+            List<QueryNode> queryNodes,
             int priority
     ) {
         return getSongEntriesOnce(context, queryNodes)
@@ -276,7 +318,7 @@ public class MusicLibraryService extends Service {
 
     public static synchronized CompletableFuture<Void> deleteAudioData(
             Context context,
-            ArrayList<MusicLibraryQueryNode> queryNodes
+            ArrayList<QueryNode> queryNodes
     ) {
         return getSongEntriesOnce(context, queryNodes)
                 .thenAccept(songEntryIDs -> songEntryIDs.forEach(songEntryID ->
@@ -289,30 +331,12 @@ public class MusicLibraryService extends Service {
         return AudioStorage.getInstance(context).deleteAudioData(context, entryID);
     }
 
-    public static CompletableFuture<Meta> getSongMeta(Context context, EntryID entryID) {
-        return MetaStorage.getInstance(context).getMetaOnce(entryID);
-    }
-
-    public static CompletableFuture<List<Meta>> getSongMetas(Context context,
-                                                             List<EntryID> entryIDs) {
-        CompletableFuture<List<Meta>> ret = new CompletableFuture<>();
-        Meta[] metas = new Meta[entryIDs.size()];
-        List<CompletableFuture<Void>> futureList = new ArrayList<>();
-        for (int i = 0; i < metas.length; i++) {
-            int index = i;
-            EntryID entryID = entryIDs.get(index);
-            futureList.add(getSongMeta(context, entryID).thenAccept(meta -> metas[index] = meta));
-        }
-        CompletableFuture.allOf(futureList.toArray(new CompletableFuture[0]))
-                .thenRun(() -> ret.complete(Arrays.asList(metas)));
-        return ret;
-    }
-
-    public LiveData<List<LibraryEntry>> getSubscriptionEntries(String showField,
-                                                               List<String> sortFields,
-                                                               boolean sortOrderAscending,
-                                                               MusicLibraryQueryNode queryNode) {
-        return metaStorage.getEntries(
+    public LiveData<List<QueryEntry>> getSubscriptionEntries(String showField,
+                                                             List<String> sortFields,
+                                                             boolean sortOrderAscending,
+                                                             QueryNode queryNode) {
+        return metaStorage.getQueryEntries(
+                EntryID.TYPE_TRACK,
                 showField,
                 sortFields,
                 sortOrderAscending,
@@ -324,16 +348,16 @@ public class MusicLibraryService extends Service {
     public static CompletableFuture<List<EntryID>> getSongEntriesOnce(
             Context context,
             List<EntryID> entryIDs,
-            MusicLibraryQueryNode queryNode
+            QueryNode queryNode
     ) {
-        return MetaStorage.getInstance(context).getSongEntriesOnce(entryIDs, queryNode);
+        return MetaStorage.getInstance(context).getTracksOnce(entryIDs, queryNode);
     }
 
     public static CompletableFuture<List<EntryID>> getSongEntriesOnce(
             Context context,
-            List<MusicLibraryQueryNode> queryNodes
+            List<QueryNode> queryNodes
     ) {
-        return MetaStorage.getInstance(context).getSongEntriesOnce(queryNodes);
+        return MetaStorage.getInstance(context).getTracksOnce(queryNodes);
     }
 
     public List<EntryID> getSearchEntries(String query) {
@@ -356,19 +380,20 @@ public class MusicLibraryService extends Service {
     }
 
     public static LiveData<HashSet<EntryID>> getCachedEntries(Context context) {
-        MusicLibraryQuery query = new MusicLibraryQuery();
-        query.setShowField(Meta.FIELD_SPECIAL_MEDIA_ID);
+        Query query = new Query();
+        query.setShowField(Meta.FIELD_SPECIAL_ENTRY_ID_TRACK);
         query.setSortByFields(new ArrayList<>(Collections.singletonList(Meta.FIELD_TITLE)));
         query.and(Meta.FIELD_LOCAL_CACHED, Meta.FIELD_LOCAL_CACHED_VALUE_YES);
         return Transformations.map(
-                MetaStorage.getInstance(context).getEntries(
+                MetaStorage.getInstance(context).getQueryEntries(
+                        EntryID.TYPE_TRACK,
                         query.getShowField(),
                         query.getSortByFields(),
                         query.isSortOrderAscending(),
                         query.getQueryTree(),
                         false
                 ),
-                libraryEntries -> libraryEntries.stream()
+                queryEntries -> queryEntries.stream()
                         .map(EntryID::from)
                         .collect(Collectors.toCollection(HashSet::new))
         );
@@ -403,7 +428,12 @@ public class MusicLibraryService extends Service {
                 handler.onProgress("Saving entries to local meta storage...");
                 Log.d(LC, "saveLibraryToStorage start");
                 return CompletableFuture.supplyAsync(() -> {
-                    metaStorage.replaceWith(src, data, handler::onProgress);
+                    metaStorage.replaceAllTracksAndMetasFromSource(
+                            src,
+                            data,
+                            false,
+                            handler::onProgress
+                    );
                     Log.d(LC, "saveLibraryToStorage finish");
                     return data;
                 });
@@ -433,16 +463,16 @@ public class MusicLibraryService extends Service {
             handler.onProgress(msg);
             return Util.futureResult();
         }
-        return metaStorage.getSongEntriesOnce(new MusicLibraryQueryLeaf(
-                Meta.FIELD_SPECIAL_MEDIA_SRC,
-                MusicLibraryQueryLeaf.Op.EQUALS,
+        return metaStorage.getTracksOnce(new QueryLeaf(
+                Meta.FIELD_SPECIAL_ENTRY_SRC,
+                QueryLeaf.Op.EQUALS,
                 src,
                 false
         )).thenComposeAsync(entryIDs -> {
             int entryIDCount = entryIDs.size();
             AtomicInteger metaCount = new AtomicInteger(0);
             List<CompletableFuture<Meta>> futures = entryIDs.stream()
-                    .map(metaStorage::getMetaOnce)
+                    .map(metaStorage::getTrackMetaOnce)
                     .peek(future -> future.thenAccept(meta -> {
                         int count = metaCount.incrementAndGet();
                         if ((count + 1) % 100 == 0 || count == entryIDCount - 1) {
@@ -513,8 +543,12 @@ public class MusicLibraryService extends Service {
                 handler.onProgress("Saving playlists to local playlist storage...");
                 Log.d(LC, "savePlaylistsToStorage start");
                 return CompletableFuture.supplyAsync(() -> {
-                    // TODO: Preserve position somehow?
-                    playlistStorage.replaceWith(src, data, null);
+                    playlistStorage.replaceAllPlaylistsFromSource(
+                            src,
+                            data,
+                            false,
+                            handler::onProgress
+                    );
                     Log.d(LC, "savePlaylistsToStorage finish");
                     return data;
                 });

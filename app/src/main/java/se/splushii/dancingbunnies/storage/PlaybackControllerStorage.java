@@ -21,7 +21,6 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackController;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.db.DB;
 import se.splushii.dancingbunnies.storage.db.PlaybackControllerEntry;
 import se.splushii.dancingbunnies.storage.db.PlaybackControllerEntryDao;
@@ -140,7 +139,7 @@ public class PlaybackControllerStorage {
     ) {
         return roomPlaybackControllerEntries.stream().map(entry ->
                 new PlaybackEntry(
-                        new EntryID(entry.src, entry.id, Meta.FIELD_SPECIAL_MEDIA_ID),
+                        new EntryID(entry.src, entry.id, Meta.FIELD_SPECIAL_ENTRY_ID_TRACK),
                         entry.playbackID,
                         entry.playbackType,
                         entry.playlistPos,
@@ -271,7 +270,7 @@ public class PlaybackControllerStorage {
         }
         return new Pair<>(
                 new PlaybackEntry(
-                        new EntryID(src, id, Meta.FIELD_SPECIAL_MEDIA_ID),
+                        new EntryID(src, id, Meta.FIELD_SPECIAL_ENTRY_ID_TRACK),
                         Long.parseLong(playbackID),
                         PlaybackEntry.USER_TYPE_QUEUE,
                         Long.parseLong(playlistPos),
@@ -294,17 +293,17 @@ public class PlaybackControllerStorage {
                 .thenApply(this::RoomPlaybackControllerEntryList2PlaybackEntryList);
     }
 
-    public PlaylistID getCurrentPlaylist() {
+    public EntryID getCurrentPlaylist() {
         String src = preferences.getString(playlist_src_key, null);
         String id = preferences.getString(playlist_id_key, null);
         String type = preferences.getString(playlist_type_key, null);
         if (src == null || id == null || type == null) {
             return null;
         }
-        return new PlaylistID(src, id, type);
+        return new EntryID(src, id, type);
     }
 
-    public void setCurrentPlaylist(PlaylistID playlistID) {
+    public void setCurrentPlaylist(EntryID playlistID) {
         String src = null;
         String id = null;
         String type = null;

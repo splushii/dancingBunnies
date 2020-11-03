@@ -21,11 +21,11 @@ import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.musiclibrary.QueryLeaf;
+import se.splushii.dancingbunnies.musiclibrary.QueryNode;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.TransactionStorage;
-import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.ui.playlist.PlaylistAdapter;
 import se.splushii.dancingbunnies.ui.playlist.PlaylistFragmentModel;
 import se.splushii.dancingbunnies.util.Util;
@@ -45,14 +45,14 @@ public class AddToPlaylistDialogFragment
     private PlaylistFragmentModel model;
     private PlaylistAdapter recViewAdapter;
 
-    private List<MusicLibraryQueryNode> queryNodes;
+    private List<QueryNode> queryNodes;
 
-    static void showDialog(FragmentManager fragmentManager, List<MusicLibraryQueryNode> queryNodes) {
+    static void showDialog(FragmentManager fragmentManager, List<QueryNode> queryNodes) {
         if (queryNodes == null || queryNodes.isEmpty()) {
             return;
         }
         Bundle args = new Bundle();
-        args.putStringArray(BUNDLE_KEY_QUERY_NODES, MusicLibraryQueryNode.toJSONStringArray(queryNodes));
+        args.putStringArray(BUNDLE_KEY_QUERY_NODES, QueryNode.toJSONStringArray(queryNodes));
         Util.showDialog(
                 fragmentManager,
                 null,
@@ -67,9 +67,9 @@ public class AddToPlaylistDialogFragment
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
         model = new ViewModelProvider(requireActivity()).get(PlaylistFragmentModel.class);
-        MetaStorage.getInstance(requireContext()).getSongEntriesOnce(queryNodes)
+        MetaStorage.getInstance(requireContext()).getTracksOnce(queryNodes)
                 .thenAcceptAsync(
-                        songEntries -> filterPlaylists(model, songEntries),
+                        tracks -> filterPlaylists(model, tracks),
                         Util.getMainThreadExecutor()
                 );
     }
@@ -77,7 +77,7 @@ public class AddToPlaylistDialogFragment
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         Bundle args = getArguments();
-        queryNodes = MusicLibraryQueryNode.fromJSONStringArray(
+        queryNodes = QueryNode.fromJSONStringArray(
                 args.getStringArray(BUNDLE_KEY_QUERY_NODES)
         );
         super.onCreate(savedInstanceState);
@@ -100,46 +100,45 @@ public class AddToPlaylistDialogFragment
         return rootView;
     }
 
-    private void filterPlaylists(PlaylistFragmentModel model, List<EntryID> songEntries) {
-        if (model == null || songEntries == null || songEntries.isEmpty()) {
+    private void filterPlaylists(PlaylistFragmentModel model, List<EntryID> tracks) {
+        if (model == null || tracks == null || tracks.isEmpty()) {
             return;
         }
-        numEntriesTextView.setText(String.format(Locale.getDefault(), "(%d entries)", songEntries.size()));
-        recViewAdapter.setOnItemClickListener(playlist -> {
-            PlaylistID playlistID = playlist.playlistID();
+        numEntriesTextView.setText(String.format(Locale.getDefault(), "(%d entries)", tracks.size()));
+        recViewAdapter.setOnItemClickListener(playlistID -> {
             TransactionStorage.getInstance(requireContext())
                     .addPlaylistEntries(
                             requireContext(),
                             playlistID.src,
                             playlistID,
-                            songEntries,
+                            tracks,
                             null
                     )
                     .thenRun(this::dismiss);
         });
-        recViewAdapter.setModel(model, playlists -> {
-            List<Playlist> applicablePlaylists = new ArrayList<>();
-            for (Playlist playlist: playlists) {
-                boolean applicable = true;
-                for (EntryID entryID: songEntries) {
-                    if (!canBeAdded(entryID, playlist)) {
-                        applicable = false;
-                        break;
+        recViewAdapter.setModel(
+                model,
+                new QueryLeaf(Meta.FIELD_QUERY, QueryLeaf.Op.EXISTS, null, false),
+                playlistIDs -> {
+                    List<EntryID> applicablePlaylists = new ArrayList<>();
+                    for (EntryID playlistID: playlistIDs) {
+                        boolean applicable = true;
+                        for (EntryID entryID: tracks) {
+                            if (!canBeAdded(entryID, playlistID)) {
+                                applicable = false;
+                                break;
+                            }
+                        }
+                        if (applicable) {
+                            applicablePlaylists.add(playlistID);
+                        }
                     }
+                    return applicablePlaylists;
                 }
-                if (applicable) {
-                    applicablePlaylists.add(playlist);
-                }
-            }
-            return applicablePlaylists;
-        });
+        );
     }
 
-    private boolean canBeAdded(EntryID entryID, Playlist playlist) {
-        PlaylistID playlistID = playlist.playlistID();
-        if (!PlaylistID.TYPE_STUPID.equals(playlistID.type)) {
-            return false;
-        }
+    private boolean canBeAdded(EntryID entryID, EntryID playlistID) {
         return APIClient.getAPIClient(requireContext(), playlistID.src)
                 .supports(PLAYLIST_ENTRY_ADD, entryID.src);
     }

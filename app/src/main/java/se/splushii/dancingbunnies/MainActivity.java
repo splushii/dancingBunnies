@@ -24,7 +24,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.mediarouter.app.MediaRouteButton;
 import androidx.viewpager.widget.ViewPager;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.DownloadEntry;
 import se.splushii.dancingbunnies.ui.downloads.DownloadsDialogFragment;
@@ -135,7 +135,7 @@ public final class MainActivity extends AppCompatActivity {
             musicLibraryModel.query(filterType, filter);
             return;
         }
-        PlaylistID playlistID = intent.getParcelableExtra(INTENT_EXTRA_PLAYLIST_ID);
+        EntryID playlistID = intent.getParcelableExtra(INTENT_EXTRA_PLAYLIST_ID);
         long pos = intent.getLongExtra(INTENT_EXTRA_PLAYLIST_POS, 0);
         if (playlistID != null) {
             Log.d(LC, "mainactivity goto playlist: " + playlistID + " pos: " + pos);

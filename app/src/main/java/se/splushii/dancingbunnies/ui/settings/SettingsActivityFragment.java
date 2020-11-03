@@ -29,7 +29,6 @@ import androidx.arch.core.util.Function;
 import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Transformations;
 import androidx.preference.CheckBoxPreference;
 import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
@@ -49,11 +48,10 @@ import se.splushii.dancingbunnies.jobs.Jobs;
 import se.splushii.dancingbunnies.jobs.LibrarySyncWorker;
 import se.splushii.dancingbunnies.jobs.TransactionsWorker;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryLeaf;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
+import se.splushii.dancingbunnies.musiclibrary.QueryLeaf;
 import se.splushii.dancingbunnies.search.Searcher;
 import se.splushii.dancingbunnies.storage.MetaStorage;
-import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.TransactionStorage;
 import se.splushii.dancingbunnies.ui.ConfirmationDialogFragment;
 import se.splushii.dancingbunnies.ui.transactions.TransactionsDialogFragment;
@@ -91,7 +89,7 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
     private final HashMap<Long, LiveData<Integer>> backendIDToNumEntriesMap = new HashMap<>();
     private final Set<String> backendIDToNumIndexedSubIDs = new HashSet<>();
     private final HashMap<Long, LiveData<Integer>> backendIDToNumIndexedMap = new HashMap<>();
-    private final HashMap<Long, LiveData<Long>> backendIDToNumPlaylistsMap = new HashMap<>();
+    private final HashMap<Long, LiveData<Integer>> backendIDToNumPlaylistsMap = new HashMap<>();
 
     private boolean resetSyncValues = false;
 
@@ -458,7 +456,7 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                     setShowTransactionsSummary(pendingTransactions, transactionsWorkMsg);
                 });
         MetaStorage.getInstance(requireContext())
-                .getSources()
+                .getTrackSources()
                 .observe(getViewLifecycleOwner(), sources -> {
                     String[] valuesArray = sources.toArray(new String[0]);
                     libraryClearPref.setEntries(valuesArray);
@@ -468,11 +466,11 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                             .forEach(backendID -> {
                                 String src = getSourceFromConfig(requireContext(), backendID);
                                 LiveData<Integer> liveData = sources.contains(src) ?
-                                        MetaStorage.getInstance(requireContext()).getNumSongEntries(
+                                        MetaStorage.getInstance(requireContext()).getNumTracks(
                                                 null,
-                                                new MusicLibraryQueryLeaf(
-                                                        Meta.FIELD_SPECIAL_MEDIA_SRC,
-                                                        MusicLibraryQueryLeaf.Op.EQUALS,
+                                                new QueryLeaf(
+                                                        Meta.FIELD_SPECIAL_ENTRY_SRC,
+                                                        QueryLeaf.Op.EQUALS,
                                                         src,
                                                         false
                                                 ),
@@ -490,8 +488,8 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
         Searcher.getInstance()
                 .searchFieldValuesSubscribe(
                         Searcher.SUB_ID_SEARCH_FIELD_VALUES_SETTINGS_FRAGMENT,
-                        Meta.FIELD_SPECIAL_MEDIA_SRC + ":*",
-                        Meta.FIELD_SPECIAL_MEDIA_SRC
+                        Meta.FIELD_SPECIAL_ENTRY_SRC + ":*",
+                        Meta.FIELD_SPECIAL_ENTRY_SRC
                 )
                 .observe(getViewLifecycleOwner(), sources -> {
                     String[] valuesArray = sources.toArray(new String[0]);
@@ -508,7 +506,7 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                                             backendID,
                                             Searcher.getInstance().searchHitsSubscribe(
                                                     subID,
-                                                    Meta.FIELD_SPECIAL_MEDIA_SRC + ":\"" + src + "\""
+                                                    Meta.FIELD_SPECIAL_ENTRY_SRC + ":\"" + src + "\""
                                             )
                                     );
                                 } else {
@@ -520,8 +518,8 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                             });
                     observeBackendIDToNumIndexedMap();
                 });
-        PlaylistStorage.getInstance(requireContext())
-                .getSources()
+        MetaStorage.getInstance(requireContext())
+                .getPlaylistSources()
                 .observe(getViewLifecycleOwner(), sources -> {
                     String[] valuesArray = sources.toArray(new String[0]);
                     libraryClearPlaylistsPref.setEntries(valuesArray);
@@ -530,15 +528,11 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                     getBackendConfigIDs(PreferenceManager.getDefaultSharedPreferences(requireContext()))
                             .forEach(backendID -> {
                                 String src = getSourceFromConfig(requireContext(), backendID);
-                                LiveData<Long> liveData = sources.contains(src) ?
-                                        Transformations.map(
-                                                PlaylistStorage.getInstance(requireContext()).getPlaylists(),
-                                                playlists -> playlists.stream()
-                                                        .filter(playlist -> src.equals(playlist.playlistID().src))
-                                                        .count()
-                                        )
+                                LiveData<Integer> liveData = sources.contains(src) ?
+                                        MetaStorage.getInstance(requireContext())
+                                                .getNumPlaylists(src)
                                         :
-                                        new MutableLiveData<>(0L);
+                                        new MutableLiveData<>(0);
                                 backendIDToNumPlaylistsMap.put(backendID, liveData);
                             });
                     observeBackendIDToNumPlaylistsMap();
@@ -754,13 +748,13 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
         } else if (key.equals(Util.getString(requireContext(), R.string.pref_key_library_clear))) {
             for (String src: libraryClearPref.getValues()) {
                 CompletableFuture.runAsync(() -> MetaStorage.getInstance(requireContext())
-                        .clearAll(src))
+                        .clearAllTracks(src))
                         .handle(Util::printFutureError);
             }
         } else if (key.equals(Util.getString(requireContext(), R.string.pref_key_library_clear_playlists))) {
             for (String src: libraryClearPlaylistsPref.getValues()) {
-                CompletableFuture.runAsync(() -> PlaylistStorage.getInstance(requireContext())
-                        .clearAll(src))
+                CompletableFuture.runAsync(() -> MetaStorage.getInstance(requireContext())
+                        .clearAllPlaylists(src))
                         .handle(Util::printFutureError);
             }
         } else if (key.equals(Util.getString(requireContext(), R.string.pref_key_library_clear_search_index))) {
@@ -1057,11 +1051,11 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                     numIndexed = numIndexedValue;
                 }
             }
-            LiveData<Long> numPlaylistsLiveData = backendIDToNumPlaylistsMap.get(backendID);
+            LiveData<Integer> numPlaylistsLiveData = backendIDToNumPlaylistsMap.get(backendID);
             if (numPlaylistsLiveData != null) {
-                Long numPlaylistsValue = numPlaylistsLiveData.getValue();
+                Integer numPlaylistsValue = numPlaylistsLiveData.getValue();
                 if (numPlaylistsValue != null) {
-                    numPlaylists = numPlaylistsValue.intValue();
+                    numPlaylists = numPlaylistsValue;
                 }
             }
             String prefAPISummary = "";

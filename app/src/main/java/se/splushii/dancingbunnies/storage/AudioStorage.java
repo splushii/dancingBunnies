@@ -371,7 +371,7 @@ public class AudioStorage {
 
     public LiveData<WaveformEntry> getWaveform(LiveData<EntryID> entryIDLiveData) {
         return Transformations.switchMap(entryIDLiveData, entryID -> {
-            if (!Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
+            if (!Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(entryID.type)) {
                 return null;
             }
             return waveformModel.get(entryID.src, entryID.id);
@@ -379,14 +379,14 @@ public class AudioStorage {
     }
 
     public WaveformEntry getWaveformSync(EntryID entryID) {
-        if (entryID == null || !Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
+        if (entryID == null || !Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(entryID.type)) {
             return null;
         }
         return waveformModel.getSync(entryID.src, entryID.id);
     }
 
     private CompletableFuture<Void> deleteWaveform(EntryID entryID) {
-        if (entryID == null || !Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
+        if (entryID == null || !Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(entryID.type)) {
             return CompletableFuture.completedFuture(null);
         }
         return CompletableFuture.runAsync(() ->
@@ -429,7 +429,7 @@ public class AudioStorage {
         }
         AudioStorage.deleteCacheFile(context, entryID);
         return AudioStorage.getInstance(context).deleteWaveform(entryID)
-                .thenCompose(aVoid -> MetaStorage.getInstance(context).deleteMeta(
+                .thenCompose(aVoid -> MetaStorage.getInstance(context).deleteTrackMeta(
                         entryID,
                         Meta.FIELD_LOCAL_CACHED,
                         Meta.FIELD_LOCAL_CACHED_VALUE_YES

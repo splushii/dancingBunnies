@@ -154,10 +154,10 @@ public class EntryTypeSelectionDialogFragment extends DialogFragment {
         availableItemsRecyclerView.setAdapter(availableItemsRecyclerViewAdapter);
 
         MetaStorage.getInstance(requireContext())
-                .getMetaFields()
+                .getTrackMetaKeys()
                 .observe(getViewLifecycleOwner(), newFields -> {
-                    newFields.add(Meta.FIELD_SPECIAL_MEDIA_ID);
-                    newFields.add(Meta.FIELD_SPECIAL_MEDIA_SRC);
+                    newFields.add(Meta.FIELD_SPECIAL_ENTRY_ID_TRACK);
+                    newFields.add(Meta.FIELD_SPECIAL_ENTRY_SRC);
                     Collections.sort(newFields, (f1, f2) -> {
                         if (f1.equals(f2)) {
                             return 0;

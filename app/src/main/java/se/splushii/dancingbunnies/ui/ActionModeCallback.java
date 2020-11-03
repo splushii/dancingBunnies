@@ -14,9 +14,7 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
-import se.splushii.dancingbunnies.storage.db.Playlist;
+import se.splushii.dancingbunnies.musiclibrary.QueryNode;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.util.Util;
@@ -57,10 +55,10 @@ public class ActionModeCallback implements ActionMode.Callback, MenuItem.OnMenuI
         List<EntryID> getEntryIDSelection();
         List<PlaybackEntry> getPlaybackEntrySelection();
         List<PlaylistEntry> getPlaylistEntrySelection();
-        List<Playlist> getPlaylistSelection();
-        PlaylistID getPlaylistID();
-        MusicLibraryQueryNode getQueryNode();
-        List<MusicLibraryQueryNode> getQueryNodes();
+        List<EntryID> getPlaylistSelection();
+        EntryID getPlaylistID();
+        QueryNode getQueryNode();
+        List<QueryNode> getQueryNodes();
         List<Transaction> getTransactions();
         void onDestroyActionMode(ActionMode actionMode);
     }

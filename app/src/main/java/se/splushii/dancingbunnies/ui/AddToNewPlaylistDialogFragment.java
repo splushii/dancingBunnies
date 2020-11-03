@@ -28,17 +28,18 @@ import androidx.fragment.app.Fragment;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.backend.APIClient;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.QueryNode;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.TransactionStorage;
 import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.ui.settings.SettingsActivityFragment;
 import se.splushii.dancingbunnies.util.Util;
 
-import static se.splushii.dancingbunnies.musiclibrary.PlaylistID.TYPE_SMART;
-import static se.splushii.dancingbunnies.musiclibrary.PlaylistID.TYPE_STUPID;
+import static se.splushii.dancingbunnies.musiclibrary.Playlist.TYPE_SMART;
+import static se.splushii.dancingbunnies.musiclibrary.Playlist.TYPE_STUPID;
 
 public class AddToNewPlaylistDialogFragment extends DialogFragment {
     private static final String LC = Util.getLogContext(AddToNewPlaylistDialogFragment.class);
@@ -55,25 +56,25 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
     private static final int MENU_GROUP_ORDER_NEW_PLAYLIST_BACKEND_HEADER = Menu.FIRST;
     private static final int MENU_GROUP_ORDER_NEW_PLAYLIST_BACKEND_SINGLE = Menu.FIRST + 1;
 
-    private MusicLibraryQueryNode query;
-    private List<MusicLibraryQueryNode> queries;
+    private QueryNode query;
+    private List<QueryNode> queries;
     private EditText addToNewPlaylistEditText;
 
     private TextView newPlaylistBackendId;
     private ImageView newPlaylistBackendIcon;
     private Menu newPlaylistBackendMenu;
 
-    public static void showDialog(Fragment fragment, MusicLibraryQueryNode queryTree) {
+    public static void showDialog(Fragment fragment, QueryNode queryTree) {
         Bundle args = new Bundle();
         args.putString(BUNDLE_KEY_QUERY, queryTree.toJSON().toString());
         showDialog(fragment, args);
     }
 
-    static void showDialog(Fragment fragment, List<MusicLibraryQueryNode> queryTrees) {
+    static void showDialog(Fragment fragment, List<QueryNode> queryTrees) {
         Bundle args = new Bundle();
         args.putStringArray(
                 BUNDLE_KEY_QUERY_BUNDLES,
-                MusicLibraryQueryNode.toJSONStringArray(queryTrees)
+                QueryNode.toJSONStringArray(queryTrees)
         );
         showDialog(fragment, args);
     }
@@ -91,8 +92,8 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         Bundle args = getArguments();
-        this.queries = MusicLibraryQueryNode.fromJSONStringArray(args.getStringArray(BUNDLE_KEY_QUERY_BUNDLES));
-        this.query = MusicLibraryQueryNode.fromJSON(args.getString(BUNDLE_KEY_QUERY));
+        this.queries = QueryNode.fromJSONStringArray(args.getStringArray(BUNDLE_KEY_QUERY_BUNDLES));
+        this.query = QueryNode.fromJSON(args.getString(BUNDLE_KEY_QUERY));
         super.onCreate(savedInstanceState);
     }
 
@@ -221,13 +222,16 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
     private void createPlaylist(String name, String playlistType) {
         CompletableFuture<Void> completableFuture;
         String src = newPlaylistBackendId.getText().toString();
+        EntryID playlistID = EntryID.generate(
+                src,
+                Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST
+        );
         switch (playlistType) {
             case TYPE_STUPID:
-                PlaylistID playlistID = PlaylistID.generate(src, TYPE_STUPID);
                 completableFuture = TransactionStorage.getInstance(requireContext())
-                        .addPlaylist(requireContext(), playlistID, name, null, null)
+                        .addPlaylist(requireContext(), playlistID, name, null)
                         .thenCompose(aVoid -> MetaStorage.getInstance(requireContext())
-                                .getSongEntriesOnce(queries)
+                                .getTracksOnce(queries)
                         )
                         .thenCompose(songEntryIDs -> TransactionStorage.getInstance(requireContext())
                                 .addPlaylistEntries(
@@ -240,14 +244,12 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
                         );
                 break;
             case TYPE_SMART:
-                PlaylistID smartPlaylistID = PlaylistID.generate(src, TYPE_SMART);
                 completableFuture = TransactionStorage.getInstance(requireContext())
                         .addPlaylist(
                                 requireContext(),
-                                smartPlaylistID,
+                                playlistID,
                                 name,
-                                query.toString(),
-                                null
+                                query.toString()
                         );
                 break;
             default:

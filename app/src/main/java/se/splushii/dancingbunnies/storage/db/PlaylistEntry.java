@@ -13,7 +13,6 @@ import androidx.room.Entity;
 import androidx.room.ForeignKey;
 import androidx.room.Index;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.util.Util;
 
 import static androidx.room.ForeignKey.CASCADE;
@@ -21,14 +20,12 @@ import static androidx.room.ForeignKey.CASCADE;
 @Entity(tableName = DB.TABLE_PLAYLIST_ENTRIES,
         foreignKeys = @ForeignKey(
                 parentColumns = {
-                        Playlist.COLUMN_SRC,
-                        Playlist.COLUMN_ID,
-                        Playlist.COLUMN_TYPE
+                        DB.COLUMN_SRC,
+                        DB.COLUMN_ID
                 },
                 childColumns = {
                         PlaylistEntry.COLUMN_PLAYLIST_SRC,
-                        PlaylistEntry.COLUMN_PLAYLIST_ID,
-                        PlaylistEntry.COLUMN_PLAYLIST_TYPE
+                        PlaylistEntry.COLUMN_PLAYLIST_ID
                 },
                 entity = Playlist.class,
                 onDelete = CASCADE
@@ -36,13 +33,11 @@ import static androidx.room.ForeignKey.CASCADE;
         indices = @Index(value = {
                 PlaylistEntry.COLUMN_PLAYLIST_SRC,
                 PlaylistEntry.COLUMN_PLAYLIST_ID,
-                PlaylistEntry.COLUMN_PLAYLIST_TYPE,
                 PlaylistEntry.COLUMN_ID
         }, unique = true),
         primaryKeys = {
                 PlaylistEntry.COLUMN_PLAYLIST_SRC,
                 PlaylistEntry.COLUMN_PLAYLIST_ID,
-                PlaylistEntry.COLUMN_PLAYLIST_TYPE,
                 PlaylistEntry.COLUMN_ID
         }
 // Not possible to constrain the pos because of inserts, because incrementing COLUMN_POS
@@ -62,14 +57,11 @@ import static androidx.room.ForeignKey.CASCADE;
 public class PlaylistEntry implements Parcelable {
     static final String COLUMN_PLAYLIST_SRC = "playlist_src";
     static final String COLUMN_PLAYLIST_ID = "playlist_id";
-    static final String COLUMN_PLAYLIST_TYPE = "playlist_type";
     static final String COLUMN_ID = "id";
     static final String COLUMN_ENTRY_SRC = "entry_src";
     static final String COLUMN_ENTRY_ID = "entry_id";
     static final String COLUMN_ENTRY_TYPE = "entry_type";
     static final String COLUMN_POS = "pos";
-
-    public static final String TYPE_TRACK = "track";
 
     @NonNull
     @ColumnInfo(name = COLUMN_PLAYLIST_SRC)
@@ -77,9 +69,6 @@ public class PlaylistEntry implements Parcelable {
     @NonNull
     @ColumnInfo(name = COLUMN_PLAYLIST_ID)
     String playlist_id;
-    @NonNull
-    @ColumnInfo(name = COLUMN_PLAYLIST_TYPE)
-    String playlist_type;
     @NonNull
     @ColumnInfo(name = COLUMN_ID)
     String playlist_entry_id;
@@ -106,7 +95,6 @@ public class PlaylistEntry implements Parcelable {
                 Objects.requireNonNull(in.readString()),
                 Objects.requireNonNull(in.readString()),
                 Objects.requireNonNull(in.readString()),
-                Objects.requireNonNull(in.readString()),
                 in.readLong()
         );
     }
@@ -117,7 +105,6 @@ public class PlaylistEntry implements Parcelable {
 
     private void init(String playlist_src,
                       String playlist_id,
-                      String playlist_type,
                       String playlist_entry_id,
                       String entry_src,
                       String entry_id,
@@ -125,7 +112,6 @@ public class PlaylistEntry implements Parcelable {
                       long position) {
         this.playlist_src = playlist_src;
         this.playlist_id = playlist_id;
-        this.playlist_type = playlist_type;
         this.playlist_entry_id = playlist_entry_id;
         this.entry_type = entry_type;
         this.entry_src = entry_src;
@@ -147,7 +133,6 @@ public class PlaylistEntry implements Parcelable {
 
     public static PlaylistEntry from(String playlistSrc,
                                      String playlistID,
-                                     String playlistType,
                                      String playlistEntryID,
                                      String entryIDSrc,
                                      String entryIDID,
@@ -157,7 +142,6 @@ public class PlaylistEntry implements Parcelable {
         roomPlaylistEntry.init(
                 playlistSrc,
                 playlistID,
-                playlistType,
                 playlistEntryID,
                 entryIDSrc,
                 entryIDID,
@@ -167,14 +151,13 @@ public class PlaylistEntry implements Parcelable {
         return roomPlaylistEntry;
     }
 
-    public static PlaylistEntry from(PlaylistID playlistID,
+    public static PlaylistEntry from(EntryID playlistID,
                                      String playlistEntryID,
                                      EntryID entryID,
                                      int pos) {
         return from(
                 playlistID.src,
                 playlistID.id,
-                playlistID.type,
                 playlistEntryID,
                 entryID.src,
                 entryID.id,
@@ -187,7 +170,6 @@ public class PlaylistEntry implements Parcelable {
         return from(
                 playlistEntry.playlist_src,
                 playlistEntry.playlist_id,
-                playlistEntry.playlist_type,
                 playlistEntry.playlist_entry_id,
                 playlistEntry.entry_src,
                 playlistEntry.entry_id,
@@ -204,7 +186,7 @@ public class PlaylistEntry implements Parcelable {
         return new EntryID(entry_src, entry_id, entry_type);
     }
 
-    public static List<PlaylistEntry> generatePlaylistEntries(PlaylistID playlistID,
+    public static List<PlaylistEntry> generatePlaylistEntries(EntryID playlistID,
                                                               EntryID[] entryIDs) {
         List<PlaylistEntry> playlistEntries = new ArrayList<>();
         for (int index = 0; index < entryIDs.length; index++) {
@@ -228,7 +210,6 @@ public class PlaylistEntry implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(playlist_src);
         dest.writeString(playlist_id);
-        dest.writeString(playlist_type);
         dest.writeString(playlist_entry_id);
         dest.writeString(entry_src);
         dest.writeString(entry_id);
@@ -243,7 +224,6 @@ public class PlaylistEntry implements Parcelable {
         PlaylistEntry entry = (PlaylistEntry) o;
         return Objects.equals(playlist_src, entry.playlist_src) &&
                 Objects.equals(playlist_id, entry.playlist_id) &&
-                Objects.equals(playlist_type, entry.playlist_type) &&
                 Objects.equals(playlist_entry_id, entry.playlist_entry_id);
     }
 
@@ -252,7 +232,6 @@ public class PlaylistEntry implements Parcelable {
         return Objects.hash(
                 playlist_src,
                 playlist_id,
-                playlist_type,
                 playlist_entry_id
         );
     }
@@ -263,7 +242,6 @@ public class PlaylistEntry implements Parcelable {
         return "PlaylistEntry{" +
                 "playlist_src='" + playlist_src + '\'' +
                 ", playlist_id='" + playlist_id + '\'' +
-                ", playlist_type='" + playlist_type + '\'' +
                 ", playlist_entry_id='" + playlist_entry_id + '\'' +
                 ", entry_src='" + entry_src + '\'' +
                 ", entry_id='" + entry_id + '\'' +

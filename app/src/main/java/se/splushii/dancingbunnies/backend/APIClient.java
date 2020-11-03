@@ -20,7 +20,6 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.Playlist;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.storage.transactions.TransactionResult;
 import se.splushii.dancingbunnies.ui.settings.SettingsActivityFragment;
@@ -242,24 +241,32 @@ public abstract class APIClient {
 
         public void addPlaylist(
                 Context context,
-                PlaylistID playlistID,
+                EntryID playlistID,
                 String name,
-                String query,
-                PlaylistID beforePlaylistID
+                String query
         ) throws BatchException {
             throw new BatchException("Not implemented");
         }
 
         public void deletePlaylist(
                 Context context,
-                PlaylistID playlistID
+                EntryID playlistID
+        ) throws BatchException {
+            throw new BatchException("Not implemented");
+        }
+
+        public void addPlaylistMeta(
+                Context context,
+                EntryID playlistID,
+                String key,
+                String value
         ) throws BatchException {
             throw new BatchException("Not implemented");
         }
 
         public void addPlaylistEntry(
                 Context context,
-                PlaylistID playlistID,
+                EntryID playlistID,
                 EntryID entryID,
                 String beforePlaylistEntryID,
                 Meta metaSnapshot
@@ -269,7 +276,7 @@ public abstract class APIClient {
 
         public void deletePlaylistEntry(
                 Context context,
-                PlaylistID playlistID,
+                EntryID playlistID,
                 String playlistEntryID,
                 EntryID entryID
         ) throws BatchException {
@@ -278,7 +285,7 @@ public abstract class APIClient {
 
         public void movePlaylistEntry(
                 Context context,
-                PlaylistID playlistID,
+                EntryID playlistID,
                 String playlistEntryID,
                 EntryID entryID,
                 String beforePlaylistEntryID

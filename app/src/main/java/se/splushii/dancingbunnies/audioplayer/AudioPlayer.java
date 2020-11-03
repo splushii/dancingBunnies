@@ -28,6 +28,11 @@ public interface AudioPlayer {
         public void onSongEnded() {
             Log.d(LC, "onSongEnded");
         }
+
+        @Override
+        public void disconnect() {
+            Log.d(LC, "disconnect");
+        }
     };
 
     enum Type {
@@ -58,6 +63,7 @@ public interface AudioPlayer {
         void onCurrentEntryChanged(PlaybackEntry entry);
         void onPreloadChanged();
         void onSongEnded();
+        void disconnect();
     }
 
     class AudioPlayerState {

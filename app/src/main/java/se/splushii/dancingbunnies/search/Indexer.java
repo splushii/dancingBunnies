@@ -114,8 +114,8 @@ public class Indexer {
 
     private synchronized Document prepareSongForIndex(Meta meta) {
         Document doc = new Document();
-        doc.add(new TextField(Meta.FIELD_SPECIAL_MEDIA_SRC, meta.entryID.src, Field.Store.YES));
-        doc.add(new TextField(Meta.FIELD_SPECIAL_MEDIA_ID, meta.entryID.id, Field.Store.YES));
+        doc.add(new TextField(Meta.FIELD_SPECIAL_ENTRY_SRC, meta.entryID.src, Field.Store.YES));
+        doc.add(new TextField(Meta.FIELD_SPECIAL_ENTRY_ID_TRACK, meta.entryID.id, Field.Store.YES));
         for (String key: meta.keySet()) {
             float boost;
             List<Field> fields = Collections.emptyList();
@@ -167,7 +167,7 @@ public class Indexer {
         QueryParser queryParser = Searcher.getQueryParser();
         Query query;
         try {
-            query = queryParser.parse(Meta.FIELD_SPECIAL_MEDIA_SRC + ": \"" + src + "\"");
+            query = queryParser.parse(Meta.FIELD_SPECIAL_ENTRY_SRC + ": \"" + src + "\"");
         } catch (ParseException e) {
             Log.e(LC, e.getMessage());
             return;

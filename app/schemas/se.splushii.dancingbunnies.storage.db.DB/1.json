@@ -2,10 +2,10 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "92ff611ab22d8c9f85d6c03530baf2bf",
+    "identityHash": "628931851ff6754b6eef00c412bcc882",
     "entities": [
       {
-        "tableName": "entry_id",
+        "tableName": "track_id",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, PRIMARY KEY(`src`, `id`))",
         "fields": [
           {
@@ -30,20 +30,20 @@
         },
         "indices": [
           {
-            "name": "index_entry_id_src_id",
+            "name": "index_track_id_src_id",
             "unique": true,
             "columnNames": [
               "src",
               "id"
             ],
-            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_entry_id_src_id` ON `${TABLE_NAME}` (`src`, `id`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_track_id_src_id` ON `${TABLE_NAME}` (`src`, `id`)"
           }
         ],
         "foreignKeys": []
       },
       {
         "tableName": "meta_string",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`), FOREIGN KEY(`src`, `id`) REFERENCES `entry_id`(`src`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`), FOREIGN KEY(`src`, `id`) REFERENCES `track_id`(`src`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "src",
@@ -122,7 +122,7 @@
         ],
         "foreignKeys": [
           {
-            "table": "entry_id",
+            "table": "track_id",
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
@@ -138,7 +138,7 @@
       },
       {
         "tableName": "meta_long",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`), FOREIGN KEY(`src`, `id`) REFERENCES `entry_id`(`src`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`), FOREIGN KEY(`src`, `id`) REFERENCES `track_id`(`src`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "src",
@@ -217,7 +217,7 @@
         ],
         "foreignKeys": [
           {
-            "table": "entry_id",
+            "table": "track_id",
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
@@ -233,7 +233,7 @@
       },
       {
         "tableName": "meta_double",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` REAL NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`), FOREIGN KEY(`src`, `id`) REFERENCES `entry_id`(`src`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` REAL NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`), FOREIGN KEY(`src`, `id`) REFERENCES `track_id`(`src`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "src",
@@ -312,7 +312,7 @@
         ],
         "foreignKeys": [
           {
-            "table": "entry_id",
+            "table": "track_id",
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
@@ -570,6 +570,534 @@
         "foreignKeys": []
       },
       {
+        "tableName": "playlist_meta_string",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`), FOREIGN KEY(`src`, `id`) REFERENCES `playlist_id`(`src`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "src",
+            "columnName": "src",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "src",
+            "id",
+            "key",
+            "value"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_playlist_meta_string_src_id_key_value",
+            "unique": true,
+            "columnNames": [
+              "src",
+              "id",
+              "key",
+              "value"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_playlist_meta_string_src_id_key_value` ON `${TABLE_NAME}` (`src`, `id`, `key`, `value`)"
+          },
+          {
+            "name": "index_playlist_meta_string_key_value_src",
+            "unique": false,
+            "columnNames": [
+              "key",
+              "value",
+              "src"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_string_key_value_src` ON `${TABLE_NAME}` (`key`, `value`, `src`)"
+          },
+          {
+            "name": "index_playlist_meta_string_value_key_src",
+            "unique": false,
+            "columnNames": [
+              "value",
+              "key",
+              "src"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_string_value_key_src` ON `${TABLE_NAME}` (`value`, `key`, `src`)"
+          },
+          {
+            "name": "index_playlist_meta_string_value",
+            "unique": false,
+            "columnNames": [
+              "value"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_string_value` ON `${TABLE_NAME}` (`value`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "playlist_id",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "src",
+              "id"
+            ],
+            "referencedColumns": [
+              "src",
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "playlist_meta_long",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`), FOREIGN KEY(`src`, `id`) REFERENCES `playlist_id`(`src`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "src",
+            "columnName": "src",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "src",
+            "id",
+            "key",
+            "value"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_playlist_meta_long_src_id_key_value",
+            "unique": true,
+            "columnNames": [
+              "src",
+              "id",
+              "key",
+              "value"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_playlist_meta_long_src_id_key_value` ON `${TABLE_NAME}` (`src`, `id`, `key`, `value`)"
+          },
+          {
+            "name": "index_playlist_meta_long_key_value_src",
+            "unique": false,
+            "columnNames": [
+              "key",
+              "value",
+              "src"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_long_key_value_src` ON `${TABLE_NAME}` (`key`, `value`, `src`)"
+          },
+          {
+            "name": "index_playlist_meta_long_value_key_src",
+            "unique": false,
+            "columnNames": [
+              "value",
+              "key",
+              "src"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_long_value_key_src` ON `${TABLE_NAME}` (`value`, `key`, `src`)"
+          },
+          {
+            "name": "index_playlist_meta_long_value",
+            "unique": false,
+            "columnNames": [
+              "value"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_long_value` ON `${TABLE_NAME}` (`value`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "playlist_id",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "src",
+              "id"
+            ],
+            "referencedColumns": [
+              "src",
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "playlist_meta_double",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` REAL NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`), FOREIGN KEY(`src`, `id`) REFERENCES `playlist_id`(`src`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "src",
+            "columnName": "src",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "src",
+            "id",
+            "key",
+            "value"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_playlist_meta_double_src_id_key_value",
+            "unique": true,
+            "columnNames": [
+              "src",
+              "id",
+              "key",
+              "value"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_playlist_meta_double_src_id_key_value` ON `${TABLE_NAME}` (`src`, `id`, `key`, `value`)"
+          },
+          {
+            "name": "index_playlist_meta_double_key_value_src",
+            "unique": false,
+            "columnNames": [
+              "key",
+              "value",
+              "src"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_double_key_value_src` ON `${TABLE_NAME}` (`key`, `value`, `src`)"
+          },
+          {
+            "name": "index_playlist_meta_double_value_key_src",
+            "unique": false,
+            "columnNames": [
+              "value",
+              "key",
+              "src"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_double_value_key_src` ON `${TABLE_NAME}` (`value`, `key`, `src`)"
+          },
+          {
+            "name": "index_playlist_meta_double_value",
+            "unique": false,
+            "columnNames": [
+              "value"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_double_value` ON `${TABLE_NAME}` (`value`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "playlist_id",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "src",
+              "id"
+            ],
+            "referencedColumns": [
+              "src",
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "playlist_meta_local_string",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`))",
+        "fields": [
+          {
+            "fieldPath": "src",
+            "columnName": "src",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "src",
+            "id",
+            "key",
+            "value"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_playlist_meta_local_string_src_id_key_value",
+            "unique": true,
+            "columnNames": [
+              "src",
+              "id",
+              "key",
+              "value"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_playlist_meta_local_string_src_id_key_value` ON `${TABLE_NAME}` (`src`, `id`, `key`, `value`)"
+          },
+          {
+            "name": "index_playlist_meta_local_string_key_value_src",
+            "unique": false,
+            "columnNames": [
+              "key",
+              "value",
+              "src"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_local_string_key_value_src` ON `${TABLE_NAME}` (`key`, `value`, `src`)"
+          },
+          {
+            "name": "index_playlist_meta_local_string_value_key_src",
+            "unique": false,
+            "columnNames": [
+              "value",
+              "key",
+              "src"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_local_string_value_key_src` ON `${TABLE_NAME}` (`value`, `key`, `src`)"
+          },
+          {
+            "name": "index_playlist_meta_local_string_value",
+            "unique": false,
+            "columnNames": [
+              "value"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_local_string_value` ON `${TABLE_NAME}` (`value`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "playlist_meta_local_long",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` INTEGER NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`))",
+        "fields": [
+          {
+            "fieldPath": "src",
+            "columnName": "src",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "src",
+            "id",
+            "key",
+            "value"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_playlist_meta_local_long_src_id_key_value",
+            "unique": true,
+            "columnNames": [
+              "src",
+              "id",
+              "key",
+              "value"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_playlist_meta_local_long_src_id_key_value` ON `${TABLE_NAME}` (`src`, `id`, `key`, `value`)"
+          },
+          {
+            "name": "index_playlist_meta_local_long_key_value_src",
+            "unique": false,
+            "columnNames": [
+              "key",
+              "value",
+              "src"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_local_long_key_value_src` ON `${TABLE_NAME}` (`key`, `value`, `src`)"
+          },
+          {
+            "name": "index_playlist_meta_local_long_value_key_src",
+            "unique": false,
+            "columnNames": [
+              "value",
+              "key",
+              "src"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_local_long_value_key_src` ON `${TABLE_NAME}` (`value`, `key`, `src`)"
+          },
+          {
+            "name": "index_playlist_meta_local_long_value",
+            "unique": false,
+            "columnNames": [
+              "value"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_local_long_value` ON `${TABLE_NAME}` (`value`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "playlist_meta_local_double",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `key` TEXT NOT NULL, `value` REAL NOT NULL, PRIMARY KEY(`src`, `id`, `key`, `value`))",
+        "fields": [
+          {
+            "fieldPath": "src",
+            "columnName": "src",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "src",
+            "id",
+            "key",
+            "value"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [
+          {
+            "name": "index_playlist_meta_local_double_src_id_key_value",
+            "unique": true,
+            "columnNames": [
+              "src",
+              "id",
+              "key",
+              "value"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_playlist_meta_local_double_src_id_key_value` ON `${TABLE_NAME}` (`src`, `id`, `key`, `value`)"
+          },
+          {
+            "name": "index_playlist_meta_local_double_key_value_src",
+            "unique": false,
+            "columnNames": [
+              "key",
+              "value",
+              "src"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_local_double_key_value_src` ON `${TABLE_NAME}` (`key`, `value`, `src`)"
+          },
+          {
+            "name": "index_playlist_meta_local_double_value_key_src",
+            "unique": false,
+            "columnNames": [
+              "value",
+              "key",
+              "src"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_local_double_value_key_src` ON `${TABLE_NAME}` (`value`, `key`, `src`)"
+          },
+          {
+            "name": "index_playlist_meta_local_double_value",
+            "unique": false,
+            "columnNames": [
+              "value"
+            ],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_meta_local_double_value` ON `${TABLE_NAME}` (`value`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
         "tableName": "waveform",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `peak_positive` BLOB NOT NULL, `peak_negative` BLOB NOT NULL, `rms_positive` BLOB NOT NULL, `rms_negative` BLOB NOT NULL, PRIMARY KEY(`src`, `id`))",
         "fields": [
@@ -631,8 +1159,8 @@
         "foreignKeys": []
       },
       {
-        "tableName": "playlists",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, `type` TEXT NOT NULL, `name` TEXT NOT NULL, `query` TEXT, `pos` INTEGER NOT NULL, PRIMARY KEY(`src`, `id`, `type`))",
+        "tableName": "playlist_id",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`src` TEXT NOT NULL, `id` TEXT NOT NULL, PRIMARY KEY(`src`, `id`))",
         "fields": [
           {
             "fieldPath": "src",
@@ -645,57 +1173,31 @@
             "columnName": "id",
             "affinity": "TEXT",
             "notNull": true
-          },
-          {
-            "fieldPath": "type",
-            "columnName": "type",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "name",
-            "columnName": "name",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "query",
-            "columnName": "query",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "pos",
-            "columnName": "pos",
-            "affinity": "INTEGER",
-            "notNull": true
           }
         ],
         "primaryKey": {
           "columnNames": [
             "src",
-            "id",
-            "type"
+            "id"
           ],
           "autoGenerate": false
         },
         "indices": [
           {
-            "name": "index_playlists_src_id_type",
+            "name": "index_playlist_id_src_id",
             "unique": true,
             "columnNames": [
               "src",
-              "id",
-              "type"
+              "id"
             ],
-            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_playlists_src_id_type` ON `${TABLE_NAME}` (`src`, `id`, `type`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_playlist_id_src_id` ON `${TABLE_NAME}` (`src`, `id`)"
           }
         ],
         "foreignKeys": []
       },
       {
         "tableName": "playlist_entries",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`playlist_src` TEXT NOT NULL, `playlist_id` TEXT NOT NULL, `playlist_type` TEXT NOT NULL, `id` TEXT NOT NULL, `entry_src` TEXT NOT NULL, `entry_id` TEXT NOT NULL, `entry_type` TEXT NOT NULL, `pos` INTEGER NOT NULL, PRIMARY KEY(`playlist_src`, `playlist_id`, `playlist_type`, `id`), FOREIGN KEY(`playlist_src`, `playlist_id`, `playlist_type`) REFERENCES `playlists`(`src`, `id`, `type`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`playlist_src` TEXT NOT NULL, `playlist_id` TEXT NOT NULL, `id` TEXT NOT NULL, `entry_src` TEXT NOT NULL, `entry_id` TEXT NOT NULL, `entry_type` TEXT NOT NULL, `pos` INTEGER NOT NULL, PRIMARY KEY(`playlist_src`, `playlist_id`, `id`), FOREIGN KEY(`playlist_src`, `playlist_id`) REFERENCES `playlist_id`(`src`, `id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "playlist_src",
@@ -706,12 +1208,6 @@
           {
             "fieldPath": "playlist_id",
             "columnName": "playlist_id",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "playlist_type",
-            "columnName": "playlist_type",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -750,38 +1246,34 @@
           "columnNames": [
             "playlist_src",
             "playlist_id",
-            "playlist_type",
             "id"
           ],
           "autoGenerate": false
         },
         "indices": [
           {
-            "name": "index_playlist_entries_playlist_src_playlist_id_playlist_type_id",
+            "name": "index_playlist_entries_playlist_src_playlist_id_id",
             "unique": true,
             "columnNames": [
               "playlist_src",
               "playlist_id",
-              "playlist_type",
               "id"
             ],
-            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_playlist_entries_playlist_src_playlist_id_playlist_type_id` ON `${TABLE_NAME}` (`playlist_src`, `playlist_id`, `playlist_type`, `id`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_playlist_entries_playlist_src_playlist_id_id` ON `${TABLE_NAME}` (`playlist_src`, `playlist_id`, `id`)"
           }
         ],
         "foreignKeys": [
           {
-            "table": "playlists",
+            "table": "playlist_id",
             "onDelete": "CASCADE",
             "onUpdate": "NO ACTION",
             "columns": [
               "playlist_src",
-              "playlist_id",
-              "playlist_type"
+              "playlist_id"
             ],
             "referencedColumns": [
               "src",
-              "id",
-              "type"
+              "id"
             ]
           }
         ]
@@ -930,7 +1422,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '92ff611ab22d8c9f85d6c03530baf2bf')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '628931851ff6754b6eef00c412bcc882')"
     ]
   }
 }

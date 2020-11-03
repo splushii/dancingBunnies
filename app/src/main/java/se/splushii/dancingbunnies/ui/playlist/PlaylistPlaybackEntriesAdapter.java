@@ -12,13 +12,13 @@ import java.util.HashSet;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Transformations;
 import androidx.recyclerview.selection.Selection;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
@@ -47,8 +47,8 @@ public class PlaylistPlaybackEntriesAdapter extends
     private LiveData<HashSet<EntryID>> cachedEntriesLiveData;
     private LiveData<HashMap<EntryID, AudioStorage.AudioDataFetchState>> fetchStateLiveData;
     private LiveData<Long> currentPlaylistPosLiveData;
-    private MutableLiveData<PlaylistID> browsedPlaylistIDLiveData;
-    private LiveData<PlaylistID> currentPlaylistIDLiveData;
+    private MutableLiveData<EntryID> browsedPlaylistIDLiveData;
+    private LiveData<EntryID> currentPlaylistIDLiveData;
     private LiveData<PlaybackEntry> currentEntryLiveData;
 
     private boolean initialScrolled;
@@ -209,8 +209,8 @@ public class PlaylistPlaybackEntriesAdapter extends
             return getItem(getPos());
         }
 
-        void updateHighlight(PlaylistID browsedPlaylistID,
-                             PlaylistID currentPlaylistID,
+        void updateHighlight(EntryID browsedPlaylistID,
+                             EntryID currentPlaylistID,
                              PlaybackEntry currentEntry,
                              Long currentPlaylistPos) {
             boolean isCurrentPlaylist = browsedPlaylistID != null
@@ -276,6 +276,48 @@ public class PlaylistPlaybackEntriesAdapter extends
                         currentPlaylistPosLiveData.getValue()
                 )
         );
+        Transformations.switchMap(
+                currentEntryLiveData,
+                playbackEntry -> {
+                    if (playbackEntry == null) {
+                        return new MutableLiveData<>(false);
+                    }
+                    return MusicLibraryService.isSmartPlaylist(
+                            fragment.requireContext(),
+                            playbackEntry.entryID
+                    );
+                }
+        ).observe(fragment.getViewLifecycleOwner(), playlistIsSmart -> {
+            int[] disabledActions;
+            EntryID playlistID = currentPlaylistIDLiveData.getValue();
+            if (!playlistIsSmart
+                    && playlistID != null
+                    && holder.playbackEntry != null
+                    && APIClient.getAPIClient(fragment.requireContext(), playlistID.src)
+                    .supports(PLAYLIST_ENTRY_DELETE, holder.playbackEntry.entryID.src)) {
+                disabledActions = new int[0];
+            } else {
+                disabledActions = new int[] {ACTION_PLAYLIST_ENTRY_DELETE};
+            }
+            holder.actionsView.setActions(
+                    new int[] {
+                            ACTION_PLAYLIST_SET_CURRENT,
+                            ACTION_QUEUE_ADD,
+                            ACTION_INFO
+                    },
+                    new int[] {
+                            ACTION_PLAY,
+                            ACTION_PLAYLIST_SET_CURRENT,
+                            ACTION_QUEUE_ADD,
+                            ACTION_PLAYLIST_ENTRY_ADD,
+                            ACTION_PLAYLIST_ENTRY_DELETE,
+                            ACTION_CACHE,
+                            ACTION_CACHE_DELETE,
+                            ACTION_INFO
+                    },
+                    disabledActions
+            );
+        });
         holder.itemContent.initMetaObserver(fragment.requireContext());
         holder.itemContent.observeMeta(fragment.getViewLifecycleOwner());
         holder.itemContent.observeCachedLiveData(cachedEntriesLiveData, fragment.getViewLifecycleOwner());
@@ -305,34 +347,6 @@ public class PlaylistPlaybackEntriesAdapter extends
                 currentPlaylistIDLiveData.getValue(),
                 currentEntryLiveData.getValue(),
                 currentPlaylistPosLiveData.getValue()
-        );
-        int[] disabledActions;
-        PlaylistID playlistID = currentPlaylistIDLiveData.getValue();
-        if (playlistID != null
-                && PlaylistID.TYPE_STUPID.equals(playlistID.type)
-                && APIClient.getAPIClient(fragment.requireContext(), playlistID.src)
-                .supports(PLAYLIST_ENTRY_DELETE, entry.entryID.src)) {
-            disabledActions = new int[0];
-        } else {
-            disabledActions = new int[] {ACTION_PLAYLIST_ENTRY_DELETE};
-        }
-        holder.actionsView.setActions(
-                new int[] {
-                        ACTION_PLAYLIST_SET_CURRENT,
-                        ACTION_QUEUE_ADD,
-                        ACTION_INFO
-                },
-                new int[] {
-                        ACTION_PLAY,
-                        ACTION_PLAYLIST_SET_CURRENT,
-                        ACTION_QUEUE_ADD,
-                        ACTION_PLAYLIST_ENTRY_ADD,
-                        ACTION_PLAYLIST_ENTRY_DELETE,
-                        ACTION_CACHE,
-                        ACTION_CACHE_DELETE,
-                        ACTION_INFO
-                },
-                disabledActions
         );
         holder.item.setActivated(isSelected(holder.getKey()));
         if (isDragViewHolder(holder)) {

@@ -15,44 +15,44 @@ import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.util.Util;
 
-public class TransactionMetaDelete extends Transaction {
-    private static final String LC = Util.getLogContext(TransactionMetaDelete.class);
+public class TransactionPlaylistMetaAdd extends Transaction {
+    private static final String LC = Util.getLogContext(TransactionPlaylistMetaAdd.class);
 
-    private static final String GROUP = Transaction.GROUP_LIBRARY;
-    private static final String ACTION = Transaction.META_DELETE;
+    private static final String GROUP = Transaction.GROUP_PLAYLISTS;
+    private static final String ACTION = Transaction.PLAYLIST_META_ADD;
 
-    private static final String JSON_KEY_ENTRYID = "entryid";
+    private static final String JSON_KEY_PLAYLIST_ID = "playlist_id";
     private static final String JSON_KEY_KEY = "key";
     private static final String JSON_KEY_VALUE = "value";
 
-    private final EntryID entryID;
+    private final EntryID playlistID;
     private final String key;
     private final String value;
 
-    public TransactionMetaDelete(long id,
-                                 String src,
-                                 Date date,
-                                 long errorCount,
-                                 String errorMessage,
-                                 JSONObject args
+    public TransactionPlaylistMetaAdd(long id,
+                                      String src,
+                                      Date date,
+                                      long errorCount,
+                                      String errorMessage,
+                                      JSONObject args
     ) throws JSONException {
         super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
-        entryID = EntryID.from(args.getJSONObject(JSON_KEY_ENTRYID));
+        playlistID = EntryID.from(args.getJSONObject(JSON_KEY_PLAYLIST_ID));
         key = args.getString(JSON_KEY_KEY);
         value = args.getString(JSON_KEY_VALUE);
     }
 
-    public TransactionMetaDelete(long id,
-                                 String src,
-                                 Date date,
-                                 long errorCount,
-                                 String errorMessage,
-                                 EntryID entryID,
-                                 String key,
-                                 String value
+    public TransactionPlaylistMetaAdd(long id,
+                                      String src,
+                                      Date date,
+                                      long errorCount,
+                                      String errorMessage,
+                                      EntryID playlistID,
+                                      String key,
+                                      String value
     ) {
         super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
-        this.entryID = entryID;
+        this.playlistID = playlistID;
         this.key = key;
         this.value = value;
     }
@@ -61,11 +61,11 @@ public class TransactionMetaDelete extends Transaction {
     JSONObject jsonArgs() {
         JSONObject args = new JSONObject();
         try {
-            JSONObject entryIDJSON = entryID.toJSON();
-            if (entryIDJSON == null) {
+            JSONObject playlistIDJSON = playlistID.toJSON();
+            if (playlistIDJSON == null) {
                 return null;
             }
-            args.put(JSON_KEY_ENTRYID, entryIDJSON);
+            args.put(JSON_KEY_PLAYLIST_ID, playlistIDJSON);
             args.put(JSON_KEY_KEY, key);
             args.put(JSON_KEY_VALUE, value);
         } catch (JSONException e) {
@@ -77,44 +77,44 @@ public class TransactionMetaDelete extends Transaction {
 
     @Override
     public String getArgsSource() {
-        return entryID.src;
+        return playlistID.src;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        TransactionMetaDelete that = (TransactionMetaDelete) o;
-        return entryID.equals(that.entryID) &&
+        TransactionPlaylistMetaAdd that = (TransactionPlaylistMetaAdd) o;
+        return playlistID.equals(that.playlistID) &&
                 key.equals(that.key) &&
                 value.equals(that.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), entryID, key, value);
+        return Objects.hash(super.hashCode(), playlistID, key, value);
     }
 
     @Override
     public String getDisplayableAction() {
-        return "Delete entry metadata";
+        return "Add playlist metadata";
     }
 
     @Override
     public String getDisplayableDetails() {
         return "\"" + Meta.getDisplayKey(key) + "\""
                 + " = \"" + value + "\""
-                + " for " + entryID.getDisplayableString();
+                + " for " + playlistID.getDisplayableString();
     }
 
     @Override
     public CompletableFuture<Void> applyLocally(Context context) {
         return MetaStorage.getInstance(context)
-                .deleteTrackMeta(entryID, key, value);
+                .insertPlaylistMeta(playlistID, key, value);
     }
 
     @Override
     public void addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
-        batch.deleteMeta(context, entryID, key, value);
+        batch.addPlaylistMeta(context, playlistID, key, value);
     }
 }

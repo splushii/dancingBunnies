@@ -4,17 +4,17 @@ import java.util.Collections;
 import java.util.List;
 
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.util.Util;
 
 class NowPlayingState {
     private static final String LC = Util.getLogContext(NowPlayingState.class);
     final List<PlaybackEntry> queue;
-    final PlaylistID currentPlaylistID;
+    final EntryID currentPlaylistID;
     final long currentPlaylistPos;
 
     private NowPlayingState(List<PlaybackEntry> queue,
-                            PlaylistID currentPlaylistID,
+                            EntryID currentPlaylistID,
                             long currentPlaylistPos) {
         this.queue = queue;
         this.currentPlaylistID = currentPlaylistID;
@@ -23,7 +23,7 @@ class NowPlayingState {
 
     static class Builder {
         private List<PlaybackEntry> queue = Collections.emptyList();
-        private PlaylistID currentPlaylistID;
+        private EntryID currentPlaylistID;
         private long currentPlaylistPos;
 
         Builder() {}
@@ -40,7 +40,7 @@ class NowPlayingState {
             return this;
         }
 
-        Builder setCurrentPlaylist(PlaylistID playlistID) {
+        Builder setCurrentPlaylist(EntryID playlistID) {
             this.currentPlaylistID = playlistID;
             return this;
         }

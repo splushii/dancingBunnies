@@ -9,37 +9,37 @@ import java.util.ArrayList;
 
 import androidx.annotation.NonNull;
 
-public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
-    private static final String BUNDLE_KEY_ENTRY_ID = "dancingbunnies.bundle.key.libraryentry.entryid";
-    private static final String BUNDLE_KEY_NAME = "dancingbunnies.bundle.key.libraryentry.name";
-    private static final String BUNDLE_KEY_SORTED_BY = "dancingbunnies.bundle.key.libraryentry.sortedby";
+public class QueryEntry implements Comparable<QueryEntry>, Parcelable {
+    private static final String BUNDLE_KEY_ENTRY_ID = "dancingbunnies.bundle.key.queryentry.entryid";
+    private static final String BUNDLE_KEY_NAME = "dancingbunnies.bundle.key.queryentry.name";
+    private static final String BUNDLE_KEY_SORTED_BY = "dancingbunnies.bundle.key.queryentry.sortedby";
 
     public final EntryID entryID;
     private final String name;
     private final ArrayList<String> sortedByValues;
 
-    public LibraryEntry(EntryID entryID, String name, ArrayList<String> sortedByValues) {
+    public QueryEntry(EntryID entryID, String name, ArrayList<String> sortedByValues) {
         this.entryID = entryID;
         this.name = name;
         this.sortedByValues = sortedByValues;
     }
 
-    private LibraryEntry(Parcel in) {
+    private QueryEntry(Parcel in) {
         entryID = in.readParcelable(EntryID.class.getClassLoader());
         name = in.readString();
         sortedByValues = new ArrayList<>();
         in.readStringList(sortedByValues);
     }
 
-    public static final Creator<LibraryEntry> CREATOR = new Creator<LibraryEntry>() {
+    public static final Creator<QueryEntry> CREATOR = new Creator<QueryEntry>() {
         @Override
-        public LibraryEntry createFromParcel(Parcel in) {
-            return new LibraryEntry(in);
+        public QueryEntry createFromParcel(Parcel in) {
+            return new QueryEntry(in);
         }
 
         @Override
-        public LibraryEntry[] newArray(int size) {
-            return new LibraryEntry[size];
+        public QueryEntry[] newArray(int size) {
+            return new QueryEntry[size];
         }
     };
 
@@ -51,12 +51,12 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
         return b;
     }
 
-    public static LibraryEntry from(MediaBrowserCompat.MediaItem item) {
+    public static QueryEntry from(MediaBrowserCompat.MediaItem item) {
         Bundle b = item.getDescription().getExtras();
         EntryID entryID = b.getParcelable(BUNDLE_KEY_ENTRY_ID);
         String name = b.getString(BUNDLE_KEY_NAME);
         ArrayList<String> sortedByValues = b.getStringArrayList(BUNDLE_KEY_SORTED_BY);
-        return new LibraryEntry(entryID, name, sortedByValues);
+        return new QueryEntry(entryID, name, sortedByValues);
     }
 
     @Override
@@ -80,7 +80,7 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        LibraryEntry e = (LibraryEntry) obj;
+        QueryEntry e = (QueryEntry) obj;
         if (name == null && e.name != null) {
             return false;
         }
@@ -96,7 +96,7 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
     }
 
     @Override
-    public int compareTo(@NonNull LibraryEntry o) {
+    public int compareTo(@NonNull QueryEntry o) {
         if (o == null || o.name == null) {
             return -1;
         }
@@ -127,6 +127,6 @@ public class LibraryEntry implements Comparable<LibraryEntry>, Parcelable {
     }
 
     public boolean isBrowsable() {
-        return !Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type);
+        return !Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(entryID.type);
     }
 }

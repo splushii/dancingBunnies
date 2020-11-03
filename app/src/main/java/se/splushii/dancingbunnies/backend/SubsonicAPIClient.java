@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -28,7 +29,6 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.Playlist;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Util;
@@ -94,6 +94,10 @@ public class SubsonicAPIClient extends APIClient {
     private static final String JSON_PLAYLISTS = "playlists";
     private static final String JSON_PLAYLIST = "playlist";
     private static final String JSON_ENTRY = "entry";
+    private static final String JSON_COMMENT = "comment";
+    private static final String JSON_OWNER = "owner";
+    private static final String JSON_SONGCOUNT = "songCount";
+    private static final String JSON_CHANGED = "changed";
     private static final String STATUS_OK = "ok";
 
     private static final String VERSION = "1.15.0";
@@ -132,9 +136,9 @@ public class SubsonicAPIClient extends APIClient {
                                String query,
                                String musicFolder,
                                String errorMsg,
-                               ConcurrentLinkedQueue<Meta> metaList,
-                               ConcurrentLinkedQueue<Playlist> playlists,
-                               ConcurrentLinkedQueue<EntryID> playlistEntries,
+                               Collection<Meta> metaList,
+                               Collection<Playlist> playlists,
+                               Collection<EntryID> playlistEntries,
                                APIClientRequestHandler handler) {
         int retryCount = retries.getOrDefault(query, 1);
         String status = "Request failed:\ntype: " + type + "\nquery: " + query;
@@ -208,7 +212,7 @@ public class SubsonicAPIClient extends APIClient {
     }
 
     private CompletableFuture<Void> getMusicFoldersQuery(final String query,
-                                                         final ConcurrentLinkedQueue<Meta> metaList,
+                                                         final Collection<Meta> metaList,
                                                          final APIClientRequestHandler handler) {
         final CompletableFuture<Void> ret = new CompletableFuture<>();
         final CompletableFuture<Optional<List<Pair<String, String>>>> req = new CompletableFuture<>();
@@ -275,7 +279,7 @@ public class SubsonicAPIClient extends APIClient {
 
     private CompletableFuture<Void> getIndexes(final String musicFolderId,
                                                final String musicFolder,
-                                               final ConcurrentLinkedQueue<Meta> metaList,
+                                               final Collection<Meta> metaList,
                                                final APIClientRequestHandler handler) {
         final String query = baseURL + "getIndexes" + getBaseQuery()
                 + "&musicFolderId=" + musicFolderId;
@@ -284,7 +288,7 @@ public class SubsonicAPIClient extends APIClient {
 
     private CompletableFuture<Void> getIndexesQuery(final String query,
                                                     final String musicFolder,
-                                                    final ConcurrentLinkedQueue<Meta> metaList,
+                                                    final Collection<Meta> metaList,
                                                     final APIClientRequestHandler handler) {
         final CompletableFuture<Void> ret = new CompletableFuture<>();
         httpRequestQueue.addToRequestQueue(new StringRequest(
@@ -316,7 +320,6 @@ public class SubsonicAPIClient extends APIClient {
                                 JSONArray jChildArray = jIndices.getJSONArray(JSON_CHILD);
                                 for (int i = 0; i < jChildArray.length(); i++) {
                                     JSONObject jChild = jChildArray.getJSONObject(i);
-                                    // Required attributes
                                     String id = jChild.getString(JSON_ID);
                                     boolean isDir = jChild.getBoolean(JSON_IS_DIR);
                                     if (isDir) {
@@ -360,7 +363,7 @@ public class SubsonicAPIClient extends APIClient {
     }
 
     private void addMeta(Meta meta,
-                         ConcurrentLinkedQueue<Meta> metaList,
+                         Collection<Meta> metaList,
                          APIClientRequestHandler handler) {
         metaList.add(meta);
         if (metaList.size() % 100 == 0) {
@@ -370,26 +373,24 @@ public class SubsonicAPIClient extends APIClient {
 
     private Optional<Meta> handleJSONChild(JSONObject jChild, String musicFolder)
             throws JSONException {
-        // Required attributes
         String id = jChild.getString(JSON_ID);
         if (jChild.getBoolean(JSON_IS_DIR)) {
             return Optional.empty();
         }
-        String title = jChild.getString(JSON_TITLE);
-        EntryID entryID = new EntryID(src, id, Meta.FIELD_SPECIAL_MEDIA_ID);
+        EntryID entryID = new EntryID(src, id, Meta.FIELD_SPECIAL_ENTRY_ID_TRACK);
         Meta meta = new Meta(entryID);
         meta.setTagDelimiter(tagDelimiter);
         meta.addString(Meta.FIELD_MEDIA_ROOT, musicFolder);
-        meta.addString(Meta.FIELD_TITLE, title);
-        // Optional attributes
         Iterator<String> keys = jChild.keys();
         while (keys.hasNext()) {
             String key = keys.next();
             switch (key) {
                 case JSON_ID:
                 case JSON_IS_DIR:
-                case JSON_TITLE:
                     // Already handled
+                    break;
+                case JSON_TITLE:
+                    meta.addString(Meta.FIELD_TITLE, jChild.getString(JSON_TITLE));
                     break;
                 case JSON_PARENT:
                     meta.addString(Meta.FIELD_PARENT_ID, jChild.getString(JSON_PARENT));
@@ -448,8 +449,7 @@ public class SubsonicAPIClient extends APIClient {
                     meta.addDouble(Meta.FIELD_AVERAGE_RATING, jChild.getDouble(JSON_AVERAGE_RATING));
                     break;
                 case JSON_PLAY_COUNT:
-                    // Do not care about subsonic play count
-//                  jChild.getLong(JSON_PLAY_COUNT);
+                    meta.addLong(Meta.FIELD_PLAY_COUNT, jChild.getLong(JSON_PLAY_COUNT));
                     break;
                 case JSON_DISC_NUMBER:
                     meta.addLong(Meta.FIELD_DISCNUMBER, jChild.getInt(JSON_DISC_NUMBER));
@@ -475,7 +475,7 @@ public class SubsonicAPIClient extends APIClient {
                     meta.addLong(Meta.FIELD_BOOKMARK_POSITION, jChild.getLong(JSON_BOOKMARK_POSITION));
                     break;
                 default:
-                    Log.w(LC, "Unhandled JSON attribute in child (" + title + "): " + key);
+                    Log.w(LC, "Unhandled JSON attribute in child (" + id + "): " + key);
                     break;
             }
         }
@@ -485,7 +485,7 @@ public class SubsonicAPIClient extends APIClient {
     private CompletableFuture<Void>
     getMusicDirectory(final String folderId,
                       final String musicFolder,
-                      final ConcurrentLinkedQueue<Meta> metaList,
+                      final Collection<Meta> metaList,
                       final APIClientRequestHandler handler) {
         String query = baseURL + "getMusicDirectory" + getBaseQuery() + "&id=" + folderId;
         return getMusicDirectoryQuery(query, musicFolder, metaList, handler);
@@ -494,7 +494,7 @@ public class SubsonicAPIClient extends APIClient {
     private CompletableFuture<Void>
     getMusicDirectoryQuery(final String query,
                            final String musicFolder,
-                           final ConcurrentLinkedQueue<Meta> metaList,
+                           final Collection<Meta> metaList,
                            final APIClientRequestHandler handler) {
         final CompletableFuture<Void> ret = new CompletableFuture<>();
         final List<CompletableFuture<Void>> reqList = new ArrayList<>();
@@ -511,7 +511,6 @@ public class SubsonicAPIClient extends APIClient {
                                 JSONArray jChildArray = jDir.getJSONArray(JSON_CHILD);
                                 for (int i = 0; i < jChildArray.length(); i++) {
                                     JSONObject jChild = jChildArray.getJSONObject(i);
-                                    // Required attributes
                                     String id = jChild.getString(JSON_ID);
                                     boolean isDir = jChild.getBoolean(JSON_IS_DIR);
                                     if (isDir) {
@@ -569,14 +568,16 @@ public class SubsonicAPIClient extends APIClient {
         return true;
     }
 
-    private CompletableFuture<Void> getPlaylists(final ConcurrentLinkedQueue<Playlist> playlists,
-                                                 final APIClientRequestHandler handler) {
+    private CompletableFuture<Void> getPlaylists(
+            final Collection<Playlist> playlists,
+            final APIClientRequestHandler handler
+    ) {
         String query = baseURL + "getPlaylists" + getBaseQuery();
         return getPlaylistsQuery(query, playlists, handler);
     }
 
     private CompletableFuture<Void> getPlaylistsQuery(String query,
-                                                      ConcurrentLinkedQueue<Playlist> playlists,
+                                                      Collection<Playlist> playlists,
                                                       APIClientRequestHandler handler) {
         final CompletableFuture<Void> ret = new CompletableFuture<>();
         final List<CompletableFuture<Void>> reqList = new ArrayList<>();
@@ -594,19 +595,54 @@ public class SubsonicAPIClient extends APIClient {
                                 JSONArray jPlaylistArray = jPlaylists.getJSONArray(JSON_PLAYLIST);
                                 for (int i = 0; i < jPlaylistArray.length(); i++) {
                                     JSONObject jPlaylist = jPlaylistArray.getJSONObject(i);
-                                    // Required attributes
                                     String id = jPlaylist.getString(JSON_ID);
-                                    String name = jPlaylist.getString(JSON_NAME);
+                                    EntryID playlistID = new EntryID(
+                                            src,
+                                            id,
+                                            Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST
+                                    );
+                                    Meta meta = new Meta(playlistID);
+                                    meta.setTagDelimiter(tagDelimiter);
+
+                                    Iterator<String> keys = jPlaylist.keys();
+                                    while (keys.hasNext()) {
+                                        String key = keys.next();
+                                        switch (key) {
+                                            case JSON_ID:
+                                                // Already handled
+                                                break;
+                                            case JSON_NAME:
+                                                meta.addString(Meta.FIELD_TITLE, jPlaylist.getString(JSON_NAME));
+                                                break;
+                                            case JSON_SONGCOUNT:
+                                                meta.addLong(Meta.FIELD_SONG_COUNT, jPlaylist.getInt(JSON_SONGCOUNT));
+                                                break;
+                                            case JSON_DURATION:
+                                                meta.addLong(Meta.FIELD_DURATION, jPlaylist.getInt(JSON_DURATION));
+                                                break;
+                                            case JSON_CREATED:
+                                                meta.addString(Meta.FIELD_DATE_ADDED, jPlaylist.getString(JSON_CREATED));
+                                                break;
+                                            case JSON_CHANGED:
+                                                meta.addString(Meta.FIELD_DATE_CHANGED, jPlaylist.getString(JSON_CHANGED));
+                                                break;
+                                            case JSON_COMMENT:
+                                                meta.addString(Meta.FIELD_COMMENT, jPlaylist.getString(JSON_COMMENT));
+                                                break;
+                                            case JSON_OWNER:
+                                                meta.addString(Meta.FIELD_OWNER, jPlaylist.getString(JSON_OWNER));
+                                                break;
+                                            default:
+                                                Log.w(LC, "Unhandled JSON attribute in playlist (" + id + "): " + key);
+                                                break;
+                                        }
+                                    }
+
                                     final CompletableFuture<Void> req = new CompletableFuture<>();
                                     reqList.add(req);
                                     ConcurrentLinkedQueue<EntryID> entries = new ConcurrentLinkedQueue<>();
                                     getPlaylist(id, entries, handler)
                                             .thenRun(() -> {
-                                                PlaylistID playlistID = new PlaylistID(
-                                                        src,
-                                                        id,
-                                                        PlaylistID.TYPE_STUPID
-                                                );
                                                 // Subsonic API playlist entries have no ID:s
                                                 // Create mock ID:s
                                                 List<PlaylistEntry> playlistEntries =
@@ -615,8 +651,7 @@ public class SubsonicAPIClient extends APIClient {
                                                                 entries.toArray(new EntryID[0])
                                                         );
                                                 Playlist playlist = new StupidPlaylist(
-                                                        playlistID,
-                                                        name,
+                                                        meta,
                                                         playlistEntries
                                                 );
                                                 playlists.add(playlist);
@@ -664,7 +699,7 @@ public class SubsonicAPIClient extends APIClient {
     }
 
     private CompletableFuture<Void> getPlaylistQuery(String query,
-                                                     ConcurrentLinkedQueue<EntryID> entries,
+                                                     Collection<EntryID> entries,
                                                      APIClientRequestHandler handler) {
         CompletableFuture<Void> ret = new CompletableFuture<>();
         httpRequestQueue.addToRequestQueue(new StringRequest(
@@ -680,9 +715,8 @@ public class SubsonicAPIClient extends APIClient {
                                 JSONArray jEntryArray = jPlaylists.getJSONArray(JSON_ENTRY);
                                 for (int i = 0; i < jEntryArray.length(); i++) {
                                     JSONObject jPlaylist = jEntryArray.getJSONObject(i);
-                                    // Required attributes
                                     String id = jPlaylist.getString(JSON_ID);
-                                    entries.add(new EntryID(src, id, Meta.FIELD_SPECIAL_MEDIA_ID));
+                                    entries.add(new EntryID(src, id, Meta.FIELD_SPECIAL_ENTRY_ID_TRACK));
                                 }
                             }
                         } catch (JSONException e) {

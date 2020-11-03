@@ -23,10 +23,6 @@ import se.splushii.dancingbunnies.util.Util;
 
 public class SchemaValidator {
     private static final String LC = Util.getLogContext(SchemaValidator.class);
-    // TODO: Move this to another class
-    public static final String PLAYLIST_SUFFIX = "yaml";
-    public static final String PLAYLIST_ENTRY_TYPE_TRACK = "track";
-    public static final String PLAYLIST_ENTRY_TYPE_PLAYLIST = "playlist";
 
     public static boolean validatePlaylist(Context context, InputStream inputStream) {
         ObjectMapper objMapper = new ObjectMapper(new YAMLFactory());

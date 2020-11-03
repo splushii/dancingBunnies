@@ -49,9 +49,7 @@ import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.Playlist;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.musiclibrary.StupidPlaylist;
-import se.splushii.dancingbunnies.musiclibrary.export.SchemaValidator;
 import se.splushii.dancingbunnies.storage.transactions.TransactionPlaylistAdd;
 import se.splushii.dancingbunnies.storage.transactions.TransactionPlaylistDelete;
 import se.splushii.dancingbunnies.storage.transactions.TransactionPlaylistEntryAdd;
@@ -346,7 +344,7 @@ public class GitAPIClient extends APIClient {
             playlistPaths = walk
                     .filter(Files::isRegularFile)
                     .filter(path -> HiddenFileFilter.VISIBLE.accept(path.toFile()))
-                    .filter(path -> FilenameUtils.isExtension(path.toString(), SchemaValidator.PLAYLIST_SUFFIX))
+                    .filter(path -> FilenameUtils.isExtension(path.toString(), ".yaml"))
                     .collect(Collectors.toList());
         } catch (IOException e) {
             return "Could not traverse repository"
@@ -384,7 +382,7 @@ public class GitAPIClient extends APIClient {
 
     public static class Batch extends APIClient.Batch {
         private final GitAPIClient api;
-        private final HashMap<PlaylistID, PlaylistPath> playlistPaths = new HashMap<>();
+        private final HashMap<EntryID, PlaylistPath> playlistPaths = new HashMap<>();
         private final List<String> commitMessages = new ArrayList<>();
 
         Batch(Context context, GitAPIClient api) throws BatchException {
@@ -397,14 +395,14 @@ public class GitAPIClient extends APIClient {
             String error = api.getPlaylists(
                     context,
                     fetch,
-                    p -> playlistPaths.put(p.playlist.id, p)
+                    p -> playlistPaths.put(p.playlist.meta.entryID, p)
             );
             if (error != null) {
                 throw new BatchException("Could not get playlists from local workdir: " + error);
             }
         }
 
-        private Path getPath(PlaylistID playlistID) throws APIClient.BatchException {
+        private Path getPath(EntryID playlistID) throws APIClient.BatchException {
             PlaylistPath playlistPath = playlistPaths.get(playlistID);
             if (playlistPath == null) {
                 throw new BatchException("Could not find playlist with id " + playlistID.getDisplayableString());
@@ -414,10 +412,9 @@ public class GitAPIClient extends APIClient {
 
         @Override
         public void addPlaylist(Context context,
-                                PlaylistID playlistID,
+                                EntryID playlistID,
                                 String name,
-                                String query,
-                                PlaylistID beforePlaylistID
+                                String query
         ) throws BatchException {
             if (playlistPaths.containsKey(playlistID)) {
                 throw new BatchException(
@@ -428,9 +425,9 @@ public class GitAPIClient extends APIClient {
             int counter = 1;
             while (true) {
                 Path path = api.workDir.resolve(fileName);
-                if (!playlistPaths.values().stream()
+                if (playlistPaths.values().stream()
                         .map(p -> p.path)
-                        .anyMatch(p -> p.equals(path))) {
+                        .noneMatch(p -> p.equals(path))) {
                     break;
                 }
                 fileName = playlistID.id + "-" + counter + ".yaml";
@@ -454,14 +451,13 @@ public class GitAPIClient extends APIClient {
                     null,
                     playlistID,
                     name,
-                    query,
-                    beforePlaylistID
+                    query
             ).getDisplayableDetails());
             updatePlaylistPaths(context, false);
         }
 
         @Override
-        public void deletePlaylist(Context context, PlaylistID playlistID) throws BatchException {
+        public void deletePlaylist(Context context, EntryID playlistID) throws BatchException {
             if (!playlistPaths.containsKey(playlistID)) {
                 throw new BatchException("Can not find playlist "
                         + playlistID.getDisplayableString());
@@ -493,7 +489,7 @@ public class GitAPIClient extends APIClient {
 
         @Override
         public void addPlaylistEntry(Context context,
-                                     PlaylistID playlistID,
+                                     EntryID playlistID,
                                      EntryID entryID,
                                      String beforePlaylistEntryID,
                                      Meta metaSnapshot
@@ -523,7 +519,7 @@ public class GitAPIClient extends APIClient {
 
         @Override
         public void deletePlaylistEntry(Context context,
-                                        PlaylistID playlistID,
+                                        EntryID playlistID,
                                         String playlistEntryID,
                                         EntryID entryID
         ) throws BatchException {
@@ -549,7 +545,7 @@ public class GitAPIClient extends APIClient {
 
         @Override
         public void movePlaylistEntry(Context context,
-                                      PlaylistID playlistID,
+                                      EntryID playlistID,
                                       String playlistEntryID,
                                       EntryID entryID,
                                       String beforePlaylistEntryID

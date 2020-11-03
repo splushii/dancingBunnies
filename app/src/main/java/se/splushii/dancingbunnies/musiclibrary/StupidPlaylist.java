@@ -9,8 +9,8 @@ public class StupidPlaylist extends Playlist {
     private static final String LC = Util.getLogContext(StupidPlaylist.class);
 
     private final List<PlaylistEntry> entries;
-    public StupidPlaylist(PlaylistID playlistID, String name, List<PlaylistEntry> entries) {
-        super(playlistID, name);
+    public StupidPlaylist(Meta meta, List<PlaylistEntry> entries) {
+        super(meta);
         this.entries = entries;
     }
 

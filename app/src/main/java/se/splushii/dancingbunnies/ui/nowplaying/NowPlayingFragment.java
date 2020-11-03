@@ -36,7 +36,6 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.mediarouter.app.MediaRouteButton;
 import androidx.mediarouter.media.MediaControlIntent;
@@ -53,12 +52,9 @@ import se.splushii.dancingbunnies.audioplayer.PlaybackController;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.QueryNode;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.MetaStorage;
-import se.splushii.dancingbunnies.storage.PlaylistStorage;
-import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
@@ -121,7 +117,7 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
             historySelectionTracker;
 
     private NowPlayingFragmentModel model;
-    private MutableLiveData<PlaylistID> currentPlaylistIDLiveData = new MutableLiveData<>();
+    private MutableLiveData<EntryID> currentPlaylistIDLiveData = new MutableLiveData<>();
     private View currentPlaylistView;
     private WaveformSeekBar waveformSeekBar;
     private MediaRouteButton mediaRouteButton;
@@ -208,7 +204,7 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
                     }
                 }
         );
-        metaLiveData = MetaStorage.getInstance(requireContext()).getMeta(entryIDLiveData);
+        metaLiveData = MetaStorage.getInstance(requireContext()).getTrackMeta(entryIDLiveData);
         metaLiveData.observe(getViewLifecycleOwner(), this::updateMeta);
 
         positionText = rootView.findViewById(R.id.nowplaying_position);
@@ -268,7 +264,7 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
         if (state == null) {
             return;
         }
-        PlaylistID playlistID = state.currentPlaylistID;
+        EntryID playlistID = state.currentPlaylistID;
         long pos = remote.getCurrentPlaylistPos();
         Intent intent = new Intent(requireContext(), MainActivity.class);
         intent.putExtra(MainActivity.INTENT_EXTRA_PLAYLIST_ID, playlistID);
@@ -303,22 +299,22 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
                     }
 
                     @Override
-                    public List<Playlist> getPlaylistSelection() {
+                    public List<EntryID> getPlaylistSelection() {
                         return Collections.emptyList();
                     }
 
                     @Override
-                    public MusicLibraryQueryNode getQueryNode() {
+                    public QueryNode getQueryNode() {
                         return null;
                     }
 
                     @Override
-                    public PlaylistID getPlaylistID() {
+                    public EntryID getPlaylistID() {
                         return null;
                     }
 
                     @Override
-                    public List<MusicLibraryQueryNode> getQueryNodes() {
+                    public List<QueryNode> getQueryNodes() {
                         return Collections.emptyList();
                     }
 
@@ -437,22 +433,22 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
                     }
 
                     @Override
-                    public List<Playlist> getPlaylistSelection() {
+                    public List<EntryID> getPlaylistSelection() {
                         return Collections.emptyList();
                     }
 
                     @Override
-                    public MusicLibraryQueryNode getQueryNode() {
+                    public QueryNode getQueryNode() {
                         return null;
                     }
 
                     @Override
-                    public PlaylistID getPlaylistID() {
+                    public EntryID getPlaylistID() {
                         return null;
                     }
 
                     @Override
-                    public List<MusicLibraryQueryNode> getQueryNodes() {
+                    public List<QueryNode> getQueryNodes() {
                         return Collections.emptyList();
                     }
 
@@ -504,16 +500,16 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
             sizeText.setVisibility(showSize ? VISIBLE : INVISIBLE);
         });
         recViewAdapter.setModel(model);
-        Transformations.switchMap(currentPlaylistIDLiveData, playlistID ->
-                PlaylistStorage.getInstance(requireContext()).getPlaylist(playlistID)
-        ).observe(getViewLifecycleOwner(), playlist -> {
-            if (playlist == null) {
-                currentPlaylistView.setVisibility(GONE);
-            } else {
-                currentPlaylistName.setText(playlist.name());
-                currentPlaylistView.setVisibility(VISIBLE);
-            }
-        });
+        MetaStorage.getInstance(requireContext())
+                .getPlaylistMeta(currentPlaylistIDLiveData)
+                .observe(getViewLifecycleOwner(), meta -> {
+                    if (meta == null) {
+                        currentPlaylistView.setVisibility(GONE);
+                    } else {
+                        currentPlaylistName.setText(meta.getAsString(Meta.FIELD_TITLE));
+                        currentPlaylistView.setVisibility(VISIBLE);
+                    }
+                });
         model.getState().observe(getViewLifecycleOwner(), this::refreshView);
 
         CastButtonFactory.setUpMediaRouteButton(
@@ -819,7 +815,7 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
     }
 
     @Override
-    public void onPlaylistSelectionChanged(PlaylistID playlistID, long pos) {
+    public void onPlaylistSelectionChanged(EntryID playlistID, long pos) {
         model.setCurrentPlaylist(playlistID);
         model.setCurrentPlaylistPos(pos);
     }

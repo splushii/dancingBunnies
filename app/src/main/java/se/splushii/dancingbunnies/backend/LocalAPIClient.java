@@ -10,7 +10,6 @@ import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.storage.transactions.Transaction.META_ADD;
@@ -117,21 +116,20 @@ public class LocalAPIClient extends APIClient {
 
         @Override
         public void addPlaylist(Context context,
-                                PlaylistID playlistID,
+                                EntryID playlistID,
                                 String name,
-                                String query,
-                                PlaylistID beforePlaylistID) {
+                                String query) {
             // Already applied in TransactionPlaylistAdd::applyLocally
         }
 
         @Override
-        public void deletePlaylist(Context context, PlaylistID playlistID) {
+        public void deletePlaylist(Context context, EntryID playlistID) {
             // Already applied in TransactionPlaylistDelete::applyLocally
         }
 
         @Override
         public void addPlaylistEntry(Context context,
-                                     PlaylistID playlistID,
+                                     EntryID playlistID,
                                      EntryID entryID,
                                      String beforePlaylistEntryID,
                                      Meta metaSnapshot) {
@@ -140,7 +138,7 @@ public class LocalAPIClient extends APIClient {
 
         @Override
         public void deletePlaylistEntry(Context context,
-                                        PlaylistID playlistID,
+                                        EntryID playlistID,
                                         String playlistEntryID,
                                         EntryID entryID) {
             // Already applied in TransactionPlaylistEntryDelete::applyLocally
@@ -148,7 +146,7 @@ public class LocalAPIClient extends APIClient {
 
         @Override
         public void movePlaylistEntry(Context context,
-                                      PlaylistID playlistID,
+                                      EntryID playlistID,
                                       String playlistEntryID,
                                       EntryID entryID,
                                       String beforePlaylistEntryID) {

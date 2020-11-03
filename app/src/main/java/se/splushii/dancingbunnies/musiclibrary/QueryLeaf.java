@@ -9,7 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
+public class QueryLeaf extends QueryNode {
     private static final String JSON_KEY_KEY = "key";
     private static final String JSON_KEY_OP = "op";
     private static final String JSON_KEY_VALUE = "value";
@@ -27,18 +27,18 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
     private Op operator;
     private String value;
 
-    private MusicLibraryQueryLeaf(MusicLibraryQueryLeaf source) {
+    private QueryLeaf(QueryLeaf source) {
         super(source);
         init(source.key, source.operator, source.value);
     }
 
-    MusicLibraryQueryLeaf(String key, String value) {
-        super(MusicLibraryQueryNode.JSON_VALUE_NODE_TYPE_LEAF, false);
+    QueryLeaf(String key, String value) {
+        super(QueryNode.JSON_VALUE_NODE_TYPE_LEAF, false);
         init(key, Op.EQUALS, value);
     }
 
-    public MusicLibraryQueryLeaf(String key, Op operator, String value, boolean negate) {
-        super(MusicLibraryQueryNode.JSON_VALUE_NODE_TYPE_LEAF, negate);
+    public QueryLeaf(String key, Op operator, String value, boolean negate) {
+        super(QueryNode.JSON_VALUE_NODE_TYPE_LEAF, negate);
         init(key, operator, value);
     }
 
@@ -47,7 +47,7 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
         setOperatorAndValue(op, value);
     }
 
-    MusicLibraryQueryLeaf(JSONObject jsonRoot) {
+    QueryLeaf(JSONObject jsonRoot) {
         super(jsonRoot);
         try {
             key = jsonRoot.getString(JSON_KEY_KEY);
@@ -90,8 +90,8 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
     }
 
     @Override
-    public MusicLibraryQueryLeaf deepCopy() {
-        return new MusicLibraryQueryLeaf(this);
+    public QueryLeaf deepCopy() {
+        return new QueryLeaf(this);
     }
 
     @Override
@@ -108,16 +108,16 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
     }
 
     @Override
-    public MusicLibraryQueryNode withEntryID(EntryID entryID) {
+    public QueryNode withEntryID(EntryID entryID) {
         if (entryID == null || entryID.isUnknown()) {
             return this;
         }
-        MusicLibraryQueryTree queryTree = new MusicLibraryQueryTree(
-                MusicLibraryQueryTree.Op.AND,
+        QueryTree queryTree = new QueryTree(
+                QueryTree.Op.AND,
                 false
         );
         queryTree.addChild(this);
-        queryTree.addChild(new MusicLibraryQueryLeaf(entryID.type, entryID.id));
+        queryTree.addChild(new QueryLeaf(entryID.type, entryID.id));
         return queryTree;
     }
 
@@ -169,7 +169,7 @@ public class MusicLibraryQueryLeaf extends MusicLibraryQueryNode {
 
     public static List<String> getDisplayableOps(String key) {
         return getOps(key).stream()
-                .map(MusicLibraryQueryLeaf::getDisplayableOp)
+                .map(QueryLeaf::getDisplayableOp)
                 .collect(Collectors.toList());
     }
 

@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
+import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.util.Util;
 
 public class CastAudioPlayer implements AudioPlayer {
@@ -57,11 +58,11 @@ public class CastAudioPlayer implements AudioPlayer {
     private int[] lastItemIds = new int[0];
     private int lastCurrentItemId = MediaQueueItem.INVALID_ITEM_ID;
     private SparseArray<MediaQueueItem> lastQueueItemMap;
-    private LongSparseArray<Integer> playbackIDToCastItemIDMap;
+    private final LongSparseArray<Integer> playbackIDToCastItemIDMap;
     private PlaybackEntry playbackFinishedEntry;
 
-    private Semaphore queueChangeLock = new Semaphore(1);
-    private StampedLock queueStateLock = new StampedLock();
+    private final Semaphore queueChangeLock = new Semaphore(1);
+    private final StampedLock queueStateLock = new StampedLock();
 
     private volatile boolean waitingForResume;
 
@@ -121,6 +122,7 @@ public class CastAudioPlayer implements AudioPlayer {
                 for (int i = 0; i < 5; i++) {
                     if (!queueChangeLock.tryAcquire(1, TimeUnit.SECONDS)) {
                         Log.w(LC, "initialize: Got timeout waiting for queueChangeLock");
+                        waitingForResume = false;
                     } else {
                         if (!waitingForResume) {
                             Log.d(LC, "initialize: Got queueChangeLock. Not waiting for resume");
@@ -250,6 +252,9 @@ public class CastAudioPlayer implements AudioPlayer {
                 .thenComposeAsync(aVoid -> {
                     RemoteMediaClient remote = getRemote();
                     if (remote == null) {
+                        if (isInoperable()) {
+                            callback.disconnect();
+                        }
                         return Util.futureResult("seekTo(): remoteMediaClient is null");
                     }
 
@@ -397,6 +402,9 @@ public class CastAudioPlayer implements AudioPlayer {
                 .thenComposeAsync(aVoid -> {
                     RemoteMediaClient remote = getRemote();
                     if (remote == null) {
+                        if (isInoperable()) {
+                            callback.disconnect();
+                        }
                         return Util.futureResult("preload(): remoteMediaClient is null");
                     }
                     if (!remote.hasMediaSession()) {
@@ -446,6 +454,9 @@ public class CastAudioPlayer implements AudioPlayer {
                 .thenComposeAsync(aVoid -> {
                     RemoteMediaClient remote = getRemote();
                     if (remote == null) {
+                        if (isInoperable()) {
+                            callback.disconnect();
+                        }
                         return Util.futureResult("dePreload(): remoteMediaClient is null");
                     }
                     return handleMediaClientQueueRequest(
@@ -536,6 +547,9 @@ public class CastAudioPlayer implements AudioPlayer {
                 .thenComposeAsync(aVoid -> {
                     RemoteMediaClient remote = getRemote();
                     if (remote == null) {
+                        if (isInoperable()) {
+                            callback.disconnect();
+                        }
                         return Util.futureResult("setAutoPlay(): remoteMediaClient is null");
                     }
                     return handleMediaClientQueueRequest(
@@ -608,6 +622,9 @@ public class CastAudioPlayer implements AudioPlayer {
                 .thenComposeAsync(queueItems -> {
                     RemoteMediaClient remote = getRemote();
                     if (remote == null) {
+                        if (isInoperable()) {
+                            callback.disconnect();
+                        }
                         return Util.futureResult("setQueue(): remoteMediaClient is null");
                     }
                     return handleMediaClientQueueRequest(
@@ -624,12 +641,15 @@ public class CastAudioPlayer implements AudioPlayer {
                 }, Util.getMainThreadExecutor());
     }
 
+    private boolean isInoperable() {
+        return castSession == null && remoteMediaClient == null && !waitingForResume;
+    }
+
     private CompletableFuture<MediaQueueItem[]> buildMediaQueueItems(
             List<PlaybackEntry> playbackEntries,
             boolean playWhenReady
     ) {
-        return MusicLibraryService.getSongMetas(
-                context,
+        return MetaStorage.getInstance(context).getTrackMetasOnce(
                 playbackEntries.stream()
                         .map(p -> p.entryID)
                         .collect(Collectors.toList())
@@ -703,6 +723,9 @@ public class CastAudioPlayer implements AudioPlayer {
                 .thenComposeAsync(aVoid -> {
                     RemoteMediaClient remote = getRemote();
                     if (remote == null) {
+                        if (isInoperable()) {
+                            callback.disconnect();
+                        }
                         return Util.futureResult("next(): remoteMediaClient is null");
                     }
                     return handleMediaClientQueueRequest(
@@ -746,6 +769,9 @@ public class CastAudioPlayer implements AudioPlayer {
         return CompletableFuture.supplyAsync(() -> {
             RemoteMediaClient remote = getRemote();
             if (remote == null) {
+                if (isInoperable()) {
+                    callback.disconnect();
+                }
                 throw new RuntimeException(
                         "playerAction(" + action.name() + "): remoteMediaClient is null"
                 );

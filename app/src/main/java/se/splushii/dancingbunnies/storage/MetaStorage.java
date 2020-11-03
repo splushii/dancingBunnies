@@ -20,12 +20,12 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.sqlite.db.SimpleSQLiteQuery;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryLeaf;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryTree;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
+import se.splushii.dancingbunnies.musiclibrary.QueryEntry;
+import se.splushii.dancingbunnies.musiclibrary.QueryLeaf;
+import se.splushii.dancingbunnies.musiclibrary.QueryNode;
+import se.splushii.dancingbunnies.musiclibrary.QueryTree;
 import se.splushii.dancingbunnies.storage.db.DB;
 import se.splushii.dancingbunnies.storage.db.MetaDao;
 import se.splushii.dancingbunnies.storage.db.MetaDouble;
@@ -51,20 +51,104 @@ public class MetaStorage {
         metaModel = DB.getDB(context).metaModel();
     }
 
-
-    public void replaceWith(String src, List<Meta> metaList, Consumer<String> progressHandler) {
-        long start = System.currentTimeMillis();
-        Log.d(LC, "replaceWith start");
-        metaModel.replaceWith(src, metaList, progressHandler);
-        Log.d(LC, "replaceWith finish. " + (System.currentTimeMillis() - start) + "ms");
+    public CompletableFuture<Void> insertTracksAndMetas(List<Meta> metaList,
+                                                        boolean allowLocalKeys,
+                                                        Consumer<String> progressHandler) {
+        return insertEntriesAndMetas(EntryID.TYPE_TRACK, metaList, allowLocalKeys, progressHandler);
     }
 
-    public CompletableFuture<List<LibraryEntry>> getEntriesOnce(String primaryField,
-                                                       List<String> sortFields,
-                                                       boolean sortOrderAscending,
-                                                       MusicLibraryQueryNode queryNode,
-                                                       boolean debug) {
-        SimpleSQLiteQuery sqlQuery = getEntriesSQLQuery(
+    public CompletableFuture<Void> addPlaylist(EntryID playlistID,
+                                               String name,
+                                               String query) {
+        Meta meta = new Meta(playlistID);
+        meta.addString(Meta.FIELD_TITLE, name);
+        if (query != null) {
+            meta.addString(Meta.FIELD_QUERY, query);
+        }
+        return insertPlaylistsAndMetas(
+                Collections.singletonList(meta),
+                false,
+                null
+        );
+    }
+
+    public CompletableFuture<Void> insertPlaylistsAndMetas(List<Meta> metaList,
+                                                           boolean allowLocalKeys,
+                                                           Consumer<String> progressHandler) {
+        return insertEntriesAndMetas(
+                EntryID.TYPE_PLAYLIST,
+                metaList,
+                allowLocalKeys,
+                progressHandler
+        );
+    }
+
+    private CompletableFuture<Void> insertEntriesAndMetas(String entryType,
+                                                          List<Meta> metaList,
+                                                          boolean allowLocalKeys,
+                                                          Consumer<String> progressHandler) {
+        return CompletableFuture.runAsync(() ->
+                metaModel.insertEntriesAndMetas(
+                        entryType,
+                        metaList,
+                        allowLocalKeys,
+                        progressHandler
+                )
+        );
+    }
+    
+    public void replaceAllTracksAndMetasFromSource(String src,
+                                                   List<Meta> metaList,
+                                                   boolean allowLocalKeys,
+                                                   Consumer<String> progressHandler) {
+        replaceAllEntriesAndMetasFromSource(
+                EntryID.TYPE_TRACK,
+                src,
+                metaList,
+                allowLocalKeys,
+                progressHandler
+        );
+    }
+
+    public void replaceAllPlaylistsAndMetasFromSource(String src,
+                                                      List<Meta> metaList,
+                                                      boolean allowLocalKeys,
+                                                      Consumer<String> progressHandler) {
+        replaceAllEntriesAndMetasFromSource(
+                EntryID.TYPE_PLAYLIST,
+                src,
+                metaList,
+                allowLocalKeys,
+                progressHandler
+        );
+    }
+
+    private void replaceAllEntriesAndMetasFromSource(String entryType,
+                                                     String src,
+                                                     List<Meta> metaList,
+                                                     boolean allowLocalKeys,
+                                                     Consumer<String> progressHandler) {
+        long start = System.currentTimeMillis();
+        Log.d(LC, "replaceEntryMetasWith (type: " + entryType + ") start");
+        metaModel.replaceAllEntriesAndMetasFromSource(
+                entryType,
+                src,
+                metaList,
+                allowLocalKeys,
+                progressHandler
+        );
+        Log.d(LC, "replacePlaylistMetasWith (type: " + entryType + ")"
+                + " finish. " + (System.currentTimeMillis() - start) + "ms");
+    }
+
+    public CompletableFuture<List<QueryEntry>> getQueryEntriesOnce(String entryType,
+                                                                   String primaryField,
+                                                                   List<String> sortFields,
+                                                                   boolean sortOrderAscending,
+                                                                   QueryNode queryNode,
+                                                                   boolean debug) {
+        SimpleSQLiteQuery sqlQuery = getQueryEntriesSQLQuery(
+                entryType,
                 primaryField,
                 sortFields,
                 sortOrderAscending,
@@ -74,16 +158,18 @@ public class MetaStorage {
         if (sqlQuery == null) {
             return Util.futureResult(Collections.emptyList());
         }
-        return CompletableFuture.supplyAsync(() -> metaModel.getEntriesOnce(sqlQuery))
-                .thenApply(v -> getEntriesMetaValueEntriesToMeta(primaryField, v));
+        return CompletableFuture.supplyAsync(() -> metaModel.getEntriesOnce(entryType, sqlQuery))
+                .thenApply(v -> getQueryEntriesMetaValueEntriesToMeta(entryType, primaryField, v));
     }
 
-    public LiveData<List<LibraryEntry>> getEntries(String primaryField,
-                                                   List<String> sortFields,
-                                                   boolean sortOrderAscending,
-                                                   MusicLibraryQueryNode queryNode,
-                                                   boolean debug) {
-        SimpleSQLiteQuery sqlQuery = getEntriesSQLQuery(
+    public LiveData<List<QueryEntry>> getQueryEntries(String entryType,
+                                                      String primaryField,
+                                                      List<String> sortFields,
+                                                      boolean sortOrderAscending,
+                                                      QueryNode queryNode,
+                                                      boolean debug) {
+        SimpleSQLiteQuery sqlQuery = getQueryEntriesSQLQuery(
+                entryType,
                 primaryField,
                 sortFields,
                 sortOrderAscending,
@@ -91,38 +177,49 @@ public class MetaStorage {
                 debug
         );
         if (sqlQuery == null) {
-            MutableLiveData<List<LibraryEntry>> entries = new MutableLiveData<>();
+            MutableLiveData<List<QueryEntry>> entries = new MutableLiveData<>();
             entries.setValue(Collections.emptyList());
             return entries;
         }
         return Transformations.map(
-                metaModel.getEntries(sqlQuery),
-                v -> getEntriesMetaValueEntriesToMeta(primaryField, v)
+                metaModel.getEntries(entryType, sqlQuery),
+                v -> getQueryEntriesMetaValueEntriesToMeta(entryType, primaryField, v)
         );
     }
 
-    private String getEntriesSQLQueryPrimaryTypeKey(String primaryField) {
-        return primaryField == null ? Meta.FIELD_SPECIAL_MEDIA_ID : primaryField;
+    private String getQueryEntriesSQLQueryPrimaryTypeKey(String entryType, String primaryField) {
+        if (primaryField != null) {
+            return primaryField;
+        }
+        switch (entryType) {
+            default:
+            case EntryID.TYPE_TRACK:
+                return Meta.FIELD_SPECIAL_ENTRY_ID_TRACK;
+            case EntryID.TYPE_PLAYLIST:
+                return Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST;
+        }
     }
 
-    private SimpleSQLiteQuery getEntriesSQLQuery(String primaryField,
-                                                 List<String> sortFields,
-                                                 boolean sortOrderAscending,
-                                                 MusicLibraryQueryNode queryNode,
-                                                 boolean debug) {
+    private SimpleSQLiteQuery getQueryEntriesSQLQuery(String entryType,
+                                                      String primaryField,
+                                                      List<String> sortFields,
+                                                      boolean sortOrderAscending,
+                                                      QueryNode queryNode,
+                                                      boolean debug) {
         if (queryNode == null) {
-            queryNode = new MusicLibraryQueryTree(MusicLibraryQueryTree.Op.AND, false);
+            queryNode = new QueryTree(QueryTree.Op.AND, false);
         }
         HashMap<String, String> keyToTableAliasMap = new HashMap<>();
         HashSet<String> uniqueQueryKeys = queryNode.getKeys();
-        String primaryTypeKey = getEntriesSQLQueryPrimaryTypeKey(primaryField);
-        String primaryTypeTable = MetaDao.getTable(primaryTypeKey);
+        String primaryTypeKey = getQueryEntriesSQLQueryPrimaryTypeKey(entryType, primaryField);
+        String primaryTypeTable = MetaDao.getTable(entryType, primaryTypeKey);
         String primaryTypeTableAlias = "meta_primary";
         keyToTableAliasMap.put(primaryTypeKey, primaryTypeTableAlias);
         if (primaryTypeTable == null) {
             return null;
         }
-        boolean showMeta = !Meta.FIELD_SPECIAL_MEDIA_ID.equals(primaryTypeKey);
+        boolean showMeta = !Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(primaryTypeKey)
+                && !Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST.equals(primaryTypeKey);
         // Other types (keys) which needs to be joined for the query
         if (!showMeta) {
             uniqueQueryKeys.add(Meta.FIELD_TITLE);
@@ -150,8 +247,9 @@ public class MetaStorage {
                 // Already handled
                 continue;
             }
-            if (Meta.FIELD_SPECIAL_MEDIA_SRC.equals(key)
-                    || Meta.FIELD_SPECIAL_MEDIA_ID.equals(key)) {
+            if (Meta.FIELD_SPECIAL_ENTRY_SRC.equals(key)
+                    || Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(key)
+                    || Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST.equals(key)) {
                 // These keys are present in every meta table
                 keyToTableAliasMap.put(key, primaryTypeTableAlias);
                 continue;
@@ -166,7 +264,7 @@ public class MetaStorage {
             query.append(" DISTINCT");
         }
         switch (primaryTypeKey) {
-            case Meta.FIELD_SPECIAL_MEDIA_SRC:
+            case Meta.FIELD_SPECIAL_ENTRY_SRC:
                 query.append(String.format(
                         " %s.%s AS %s",
                         primaryTypeTableAlias,
@@ -174,7 +272,8 @@ public class MetaStorage {
                         DB.COLUMN_SRC
                 ));
                 break;
-            case Meta.FIELD_SPECIAL_MEDIA_ID:
+            case Meta.FIELD_SPECIAL_ENTRY_ID_TRACK:
+            case Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST:
                 query.append(String.format(
                         " %s.%s AS %s",
                         primaryTypeTableAlias,
@@ -208,10 +307,11 @@ public class MetaStorage {
             String sortKey = sortKeys.get(i);
             String sortKeyColumn;
             switch (sortKey) {
-                case Meta.FIELD_SPECIAL_MEDIA_SRC:
+                case Meta.FIELD_SPECIAL_ENTRY_SRC:
                     sortKeyColumn = DB.COLUMN_SRC;
                     break;
-                case Meta.FIELD_SPECIAL_MEDIA_ID:
+                case Meta.FIELD_SPECIAL_ENTRY_ID_TRACK:
+                case Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST:
                     sortKeyColumn = DB.COLUMN_ID;
                     break;
                 default:
@@ -231,13 +331,14 @@ public class MetaStorage {
                 // Already handled
                 continue;
             }
-            if (Meta.FIELD_SPECIAL_MEDIA_SRC.equals(key)
-                    || Meta.FIELD_SPECIAL_MEDIA_ID.equals(key)) {
+            if (Meta.FIELD_SPECIAL_ENTRY_SRC.equals(key)
+                    || Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(key)
+                    || Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST.equals(key)) {
                 // These keys are present in every meta table
                 keyToTableAliasMap.put(key, primaryTypeTableAlias);
                 continue;
             }
-            String typeTable = MetaDao.getTable(key);
+            String typeTable = MetaDao.getTable(entryType, key);
             String typeTableAlias = keyToTableAliasMap.get(key);
             if (typeTable == null) {
                 Log.e(LC, "There is no type table"
@@ -260,8 +361,9 @@ public class MetaStorage {
             queryArgs.add(key);
         }
         // Add showType filter
-        if (!primaryTypeKey.equals(Meta.FIELD_SPECIAL_MEDIA_ID)
-                && !primaryTypeKey.equals(Meta.FIELD_SPECIAL_MEDIA_SRC)) {
+        if (!Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(primaryTypeKey)
+                && !Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST.equals(primaryTypeKey)
+                && !Meta.FIELD_SPECIAL_ENTRY_SRC.equals(primaryTypeKey)) {
             query.append("\nWHERE " + primaryTypeTableAlias + "." + DB.COLUMN_KEY + " = ?");
             queryArgs.add(primaryTypeKey);
         }
@@ -306,14 +408,17 @@ public class MetaStorage {
         return sqlQuery;
     }
 
-    private List<LibraryEntry> getEntriesMetaValueEntriesToMeta(String primaryField,
-                                                                List<MetaValueEntry> metaValueEntries) {
-        String primaryTypeKey = getEntriesSQLQueryPrimaryTypeKey(primaryField);
+    private List<QueryEntry> getQueryEntriesMetaValueEntriesToMeta(
+            String entryType,
+            String primaryField,
+            List<MetaValueEntry> metaValueEntries
+    ) {
+        String primaryTypeKey = getQueryEntriesSQLQueryPrimaryTypeKey(entryType, primaryField);
         return metaValueEntries.stream().map(value -> {
             EntryID entryID;
             String name;
             switch (primaryTypeKey) {
-                case Meta.FIELD_SPECIAL_MEDIA_SRC:
+                case Meta.FIELD_SPECIAL_ENTRY_SRC:
                     entryID = new EntryID(
                             MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL,
                             value.src,
@@ -321,7 +426,8 @@ public class MetaStorage {
                     );
                     name = value.src;
                     break;
-                case Meta.FIELD_SPECIAL_MEDIA_ID:
+                case Meta.FIELD_SPECIAL_ENTRY_ID_TRACK:
+                case Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST:
                     entryID = new EntryID(
                             value.src,
                             value.id,
@@ -338,7 +444,7 @@ public class MetaStorage {
                     name = value.value;
                     break;
             }
-            return new LibraryEntry(
+            return new QueryEntry(
                     entryID,
                     name,
                     new ArrayList<>(Arrays.asList(
@@ -356,17 +462,17 @@ public class MetaStorage {
                                         List<Object> queryArgs,
                                         HashMap<String, String> keyToTableAliasMap,
                                         String prefix,
-                                        MusicLibraryQueryNode queryNode) {
+                                        QueryNode queryNode) {
         StringBuilder tmpQuery = new StringBuilder(prefix);
         List<Object> tmpQueryArgs = new ArrayList<>();
         boolean whereClauseEmpty = true;
-        if (queryNode instanceof MusicLibraryQueryLeaf) {
-            MusicLibraryQueryLeaf leaf = (MusicLibraryQueryLeaf) queryNode;
+        if (queryNode instanceof QueryLeaf) {
+            QueryLeaf leaf = (QueryLeaf) queryNode;
             addQueryLeafToQuery(tmpQuery, tmpQueryArgs, keyToTableAliasMap, " (", leaf);
             whereClauseEmpty = false;
-        } else if (queryNode instanceof MusicLibraryQueryTree) {
-            MusicLibraryQueryTree tree = (MusicLibraryQueryTree) queryNode;
-            for (MusicLibraryQueryNode node: tree) {
+        } else if (queryNode instanceof QueryTree) {
+            QueryTree tree = (QueryTree) queryNode;
+            for (QueryNode node: tree) {
                 if (node == null) {
                     continue;
                 }
@@ -381,7 +487,7 @@ public class MetaStorage {
                         break;
                 }
                 String negateString = tree.isNegated() ? " NOT" : "";
-                if (node instanceof MusicLibraryQueryTree) {
+                if (node instanceof QueryTree) {
                     String treeQueryPrefix;
                     if (whereClauseEmpty) {
                         treeQueryPrefix = negateString + " (";
@@ -399,7 +505,7 @@ public class MetaStorage {
                     }
                     continue;
                 }
-                MusicLibraryQueryLeaf leaf = (MusicLibraryQueryLeaf) node;
+                QueryLeaf leaf = (QueryLeaf) node;
                 String leafQueryPrefix;
                 if (whereClauseEmpty) {
                     leafQueryPrefix = negateString + " (";
@@ -430,7 +536,7 @@ public class MetaStorage {
             List<Object> queryArgs,
             HashMap<String, String> keyToTableAliasMap,
             String prefix,
-            MusicLibraryQueryLeaf leaf
+            QueryLeaf leaf
     ) {
         String key = leaf.getKey();
         String value = leaf.getValue();
@@ -466,9 +572,10 @@ public class MetaStorage {
             query.append(" NOT");
         }
         query.append(" ").append(typeTableAlias).append(".");
-        if (Meta.FIELD_SPECIAL_MEDIA_SRC.equals(key)) {
+        if (Meta.FIELD_SPECIAL_ENTRY_SRC.equals(key)) {
             query.append(DB.COLUMN_SRC);
-        } else if (Meta.FIELD_SPECIAL_MEDIA_ID.equals(key)) {
+        } else if (Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(key)
+                || Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST.equals(key)) {
             query.append(DB.COLUMN_ID);
         } else {
             query.append(DB.COLUMN_VALUE);
@@ -483,10 +590,11 @@ public class MetaStorage {
                                 String keyTable,
                                 boolean sortOrderAscending) {
         switch (key) {
-            case Meta.FIELD_SPECIAL_MEDIA_ID:
+            case Meta.FIELD_SPECIAL_ENTRY_ID_TRACK:
+            case Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST:
                 query.append(showTypeTableAlias).append(".").append(DB.COLUMN_ID);
                 break;
-            case Meta.FIELD_SPECIAL_MEDIA_SRC:
+            case Meta.FIELD_SPECIAL_ENTRY_SRC:
                 query.append(showTypeTableAlias).append(".").append(DB.COLUMN_SRC);
                 break;
             default:
@@ -499,22 +607,27 @@ public class MetaStorage {
         query.append(sortOrderAscending ? " ASC" : " DESC");
     }
 
-    public LiveData<Integer> getNumSongEntriesSum(List<EntryID> entryIDs, MusicLibraryQueryNode queryNode) {
+    public LiveData<Integer> getNumTracksSum(List<EntryID> entryIDs, QueryNode queryNode) {
         MediatorLiveData<Integer> totalEntriesMediator = new MediatorLiveData<>();
         List<LiveData<Integer>> numSongEntryLiveDataList = new ArrayList<>();
         for (EntryID entryID: entryIDs) {
-            numSongEntryLiveDataList.add(getNumSongEntries(entryID, queryNode, false));
+            numSongEntryLiveDataList.add(getNumEntries(
+                    EntryID.TYPE_TRACK,
+                    entryID,
+                    queryNode,
+                    false
+            ));
         }
         for (LiveData<Integer> numSongEntryLiveData: numSongEntryLiveDataList) {
             totalEntriesMediator.addSource(
                     numSongEntryLiveData,
-                    e -> totalEntriesMediator.setValue(combineNumSongEntries(numSongEntryLiveDataList))
+                    e -> totalEntriesMediator.setValue(combineNumTracks(numSongEntryLiveDataList))
             );
         }
         return totalEntriesMediator;
     }
 
-    private Integer combineNumSongEntries(List<LiveData<Integer>> numSongEntryLiveDataList) {
+    private Integer combineNumTracks(List<LiveData<Integer>> numSongEntryLiveDataList) {
         int total = 0;
         for (LiveData<Integer> numSongEntryLiveData: numSongEntryLiveDataList) {
             if (numSongEntryLiveData != null && numSongEntryLiveData.getValue() != null) {
@@ -524,19 +637,65 @@ public class MetaStorage {
         return total;
     }
 
-    public LiveData<Integer> getNumSongEntries(EntryID entryID,
-                                               MusicLibraryQueryNode queryNode,
-                                               boolean debug) {
+    public LiveData<Integer> getNumTracks() {
+        return metaModel.getNumEntries(EntryID.TYPE_TRACK);
+    }
+
+    public LiveData<Integer> getNumTracks(String src) {
+        return metaModel.getNumEntries(EntryID.TYPE_TRACK, src);
+    }
+
+    public LiveData<Integer> getNumTracks(EntryID entryID,
+                                          QueryNode queryNode,
+                                          boolean debug) {
+        return getNumEntries(EntryID.TYPE_TRACK, entryID, queryNode, debug);
+    }
+
+    public LiveData<Integer> getNumPlaylists() {
+        return metaModel.getNumEntries(EntryID.TYPE_PLAYLIST);
+    }
+
+    public LiveData<Integer> getNumPlaylists(String src) {
+        return metaModel.getNumEntries(EntryID.TYPE_PLAYLIST, src);
+    }
+
+    public LiveData<Integer> getNumPlaylists(EntryID entryID,
+                                             QueryNode queryNode,
+                                             boolean debug) {
+        return getNumEntries(EntryID.TYPE_PLAYLIST, entryID, queryNode, debug);
+    }
+
+    private LiveData<Integer> getNumEntries(String entryType,
+                                            EntryID entryID,
+                                            QueryNode queryNode,
+                                            boolean debug) {
         String baseTableKey;
         String baseTableAlias = "base_table";
         String baseWhereQuery = "";
         List<Object> baseWhereQueryArgs = new ArrayList<>();
-        if (entryID == null
-                || entryID.isUnknown()
-                || Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
-            baseTableKey = Meta.FIELD_SPECIAL_MEDIA_ID;
-        } else if (Meta.FIELD_SPECIAL_MEDIA_SRC.equals(entryID.type)) {
-            baseTableKey = Meta.FIELD_SPECIAL_MEDIA_ID;
+        if (entryID == null || entryID.isUnknown()) {
+            switch (entryType) {
+                default:
+                case EntryID.TYPE_TRACK:
+                    baseTableKey = Meta.FIELD_SPECIAL_ENTRY_ID_TRACK;
+                    break;
+                case EntryID.TYPE_PLAYLIST:
+                    baseTableKey = Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST;
+                    break;
+            }
+        } else if (Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(entryID.type)
+                || Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST.equals(entryID.type)) {
+            baseTableKey = entryID.type;
+        } else if (Meta.FIELD_SPECIAL_ENTRY_SRC.equals(entryID.type)) {
+            switch (entryType) {
+                default:
+                case EntryID.TYPE_TRACK:
+                    baseTableKey = Meta.FIELD_SPECIAL_ENTRY_ID_TRACK;
+                    break;
+                case EntryID.TYPE_PLAYLIST:
+                    baseTableKey = Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST;
+                    break;
+            }
             baseWhereQuery = " " + baseTableAlias + "." + DB.COLUMN_SRC + " = ?";
             baseWhereQueryArgs.add(entryID.id); // src
         } else {
@@ -546,7 +705,7 @@ public class MetaStorage {
             baseWhereQueryArgs.add(baseTableKey);
             baseWhereQueryArgs.add(entryID.id); // value
         }
-        String baseTable = MetaDao.getTable(baseTableKey);
+        String baseTable = MetaDao.getTable(entryType, baseTableKey);
         HashMap<String, String> keyToTableAliasMap = new HashMap<>();
         keyToTableAliasMap.put(baseTableKey, baseTableAlias);
         // Other types (keys) which needs to be joined for the query
@@ -561,13 +720,14 @@ public class MetaStorage {
                 // Already handled
                 continue;
             }
-            if (Meta.FIELD_SPECIAL_MEDIA_SRC.equals(key)
-                    || Meta.FIELD_SPECIAL_MEDIA_ID.equals(key)) {
+            if (Meta.FIELD_SPECIAL_ENTRY_SRC.equals(key)
+                    || Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(key)
+                    || Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST.equals(key)) {
                 // These keys are present in every meta table
                 keyToTableAliasMap.put(key, baseTableAlias);
                 continue;
             }
-            String typeTable = MetaDao.getTable(key);
+            String typeTable = MetaDao.getTable(entryType, key);
             String typeTableAlias = "meta_" + tableAliasIndex++;
             keyToTableAliasMap.put(key, typeTableAlias);
             if (typeTable == null) {
@@ -616,26 +776,26 @@ public class MetaStorage {
                     .collect(Collectors.joining(", "))
             );
         }
-        return metaModel.getNumEntries(sqlQuery);
+        return metaModel.getNumEntries(entryType, sqlQuery);
     }
 
-    public LiveData<List<EntryID>> getSongEntriesSum(List<EntryID> entryIDs,
-                                                     MusicLibraryQueryNode queryNode) {
+    public LiveData<List<EntryID>> getTracksSum(List<EntryID> entryIDs,
+                                                QueryNode queryNode) {
         MediatorLiveData<List<EntryID>> allEntriesMediator = new MediatorLiveData<>();
-        List<LiveData<List<EntryID>>> songEntryLiveDataList = new ArrayList<>();
+        List<LiveData<List<EntryID>>> tracksLiveDataList = new ArrayList<>();
         for (EntryID entryID: entryIDs) {
-            songEntryLiveDataList.add(getSongEntries(entryID, queryNode));
+            tracksLiveDataList.add(getTracks(entryID, queryNode));
         }
-        for (LiveData<List<EntryID>> songEntryLiveData: songEntryLiveDataList) {
+        for (LiveData<List<EntryID>> tracksLiveData: tracksLiveDataList) {
             allEntriesMediator.addSource(
-                    songEntryLiveData,
-                    e -> allEntriesMediator.setValue(combineSongEntries(songEntryLiveDataList))
+                    tracksLiveData,
+                    e -> allEntriesMediator.setValue(combineEntries(tracksLiveDataList))
             );
         }
         return allEntriesMediator;
     }
 
-    private List<EntryID> combineSongEntries(List<LiveData<List<EntryID>>> songEntryLiveDataList) {
+    private List<EntryID> combineEntries(List<LiveData<List<EntryID>>> songEntryLiveDataList) {
         List<EntryID> allEntries = new ArrayList<>();
         for (LiveData<List<EntryID>> songEntryLiveData: songEntryLiveDataList) {
             if (songEntryLiveData != null && songEntryLiveData.getValue() != null) {
@@ -645,34 +805,100 @@ public class MetaStorage {
         return allEntries;
     }
 
-    public LiveData<List<EntryID>> getSongEntries(EntryID entryID,
-                                                  MusicLibraryQueryNode queryNode) {
-        return Transformations.map(
-                getEntries(
-                        Meta.FIELD_SPECIAL_MEDIA_ID,
-                        Collections.singletonList(Meta.FIELD_TITLE),
-                        true,
-                        queryNode.withEntryID(entryID),
-                        false
-                ),
-                libraryEntries -> libraryEntries.stream()
-                        .map(libraryEntry -> libraryEntry.entryID)
+    public LiveData<List<EntryID>> getPlaylists() {
+        return getEntries(EntryID.TYPE_PLAYLIST, Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST);
+    }
+
+    public LiveData<List<EntryID>> getPlaylists(EntryID entryID,
+                                                QueryNode queryNode) {
+        return getPlaylists(queryNode.withEntryID(entryID));
+    }
+
+    public LiveData<List<EntryID>> getPlaylists(QueryNode queryNode) {
+        return getEntries(EntryID.TYPE_PLAYLIST, queryNode);
+    }
+
+    public LiveData<List<EntryID>> getTracks() {
+        return getEntries(EntryID.TYPE_TRACK, Meta.FIELD_SPECIAL_ENTRY_ID_TRACK);
+    }
+
+    public LiveData<List<EntryID>> getTracks(EntryID entryID,
+                                             QueryNode queryNode) {
+        return getTracks(queryNode.withEntryID(entryID));
+    }
+
+    public LiveData<List<EntryID>> getTracks(QueryNode queryNode) {
+        return getEntries(EntryID.TYPE_TRACK, queryNode);
+    }
+
+    public LiveData<List<EntryID>> getEntries(String entryType, String metaType) {
+        return Transformations.map(metaModel.getEntries(entryType),
+                entries -> entries.stream()
+                        .map(e -> EntryID.from(e, metaType))
                         .collect(Collectors.toList())
         );
     }
 
-    public CompletableFuture<List<EntryID>> getSongEntriesOnce(List<EntryID> entryIDs,
-                                                               MusicLibraryQueryNode queryNode) {
-        return getSongEntriesOnce(queryNode.withEntryIDs(entryIDs));
+    public LiveData<List<EntryID>> getEntries(String entryType, QueryNode queryNode) {
+        String showType;
+        switch (entryType) {
+            default:
+            case EntryID.TYPE_TRACK:
+                showType = Meta.FIELD_SPECIAL_ENTRY_ID_TRACK;
+                break;
+            case EntryID.TYPE_PLAYLIST:
+                showType = Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST;
+                break;
+        }
+        return Transformations.map(
+                getQueryEntries(
+                        entryType,
+                        showType,
+                        Collections.singletonList(Meta.FIELD_TITLE),
+                        true,
+                        queryNode,
+                        false
+                ),
+                queryEntries -> queryEntries.stream()
+                        .map(queryEntry -> queryEntry.entryID)
+                        .collect(Collectors.toList())
+        );
     }
 
-    public CompletableFuture<List<EntryID>> getSongEntriesOnce(
-            List<MusicLibraryQueryNode> queryNodes
+    public CompletableFuture<List<EntryID>> getTracksOnce(QueryNode queryNodes) {
+        return getEntriesOnce(EntryID.TYPE_TRACK, Collections.singletonList(queryNodes));
+    }
+
+    public CompletableFuture<List<EntryID>> getTracksOnce(List<EntryID> entryIDs,
+                                                          QueryNode queryNode) {
+        return getEntriesOnce(EntryID.TYPE_TRACK, queryNode.withEntryIDs(entryIDs));
+    }
+
+    public CompletableFuture<List<EntryID>> getTracksOnce(List<QueryNode> queryNodes) {
+        return getEntriesOnce(EntryID.TYPE_TRACK, queryNodes);
+    }
+
+    public CompletableFuture<List<EntryID>> getPlaylistsOnce(QueryNode queryNodes) {
+        return getEntriesOnce(EntryID.TYPE_PLAYLIST, Collections.singletonList(queryNodes));
+    }
+
+    public CompletableFuture<List<EntryID>> getPlaylistsOnce(List<EntryID> entryIDs,
+                                                             QueryNode queryNode) {
+        return getEntriesOnce(EntryID.TYPE_PLAYLIST, queryNode.withEntryIDs(entryIDs));
+    }
+
+    public CompletableFuture<List<EntryID>> getPlaylistsOnce(List<QueryNode> queryNodes) {
+        return getEntriesOnce(EntryID.TYPE_PLAYLIST, queryNodes);
+    }
+
+    private CompletableFuture<List<EntryID>> getEntriesOnce(
+            String entryType,
+            List<QueryNode> queryNodes
     ) {
         List<CompletableFuture<List<EntryID>>> futureEntryLists = new ArrayList<>();
-        for (MusicLibraryQueryNode queryNode: queryNodes) {
+        for (QueryNode queryNode: queryNodes) {
             CompletableFuture<List<EntryID>> songEntries;
-            songEntries = getSongEntriesOnce(queryNode);
+            songEntries = getEntriesOnce(entryType, queryNode);
             futureEntryLists.add(songEntries);
         }
         return CompletableFuture.allOf(futureEntryLists.toArray(new CompletableFuture[0]))
@@ -689,33 +915,95 @@ public class MetaStorage {
                         .collect(Collectors.toList()));
     }
 
-    public CompletableFuture<List<EntryID>> getSongEntriesOnce(MusicLibraryQueryNode queryNode) {
-        return getEntriesOnce(
-                Meta.FIELD_SPECIAL_MEDIA_ID,
+    private CompletableFuture<List<EntryID>> getEntriesOnce(String entryType,
+                                                            QueryNode queryNode) {
+        String showType;
+        switch (entryType) {
+            default:
+            case EntryID.TYPE_TRACK:
+                showType = Meta.FIELD_SPECIAL_ENTRY_ID_TRACK;
+                break;
+            case EntryID.TYPE_PLAYLIST:
+                showType = Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST;
+                break;
+        }
+        return getQueryEntriesOnce(
+                entryType,
+                showType,
                 Collections.singletonList(Meta.FIELD_TITLE),
                 true,
                 queryNode,
                 false
-        ).thenApply(libraryEntries ->
-                libraryEntries.stream()
-                        .map(libraryEntry -> libraryEntry.entryID)
+        ).thenApply(queryEntries ->
+                queryEntries.stream()
+                        .map(queryEntry -> queryEntry.entryID)
                         .collect(Collectors.toList())
         );
     }
 
-    public void clearAll(String src) {
-        metaModel.deleteWhereSourceIs(src);
+    public CompletableFuture<Void> deleteTracks(List<EntryID> entryIDs) {
+        return CompletableFuture.runAsync(() ->
+                metaModel.deleteEntries(EntryID.TYPE_TRACK, entryIDs)
+        );
     }
 
-    public CompletableFuture<Meta> getMetaOnce(EntryID entryID) {
+    // Delete cascades to playlistEntries
+    public CompletableFuture<Void> deletePlaylists(List<EntryID> entryIDs) {
+        return CompletableFuture.runAsync(() ->
+                metaModel.deleteEntries(EntryID.TYPE_PLAYLIST, entryIDs)
+        );
+    }
+
+    public void clearAllTracks(String src) {
+        metaModel.deleteEntriesWhereSourceIs(EntryID.TYPE_TRACK, src);
+    }
+
+    public void clearAllPlaylists(String src) {
+        metaModel.deleteEntriesWhereSourceIs(EntryID.TYPE_PLAYLIST, src);
+    }
+
+    public CompletableFuture<Meta> getTrackMetaOnce(EntryID entryID) {
+        return getEntryMetaOnce(EntryID.TYPE_TRACK, entryID);
+    }
+
+    public CompletableFuture<Meta> getPlaylistMetaOnce(EntryID entryID) {
+        return getEntryMetaOnce(EntryID.TYPE_PLAYLIST, entryID);
+    }
+
+    public CompletableFuture<List<Meta>> getTrackMetasOnce(List<EntryID> entryIDs) {
+        return getEntryMetasOnce(EntryID.TYPE_TRACK, entryIDs);
+    }
+
+    public CompletableFuture<List<Meta>> getPlaylistMetasOnce(List<EntryID> entryIDs) {
+        return getEntryMetasOnce(EntryID.TYPE_PLAYLIST, entryIDs);
+    }
+
+    private CompletableFuture<List<Meta>> getEntryMetasOnce(String entryType,
+                                                            List<EntryID> entryIDs) {
+        CompletableFuture<List<Meta>> ret = new CompletableFuture<>();
+        Meta[] metas = new Meta[entryIDs.size()];
+        List<CompletableFuture<Void>> futureList = new ArrayList<>();
+        for (int i = 0; i < metas.length; i++) {
+            int index = i;
+            EntryID entryID = entryIDs.get(index);
+            futureList.add(
+                    getEntryMetaOnce(entryType, entryID).thenAccept(meta -> metas[index] = meta)
+            );
+        }
+        CompletableFuture.allOf(futureList.toArray(new CompletableFuture[0]))
+                .thenRun(() -> ret.complete(Arrays.asList(metas)));
+        return ret;
+    }
+
+    private CompletableFuture<Meta> getEntryMetaOnce(String entryType, EntryID entryID) {
         CompletableFuture<List<MetaString>> stringFuture = CompletableFuture.supplyAsync(() ->
-                metaModel.getStringMetaSync(entryID.src, entryID.id)
+                metaModel.getStringMetaSync(entryType, entryID)
         );
         CompletableFuture<List<MetaLong>> longFuture = CompletableFuture.supplyAsync(() ->
-                metaModel.getLongMetaSync(entryID.src, entryID.id)
+                metaModel.getLongMetaSync(entryType, entryID)
         );
         CompletableFuture<List<MetaDouble>> doubleFuture = CompletableFuture.supplyAsync(() ->
-                metaModel.getDoubleMetaSync(entryID.src, entryID.id)
+                metaModel.getDoubleMetaSync(entryType, entryID)
         );
         CompletableFuture<Meta> ret = new CompletableFuture<>();
         CompletableFuture.allOf(new CompletableFuture[] {
@@ -738,28 +1026,38 @@ public class MetaStorage {
         return ret;
     }
 
-    public LiveData<Meta> getMeta(LiveData<EntryID> entryIDLiveData) {
-        return Transformations.switchMap(entryIDLiveData, this::getMeta);
+    public LiveData<Meta> getPlaylistMeta(EntryID entryID) {
+        return getMeta(EntryID.TYPE_PLAYLIST, entryID);
     }
 
-    public LiveData<Meta> getMeta(EntryID entryID) {
-        LiveData<List<MetaString>> metaStrings = metaModel.getStringMeta(entryID.src, entryID.id);
-        LiveData<List<MetaLong>> metaLongs = metaModel.getLongMeta(entryID.src, entryID.id);
-        LiveData<List<MetaDouble>> metaDoubles = metaModel.getDoubleMeta(entryID.src, entryID.id);
+    public LiveData<Meta> getTrackMeta(EntryID entryID) {
+        return getMeta(EntryID.TYPE_TRACK, entryID);
+    }
+
+    public LiveData<Meta> getTrackMeta(LiveData<EntryID> entryIDLiveData) {
+        return getMeta(EntryID.TYPE_TRACK, entryIDLiveData);
+    }
+
+    public LiveData<Meta> getPlaylistMeta(LiveData<EntryID> entryIDLiveData) {
+        return getMeta(EntryID.TYPE_PLAYLIST, entryIDLiveData);
+    }
+
+    private LiveData<Meta> getMeta(String entryType, LiveData<EntryID> entryIDLiveData) {
+        return Transformations.switchMap(entryIDLiveData, entryID -> getMeta(entryType, entryID));
+    }
+
+    private LiveData<Meta> getMeta(String entryType, EntryID entryID) {
+        if (entryID == null) {
+            return new MutableLiveData<>(null);
+        }
+        LiveData<List<MetaString>> metaStrings = metaModel.getStringMeta(entryType, entryID);
+        LiveData<List<MetaLong>> metaLongs = metaModel.getLongMeta(entryType, entryID);
+        LiveData<List<MetaDouble>> metaDoubles = metaModel.getDoubleMeta(entryType, entryID);
         MediatorLiveData<Meta> meta = new MediatorLiveData<>();
         meta.addSource(metaStrings, strings -> combineMetaValues(entryID, meta, metaStrings, metaLongs, metaDoubles));
         meta.addSource(metaLongs, longs -> combineMetaValues(entryID, meta, metaStrings, metaLongs, metaDoubles));
         meta.addSource(metaDoubles, doubles -> combineMetaValues(entryID, meta, metaStrings, metaLongs, metaDoubles));
         return meta;
-    }
-
-    public LiveData<List<String>> getMetaString(EntryID entryID, String key) {
-        return Transformations.map(
-                metaModel.getStringMeta(entryID.src, entryID.id, key),
-                metaStrings -> metaStrings.stream()
-                        .map(metaString -> metaString.value)
-                        .collect(Collectors.toList())
-        );
     }
 
     private void combineMetaValues(EntryID entryID,
@@ -786,33 +1084,53 @@ public class MetaStorage {
         metaMediator.setValue(meta);
     }
 
-    private LiveData<List<String>> getMetaStringValues(String key) {
-        return metaModel.getStringMetaValues(key);
+    public LiveData<List<String>> getTrackMetaStringValues(String key) {
+        return metaModel.getStringMetaValues(EntryID.TYPE_TRACK, key);
     }
 
-    private LiveData<List<Long>> getMetaLongValues(String key) {
-        return metaModel.getLongMetaValues(key);
+    public LiveData<List<String>> getPlaylistMetaStringValues(String key) {
+        return metaModel.getStringMetaValues(EntryID.TYPE_PLAYLIST, key);
     }
 
-    private LiveData<List<Double>> getMetaDoubleValues(String key) {
-        return metaModel.getDoubleMetaValues(key);
+    public LiveData<List<Long>> getTrackMetaLongValues(String key) {
+        return metaModel.getLongMetaValues(EntryID.TYPE_TRACK, key);
     }
 
-    public LiveData<List<String>> getMetaValuesAsStrings(String key) {
+    public LiveData<List<Long>> getPlaylistMetaLongValues(String key) {
+        return metaModel.getLongMetaValues(EntryID.TYPE_PLAYLIST, key);
+    }
+
+    public LiveData<List<Double>> getTrackMetaDoubleValues(String key) {
+        return metaModel.getDoubleMetaValues(EntryID.TYPE_TRACK, key);
+    }
+
+    public LiveData<List<Double>> getPlaylistMetaDoubleValues(String key) {
+        return metaModel.getDoubleMetaValues(EntryID.TYPE_PLAYLIST, key);
+    }
+
+    public LiveData<List<String>> getTrackMetaValuesAsStrings(String key) {
+        return getMetaValuesAsStrings(EntryID.TYPE_TRACK, key);
+    }
+
+    public LiveData<List<String>> getPlaylistMetaValuesAsStrings(String key) {
+        return getMetaValuesAsStrings(EntryID.TYPE_PLAYLIST, key);
+    }
+
+    private LiveData<List<String>> getMetaValuesAsStrings(String entryType, String key) {
         switch (Meta.getType(key)) {
             default:
             case STRING:
-                return getMetaStringValues(key);
+                return metaModel.getStringMetaValues(entryType, key);
             case LONG:
                 return Transformations.map(
-                        getMetaLongValues(key),
+                        metaModel.getLongMetaValues(entryType, key),
                         longValues -> longValues.stream()
                                 .map(String::valueOf)
                                 .collect(Collectors.toList())
                 );
             case DOUBLE:
                 return Transformations.map(
-                        getMetaDoubleValues(key),
+                        metaModel.getDoubleMetaValues(entryType, key),
                         doubleValues -> doubleValues.stream()
                                 .map(String::valueOf)
                                 .collect(Collectors.toList())
@@ -820,15 +1138,27 @@ public class MetaStorage {
         }
     }
 
-    public LiveData<List<String>> getSources() {
-        return metaModel.getSources();
+    public LiveData<List<String>> getTrackSources() {
+        return metaModel.getSources(EntryID.TYPE_TRACK);
     }
 
-    public LiveData<List<String>> getMetaFields() {
+    public LiveData<List<String>> getPlaylistSources() {
+        return metaModel.getSources(EntryID.TYPE_PLAYLIST);
+    }
+
+    public LiveData<List<String>> getTrackMetaKeys() {
+        return getMetaKeys(EntryID.TYPE_TRACK);
+    }
+
+    public LiveData<List<String>> getPlaylistMetaKeys() {
+        return getMetaKeys(EntryID.TYPE_PLAYLIST);
+    }
+
+    private LiveData<List<String>> getMetaKeys(String entryType) {
         MediatorLiveData<List<String>> allMetaKeys = new MediatorLiveData<>();
-        LiveData<List<String>> stringKeys = metaModel.getStringMetaKeys();
-        LiveData<List<String>> longKeys = metaModel.getLongMetaKeys();
-        LiveData<List<String>> doubleKeys = metaModel.getDoubleMetaKeys();
+        LiveData<List<String>> stringKeys = metaModel.getStringMetaKeys(entryType);
+        LiveData<List<String>> longKeys = metaModel.getLongMetaKeys(entryType);
+        LiveData<List<String>> doubleKeys = metaModel.getDoubleMetaKeys(entryType);
         List<LiveData<List<String>>> sources = Arrays.asList(stringKeys, longKeys, doubleKeys);
         for (LiveData<List<String>> source: sources) {
             allMetaKeys.addSource(source, keys ->
@@ -848,21 +1178,53 @@ public class MetaStorage {
         return allKeys;
     }
 
-    public CompletableFuture<Void> insertMeta(EntryID entryID, String key, String value) {
+    public CompletableFuture<Void> insertTrackMeta(EntryID entryID,
+                                                   String key,
+                                                   String value) {
         return CompletableFuture.runAsync(() ->
-                metaModel.insertMeta(entryID, key, value)
+                metaModel.insertMeta(EntryID.TYPE_TRACK, entryID, key, value)
         );
     }
 
-    public CompletableFuture<Void> deleteMeta(EntryID entryID, String key, String value) {
+    public CompletableFuture<Void> deleteTrackMeta(EntryID entryID,
+                                                   String key,
+                                                   String value) {
         return CompletableFuture.runAsync(() ->
-                metaModel.deleteMeta(entryID, key, value)
+                metaModel.deleteMeta(EntryID.TYPE_TRACK, entryID, key, value)
         );
     }
 
-    public CompletableFuture<Void> replaceMeta(EntryID entryID, String key, String oldValue, String newValue) {
+    public CompletableFuture<Void> replaceMeta(EntryID entryID,
+                                               String key,
+                                               String oldValue,
+                                               String newValue) {
         return CompletableFuture.runAsync(() ->
-                metaModel.replaceMeta(entryID, key, oldValue, newValue)
+                metaModel.replaceMeta(EntryID.TYPE_TRACK, entryID, key, oldValue, newValue)
+        );
+    }
+
+    public CompletableFuture<Void> insertPlaylistMeta(EntryID playlistID,
+                                                      String key,
+                                                      String value) {
+        return CompletableFuture.runAsync(() ->
+                metaModel.insertMeta(EntryID.TYPE_PLAYLIST, playlistID, key, value)
+        );
+    }
+
+    public CompletableFuture<Void> deletePlaylistMeta(EntryID playlistID,
+                                                      String key,
+                                                      String value) {
+        return CompletableFuture.runAsync(() ->
+                metaModel.deleteMeta(EntryID.TYPE_PLAYLIST, playlistID, key, value)
+        );
+    }
+
+    public CompletableFuture<Void> replacePlaylistMeta(EntryID playlistID,
+                                                       String key,
+                                                       String oldValue,
+                                                       String newValue) {
+        return CompletableFuture.runAsync(() ->
+                metaModel.replaceMeta(EntryID.TYPE_PLAYLIST, playlistID, key, oldValue, newValue)
         );
     }
 }

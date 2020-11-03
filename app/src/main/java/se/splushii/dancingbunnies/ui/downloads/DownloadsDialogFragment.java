@@ -24,11 +24,9 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.QueryNode;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.DownloadEntry;
-import se.splushii.dancingbunnies.storage.db.Playlist;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
@@ -112,22 +110,22 @@ public class DownloadsDialogFragment extends DialogFragment {
                     }
 
                     @Override
-                    public List<Playlist> getPlaylistSelection() {
+                    public List<EntryID> getPlaylistSelection() {
                         return null;
                     }
 
                     @Override
-                    public PlaylistID getPlaylistID() {
+                    public EntryID getPlaylistID() {
                         return null;
                     }
 
                     @Override
-                    public MusicLibraryQueryNode getQueryNode() {
+                    public QueryNode getQueryNode() {
                         return null;
                     }
 
                     @Override
-                    public List<MusicLibraryQueryNode> getQueryNodes() {
+                    public List<QueryNode> getQueryNodes() {
                         return null;
                     }
 

@@ -41,8 +41,10 @@ public class Meta {
     private static final HashSet<String> localOriginSet = new HashSet<>();
 
     private static final String FIELD_DANCINGBUNNIES_PREFIX = "se.splushii.dancingbunnies.meta.field.";
-    public static final String FIELD_SPECIAL_MEDIA_ID = FIELD_DANCINGBUNNIES_PREFIX + "media.id";
-    public static final String FIELD_SPECIAL_MEDIA_SRC = FIELD_DANCINGBUNNIES_PREFIX + "media.src";
+    public static final String FIELD_SPECIAL_ENTRY_SRC = FIELD_DANCINGBUNNIES_PREFIX + "entry.src";
+    public static final String FIELD_SPECIAL_ENTRY_ID_TRACK = FIELD_DANCINGBUNNIES_PREFIX + "entry.id.track";
+    public static final String FIELD_SPECIAL_ENTRY_ID_PLAYLIST = FIELD_DANCINGBUNNIES_PREFIX + "entry.id.playlist";
+
     public static final String FIELD_LOCAL_CACHED = FIELD_DANCINGBUNNIES_PREFIX + "cached"; static{localOriginSet.add(FIELD_LOCAL_CACHED);}
     public static final String FIELD_LOCAL_CACHED_VALUE_YES = "yes";
 
@@ -75,9 +77,15 @@ public class Meta {
     public static final String FIELD_MEDIA_URI = "media uri";
     public static final String FIELD_ALBUM_ART_URI = "album art uri";
     public static final String FIELD_DATE_ADDED = "date added";
+    public static final String FIELD_DATE_CHANGED = "date changed";
     public static final String FIELD_DATE_STARRED = "date starred";
     public static final String FIELD_ARTIST_ID = "artist id";
     public static final String FIELD_ALBUM_ID = "album id";
+    public static final String FIELD_PLAY_COUNT = "play count"; static{typeMap.put(FIELD_PLAY_COUNT, LONG);}
+    public static final String FIELD_SONG_COUNT = "song count"; static{typeMap.put(FIELD_SONG_COUNT, LONG);}
+    public static final String FIELD_COMMENT = "comment";
+    public static final String FIELD_OWNER = "owner";
+    public static final String FIELD_QUERY = "query";
 
     private static final String DELIM = "; ";
 
@@ -100,13 +108,82 @@ public class Meta {
             Meta.FIELD_DISCNUMBER,
             Meta.FIELD_CONTENT_TYPE,
             Meta.FIELD_BITRATE,
-            Meta.FIELD_SPECIAL_MEDIA_SRC,
+            Meta.FIELD_SPECIAL_ENTRY_SRC,
             Meta.FIELD_MEDIA_ROOT,
-            Meta.FIELD_SPECIAL_MEDIA_ID
+            Meta.FIELD_SPECIAL_ENTRY_ID_TRACK
     );
 
+    public enum Type {
+        STRING,
+        LONG,
+        DOUBLE
+    }
+
+    public final EntryID entryID;
+    private final HashMap<String, List<String>> stringMap;
+    private final HashMap<String, List<Long>> longMap;
+    private final HashMap<String, List<Double>> doubleMap;
+    private String tagDelimiter;
+
+    public Meta(EntryID entryID) {
+        this.entryID = entryID;
+        stringMap = new HashMap<>();
+        longMap = new HashMap<>();
+        doubleMap = new HashMap<>();
+        tagDelimiter = null;
+    }
+
+    private Meta(EntryID entryID,
+                 HashMap<String, List<String>> stringMap,
+                 HashMap<String, List<Long>> longMap,
+                 HashMap<String, List<Double>> doubleMap) {
+        this.entryID = entryID;
+        this.stringMap = stringMap;
+        this.longMap = longMap;
+        this.doubleMap = doubleMap;
+        tagDelimiter = null;
+    }
+
+    @SuppressWarnings("unchecked")
+    public Meta(Bundle b) {
+        entryID = EntryID.from(b);
+        stringMap = (HashMap<String, List<String>>) b.getSerializable(BUNDLE_KEY_STRINGS);
+        longMap = (HashMap<String, List<Long>>) b.getSerializable(BUNDLE_KEY_LONGS);
+        doubleMap = (HashMap<String, List<Double>>) b.getSerializable(BUNDLE_KEY_DOUBLES);
+        tagDelimiter = null;
+    }
+
+    public static Meta from(JSONObject json) {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            JSONObject jsonEntryIDJSON = json.getJSONObject(JSON_KEY_ENTRY_ID);
+            EntryID entryID = EntryID.from(jsonEntryIDJSON);
+            JSONObject jsonStringsJSON = json.getJSONObject(JSON_KEY_STRINGS);
+            HashMap<String, List<String>> stringMap = mapper.readValue(
+                    jsonStringsJSON.toString(),
+                    new TypeReference<HashMap<String, List<String>>>() {}
+            );
+            JSONObject jsonLongsJSON = json.getJSONObject(JSON_KEY_LONGS);
+            HashMap<String, List<Long>> longMap = mapper.readValue(
+                    jsonLongsJSON.toString(),
+                    new TypeReference<HashMap<String, List<Long>>>() {}
+            );
+            JSONObject jsonDoublesJSON = json.getJSONObject(JSON_KEY_DOUBLES);
+            HashMap<String, List<Double>> doubleMap = mapper.readValue(
+                    jsonDoublesJSON.toString(),
+                    new TypeReference<HashMap<String, List<Double>>>() {}
+            );
+            return new Meta(entryID, stringMap, longMap, doubleMap);
+        } catch (JSONException | JsonProcessingException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public static boolean isSpecial(String key) {
-        return FIELD_SPECIAL_MEDIA_ID.equals(key) || FIELD_SPECIAL_MEDIA_SRC.equals(key);
+        return FIELD_SPECIAL_ENTRY_ID_TRACK.equals(key)
+                || FIELD_SPECIAL_ENTRY_ID_PLAYLIST.equals(key)
+                || FIELD_SPECIAL_ENTRY_SRC.equals(key);
     }
 
     public static boolean isLocal(String key) {
@@ -221,73 +298,6 @@ public class Meta {
                         InputType.TYPE_NUMBER_FLAG_DECIMAL |
                         InputType.TYPE_NUMBER_FLAG_SIGNED;
         }
-    }
-
-    public enum Type {
-        STRING,
-        LONG,
-        DOUBLE
-    }
-
-    public final EntryID entryID;
-    private final HashMap<String, List<String>> stringMap;
-    private final HashMap<String, List<Long>> longMap;
-    private final HashMap<String, List<Double>> doubleMap;
-    private String tagDelimiter;
-
-    public Meta(EntryID entryID) {
-        this.entryID = entryID;
-        stringMap = new HashMap<>();
-        longMap = new HashMap<>();
-        doubleMap = new HashMap<>();
-        tagDelimiter = null;
-    }
-
-    private Meta(EntryID entryID,
-                 HashMap<String, List<String>> stringMap,
-                 HashMap<String, List<Long>> longMap,
-                 HashMap<String, List<Double>> doubleMap) {
-        this.entryID = entryID;
-        this.stringMap = stringMap;
-        this.longMap = longMap;
-        this.doubleMap = doubleMap;
-        tagDelimiter = null;
-    }
-
-    @SuppressWarnings("unchecked")
-    public Meta(Bundle b) {
-        entryID = EntryID.from(b);
-        stringMap = (HashMap<String, List<String>>) b.getSerializable(BUNDLE_KEY_STRINGS);
-        longMap = (HashMap<String, List<Long>>) b.getSerializable(BUNDLE_KEY_LONGS);
-        doubleMap = (HashMap<String, List<Double>>) b.getSerializable(BUNDLE_KEY_DOUBLES);
-        tagDelimiter = null;
-    }
-
-    public static Meta from(JSONObject json) {
-        ObjectMapper mapper = new ObjectMapper();
-        try {
-            JSONObject jsonEntryIDJSON = json.getJSONObject(JSON_KEY_ENTRY_ID);
-            EntryID entryID = EntryID.from(jsonEntryIDJSON);
-            JSONObject jsonStringsJSON = json.getJSONObject(JSON_KEY_STRINGS);
-            HashMap<String, List<String>> stringMap = mapper.readValue(
-                    jsonStringsJSON.toString(),
-                    new TypeReference<HashMap<String, List<String>>>() {}
-            );
-            JSONObject jsonLongsJSON = json.getJSONObject(JSON_KEY_LONGS);
-            HashMap<String, List<Long>> longMap = mapper.readValue(
-                    jsonLongsJSON.toString(),
-                    new TypeReference<HashMap<String, List<Long>>>() {}
-                    );
-            JSONObject jsonDoublesJSON = json.getJSONObject(JSON_KEY_DOUBLES);
-            HashMap<String, List<Double>> doubleMap = mapper.readValue(
-                    jsonDoublesJSON.toString(),
-                    new TypeReference<HashMap<String, List<Double>>>() {}
-            );
-            return new Meta(entryID, stringMap, longMap, doubleMap);
-        } catch (JSONException | JsonProcessingException e) {
-            e.printStackTrace();
-        }
-        return null;
     }
 
     public boolean has(String key) {

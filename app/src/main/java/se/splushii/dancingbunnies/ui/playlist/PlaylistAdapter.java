@@ -10,10 +10,9 @@ import android.widget.TextView;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
+import androidx.arch.core.util.Function;
 import androidx.core.content.ContextCompat;
 import androidx.core.util.Consumer;
 import androidx.fragment.app.Fragment;
@@ -23,11 +22,11 @@ import androidx.lifecycle.Transformations;
 import androidx.recyclerview.selection.Selection;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.backend.APIClient;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
-import se.splushii.dancingbunnies.storage.PlaylistStorage;
-import se.splushii.dancingbunnies.storage.db.Playlist;
-import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
+import se.splushii.dancingbunnies.musiclibrary.QueryNode;
+import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
@@ -37,18 +36,16 @@ import static se.splushii.dancingbunnies.storage.transactions.Transaction.PLAYLI
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_DELETE_MULTIPLE;
 
 public class PlaylistAdapter extends
-        SmartDiffSelectionRecyclerViewAdapter<Playlist, PlaylistAdapter.PlaylistHolder> {
+        SmartDiffSelectionRecyclerViewAdapter<EntryID, PlaylistAdapter.PlaylistHolder> {
     private static final String LC = Util.getLogContext(PlaylistAdapter.class);
 
     private final Fragment fragment;
-    private final PlaylistStorage playlistStorage;
 
-    private Consumer<Playlist> onItemClickListener = p -> {};
-    private LiveData<PlaylistID> currentPlaylistEntryLiveData;
+    private Consumer<EntryID> onItemClickListener = p -> {};
+    private LiveData<EntryID> currentPlaylistIDLiveData;
 
     public PlaylistAdapter(Fragment fragment) {
         this.fragment = fragment;
-        playlistStorage = PlaylistStorage.getInstance(fragment.getContext());
         setHasStableIds(true);
     }
 
@@ -56,36 +53,29 @@ public class PlaylistAdapter extends
     protected void onSelectionChanged() {}
 
     @Override
-    public void onSelectionDrop(Collection<Playlist> selection,
+    public void onSelectionDrop(Collection<EntryID> selection,
                                 int targetPos,
-                                Playlist idAfterTargetPos) {
-        playlistStorage.movePlaylists(
-                selection.stream().map(Playlist::playlistID).collect(Collectors.toList()),
-                idAfterTargetPos == null ? null : idAfterTargetPos.playlistID()
-        );
+                                EntryID idAfterTargetPos) {
+        throw new RuntimeException("Not supported");
     }
 
     @Override
     public void onUseViewHolderForDrag(PlaylistHolder dragViewHolder,
-                                       Collection<Playlist> selection) {
-        if (selection.size() == 1) {
-            onResetDragViewHolder(dragViewHolder);
-            return;
-        }
-        dragViewHolder.useForDrag(selection.size() + " selected");
+                                       Collection<EntryID> selection) {
+        throw new RuntimeException("Not supported");
     }
 
     @Override
     public void onResetDragViewHolder(PlaylistHolder dragViewHolder) {
-        dragViewHolder.resetFromDrag();
+        throw new RuntimeException("Not supported");
     }
 
     private void updateActionModeView(ActionModeCallback actionModeCallback,
-                                      Selection<Playlist> selection) {
+                                      Selection<EntryID> selection) {
         actionModeCallback.getActionMode().setTitle(selection.size() + " entries");
         boolean showDelete = true;
-        for (Playlist playlist: selection) {
-            String src = playlist.playlistID().src;
+        for (EntryID playlistID: selection) {
+            String src = playlistID.src;
             if (!APIClient.getAPIClient(fragment.requireContext(), src)
                     .supports(PLAYLIST_DELETE, src)) {
                 showDelete = false;
@@ -102,13 +92,13 @@ public class PlaylistAdapter extends
 
     @Override
     public void onActionModeStarted(ActionModeCallback actionModeCallback,
-                                    Selection<Playlist> selection) {
+                                    Selection<EntryID> selection) {
         updateActionModeView(actionModeCallback, selection);
     }
 
     @Override
     public void onActionModeSelectionChanged(ActionModeCallback actionModeCallback,
-                                             Selection<Playlist> selection) {
+                                             Selection<EntryID> selection) {
         updateActionModeView(actionModeCallback, selection);
     }
 
@@ -116,23 +106,23 @@ public class PlaylistAdapter extends
     public void onActionModeEnding(ActionModeCallback actionModeCallback) {}
 
     @Override
-    public boolean validDrag(Selection<Playlist> selection) {
-        return true;
+    public boolean validDrag(Selection<EntryID> selection) {
+        return false;
     }
 
     @Override
-    public boolean validSelect(Playlist key) {
+    public boolean validSelect(EntryID key) {
         return true;
     }
 
     @Override
     public boolean validMove(PlaylistHolder current, PlaylistHolder target) {
-        return true;
+        return false;
     }
 
     @Override
     public boolean validDrag(PlaylistHolder viewHolder) {
-        return true;
+        return false;
     }
 
     @Override
@@ -140,16 +130,20 @@ public class PlaylistAdapter extends
         return getItem(position).hashCode();
     }
 
-    private void setPlaylists(List<Playlist> playlists) {
-        Log.d(LC, "setPlaylists: " + playlists.size());
-        setDataSet(playlists);
+    private void setPlaylists(List<EntryID> playlistIDs) {
+        Log.d(LC, "setPlaylists: " + playlistIDs.size());
+        setDataSet(playlistIDs);
     }
 
     private boolean initialScrolled;
     public void setModel(PlaylistFragmentModel model,
-                         Function<List<Playlist>, List<Playlist>> playlistFilter) {
+                         QueryNode query,
+                         Function<List<EntryID>, List<EntryID>> playlistFilter) {
         initialScrolled = false;
-        model.getPlaylists(fragment.getContext())
+        LiveData<List<EntryID>> playlistIDsLiveData = query == null
+                ? MetaStorage.getInstance(fragment.requireContext()).getPlaylists()
+                : MetaStorage.getInstance(fragment.requireContext()).getPlaylists(query);
+        playlistIDsLiveData
                 .observe(fragment.getViewLifecycleOwner(), entries -> {
                     setPlaylists(playlistFilter.apply(entries));
                     updateScrollPos(model.getUserStateValue(), !entries.isEmpty());
@@ -158,7 +152,7 @@ public class PlaylistAdapter extends
                 fragment.getViewLifecycleOwner(),
                 userState -> updateScrollPos(userState, !isEmpty())
         );
-        currentPlaylistEntryLiveData = model.getCurrentPlaylistID();
+        currentPlaylistIDLiveData = model.getCurrentPlaylistID();
     }
 
     private void updateScrollPos(PlaylistUserState userState, boolean hasPlaylists) {
@@ -171,9 +165,10 @@ public class PlaylistAdapter extends
         }
     }
 
-    class PlaylistHolder extends ItemDetailsViewHolder<Playlist> {
-        MutableLiveData<PlaylistID> playlistIDLiveData;
-        LiveData<List<PlaylistEntry>> playlistEntriesLiveData;
+    class PlaylistHolder extends ItemDetailsViewHolder<EntryID> {
+        MutableLiveData<EntryID> playlistIDLiveData;
+        LiveData<Integer> numPlaylistEntriesLiveData;
+        LiveData<String> playlistNameLiveData;
 
         private final View entry;
         private final View highlightView;
@@ -182,15 +177,13 @@ public class PlaylistAdapter extends
         private final TextView typeTextView;
         private final TextView numEntriesTextView;
 
-        private Playlist playlist;
-        private int srcResourceID = 0;
-        private int numEntries;
-        private PlaylistID currentPlaylist;
-        private boolean isStatic;
-
         PlaylistHolder(View v) {
             super(v);
             playlistIDLiveData = new MutableLiveData<>();
+            playlistNameLiveData = Transformations.map(
+                    MetaStorage.getInstance(v.getContext()).getPlaylistMeta(playlistIDLiveData),
+                    meta -> meta.getAsString(Meta.FIELD_TITLE)
+            );
             entry = v.findViewById(R.id.playlist);
             nameTextView = v.findViewById(R.id.playlist_name);
             srcImageView = v.findViewById(R.id.playlist_src);
@@ -200,25 +193,18 @@ public class PlaylistAdapter extends
         }
 
         @Override
-        protected Playlist getSelectionKeyOf() {
+        protected EntryID getSelectionKeyOf() {
             return getItem(getPos());
         }
 
         void setSourceResourceID(int srcResourceID) {
-            this.srcResourceID = srcResourceID;
-            if (isStatic) {
-                return;
-            }
             srcImageView.setBackgroundResource(srcResourceID);
         }
 
-        void updateHighlight(PlaylistID currentPlaylistEntry) {
-            this.currentPlaylist = currentPlaylistEntry;
-            if (isStatic) {
-                return;
-            }
-            boolean highlighted = playlist != null
-                    && playlist.playlistID().equals(currentPlaylistEntry);
+        void updateHighlight(EntryID currentPlaylistID) {
+            EntryID playlistID = playlistIDLiveData.getValue();
+            boolean highlighted = playlistID != null
+                    && playlistID.equals(currentPlaylistID);
             if (highlighted) {
                 highlightView.setBackgroundColor(ContextCompat.getColor(
                         fragment.requireContext(),
@@ -239,51 +225,20 @@ public class PlaylistAdapter extends
             highlightView.setBackgroundResource(value.resourceId);
         }
 
-        void setPlaylist(Playlist playlist) {
-            this.playlist = playlist;
-            if (isStatic) {
-                return;
-            }
-            playlistIDLiveData.setValue(playlist.playlistID());
-            nameTextView.setText(playlist.name());
-            String type;
-            switch (playlist.playlistID().type) {
-                case PlaylistID.TYPE_STUPID:
-                    type = "Static";
-                    break;
-                case PlaylistID.TYPE_SMART:
-                    type = "Dynamic";
-                    break;
-                default:
-                    type = "Unkown playlist type";
-                    break;
-            }
+        void setPlaylistID(EntryID playlistID) {
+            playlistIDLiveData.setValue(playlistID);
+        }
+
+        void setType(String type) {
             typeTextView.setText(type);
         }
 
+        void setName(String name) {
+            nameTextView.setText(name);
+        }
+
         void setNumEntries(int numEntries) {
-            this.numEntries = numEntries;
-            if (isStatic) {
-                return;
-            }
             numEntriesTextView.setText(String.valueOf(numEntries));
-        }
-
-        void useForDrag(String txt) {
-            isStatic = true;
-            nameTextView.setText(txt);
-            srcImageView.setBackgroundResource(0);
-            typeTextView.setText("");
-            numEntriesTextView.setText("");
-            setDefaultHighlightBackground();
-        }
-
-        void resetFromDrag() {
-            isStatic = false;
-            setPlaylist(playlist);
-            setSourceResourceID(srcResourceID);
-            setNumEntries(numEntries);
-            updateHighlight(currentPlaylist);
         }
     }
 
@@ -294,31 +249,46 @@ public class PlaylistAdapter extends
         PlaylistHolder holder = new PlaylistHolder(
                 layoutInflater.inflate(R.layout.playlist_item, parent, false)
         );
-        currentPlaylistEntryLiveData.observe(
+        currentPlaylistIDLiveData.observe(
                 fragment.getViewLifecycleOwner(),
                 holder::updateHighlight
         );
-        holder.playlistEntriesLiveData = Transformations.switchMap(
+        holder.playlistNameLiveData.observe(
+                fragment.getViewLifecycleOwner(),
+                holder::setName
+        );
+        holder.numPlaylistEntriesLiveData = Transformations.switchMap(
                 holder.playlistIDLiveData,
-                playlistID -> MusicLibraryService.getPlaylistEntries(
+                playlistID -> MusicLibraryService.getNumPlaylistEntries(
                         fragment.requireContext(),
                         playlistID
                 )
         );
-        holder.playlistEntriesLiveData.observe(
+        holder.numPlaylistEntriesLiveData.observe(
                 fragment.getViewLifecycleOwner(),
-                playlistEntries -> holder.setNumEntries(playlistEntries.size())
+                holder::setNumEntries
+        );
+        Transformations.switchMap(
+                holder.playlistIDLiveData,
+                playlistID -> MusicLibraryService.isSmartPlaylist(
+                        fragment.requireContext(),
+                        playlistID
+                )
+        ).observe(
+                fragment.getViewLifecycleOwner(),
+                isSmartPlaylist -> holder.setType(isSmartPlaylist ? "Dynamic" : "Static")
         );
         return holder;
     }
 
-    public void setOnItemClickListener(Consumer<Playlist> listener) {
+    public void setOnItemClickListener(Consumer<EntryID> listener) {
         onItemClickListener = listener;
     }
 
     @Override
     public void onBindViewHolder(@NonNull PlaylistHolder holder, int position) {
-        holder.setPlaylist(getItem(position));
+        EntryID playlistID = getItem(position);
+        holder.setPlaylistID(playlistID);
         holder.entry.setOnClickListener(view -> {
             if (hasSelection()) {
                 return;
@@ -326,12 +296,12 @@ public class PlaylistAdapter extends
             if (fragment instanceof PlaylistFragment) {
                 ((PlaylistFragment) fragment).clearFocus();
             }
-            onItemClickListener.accept(holder.playlist);
+            onItemClickListener.accept(playlistID);
         });
         holder.setSourceResourceID(MusicLibraryService.getAPIIconResourceFromSource(
-                holder.playlist.playlistID().src
+                playlistID.src
         ));
-        holder.updateHighlight(currentPlaylistEntryLiveData.getValue());
-        holder.entry.setActivated(isSelected(holder.getKey()));
+        holder.updateHighlight(currentPlaylistIDLiveData.getValue());
+        holder.entry.setActivated(isSelected(playlistID));
     }
 }

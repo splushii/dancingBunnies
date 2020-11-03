@@ -27,11 +27,12 @@ import se.splushii.dancingbunnies.util.Util;
 public abstract class Playlist {
     private static final String LC = Util.getLogContext(Playlist.class);
 
-    public final String name;
-    public final PlaylistID id;
-    Playlist(PlaylistID playlistID, String name) {
-        this.id = playlistID;
-        this.name = name;
+    public static final String TYPE_STUPID = "static";
+    public static final String TYPE_SMART = "smart";
+
+    public final Meta meta;
+    Playlist(Meta meta) {
+        this.meta = meta;
     }
 
     public static Playlist from(Context context, String src, Path playlistFile) {
@@ -40,56 +41,79 @@ public abstract class Playlist {
             return null;
         }
         String id = jRoot.playlist.id;
-        String type = jRoot.playlist.type;
-        String title = id;
+        String type;
+        type = Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST;
+        Meta meta = new Meta(new EntryID(src, id, type));
         for (Map<String, String> metaEntry: jRoot.playlist.meta) {
-            if (metaEntry.keySet().contains(Meta.FIELD_TITLE)) {
-                title = metaEntry.get(Meta.FIELD_TITLE);
-                break;
+            Set<String> keySet = metaEntry.keySet();
+            if (keySet.isEmpty()) {
+                continue;
+            }
+            if (keySet.size() > 1) {
+                throw new RuntimeException("This should never happen");
+            }
+            String key = keySet.toArray(new String[0])[0];
+            String value = metaEntry.get(key);
+            switch (Meta.getType(key)) {
+                case STRING:
+                    meta.addString(key, value);
+                    break;
+                case LONG:
+                    if (value != null) {
+                        try {
+                            meta.addLong(key, Long.parseLong(value));
+                        } catch (NumberFormatException ignored) {}
+                    }
+                    break;
+                case DOUBLE:
+                    if (value != null) {
+                        try {
+                            meta.addDouble(key, Double.parseDouble(value));
+                        } catch (NumberFormatException ignored) {}
+                    }
+                    break;
             }
         }
-        PlaylistID playlistID = new PlaylistID(src, id, type);
-        if (PlaylistID.TYPE_STUPID.equals(type)) {
-            List<PlaylistEntry> playlistEntries = new ArrayList<>();
-            for (int i = 0; i < jRoot.entries.size(); i++) {
-                JacksonPlaylistEntry jacksonPlaylistEntry = jRoot.entries.get(i);
-                String playlistEntryID = jacksonPlaylistEntry.id;
-                String entryType;
-                switch (jacksonPlaylistEntry.entry.type) {
-                    case SchemaValidator.PLAYLIST_ENTRY_TYPE_TRACK:
-                    case Meta.FIELD_SPECIAL_MEDIA_ID:
-                        entryType = Meta.FIELD_SPECIAL_MEDIA_ID;
-                        break;
-                    case SchemaValidator.PLAYLIST_ENTRY_TYPE_PLAYLIST:
-                        // TODO: Implement
-                        throw new RuntimeException("Not implemented");
-                    default:
-                        Log.e(LC, "Playlist entry type not supported: "
-                                + jacksonPlaylistEntry.entry.type);
-                        continue;
+        switch (jRoot.playlist.type) {
+            case Playlist.TYPE_STUPID:
+                List<PlaylistEntry> playlistEntries = new ArrayList<>();
+                for (int i = 0; i < jRoot.entries.size(); i++) {
+                    JacksonPlaylistEntry jacksonPlaylistEntry = jRoot.entries.get(i);
+                    String playlistEntryID = jacksonPlaylistEntry.id;
+                    String entryType;
+                    switch (jacksonPlaylistEntry.entry.type) {
+                        case EntryID.TYPE_TRACK:
+                        case Meta.FIELD_SPECIAL_ENTRY_ID_TRACK:
+                            entryType = Meta.FIELD_SPECIAL_ENTRY_ID_TRACK;
+                            break;
+                        case EntryID.TYPE_PLAYLIST:
+                        case Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST:
+                            // TODO: Implement
+                            throw new RuntimeException("Not implemented");
+                        default:
+                            Log.e(LC, "Playlist entry type not supported: "
+                                    + jacksonPlaylistEntry.entry.type);
+                            continue;
+                    }
+                    EntryID entryID = new EntryID(
+                            jacksonPlaylistEntry.entry.src,
+                            jacksonPlaylistEntry.entry.id,
+                            entryType
+                    );
+                    playlistEntries.add(PlaylistEntry.from(
+                            meta.entryID,
+                            playlistEntryID,
+                            entryID,
+                            i
+                    ));
                 }
-                EntryID entryID = new EntryID(
-                        jacksonPlaylistEntry.entry.src,
-                        jacksonPlaylistEntry.entry.id,
-                        entryType
-                );
-                playlistEntries.add(PlaylistEntry.from(playlistID, playlistEntryID, entryID, i));
-            }
-            return new StupidPlaylist(
-                    playlistID,
-                    title,
-                    playlistEntries
-            );
-        } else if (PlaylistID.TYPE_SMART.equals(type)) {
-            return new SmartPlaylist(
-                    playlistID,
-                    title,
-                    MusicLibraryQueryNode.fromJSON(jRoot.query)
-            );
-        } else {
-            Log.e(LC, "Playlist type not supported: " + type);
+                return new StupidPlaylist(meta, playlistEntries);
+            case Playlist.TYPE_SMART:
+                return new SmartPlaylist(meta, QueryNode.fromJSON(jRoot.query));
+            default:
+                Log.e(LC, "Playlist type not supported: " + jRoot.playlist.type);
+                return null;
         }
-        return null;
     }
 
     private static String writeToFile(Path path, JacksonPlaylistRoot jRoot) {
@@ -105,24 +129,25 @@ public abstract class Playlist {
 
     public static String addPlaylistInFile(Context context,
                                            Path path,
-                                           PlaylistID playlistID,
+                                           EntryID playlistID,
                                            String name,
                                            String query) {
         JacksonPlaylistRoot jRoot = new JacksonPlaylistRoot();
         JacksonPlaylistMeta jPlaylistMeta = new JacksonPlaylistMeta();
+        String type;
+        if (query == null) {
+            type = Playlist.TYPE_STUPID;
+            jRoot.entries = new ArrayList<>();
+        } else {
+            type = Playlist.TYPE_SMART;
+            jRoot.query = query;
+        }
         jPlaylistMeta.id = playlistID.id;
-        jPlaylistMeta.type = playlistID.type;
+        jPlaylistMeta.type = type;
         jPlaylistMeta.meta = new ArrayList<>();
         jPlaylistMeta.meta.add(Collections.singletonMap(Meta.FIELD_TITLE, name));
         jRoot.schema_version = 1L;
         jRoot.playlist = jPlaylistMeta;
-        if (query != null) {
-            // Smart playlist
-            jRoot.query = query;
-        } else {
-            // Stupid playlist
-            jRoot.entries = new ArrayList<>();
-        }
         return writeToFile(path, jRoot);
     }
 
@@ -169,7 +194,7 @@ public abstract class Playlist {
         JacksonPlaylistEntry jPlaylistEntry = new JacksonPlaylistEntry();
         jPlaylistEntry.id = PlaylistEntry.generatePlaylistEntryID();
         JacksonEntry jEntry = new JacksonEntry();
-        jEntry.type = PlaylistEntry.TYPE_TRACK; // TODO: Support TYPE_PLAYLIST
+        jEntry.type = EntryID.TYPE_TRACK; // TODO: Support TYPE_PLAYLIST
         jEntry.src = entryID.src;
         jEntry.id = entryID.id;
         Set<String> includedMetaKeys = new HashSet<>(Arrays.asList(

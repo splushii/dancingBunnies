@@ -35,7 +35,7 @@ import androidx.lifecycle.Transformations;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.util.Diff;
@@ -85,8 +85,8 @@ public class PlaybackController {
     private long currentPlaylistSelectionID;
     private int currentPlaylistPlaybackOrderMode;
     private boolean currentPlaylistPlaybackRepeatMode;
-    private final MutableLiveData<PlaylistID> currentPlaylistIDLiveData = new MutableLiveData<>();
-    private PlaylistID currentPlaylistID;
+    private final MutableLiveData<EntryID> currentPlaylistIDLiveData = new MutableLiveData<>();
+    private EntryID currentPlaylistID;
     // Current playlist entries
     private final LiveData<List<PlaylistEntry>> currentPlaylistEntriesLiveData;
     private final Observer<List<PlaylistEntry>> currentPlaylistEntriesObserver;
@@ -215,6 +215,7 @@ public class PlaybackController {
                 getCurrentPlaylistPosition()
         );
         onQueueChanged();
+        audioPlayer.initialize();
         submitCompletableFuture(this::updateState);
     }
 
@@ -238,12 +239,12 @@ public class PlaybackController {
         return audioPlayer.getSeekPosition();
     }
 
-    CompletableFuture<Void> setPlaylist(PlaylistID playlistID, long pos) {
+    CompletableFuture<Void> setPlaylist(EntryID playlistID, long pos) {
         _setPlaylist(playlistID, pos);
         return submitCompletableFuture(this::updateState);
     }
 
-    private void _setPlaylist(PlaylistID playlistID, long pos) {
+    private void _setPlaylist(EntryID playlistID, long pos) {
         Log.d(LC, "setCurrentPlaylist: " + playlistID + " pos: " + pos);
         setCurrentPlaylistSelectionID(storage.getNextPlaylistSelectionID());
         if (playlistID == null || !playlistID.equals(getCurrentPlaylistID())) {
@@ -311,12 +312,12 @@ public class PlaybackController {
         return currentPlaylistPlaybackRepeatMode;
     }
 
-    private void setCurrentPlaylistID(PlaylistID playlistID) {
+    private void setCurrentPlaylistID(EntryID playlistID) {
         currentPlaylistID = playlistID;
         storage.setCurrentPlaylist(playlistID);
     }
 
-    private PlaylistID getCurrentPlaylistID() {
+    private EntryID getCurrentPlaylistID() {
         return currentPlaylistID;
     }
 
@@ -1024,12 +1025,6 @@ public class PlaybackController {
             // Check if playlistEntries have changed.
             Log.d(LC, "playlistEntriesObserver."
                     + " Calculating diff between current and new playlist entries.");
-            Log.e(LC, "cur: " + currentPlaylistPlaybackEntries.getEntries()
-                    .stream()
-                    .map(p -> p.entryID)
-                    .collect(Collectors.toList())
-            );
-            Log.e(LC, "new: " + newPlaylistEntries.stream().map(PlaylistEntry::entryID).collect(Collectors.toList()));
             Diff diff = Diff.diff(
                     currentPlaylistPlaybackEntries.getEntries()
                             .stream()
@@ -1199,8 +1194,7 @@ public class PlaybackController {
     public static CompletableFuture<List<PlaybackEntry>> sorted(Context context,
                                                                 List<PlaybackEntry> playbackEntries,
                                                                 List<String> sortBy) {
-        return MusicLibraryService.getSongMetas(
-                context,
+        return MetaStorage.getInstance(context).getTrackMetasOnce(
                 playbackEntries.stream()
                         .map(p -> p.entryID)
                         .collect(Collectors.toList())
@@ -1377,7 +1371,7 @@ public class PlaybackController {
         void onMetaChanged(EntryID entryID);
         void onCurrentEntryChanged(PlaybackEntry entry);
         void onQueueChanged(List<PlaybackEntry> queue);
-        void onPlaylistSelectionChanged(PlaylistID playlistID, long pos);
+        void onPlaylistSelectionChanged(EntryID playlistID, long pos);
         void onPlayerSeekPositionChanged(long pos);
         void onPlaybackOrderChanged(int playbackOrder);
         void onRepeatModeChanged(boolean repeat);
@@ -1412,6 +1406,12 @@ public class PlaybackController {
         public void onSongEnded() {
             Log.d(LC, "onSongEnded");
             submitCompletableFuture(PlaybackController.this::updateState);
+        }
+
+        @Override
+        public void disconnect() {
+            Log.d(LC, "disconnect");
+            onCastDisconnect();
         }
     }
 

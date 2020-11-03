@@ -364,12 +364,12 @@ public class TrackItemView extends LinearLayout {
 
     public void initMetaObserver(Context context) {
         metaLiveData = Transformations.switchMap(entryIDLiveData, entryID -> {
-            if (!Meta.FIELD_SPECIAL_MEDIA_ID.equals(entryID.type)) {
+            if (!Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(entryID.type)) {
                 MutableLiveData<Meta> nullMeta = new MutableLiveData<>();
                 nullMeta.setValue(null);
                 return nullMeta;
             }
-            return MetaStorage.getInstance(context).getMeta(entryID);
+            return MetaStorage.getInstance(context).getTrackMeta(entryID);
         });
     }
 

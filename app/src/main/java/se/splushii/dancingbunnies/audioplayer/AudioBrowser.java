@@ -22,11 +22,10 @@ import java.util.stream.Collectors;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.FragmentActivity;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQuery;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryNode;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
+import se.splushii.dancingbunnies.musiclibrary.Query;
+import se.splushii.dancingbunnies.musiclibrary.QueryEntry;
+import se.splushii.dancingbunnies.musiclibrary.QueryNode;
 import se.splushii.dancingbunnies.util.Util;
 
 public class AudioBrowser {
@@ -160,7 +159,7 @@ public class AudioBrowser {
         mediaController.getTransportControls().playFromMediaId(entryID.id, entryID.toBundle());
     }
 
-    public CompletableFuture<Boolean> play(List<EntryID> entryIDs, MusicLibraryQueryNode queryNode) {
+    public CompletableFuture<Boolean> play(List<EntryID> entryIDs, QueryNode queryNode) {
         return AudioPlayerService.play(
                 mediaController,
                 entryIDs,
@@ -173,7 +172,7 @@ public class AudioBrowser {
         });
     }
 
-    public CompletableFuture<Boolean> playQueries(List<MusicLibraryQueryNode> queryNodes) {
+    public CompletableFuture<Boolean> playQueries(List<QueryNode> queryNodes) {
         return AudioPlayerService.playQueryBundles(
                 mediaController,
                 queryNodes
@@ -202,7 +201,7 @@ public class AudioBrowser {
     }
 
     public CompletableFuture<Boolean> queue(List<EntryID> entryIDs,
-                                            MusicLibraryQueryNode queryNode) {
+                                            QueryNode queryNode) {
         return AudioPlayerService.queue(
                 mediaController,
                 entryIDs,
@@ -215,7 +214,7 @@ public class AudioBrowser {
         });
     }
 
-    public CompletableFuture<Boolean> queueQueryBundles(List<MusicLibraryQueryNode> queryNodes) {
+    public CompletableFuture<Boolean> queueQueryBundles(List<QueryNode> queryNodes) {
         return AudioPlayerService.queueQueryBundles(
                 mediaController,
                 queryNodes
@@ -317,7 +316,7 @@ public class AudioBrowser {
         return playbackEntryBundle.getParcelable(AudioPlayerService.BUNDLE_KEY_PLAYBACK_ENTRY);
     }
 
-    public CompletableFuture<Boolean> setCurrentPlaylist(PlaylistID playlistID, long pos) {
+    public CompletableFuture<Boolean> setCurrentPlaylist(EntryID playlistID, long pos) {
         return AudioPlayerService.setCurrentPlaylist(
                 mediaController,
                 playlistID,
@@ -330,7 +329,7 @@ public class AudioBrowser {
         });
     }
 
-    public PlaylistID getCurrentPlaylist() {
+    public EntryID getCurrentPlaylist() {
         Bundle extras = mediaController.getExtras();
         if (extras == null) {
             return null;
@@ -341,7 +340,7 @@ public class AudioBrowser {
         if (playlistIDBundle == null) {
             return null;
         }
-        playlistIDBundle.setClassLoader(PlaylistID.class.getClassLoader());
+        playlistIDBundle.setClassLoader(EntryID.class.getClassLoader());
         return playlistIDBundle.getParcelable(AudioPlayerService.BUNDLE_KEY_PLAYLIST_ID);
     }
 
@@ -417,25 +416,25 @@ public class AudioBrowser {
     }
 
     public void downloadAudioData(Context context,
-                                  List<MusicLibraryQueryNode> queryNodes,
+                                  List<QueryNode> queryNodes,
                                   int priority) {
         MusicLibraryService.downloadAudioData(context, queryNodes, priority)
                 .handle(Util::printFutureError);
     }
 
     public String query(String currentSubscriptionID,
-                        MusicLibraryQuery musicLibraryQuery,
-                        Consumer<List<LibraryEntry>> onResult) {
+                        Query query,
+                        Consumer<List<QueryEntry>> onResult) {
         if (currentSubscriptionID != null && mediaBrowser.isConnected()) {
             mediaBrowser.unsubscribe(currentSubscriptionID);
         }
-        currentSubscriptionID = musicLibraryQuery.query(
+        currentSubscriptionID = query.query(
                 mediaBrowser,
-                new MusicLibraryQuery.MusicLibraryQueryCallback() {
+                new Query.QueryCallback() {
                     @Override
                     public void onQueryResult(@NonNull List<MediaBrowserCompat.MediaItem> items) {
                         onResult.accept(
-                                items.stream().map(LibraryEntry::from).collect(Collectors.toList())
+                                items.stream().map(QueryEntry::from).collect(Collectors.toList())
                         );
                     }
                 }
@@ -477,7 +476,7 @@ public class AudioBrowser {
         public void onSessionEvent(String event, Bundle extras) {
             switch (event) {
                 case AudioPlayerService.SESSION_EVENT_PLAYLIST_SELECTION_CHANGED:
-                    PlaylistID playlistID = extras.getParcelable(
+                    EntryID playlistID = extras.getParcelable(
                             AudioPlayerService.BUNDLE_KEY_PLAYLIST_ID
                     );
                     long pos = extras.getLong(AudioPlayerService.BUNDLE_KEY_CURRENT_PLAYLIST_POS);

@@ -35,7 +35,7 @@ import static androidx.room.ForeignKey.CASCADE;
                 DB.COLUMN_VALUE
         },
         foreignKeys = @ForeignKey(
-                entity = Entry.class,
+                entity = Track.class,
                 parentColumns = { DB.COLUMN_SRC, DB.COLUMN_ID },
                 childColumns = { DB.COLUMN_SRC, DB.COLUMN_ID },
                 onDelete = CASCADE

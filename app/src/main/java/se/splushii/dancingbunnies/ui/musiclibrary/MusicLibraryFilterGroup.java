@@ -23,8 +23,8 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryLeaf;
-import se.splushii.dancingbunnies.musiclibrary.MusicLibraryQueryTree;
+import se.splushii.dancingbunnies.musiclibrary.QueryLeaf;
+import se.splushii.dancingbunnies.musiclibrary.QueryTree;
 import se.splushii.dancingbunnies.util.Util;
 
 public class MusicLibraryFilterGroup extends LinearLayout {
@@ -49,9 +49,9 @@ public class MusicLibraryFilterGroup extends LinearLayout {
     private AutoCompleteTextView editInput;
 
     private NewListener newListener;
-    private BiConsumer<MusicLibraryQueryTree.Op, Boolean> onOpChangedCb;
+    private BiConsumer<QueryTree.Op, Boolean> onOpChangedCb;
 
-    private MusicLibraryQueryTree.Op operator;
+    private QueryTree.Op operator;
     private boolean negated;
 
     public MusicLibraryFilterGroup(Context context) {
@@ -101,14 +101,14 @@ public class MusicLibraryFilterGroup extends LinearLayout {
 
         operatorView.setOnClickListener(view -> {
             // Cycle through the combinations
-            if (operator == MusicLibraryQueryTree.Op.AND && !negated) {
-                setOperator(MusicLibraryQueryTree.Op.OR, false);
-            } else if (operator == MusicLibraryQueryTree.Op.OR && !negated) {
-                setOperator(MusicLibraryQueryTree.Op.AND, true);
-            } else if (operator == MusicLibraryQueryTree.Op.AND) {
-                setOperator(MusicLibraryQueryTree.Op.OR, true);
+            if (operator == QueryTree.Op.AND && !negated) {
+                setOperator(QueryTree.Op.OR, false);
+            } else if (operator == QueryTree.Op.OR && !negated) {
+                setOperator(QueryTree.Op.AND, true);
+            } else if (operator == QueryTree.Op.AND) {
+                setOperator(QueryTree.Op.OR, true);
             } else {
-                setOperator(MusicLibraryQueryTree.Op.AND, false);
+                setOperator(QueryTree.Op.AND, false);
             }
             onOpChangedCb.accept(operator, negated);
         });
@@ -129,19 +129,19 @@ public class MusicLibraryFilterGroup extends LinearLayout {
 
         newSelectionAll.setOnClickListener(view -> {
             deactivate();
-            newListener.onSubQuerySubmit(MusicLibraryQueryTree.Op.AND, false);
+            newListener.onSubQuerySubmit(QueryTree.Op.AND, false);
         });
         newSelectionAny.setOnClickListener(view -> {
             deactivate();
-            newListener.onSubQuerySubmit(MusicLibraryQueryTree.Op.OR, false);
+            newListener.onSubQuerySubmit(QueryTree.Op.OR, false);
         });
         newSelectionNotAll.setOnClickListener(view -> {
             deactivate();
-            newListener.onSubQuerySubmit(MusicLibraryQueryTree.Op.AND, true);
+            newListener.onSubQuerySubmit(QueryTree.Op.AND, true);
         });
         newSelectionNone.setOnClickListener(view -> {
             deactivate();
-            newListener.onSubQuerySubmit(MusicLibraryQueryTree.Op.OR, true);
+            newListener.onSubQuerySubmit(QueryTree.Op.OR, true);
         });
 
         newSelectionFilter.setOnClickListener(view -> {
@@ -171,8 +171,8 @@ public class MusicLibraryFilterGroup extends LinearLayout {
                 int typePos = newType.getSelectedItemPosition();
                 int pos = newOp.getSelectedItemPosition();
                 boolean negate = newNegate.isActivated();
-                MusicLibraryQueryLeaf.Op op = MusicLibraryFilterGroup.this.onNewOpSelected(typePos, pos);
-                if (MusicLibraryQueryLeaf.Op.EXISTS.equals(op)) {
+                QueryLeaf.Op op = MusicLibraryFilterGroup.this.onNewOpSelected(typePos, pos);
+                if (QueryLeaf.Op.EXISTS.equals(op)) {
                     deactivate();
                     newListener.onFilterSubmit(typePos, pos, null, negate);
                 }
@@ -215,7 +215,7 @@ public class MusicLibraryFilterGroup extends LinearLayout {
     }
 
     public void addLeafFilter(String key,
-                              MusicLibraryQueryLeaf.Op op,
+                              QueryLeaf.Op op,
                               String value,
                               boolean negated,
                               ArrayAdapter<String> autoCompleteValuesAdapter,
@@ -233,14 +233,14 @@ public class MusicLibraryFilterGroup extends LinearLayout {
                 editNegate.setOnClickListener(view ->
                         editNegate.setActivated(!editNegate.isActivated())
                 );
-                editOpLastPos = MusicLibraryQueryLeaf.getOps(key).indexOf(op);
+                editOpLastPos = QueryLeaf.getOps(key).indexOf(op);
                 editOp.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                     @Override
                     public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
                         int pos = editOp.getSelectedItemPosition();
                         boolean negate = editNegate.isActivated();
-                        MusicLibraryQueryLeaf.Op op = MusicLibraryQueryLeaf.getOps(key).get(pos);
-                        if (MusicLibraryQueryLeaf.Op.EXISTS.equals(op)) {
+                        QueryLeaf.Op op = QueryLeaf.getOps(key).get(pos);
+                        if (QueryLeaf.Op.EXISTS.equals(op)) {
                             editInput.setVisibility(GONE);
                         } else {
                             editInput.setVisibility(VISIBLE);
@@ -249,7 +249,7 @@ public class MusicLibraryFilterGroup extends LinearLayout {
                             return;
                         }
                         editOpLastPos = pos;
-                        if (MusicLibraryQueryLeaf.Op.EXISTS.equals(op)) {
+                        if (QueryLeaf.Op.EXISTS.equals(op)) {
                             deactivate();
                             listener.onSubmit(pos, null, negate);
                         }
@@ -289,28 +289,28 @@ public class MusicLibraryFilterGroup extends LinearLayout {
         });
     }
 
-    private String getLeafChipText(String key, MusicLibraryQueryLeaf.Op op, String value) {
-        return MusicLibraryQueryLeaf.Op.EXISTS.equals(op) ?
+    private String getLeafChipText(String key, QueryLeaf.Op op, String value) {
+        return QueryLeaf.Op.EXISTS.equals(op) ?
                 String.format(
                         "%s %s",
                         Meta.getDisplayKey(key),
-                        MusicLibraryQueryLeaf.getDisplayableOp(op)
+                        QueryLeaf.getDisplayableOp(op)
                 )
                 :
                 String.format(
                         "%s %s %s",
                         Meta.getDisplayKey(key),
-                        MusicLibraryQueryLeaf.getDisplayableOp(op),
+                        QueryLeaf.getDisplayableOp(op),
                         Meta.getDisplayValue(key, value)
                 );
     }
 
-    public void addTreeFilter(MusicLibraryQueryTree.Op operator,
+    public void addTreeFilter(QueryTree.Op operator,
                               boolean negated,
                               TreeFilterListener listener) {
         Chip newChip = addChip(
                 getTreeChipText(operator, negated),
-                operator == MusicLibraryQueryTree.Op.AND ?
+                operator == QueryTree.Op.AND ?
                         R.drawable.ic_keyboard_arrow_up_black_24dp
                         : R.drawable.ic_keyboard_arrow_down_black_24dp,
                 negated
@@ -330,13 +330,13 @@ public class MusicLibraryFilterGroup extends LinearLayout {
         });
     }
 
-    private String getTreeChipText(MusicLibraryQueryTree.Op operator, boolean negated) {
+    private String getTreeChipText(QueryTree.Op operator, boolean negated) {
         int stringResource = getTreeOperatorStringResource(operator, negated);
         return getContext().getString(stringResource);
     }
 
-    private int getTreeOperatorStringResource(MusicLibraryQueryTree.Op operator, boolean negated) {
-        if (operator == MusicLibraryQueryTree.Op.AND) {
+    private int getTreeOperatorStringResource(QueryTree.Op operator, boolean negated) {
+        if (operator == QueryTree.Op.AND) {
             if (negated) {
                 return R.string.musiclibrary_query_notall;
             } else {
@@ -401,13 +401,13 @@ public class MusicLibraryFilterGroup extends LinearLayout {
         }
     }
 
-    public void setOperator(MusicLibraryQueryTree.Op operator, boolean negated) {
+    public void setOperator(QueryTree.Op operator, boolean negated) {
         this.operator = operator;
         this.negated = negated;
         operatorView.setText(getTreeOperatorStringResource(operator, negated));
     }
 
-    public void setOnOperatorChanged(BiConsumer<MusicLibraryQueryTree.Op, Boolean> onOpChanged) {
+    public void setOnOperatorChanged(BiConsumer<QueryTree.Op, Boolean> onOpChanged) {
         onOpChangedCb = onOpChanged;
     }
 
@@ -435,7 +435,7 @@ public class MusicLibraryFilterGroup extends LinearLayout {
         return null;
     }
 
-    private MusicLibraryQueryLeaf.Op onNewOpSelected(int typePos, int pos) {
+    private QueryLeaf.Op onNewOpSelected(int typePos, int pos) {
         if (newListener != null) {
             return newListener.onOpSelected(typePos, pos);
         }
@@ -445,9 +445,9 @@ public class MusicLibraryFilterGroup extends LinearLayout {
     public interface NewListener {
         void onActivated();
         String onTypeSelected(int typePos);
-        MusicLibraryQueryLeaf.Op onOpSelected(int typePos, int pos);
+        QueryLeaf.Op onOpSelected(int typePos, int pos);
         void onFilterSubmit(int typePos, int opPos, String input, boolean negate);
-        void onSubQuerySubmit(MusicLibraryQueryTree.Op op, boolean negate);
+        void onSubQuerySubmit(QueryTree.Op op, boolean negate);
     }
 
     public interface LeafFilterListener {

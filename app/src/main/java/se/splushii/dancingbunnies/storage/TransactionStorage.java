@@ -13,7 +13,6 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Transformations;
 import se.splushii.dancingbunnies.jobs.TransactionsWorker;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.db.DB;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.storage.db.TransactionDao;
@@ -110,10 +109,9 @@ public class TransactionStorage {
     }
 
     public CompletableFuture<Void> addPlaylist(Context context,
-                                               PlaylistID playlistID,
+                                               EntryID playlistID,
                                                String name,
-                                               String query,
-                                               PlaylistID beforePlaylistID) {
+                                               String query) {
         Transaction t = new TransactionPlaylistAdd(
                 Transaction.ID_NONE,
                 playlistID.src,
@@ -122,8 +120,7 @@ public class TransactionStorage {
                 null,
                 playlistID,
                 name,
-                query,
-                beforePlaylistID
+                query
         );
         return addTransaction(context, t).thenRun(() ->
                 TransactionsWorker.requeue(context, true)
@@ -131,9 +128,9 @@ public class TransactionStorage {
     }
 
     public CompletableFuture<Void> deletePlaylists(Context context,
-                                                   List<PlaylistID> playlistIDs) {
+                                                   List<EntryID> playlistIDs) {
         CompletableFuture<Void> future = CompletableFuture.completedFuture(null);
-        for (PlaylistID playlistID: playlistIDs) {
+        for (EntryID playlistID: playlistIDs) {
             future = future.thenCompose(aVoid -> addTransaction(
                     context,
                     new TransactionPlaylistDelete(
@@ -153,13 +150,15 @@ public class TransactionStorage {
 
     public CompletableFuture<Void> addPlaylistEntries(Context context,
                                                       String src,
-                                                      PlaylistID playlistID,
+                                                      EntryID playlistID,
                                                       List<EntryID> entryIDs,
                                                       String beforePlaylistEntryID) {
         CompletableFuture<Void> future = CompletableFuture.completedFuture(null);
         for (EntryID entryID: entryIDs) {
             future = future
-                    .thenCompose(aVoid -> MetaStorage.getInstance(context).getMetaOnce(entryID))
+                    .thenCompose(aVoid ->
+                            MetaStorage.getInstance(context).getTrackMetaOnce(entryID)
+                    )
                     .thenCompose(meta -> addTransaction(
                             context,
                             new TransactionPlaylistEntryAdd(
@@ -182,7 +181,7 @@ public class TransactionStorage {
 
     public CompletableFuture<Void> deletePlaylistEntry(Context context,
                                                        String src,
-                                                       PlaylistID playlistID,
+                                                       EntryID playlistID,
                                                        PlaylistEntry playlistEntry) {
         return deletePlaylistEntries(
                 context,
@@ -194,7 +193,7 @@ public class TransactionStorage {
 
     public CompletableFuture<Void> deletePlaylistEntries(Context context,
                                                          String src,
-                                                         PlaylistID playlistID,
+                                                         EntryID playlistID,
                                                          List<PlaylistEntry> playlistEntries) {
         CompletableFuture<Void> future = CompletableFuture.completedFuture(null);
         for (PlaylistEntry playlistEntry: playlistEntries) {
@@ -219,7 +218,7 @@ public class TransactionStorage {
 
     public CompletableFuture<Void> movePlaylistEntries(Context context,
                                                        String src,
-                                                       PlaylistID playlistID,
+                                                       EntryID playlistID,
                                                        ArrayList<PlaylistEntry> playlistEntries,
                                                        String beforePlaylistEntryID) {
         CompletableFuture<Void> future = CompletableFuture.completedFuture(null);

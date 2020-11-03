@@ -110,7 +110,7 @@ public class TransactionMetaAdd extends Transaction {
     @Override
     public CompletableFuture<Void> applyLocally(Context context) {
         return MetaStorage.getInstance(context)
-                .insertMeta(entryID, key, value);
+                .insertTrackMeta(entryID, key, value);
     }
 
     @Override

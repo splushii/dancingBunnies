@@ -12,7 +12,6 @@ import java.util.concurrent.CompletableFuture;
 
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.PlaylistID;
 import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -27,7 +26,7 @@ public class TransactionPlaylistEntryMove extends Transaction {
     private static final String JSON_KEY_ENTRY_ID = "entry_id";
     private static final String JSON_KEY_BEFORE_PLAYLIST_ENTRY_ID = "before_playlist_entry_id";
 
-    private final PlaylistID playlistID;
+    private final EntryID playlistID;
     private final String playlistEntryID;
     private final EntryID entryID;
     private final String beforePlaylistEntryID;
@@ -40,7 +39,7 @@ public class TransactionPlaylistEntryMove extends Transaction {
                                         JSONObject args
     ) throws JSONException {
         super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
-        playlistID = PlaylistID.from(args.getJSONObject(JSON_KEY_PLAYLIST_ID));
+        playlistID = EntryID.from(args.getJSONObject(JSON_KEY_PLAYLIST_ID));
         playlistEntryID = args.getString(JSON_KEY_PLAYLIST_ENTRY_ID);
         entryID = EntryID.from(args.getJSONObject(JSON_KEY_ENTRY_ID));
         beforePlaylistEntryID = args.has(JSON_KEY_BEFORE_PLAYLIST_ENTRY_ID)
@@ -53,7 +52,7 @@ public class TransactionPlaylistEntryMove extends Transaction {
                                         Date date,
                                         long errorCount,
                                         String errorMessage,
-                                        PlaylistID playlistID,
+                                        EntryID playlistID,
                                         String playlistEntryID,
                                         EntryID entryID,
                                         String beforePlaylistEntryID

@@ -18,8 +18,8 @@ import androidx.recyclerview.selection.Selection;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.musiclibrary.LibraryEntry;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
+import se.splushii.dancingbunnies.musiclibrary.QueryEntry;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
@@ -58,7 +58,7 @@ public class MusicLibrarySearchAdapter extends
         initialScrolled = false;
         cachedEntriesLiveData = MusicLibraryService.getCachedEntries(fragment.getContext());
         fetchStateLiveData = AudioStorage.getInstance(fragment.getContext()).getFetchState();
-        model.getLibraryEntries().observe(fragment.getViewLifecycleOwner(), dataset -> {
+        model.getQueryEntries().observe(fragment.getViewLifecycleOwner(), dataset -> {
             MusicLibraryUserState state = model.getUserState().getValue();
             if (state.query.isSearchQuery()) {
                 setDataset(dataset);
@@ -70,7 +70,7 @@ public class MusicLibrarySearchAdapter extends
         currentEntryLiveData = model.getCurrentEntry();
     }
 
-    private void updateScrollPos(MusicLibraryUserState userState, List<LibraryEntry> entries) {
+    private void updateScrollPos(MusicLibraryUserState userState, List<QueryEntry> entries) {
         if (!initialScrolled && !entries.isEmpty()) {
             initialScrolled = true;
             fragment.scrollSearchTo(userState.pos, userState.pad);
@@ -240,7 +240,7 @@ public class MusicLibrarySearchAdapter extends
         holder.updateHighlight(currentEntryLiveData.getValue());
     }
 
-    private void setDataset(List<LibraryEntry> items) {
+    private void setDataset(List<QueryEntry> items) {
         setDataSet(items.stream().map(item -> item.entryID).collect(Collectors.toList()));
     }
 
