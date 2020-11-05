@@ -48,7 +48,6 @@ import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.QueryNode;
 import se.splushii.dancingbunnies.storage.MetaStorage;
-import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.storage.TransactionStorage;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.storage.transactions.Transaction;
@@ -128,8 +127,6 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
 
     private AudioBrowser remote;
     private PlaylistFragmentModel model;
-
-    private PlaylistStorage playlistStorage;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -336,7 +333,6 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
         playlistRecViewAdapter.setModel(model, null, playlists -> playlists);
         playlistEntriesRecViewAdapter.setModel(model);
         playlistPlaybackEntriesRecViewAdapter.setModel(model);
-        playlistStorage = PlaylistStorage.getInstance(getContext());
         playlistSelectSwitch.setChecked(model.isBrowsedCurrent());
         AtomicBoolean userSelectedPlaylist = new AtomicBoolean(false);
         playlistSelectSwitch.setOnTouchListener((v, event) -> {

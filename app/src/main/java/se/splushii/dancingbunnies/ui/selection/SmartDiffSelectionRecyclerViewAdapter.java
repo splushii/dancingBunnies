@@ -27,8 +27,7 @@ public abstract class SmartDiffSelectionRecyclerViewAdapter<ID, ViewHolder exten
         setDataSet(items, Objects::equals);
     }
 
-    protected void setDataSet(List<ID> items,
-                              BiFunction<ID, ID, Boolean> contentComparator) {
+    protected void setDataSet(List<ID> items, BiFunction<ID, ID, Boolean> contentComparator) {
         if (items.size() > 1000) {
             // Do fast diff
             boolean changed = Diff.fastDiff(dataSet, items, contentComparator);

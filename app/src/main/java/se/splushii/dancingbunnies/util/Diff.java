@@ -217,15 +217,20 @@ public class Diff {
                     + "\nmov : " + movedPositions.size()
             );
         }
-        int numKeptEntries = sameSet.size() + updatedPositions.size() + movedPositions.size();
-        if (numKeptEntries != currentEntries.size()) {
-            Log.e(LC, "Number of ops not affecting count (nop/upd/mov) is invalid."
-                    + " Expected " + currentEntries.size() + ", got " + numKeptEntries);
+        int numDiffKeptEntries = sameSet.size() + updatedPositions.size() + movedPositions.size();
+        int numExpectedKeptEntries = currentEntries.size() - deletedPositions.size();
+        if (numDiffKeptEntries != numExpectedKeptEntries) {
+            Log.e(LC, "Diff is invalid."
+                    + " Number of ops not affecting count (nop/upd/mov) is wrong."
+                    + " Got " + numDiffKeptEntries + ", but expected " + numExpectedKeptEntries);
         }
-        int numDeltaEntries = addedPositions.size() - deletedPositions.size();
-        if (currentEntries.size() + numDeltaEntries != newEntries.size()) {
-            Log.e(LC, "Number of ops affecting count (add/del) is invalid."
-                    + " Expected " + (newEntries.size() - currentEntries.size()) + ", got " + numDeltaEntries);
+
+        int numDiffDeltaEntries = addedPositions.size() - deletedPositions.size();
+        int numExpectedDeltaEntries = newEntries.size() - currentEntries.size();
+        if (numDiffDeltaEntries != numExpectedDeltaEntries) {
+            Log.e(LC, "Diff is invalid."
+                    + " Number of ops affecting count (add/del) is wrong."
+                    + " Got " + numDiffDeltaEntries + ", but expected " + numExpectedDeltaEntries);
         }
 
         // Calculate DiffUtil diff
