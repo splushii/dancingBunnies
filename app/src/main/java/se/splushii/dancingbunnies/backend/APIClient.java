@@ -81,12 +81,17 @@ public abstract class APIClient {
     public abstract void loadSettings(Context context, Path workDir, Bundle settings);
 
     public static APIClient getAPIClient(Context context, String src) {
+        return getAPIClient(context, src, true);
+    }
+
+    public static APIClient getAPIClient(Context context, String src, boolean onlyIfEnabled) {
         String api = MusicLibraryService.getAPIFromSource(src);
         String apiInstanceID = MusicLibraryService.getAPIInstanceIDFromSource(src);
         if (api == null || apiInstanceID == null) {
             return new DummyAPIClient();
         }
-        if (!SettingsActivityFragment.isSourceEnabled(context, api, apiInstanceID)) {
+        if (onlyIfEnabled
+                && !SettingsActivityFragment.isSourceEnabled(context, api, apiInstanceID)) {
             return new DummyAPIClient();
         }
         APIClient apiClient;
@@ -103,7 +108,7 @@ public abstract class APIClient {
             default:
                 return new DummyAPIClient();
         }
-        Bundle settings = SettingsActivityFragment.getSettings(context, src);
+        Bundle settings = SettingsActivityFragment.getSettings(context, src, onlyIfEnabled);
         Path workDirPath = context.getCacheDir().toPath()
                 .resolve(CACHE_DIR)
                 .resolve(api)

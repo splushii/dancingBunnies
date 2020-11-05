@@ -104,8 +104,8 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
 
     public SettingsActivityFragment() {}
 
-    public static Bundle getSettings(Context context, String src) {
-        if (!isSourceEnabled(context, src)) {
+    public static Bundle getSettings(Context context, String src, boolean onlyIfEnabled) {
+        if (onlyIfEnabled && !isSourceEnabled(context, src)) {
             return null;
         }
         String api = MusicLibraryService.getAPIFromSource(src);
@@ -249,7 +249,10 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
         }
         if (dialogFragment != null) {
             dialogFragment.setTargetFragment(this, 0);
-            dialogFragment.show(requireFragmentManager(), "androidx.preference.PreferenceFragment.DIALOG");
+            dialogFragment.show(
+                    getParentFragmentManager(),
+                    "androidx.preference.PreferenceFragment.DIALOG"
+            );
         } else {
             super.onDisplayPreferenceDialog(preference);
         }
@@ -981,11 +984,12 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
             );
             APIClient apiClient = APIClient.getAPIClient(
                     requireContext(),
-                    getSourceFromConfig(requireContext(), backendID)
+                    getSourceFromConfig(requireContext(), backendID),
+                    false
             );
             List<CharSequence> syncPrefEntries = new ArrayList<>();
             List<CharSequence> syncPrefEntryValues = new ArrayList<>();
-            if (apiClient != null) {
+            if (!(apiClient instanceof DummyAPIClient)) {
                 if (apiClient.hasLibrary()) {
                     syncPrefEntries.add("Sync library");
                     syncPrefEntryValues.add(BACKEND_SYNC_LIBRARY);
@@ -1016,7 +1020,7 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
 
             addPref(sp,
                     prefSettingsActionsCat,
-                    prefKeyEnabled,
+                    null,
                     backendID,
                     R.string.pref_key_backend_config_suffix_db_delete,
                     R.string.pref_backend_config_db_delete,
