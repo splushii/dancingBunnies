@@ -70,6 +70,8 @@ public class AudioBrowser {
                     public void onConnectionFailed() {
                         Log.e(LC, "MediaBrowser onConnectFailed");
                         mediaBrowserConnecting.set(false);
+                        Log.e(LC, "Retrying MediaBrowser connect");
+                        connect();
                     }
 
                     @Override
