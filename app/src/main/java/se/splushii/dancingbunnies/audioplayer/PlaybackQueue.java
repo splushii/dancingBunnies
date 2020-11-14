@@ -3,6 +3,7 @@ package se.splushii.dancingbunnies.audioplayer;
 import android.util.Log;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -16,36 +17,12 @@ import se.splushii.dancingbunnies.util.Util;
 class PlaybackQueue {
     private static final String LC = Util.getLogContext(PlaybackQueue.class);
     private final LinkedList<PlaybackEntry> queue;
+    private final HashSet<Long> playbackIDSet;
     private final PlaybackControllerStorage storage;
     private final int queueID;
     private final Runnable onQueueChanged;
     private final LiveData<List<PlaybackEntry>> playbackEntriesLiveData;
-    private final Observer<List<PlaybackEntry>> observer = new Observer<List<PlaybackEntry>>() {
-        @Override
-        public void onChanged(List<PlaybackEntry> playbackEntries) {
-            int previousSize;
-            int newSize;
-            boolean changed;
-            synchronized (queue) {
-                previousSize = queue.size();
-                changed = !queue.equals(playbackEntries);
-                if (changed) {
-                    queue.clear();
-                    queue.addAll(playbackEntries);
-                }
-                newSize = queue.size();
-            }
-            if (changed) {
-                PlaybackQueue.this.onChanged(previousSize, newSize);
-            }
-        }
-    };
-
-    private void onChanged(int previousSize, int newSize) {
-        Log.d(LC, PlaybackControllerStorage.getQueueName(queueID)
-                + " changed (size " + previousSize + " -> " + newSize + ")");
-        onQueueChanged.run();
-    }
+    private final Observer<List<PlaybackEntry>> observer;
 
     PlaybackQueue(int queueID,
                   PlaybackControllerStorage storage,
@@ -56,7 +33,45 @@ class PlaybackQueue {
         this.queueID = queueID;
         this.onQueueChanged = onQueueChanged;
         queue = new LinkedList<>();
+        playbackIDSet = new HashSet<>();
+        observer = playbackEntries -> {
+            int previousSize;
+            int newSize;
+            boolean changed;
+            synchronized (queue) {
+                previousSize = queue.size();
+                changed = !queue.equals(playbackEntries);
+                if (changed) {
+                    queue.clear();
+                    playbackIDSet.clear();
+                    _add(0, playbackEntries);
+                }
+                newSize = queue.size();
+            }
+            if (changed) {
+                PlaybackQueue.this.onChanged(previousSize, newSize);
+            }
+        };
         playbackEntriesLiveData.observeForever(observer);
+    }
+
+    private void onChanged(int previousSize, int newSize) {
+        Log.d(LC, PlaybackControllerStorage.getQueueName(queueID)
+                + " changed (size " + previousSize + " -> " + newSize + ")");
+        onQueueChanged.run();
+    }
+
+    private void _add(int toPosition, List<PlaybackEntry> entries) {
+        int index = toPosition;
+        for (PlaybackEntry entry : entries) {
+            if (playbackIDSet.contains(entry.playbackID)) {
+                Log.e(LC, "Tried to add duplicate playbackID: " + entry.playbackID
+                        + "(" + entry.toString() + ")");
+                continue;
+            }
+            queue.add(index++, entry);
+            playbackIDSet.add(entry.playbackID);
+        }
     }
 
     CompletableFuture<Void> add(int toPosition, List<PlaybackEntry> entries) {
@@ -70,10 +85,7 @@ class PlaybackQueue {
         int newSize;
         synchronized (queue) {
             previousSize = queue.size();
-            int index = toPosition;
-            for (PlaybackEntry entry : entries) {
-                queue.add(index++, entry);
-            }
+            _add(toPosition, entries);
             newSize = queue.size();
         }
         onChanged(previousSize, newSize);
@@ -114,7 +126,8 @@ class PlaybackQueue {
         synchronized (queue) {
             previousSize = queue.size();
             queue.clear();
-            queue.addAll(entries);
+            playbackIDSet.clear();
+            _add(0, entries);
             newSize = queue.size();
         }
         onChanged(previousSize, newSize);
@@ -129,11 +142,11 @@ class PlaybackQueue {
                     .limit(num)
                     .collect(Collectors.toList());
         }
-        return removeEntries(entries)
+        return remove(entries)
                 .thenApply(aVoid -> entries);
     }
 
-    CompletableFuture<Void> removeEntries(List<PlaybackEntry> playbackEntries) {
+    CompletableFuture<Void> remove(List<PlaybackEntry> playbackEntries) {
         Log.d(LC, "remove(entries.size: " + playbackEntries.size() + ")"
                 + "from \"" + PlaybackControllerStorage.getQueueName(queueID) + "\"");
         if (playbackEntries.isEmpty()) {
@@ -146,6 +159,7 @@ class PlaybackQueue {
             previousSize = queue.size();
             for (PlaybackEntry entry : playbackEntries) {
                 queue.remove(entry);
+                playbackIDSet.remove(entry.playbackID);
             }
             newSize = queue.size();
         }
@@ -162,6 +176,7 @@ class PlaybackQueue {
         synchronized (queue) {
             previousSize = queue.size();
             queue.clear();
+            playbackIDSet.clear();
             newSize = queue.size();
         }
         onChanged(previousSize, newSize);

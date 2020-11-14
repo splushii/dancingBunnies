@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "628931851ff6754b6eef00c412bcc882",
+    "identityHash": "cae384046bcea7850df3741f0b934891",
     "entities": [
       {
         "tableName": "track_id",
@@ -1343,7 +1343,17 @@
           ],
           "autoGenerate": true
         },
-        "indices": [],
+        "indices": [
+          {
+            "name": "index_playback_controller_entries_queue_id_playback_id",
+            "unique": true,
+            "columnNames": [
+              "queue_id",
+              "playback_id"
+            ],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_playback_controller_entries_queue_id_playback_id` ON `${TABLE_NAME}` (`queue_id`, `playback_id`)"
+          }
+        ],
         "foreignKeys": []
       },
       {
@@ -1422,7 +1432,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '628931851ff6754b6eef00c412bcc882')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cae384046bcea7850df3741f0b934891')"
     ]
   }
 }

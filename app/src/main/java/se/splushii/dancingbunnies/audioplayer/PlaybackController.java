@@ -601,9 +601,67 @@ public class PlaybackController {
             return Util.futureResult("updateState: audioPlayer is null");
         }
         return CompletableFuture.completedFuture(null)
+                .thenCompose(aVoid -> cleanDuplicateEntries())
                 .thenCompose(aVoid -> syncPlaylistEntries())
                 .thenCompose(aVoid -> updateHistory())
                 .thenCompose(aVoid -> updatePreload());
+    }
+
+    private CompletionStage<Void> cleanDuplicateEntries() {
+        // Start with entries in history
+        HashSet<Long> playbackIDs = history.getEntries().stream()
+                .map(p -> p.playbackID)
+                .collect(Collectors.toCollection(HashSet::new));
+        // Check current entry
+        PlaybackEntry current = audioPlayer.getCurrentEntry();
+        if (current != null) {
+            if (playbackIDs.contains(current.playbackID)) {
+                // De-preload and schedule another updateState
+                submitCompletableFuture(this::updateState);
+                return audioPlayer.dePreload(Collections.singletonList(current))
+                        .thenCompose(aVoid -> Util.futureResult(
+                                "cleanDuplicateEntries: Current entry is a duplicate"
+                        ));
+            }
+            playbackIDs.add(current.playbackID);
+        }
+        // Check AudioPlayer preload
+        for (PlaybackEntry entry: audioPlayer.getPreloadEntries()) {
+            if (playbackIDs.contains(entry.playbackID)) {
+                // De-preload and schedule another updateState
+                submitCompletableFuture(this::updateState);
+                return audioPlayer.dePreload(Collections.singletonList(entry))
+                        .thenCompose(aVoid -> Util.futureResult(
+                                "cleanDuplicateEntries: AudioPlayer preload contains a duplicate"
+                        ));
+            }
+            playbackIDs.add(entry.playbackID);
+        }
+        // Check PlaybackController queue
+        for (PlaybackEntry entry: queue.getEntries()) {
+            if (playbackIDs.contains(entry.playbackID)) {
+                // De-preload and schedule another updateState
+                submitCompletableFuture(this::updateState);
+                queue.remove(Collections.singletonList(entry))
+                        .thenCompose(aVoid -> Util.futureResult(
+                                "cleanDuplicateEntries: PlaybackController queue contains a duplicate"
+                        ));
+            }
+            playbackIDs.add(entry.playbackID);
+        }
+        // Check PlaybackController playlist entries
+        for (PlaybackEntry entry: playlistItems.getEntries()) {
+            if (playbackIDs.contains(entry.playbackID)) {
+                // De-preload and schedule another updateState
+                submitCompletableFuture(this::updateState);
+                playlistItems.remove(Collections.singletonList(entry))
+                        .thenCompose(aVoid -> Util.futureResult(
+                                "cleanDuplicateEntries: PlaybackController playlist entries contains a duplicate"
+                        ));
+            }
+            playbackIDs.add(entry.playbackID);
+        }
+        return Util.futureResult();
     }
 
     private CompletionStage<Void> updateHistory() {
@@ -1328,8 +1386,23 @@ public class PlaybackController {
         callback.onMetaChanged(entryID);
     }
 
+    private List<PlaybackEntry> getUniqueEntries(List<PlaybackEntry> entries) {
+        List<PlaybackEntry> uniqueEntries = new ArrayList<>();
+        HashSet<Long> playbackIDs = new HashSet<>();
+        for (PlaybackEntry entry: entries) {
+            if (playbackIDs.contains(entry.playbackID)) {
+                Log.w(LC, "Duplicate playbackID: " + entry.playbackID
+                        + "(" + entry.toString() + ")");
+                continue;
+            }
+            uniqueEntries.add(entry);
+            playbackIDs.add(entry.playbackID);
+        }
+        return uniqueEntries;
+    }
+
     private List<PlaybackEntry> getPlayerEntries() {
-        return audioPlayer.getPreloadEntries();
+        return getUniqueEntries(audioPlayer.getPreloadEntries());
     }
 
     private List<PlaybackEntry> getPlayerQueueEntries() {
@@ -1348,7 +1421,7 @@ public class PlaybackController {
         List<PlaybackEntry> playbackEntries = new ArrayList<>();
         playbackEntries.addAll(getPlayerQueueEntries());
         playbackEntries.addAll(queue.getEntries());
-        return playbackEntries;
+        return getUniqueEntries(playbackEntries);
     }
 
     private List<PlaybackEntry> getAllPlaylistEntries() {
@@ -1362,7 +1435,7 @@ public class PlaybackController {
         List<PlaybackEntry> playbackEntries = new ArrayList<>();
         playbackEntries.addAll(getAllQueueEntries());
         playbackEntries.addAll(getAllPlaylistEntries());
-        return playbackEntries;
+        return getUniqueEntries(playbackEntries);
     }
 
     interface Callback {
