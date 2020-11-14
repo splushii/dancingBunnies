@@ -84,7 +84,7 @@ public class MusicLibraryAdapter extends
         initialScrolled = false;
         model.getQueryEntries().observe(fragment.getViewLifecycleOwner(), queryEntries -> {
             MusicLibraryUserState state = model.getUserState().getValue();
-            if (state.query.isSearchQuery() || queryEntries.isEmpty()) {
+            if (state.query.isSearchQuery()) {
                 setQueryEntries(new ArrayList<>());
             } else {
                 if (fragment.showAllEntriesRow()) {
