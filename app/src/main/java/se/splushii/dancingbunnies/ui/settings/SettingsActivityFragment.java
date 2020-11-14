@@ -282,7 +282,8 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                     "org_apache_lucene__lucene_sandbox",
                     "commons_io__commons_io",
                     "org_apache_commons__commons_lang3",
-                    "com_fasterxml_jackson_dataformat__jackson_dataformat_yaml"
+                    "com_fasterxml_jackson_dataformat__jackson_dataformat_yaml",
+                    "com_android_volley__volley"
             }) {
                 HashMap<String, String> libMods = new HashMap<>();
                 libMods.put(fieldLicName, "Apache Version 2.0");
@@ -335,7 +336,6 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                     .withAboutAppName(getResources().getString(R.string.app_name))
                     .withLicenseShown(true)
                     .withLicenseDialog(true)
-                    .withFields(R.string.class.getFields())
                     .withLibraryModification(libModMap)
                     .start(requireContext());
             return false;

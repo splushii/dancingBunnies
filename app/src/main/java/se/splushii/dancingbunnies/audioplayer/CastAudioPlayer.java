@@ -61,7 +61,7 @@ public class CastAudioPlayer implements AudioPlayer {
     private final LongSparseArray<Integer> playbackIDToCastItemIDMap;
     private PlaybackEntry playbackFinishedEntry;
 
-    private final Semaphore queueChangeLock = new Semaphore(1);
+    private final Semaphore queueChangeLock = new Semaphore(0);
     private final StampedLock queueStateLock = new StampedLock();
 
     private volatile boolean waitingForResume;
@@ -81,7 +81,6 @@ public class CastAudioPlayer implements AudioPlayer {
         this.context = context;
         this.waitingForResume = waitForResume;
         this.playWhenReady = playWhenReady;
-        queueChangeLock.drainPermits();
         queueItemMap = new SparseArray<>();
         playbackIDToCastItemIDMap = new LongSparseArray<>();
         mediaQueueCallback = new MediaQueueCallback();
@@ -93,18 +92,19 @@ public class CastAudioPlayer implements AudioPlayer {
 
     void setCastSession(CastSession castSession) {
         this.castSession = castSession;
-        getRemote();
+        prepareRemote();
     }
 
-    private RemoteMediaClient getRemote() {
+    private RemoteMediaClient prepareRemote() {
         if (castSession == null) {
+            Log.w(LC, "getRemote: castSession is null. Could not get remoteMediaClient.");
             return null;
         }
         if (remoteMediaClient == null) {
             Log.d(LC, "getRemote: Setting up remoteMediaClient");
             remoteMediaClient = castSession.getRemoteMediaClient();
             if (remoteMediaClient == null) {
-                Log.w(LC, "getRemote: Could not get remoteMediaClient from castSession");
+                Log.w(LC, "getRemote: Got null remoteMediaClient from castSession");
                 return null;
             }
             remoteMediaClient.registerCallback(remoteMediaClientCallback);
@@ -114,29 +114,59 @@ public class CastAudioPlayer implements AudioPlayer {
         return remoteMediaClient;
     }
 
+    private CompletableFuture<RemoteMediaClient> getRemote() {
+        RemoteMediaClient remote = prepareRemote();
+        if (remote == null) {
+            if (disconnectIfInoperable()) {
+                return Util.futureResult(
+                        "getRemote: CastAudioPlayer is inoperable. Disconnecting..."
+                );
+            }
+            return Util.futureResult(
+                    "getRemote: remoteMediaClient is null"
+            );
+        }
+        return Util.futureResult(remote);
+    }
+
     @Override
     public CompletableFuture<Void> initialize() {
         Log.d(LC, "initialize. resuming: " + waitingForResume);
         return CompletableFuture.runAsync(() -> {
             try {
-                for (int i = 0; i < 5; i++) {
+                int numRetries = 5;
+                Log.d(LC, "initialize: Trying to acquire queueChangeLock...");
+                for (int i = 1; i <= numRetries; i++) {
                     if (!queueChangeLock.tryAcquire(1, TimeUnit.SECONDS)) {
-                        Log.w(LC, "initialize: Got timeout waiting for queueChangeLock");
-                        waitingForResume = false;
+                        Log.w(LC, "initialize: Got timeout waiting for queueChangeLock"
+                                + (waitingForResume ? " Waiting for resume" : "")
+                                + " (" + i + "/" + numRetries + ")...");
+                        if (i == numRetries) {
+                            waitingForResume = false;
+                            if (disconnectIfInoperable()) {
+                                throw new Util.FutureException(
+                                        "initialize: CastAudioPlayer is inoperable. Disconnecting..."
+                                );
+                            }
+                        }
                     } else {
                         if (!waitingForResume) {
-                            Log.d(LC, "initialize: Got queueChangeLock. Not waiting for resume");
+                            Log.d(LC, "initialize: Successfully acquired queueChangeLock."
+                                    + " Not waiting for resume.");
                             queueChangeLock.release();
                             break;
                         } else {
-                            Log.d(LC, "initialize: Got queueChangeLock. Waiting for resume");
+                            Log.d(LC, "initialize: Successfully acquired queueChangeLock."
+                                    + " Waiting for resume (" + i + "/" + numRetries + ")...");
                         }
                     }
                 }
+                Log.d(LC, "initialize: Trying to acquire queueStateLock...");
                 long stamp = queueStateLock.tryWriteLock(5, TimeUnit.SECONDS);
                 if (stamp == 0) {
                     Log.w(LC, "initialize: Got timeout waiting for queueStateLock");
                 } else {
+                    Log.d(LC, "initialize: Successfully acquired queueStateLock!");
                     queueStateLock.unlockWrite(stamp);
                 }
                 Log.d(LC, "initialized");
@@ -186,7 +216,7 @@ public class CastAudioPlayer implements AudioPlayer {
 
     @Override
     public long getSeekPosition() {
-        RemoteMediaClient remote = getRemote();
+        RemoteMediaClient remote = prepareRemote();
         if (remote != null) {
             lastPos = remote.getApproximateStreamPosition();
         }
@@ -249,15 +279,8 @@ public class CastAudioPlayer implements AudioPlayer {
     public CompletableFuture<Void> seekTo(long pos) {
         Log.d(LC, "seekTo()");
         return CompletableFuture.completedFuture(null)
-                .thenComposeAsync(aVoid -> {
-                    RemoteMediaClient remote = getRemote();
-                    if (remote == null) {
-                        if (isInoperable()) {
-                            callback.disconnect();
-                        }
-                        return Util.futureResult("seekTo(): remoteMediaClient is null");
-                    }
-
+                .thenComposeAsync(aVoid -> getRemote(), Util.getMainThreadExecutor())
+                .thenComposeAsync(remote -> {
                     Log.d(LC, "playerAction: seekTo(" + pos + ") in state: " + getStateString(
                             remote.getPlayerState(),
                             remote.getIdleReason()
@@ -399,14 +422,8 @@ public class CastAudioPlayer implements AudioPlayer {
             return Util.futureResult();
         }
         return CompletableFuture.completedFuture(null)
-                .thenComposeAsync(aVoid -> {
-                    RemoteMediaClient remote = getRemote();
-                    if (remote == null) {
-                        if (isInoperable()) {
-                            callback.disconnect();
-                        }
-                        return Util.futureResult("preload(): remoteMediaClient is null");
-                    }
+                .thenComposeAsync(aVoid -> getRemote(), Util.getMainThreadExecutor())
+                .thenComposeAsync(remote -> {
                     if (!remote.hasMediaSession()) {
                         return setQueue(entries, 0);
                     }
@@ -451,14 +468,8 @@ public class CastAudioPlayer implements AudioPlayer {
             return Util.futureResult();
         }
         return CompletableFuture.completedFuture(null)
-                .thenComposeAsync(aVoid -> {
-                    RemoteMediaClient remote = getRemote();
-                    if (remote == null) {
-                        if (isInoperable()) {
-                            callback.disconnect();
-                        }
-                        return Util.futureResult("dePreload(): remoteMediaClient is null");
-                    }
+                .thenComposeAsync(aVoid -> getRemote(), Util.getMainThreadExecutor())
+                .thenComposeAsync(remote -> {
                     return handleMediaClientQueueRequest(
                             "dePreload() queueRemoveItems",
                             "Could not remove queue items",
@@ -544,14 +555,8 @@ public class CastAudioPlayer implements AudioPlayer {
         }
         Log.d(LC, "setAutoPlay() updating items to playWhenReady: " + playWhenReady);
         return CompletableFuture.completedFuture(null)
-                .thenComposeAsync(aVoid -> {
-                    RemoteMediaClient remote = getRemote();
-                    if (remote == null) {
-                        if (isInoperable()) {
-                            callback.disconnect();
-                        }
-                        return Util.futureResult("setAutoPlay(): remoteMediaClient is null");
-                    }
+                .thenComposeAsync(aVoid -> getRemote(), Util.getMainThreadExecutor())
+                .thenComposeAsync(remote -> {
                     return handleMediaClientQueueRequest(
                             "setAutoPlay() queueUpdateItems",
                             "Could not set autoplay to " + playWhenReady,
@@ -619,30 +624,49 @@ public class CastAudioPlayer implements AudioPlayer {
         int startIndex = 0;
         int repeatMode = MediaStatus.REPEAT_MODE_REPEAT_OFF;
         return buildMediaQueueItems(playbackEntries, playWhenReady)
-                .thenComposeAsync(queueItems -> {
-                    RemoteMediaClient remote = getRemote();
-                    if (remote == null) {
-                        if (isInoperable()) {
-                            callback.disconnect();
-                        }
-                        return Util.futureResult("setQueue(): remoteMediaClient is null");
-                    }
-                    return handleMediaClientQueueRequest(
-                            "queueLoad",
-                            "Could not load queue",
-                            remote.queueLoad(
-                                    queueItems,
-                                    startIndex,
-                                    repeatMode,
-                                    seekPosition,
-                                    null
-                            )
-                    );
-                }, Util.getMainThreadExecutor());
+                .thenComposeAsync(
+                        queueItems -> getRemote().thenComposeAsync(
+                                remote -> handleMediaClientQueueRequest(
+                                        "queueLoad",
+                                        "Could not load queue",
+                                        remote.queueLoad(
+                                                queueItems,
+                                                startIndex,
+                                                repeatMode,
+                                                seekPosition,
+                                                null
+                                        )
+                                ),
+                                Util.getMainThreadExecutor()
+                        ),
+                        Util.getMainThreadExecutor()
+                );
+    }
+
+    private boolean disconnectIfInoperable() {
+        if (isInoperable()) {
+            Log.e(LC, "CastAudioPlayer is inoperable. Disconnecting...");
+            callback.disconnect();
+            return true;
+        }
+        return false;
     }
 
     private boolean isInoperable() {
-        return castSession == null && remoteMediaClient == null && !waitingForResume;
+        Log.e(LC, "castSession: " + castSession);
+        Log.e(LC, "remoteMediaClient: " + remoteMediaClient);
+        Log.e(LC, "waitingForResume: " + waitingForResume);
+        if (castSession != null) {
+            Log.e(LC, "castSession disc: " + castSession.isDisconnected());
+            Log.e(LC, "castSession disc: " + castSession.isSuspended());
+        }
+        if (remoteMediaClient != null) {
+            Log.e(LC, "re" + getStateString(remoteMediaClient.getPlayerState(), remoteMediaClient.getIdleReason()));
+        }
+        if (remoteMediaClient == null && !waitingForResume) {
+            return true;
+        }
+        return false;
     }
 
     private CompletableFuture<MediaQueueItem[]> buildMediaQueueItems(
@@ -720,14 +744,8 @@ public class CastAudioPlayer implements AudioPlayer {
     public CompletableFuture<Void> next() {
         Log.d(LC, "next()");
         return CompletableFuture.completedFuture(null)
-                .thenComposeAsync(aVoid -> {
-                    RemoteMediaClient remote = getRemote();
-                    if (remote == null) {
-                        if (isInoperable()) {
-                            callback.disconnect();
-                        }
-                        return Util.futureResult("next(): remoteMediaClient is null");
-                    }
+                .thenComposeAsync(aVoid -> getRemote(), Util.getMainThreadExecutor())
+                .thenComposeAsync(remote -> {
                     return handleMediaClientQueueRequest(
                             "next",
                             "Could not go to next",
@@ -748,7 +766,7 @@ public class CastAudioPlayer implements AudioPlayer {
                 msg += "\nmedia error (" + mediaError.getDetailedErrorCode() + ")"
                         + ": " + mediaError.getReason();
             }
-            RemoteMediaClient remote = getRemote();
+            RemoteMediaClient remote = prepareRemote();
             if (remote != null) {
                 msg += "\nstate: " + getStateString(
                         remote.getPlayerState(),
@@ -766,32 +784,24 @@ public class CastAudioPlayer implements AudioPlayer {
     }
 
     private CompletableFuture<Void> playerAction(PlayerAction action) {
-        return CompletableFuture.supplyAsync(() -> {
-            RemoteMediaClient remote = getRemote();
-            if (remote == null) {
-                if (isInoperable()) {
-                    callback.disconnect();
-                }
-                throw new RuntimeException(
-                        "playerAction(" + action.name() + "): remoteMediaClient is null"
-                );
-            }
-            Log.d(LC, "playerAction: " + action.name() + " in state: " + getStateString(
-                    remote.getPlayerState(),
-                    remote.getIdleReason()
-            ));
-            switch (action) {
-                case PLAY:
-                    return remote.isPlaying() ? null : remote.play();
-                case PAUSE:
-                    return remote.isPaused() ? null : remote.pause();
-                case STOP:
-                    return remote.isPaused() ? null : remote.stop();
-                default:
-                    Log.d(LC, "Unknown PlayerAction: " + action.name());
-                    return null;
-            }
-        }, Util.getMainThreadExecutor())
+        return getRemote()
+                .thenApplyAsync(remote -> {
+                    Log.d(LC, "playerAction: " + action.name() + " in state: " + getStateString(
+                            remote.getPlayerState(),
+                            remote.getIdleReason()
+                    ));
+                    switch (action) {
+                        case PLAY:
+                            return remote.isPlaying() ? null : remote.play();
+                        case PAUSE:
+                            return remote.isPaused() ? null : remote.pause();
+                        case STOP:
+                            return remote.isPaused() ? null : remote.stop();
+                        default:
+                            Log.d(LC, "Unknown PlayerAction: " + action.name());
+                            return null;
+                    }
+                }, Util.getMainThreadExecutor())
                 .thenCompose(request -> request == null ? Util.futureResult(null) :
                         handleMediaClientRequest(
                                 action.name(),
@@ -943,7 +953,7 @@ public class CastAudioPlayer implements AudioPlayer {
     private class RemoteMediaClientCallback extends RemoteMediaClient.Callback {
         @Override
         public void onStatusUpdated() {
-            RemoteMediaClient remote = getRemote();
+            RemoteMediaClient remote = prepareRemote();
             if (remote == null) {
                 return;
             }
@@ -1015,7 +1025,7 @@ public class CastAudioPlayer implements AudioPlayer {
         @Override
         public void onMetadataUpdated() {
             Log.d(LC, "onMetadataUpdated");
-            RemoteMediaClient remote = getRemote();
+            RemoteMediaClient remote = prepareRemote();
             if (remote == null) {
                 return;
             }
@@ -1032,7 +1042,7 @@ public class CastAudioPlayer implements AudioPlayer {
             Log.d(LC, "onQueueStatusUpdated");
             queueChangeLock.drainPermits();
             queueChangeLock.release();
-            RemoteMediaClient remote = getRemote();
+            RemoteMediaClient remote = prepareRemote();
             if (remote == null) {
                 return;
             }

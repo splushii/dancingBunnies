@@ -5,6 +5,7 @@ import android.util.Log;
 
 import com.google.android.gms.cast.framework.CastContext;
 import com.google.android.gms.cast.framework.CastSession;
+import com.google.android.gms.cast.framework.CastState;
 import com.google.android.gms.cast.framework.Session;
 import com.google.android.gms.cast.framework.SessionManager;
 import com.google.android.gms.cast.framework.SessionManagerListener;
@@ -178,8 +179,26 @@ public class PlaybackController {
 
         CastContext castContext = CastContext.getSharedInstance(context);
         sessionManager = castContext.getSessionManager();
+        castContext.addCastStateListener(castState -> {
+            switch (castState) {
+                case CastState.NO_DEVICES_AVAILABLE:
+                    Log.d(LC, "CastState: NO_DEVICES_AVAILABLE");
+                    break;
+                case CastState.NOT_CONNECTED:
+                    Log.d(LC, "CastState: NOT_CONNECTED");
+                    break;
+                case CastState.CONNECTING:
+                    Log.d(LC, "CastState: CONNECTING");
+                    break;
+                case CastState.CONNECTED:
+                    Log.d(LC, "CastState: CONNECTED");
+                    break;
+                default:
+                    Log.e(LC, "CastState: UNKNOWN");
+                    break;
+            }
+        });
         sessionManager.addSessionManagerListener(sessionManagerListener);
-
         switch (currentPlayerType) {
             default:
             case LOCAL:
@@ -219,12 +238,16 @@ public class PlaybackController {
         submitCompletableFuture(this::updateState);
     }
 
-    void onDestroy() {
+    void onDestroy(boolean stopPlayer) {
         Log.d(LC, "onDestroy");
         currentPlaylistEntriesLiveData.removeObserver(currentPlaylistEntriesObserver);
         sessionManager.removeSessionManagerListener(sessionManagerListener);
         setPlayWhenReady(false);
-        audioPlayer.stop();
+        if (stopPlayer) {
+            audioPlayer.stop();
+        }
+        audioPlayer.destroy();
+        audioPlayer = null;
         queue.onDestroy();
         playlistItems.onDestroy();
         history.onDestroy();
@@ -1154,7 +1177,7 @@ public class PlaybackController {
                     + "\nPlaylist playback mov " + movedPlaybackEntries.size()
             );
             if (!deletedPlaybackEntries.isEmpty()) {
-                currentPlaylistPlaybackEntries.removeEntries(deletedPlaybackEntries);
+                currentPlaylistPlaybackEntries.remove(deletedPlaybackEntries);
             }
             // TODO: Shuffle in new entries (if playback order is shuffle)
             addedPlaybackEntries.forEach(p -> p.setPreloaded(false));
@@ -1166,6 +1189,15 @@ public class PlaybackController {
             }
             if (!movedPlaybackEntries.isEmpty()) {
                 currentPlaylistPlaybackEntries.updatePositions(movedPlaybackEntries);
+            }
+            if (currentPlaylistPlaybackEntries.size() != newPlaylistEntries.size()) {
+                Log.e(LC, "Number of playlist playback entries ("
+                        + currentPlaylistPlaybackEntries.size()
+                        + ") differ"
+                        + " from number of playlist entries ("
+                        + newPlaylistEntries.size()
+                        + "). This should never happen..."
+                );
             }
         }
         submitCompletableFuture(this::updateState);
@@ -1179,7 +1211,7 @@ public class PlaybackController {
 
     private CompletableFuture<Void> _deQueue(List<PlaybackEntry> playbackEntries, boolean thenUpdateState) {
         Log.d(LC, "deQueue");
-        CompletableFuture<Void> result = queue.removeEntries(playbackEntries)
+        CompletableFuture<Void> result = queue.remove(playbackEntries)
                 .thenCompose(v -> audioPlayer.dePreload(playbackEntries));
         return thenUpdateState ? result.thenCompose(aVoid -> updateState()) : result;
     }

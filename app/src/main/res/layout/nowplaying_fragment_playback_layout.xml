@@ -27,7 +27,7 @@
         android:layout_weight="1" />
     <androidx.mediarouter.app.MediaRouteButton
         android:id="@+id/nowlaying_mediaroutebutton"
-        app:mediaRouteButtonTint="@color/icon_secondary"
+        app:mediaRouteButtonTint="@color/icon_mediarouter"
         android:layout_width="36dp"
         android:layout_height="36dp" />
     <ImageView
@@ -36,7 +36,7 @@
         android:layout_height="18dp"
         android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp"
-        android:tint="@color/icon_secondary"
+        app:tint="@color/icon_secondary"
         android:contentDescription="@string/selected_media_route" />
     <ImageButton
         android:id="@+id/nowplaying_play_pause"

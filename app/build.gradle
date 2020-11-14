@@ -2,13 +2,13 @@ apply plugin: 'com.android.application'
 apply plugin: 'com.mikepenz.aboutlibraries.plugin'
 
 android {
-    compileSdkVersion 29
+    compileSdkVersion 30
     buildToolsVersion '29.0.2'
 
     defaultConfig {
         applicationId "se.splushii.dancingbunnies"
         minSdkVersion 26
-        targetSdkVersion 29
+        targetSdkVersion 30
         versionCode 6
         versionName "0.1.0"
         javaCompileOptions {
@@ -70,17 +70,18 @@ dependencies {
     annotationProcessor "androidx.room:room-compiler:2.2.5"
     implementation "androidx.work:work-runtime:2.4.0"
     implementation 'androidx.appcompat:appcompat:1.2.0'
-    implementation 'androidx.mediarouter:mediarouter:1.1.0'
+    implementation 'androidx.mediarouter:mediarouter:1.2.0'
     implementation 'androidx.recyclerview:recyclerview:1.1.0'
     implementation 'androidx.recyclerview:recyclerview-selection:1.0.0'
     implementation 'androidx.preference:preference:1.1.1'
 
+    implementation("com.google.guava:guava:30.0-android")
     implementation 'com.google.android.material:material:1.2.1'
     implementation 'com.android.volley:volley:1.1.1'
     implementation 'com.google.android.gms:play-services-cast-framework:19.0.0'
 
-    implementation "com.mikepenz:aboutlibraries-core:8.1.0"
-    implementation "com.mikepenz:aboutlibraries:8.1.0"
+    implementation "com.mikepenz:aboutlibraries-core:8.5.0"
+    implementation "com.mikepenz:aboutlibraries:8.5.0"
 
     implementation "com.networknt:json-schema-validator:1.0.40"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.11.0"

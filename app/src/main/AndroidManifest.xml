@@ -56,5 +56,8 @@
             </intent-filter>
         </receiver>
         <receiver android:name=".audioplayer.CastMediaIntentReceiver" />
+<!--        Cast stops working when enabling this -->
+<!--        Don't enable until the Cast framework plays nice with MediaRouter -->
+<!--        <receiver android:name="androidx.mediarouter.media.MediaTransferReceiver" />-->
     </application>
 </manifest>

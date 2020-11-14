@@ -543,6 +543,14 @@ public class Meta {
         b.putString(MediaMetadataCompat.METADATA_KEY_TITLE, getAsString(FIELD_TITLE));
         b.putString(MediaMetadataCompat.METADATA_KEY_ALBUM, getAsString(FIELD_ALBUM));
         b.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, getAsString(FIELD_ARTIST));
+        String albumArtURI = getAsString(FIELD_ALBUM_ART_URI);
+        if (albumArtURI != null) {
+            b.putString(MediaMetadataCompat.METADATA_KEY_ART_URI, albumArtURI);
+        }
+        long duration = getFirstLong(FIELD_DURATION, -1);
+        if (duration > 0) {
+            b.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration);
+        }
         return b.build();
     }
 

@@ -67,6 +67,8 @@ import se.splushii.dancingbunnies.util.Util;
 import static android.view.View.GONE;
 import static android.view.View.INVISIBLE;
 import static android.view.View.VISIBLE;
+import static androidx.mediarouter.media.MediaRouter.RouteInfo.DEVICE_TYPE_SPEAKER;
+import static androidx.mediarouter.media.MediaRouter.RouteInfo.DEVICE_TYPE_TV;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE_DELETE_MULTIPLE;
@@ -120,6 +122,7 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
     private MutableLiveData<EntryID> currentPlaylistIDLiveData = new MutableLiveData<>();
     private View currentPlaylistView;
     private WaveformSeekBar waveformSeekBar;
+    private final MediaRouteSelector mediaRouteSelector;
     private MediaRouteButton mediaRouteButton;
     private ImageButton nextBtn;
     private ImageView mediaRouteIcon;
@@ -128,8 +131,15 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
 
     private AudioBrowser remote;
 
+    private int mediaRouteTargetDrawable;
+    private int mediaRouteTypeDrawable;
+
     public NowPlayingFragment() {
         entryIDLiveData = new MutableLiveData<>();
+        mediaRouteSelector = new MediaRouteSelector.Builder()
+                .addControlCategory(MediaControlIntent.CATEGORY_LIVE_AUDIO)
+                .addControlCategory(MediaControlIntent.CATEGORY_REMOTE_PLAYBACK)
+                .build();
     }
 
     @Override
@@ -529,30 +539,89 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
         super.onResume();
         mediaRouter = MediaRouter.getInstance(requireContext());
         mediaRouter.addCallback(
-                new MediaRouteSelector.Builder()
-                        .addControlCategory(MediaControlIntent.CATEGORY_LIVE_AUDIO)
-                        .addControlCategory(MediaControlIntent.CATEGORY_REMOTE_PLAYBACK)
-                        .build(),
+                mediaRouteSelector,
                 mediaRouterCallback
         );
         setSelectedMediaRoute(mediaRouter.getSelectedRoute());
     }
 
     private void setSelectedMediaRoute(MediaRouter.RouteInfo selectedRoute) {
-        Log.d(LC, "media route selected: " + selectedRoute.getName());
-        if (selectedRoute.isBluetooth()) {
-            mediaRouteIcon.setImageResource(R.drawable.ic_bluetooth_black_24dp);
-        } else if (selectedRoute.isDefault()) {
-            mediaRouteIcon.setImageResource(R.drawable.ic_phone_android_black_24dp);
+        boolean isTargetLocal = selectedRoute.isDeviceSpeaker();
+        boolean isTargetBluetooth = selectedRoute.isBluetooth();
+        boolean isSpeaker = isTargetLocal;
+        // TODO: replace with selectedRoute.isGroup() when it's working
+        boolean isGroup = false;
+        boolean isTV = false;
+        switch (selectedRoute.getDeviceType()) {
+            case DEVICE_TYPE_TV:
+                isTV = true;
+                break;
+            case DEVICE_TYPE_SPEAKER:
+                isSpeaker = true;
+                break;
+        }
+
+        int targetDrawable;
+        if (isTargetLocal) {
+            targetDrawable = R.drawable.ic_phone_android_black_24dp;
+        } else if (isTargetBluetooth) {
+            targetDrawable = R.drawable.ic_bluetooth_black_24dp;
         } else {
-            mediaRouteIcon.setImageResource(0);
+            // Assume it's a cast device
+            switch (selectedRoute.getConnectionState()) {
+                case MediaRouter.RouteInfo.CONNECTION_STATE_DISCONNECTED:
+                    targetDrawable = R.drawable.ic_baseline_cast_24;
+                    break;
+                case MediaRouter.RouteInfo.CONNECTION_STATE_CONNECTING:
+                    targetDrawable = R.drawable.cast_ic_notification_connecting;
+                    break;
+                case MediaRouter.RouteInfo.CONNECTION_STATE_CONNECTED:
+                    targetDrawable = R.drawable.ic_baseline_cast_connected_24;
+                    break;
+                default:
+                    targetDrawable = R.drawable.ic_baseline_device_unknown_24;
+                    break;
+            }
+        }
+
+        int typeDrawable;
+        if (isTargetLocal) {
+            typeDrawable = R.drawable.ic_baseline_volume_up_24;
+        } else if (isGroup) {
+            typeDrawable = R.drawable.ic_baseline_speaker_group_24;
+        } else if (isSpeaker) {
+            typeDrawable = R.drawable.ic_baseline_speaker_24;
+        } else if (isTV) {
+            typeDrawable = R.drawable.ic_baseline_tv_24;
+        } else {
+            typeDrawable = 0;
+        }
+        if (targetDrawable != mediaRouteTargetDrawable) {
+            mediaRouteButton.setRemoteIndicatorDrawable(ContextCompat.getDrawable(
+                    requireContext(),
+                    targetDrawable
+            ));
+            mediaRouteTargetDrawable = targetDrawable;
+        }
+        if (typeDrawable != mediaRouteTypeDrawable) {
+            mediaRouteIcon.setImageResource(typeDrawable);
+            mediaRouteTypeDrawable = typeDrawable;
         }
     }
 
-    private MediaRouter.Callback mediaRouterCallback = new MediaRouter.Callback() {
+    private final MediaRouter.Callback mediaRouterCallback = new MediaRouter.Callback() {
         @Override
-        public void onRouteSelected(MediaRouter router, MediaRouter.RouteInfo route) {
+        public void onRouteSelected(@NonNull MediaRouter router,
+                                    @NonNull MediaRouter.RouteInfo route,
+                                    int reason) {
             setSelectedMediaRoute(route);
+        }
+
+        @Override
+        public void onRouteChanged(MediaRouter router, MediaRouter.RouteInfo route) {
+            if (route.isSelected()) {
+                setSelectedMediaRoute(route);
+            }
         }
     };
 

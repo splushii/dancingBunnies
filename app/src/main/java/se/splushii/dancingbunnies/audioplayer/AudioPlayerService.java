@@ -6,11 +6,9 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.ServiceConnection;
 import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
@@ -26,6 +24,8 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 import android.widget.Toast;
+
+import com.google.common.util.concurrent.ListenableFutureTask;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,8 +44,13 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
 import androidx.media.MediaBrowserServiceCompat;
+import androidx.media.VolumeProviderCompat;
 import androidx.media.app.NotificationCompat.MediaStyle;
 import androidx.media.session.MediaButtonReceiver;
+import androidx.mediarouter.media.MediaControlIntent;
+import androidx.mediarouter.media.MediaRouteSelector;
+import androidx.mediarouter.media.MediaRouter;
+import androidx.mediarouter.media.MediaRouterParams;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -59,6 +64,8 @@ import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.util.Util;
 
+import static androidx.mediarouter.media.MediaRouter.RouteInfo.PLAYBACK_TYPE_LOCAL;
+import static androidx.mediarouter.media.MediaRouter.RouteInfo.PLAYBACK_TYPE_REMOTE;
 import static se.splushii.dancingbunnies.audioplayer.PlaybackController.PLAYBACK_ORDER_RANDOM;
 import static se.splushii.dancingbunnies.audioplayer.PlaybackController.PLAYBACK_ORDER_SEQUENTIAL;
 import static se.splushii.dancingbunnies.audioplayer.PlaybackController.PLAYBACK_ORDER_SHUFFLE;
@@ -119,7 +126,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private PlaybackStateCompat playbackState;
     private boolean casting = false;
 
-    private IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+    private final IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
     private final MakeSomeNoiseReceiver makeSomeNoiseReceiver = new MakeSomeNoiseReceiver();
     private boolean isNoiseReceiverRegistered;
 
@@ -127,27 +134,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private AudioFocusRequest audioFocusRequest;
     private boolean playOnAudioFocusGain;
 
-    private MusicLibraryService musicLibraryService;
-    private final ServiceConnection serviceConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            Log.d(LC, "Connected MusicLibraryService");
-            MusicLibraryService.MusicLibraryBinder binder = (MusicLibraryService.MusicLibraryBinder) service;
-            musicLibraryService = binder.getService();
-            setupAudioFocus();
-            setupMediaSession();
-            setupPlaybackController();
-            playbackController.initialize();
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            playbackController.onDestroy();
-            playbackController = null;
-            musicLibraryService = null;
-            Log.d(LC, "Disconnected from MusicLibraryService");
-        }
-    };
+    private RemoteVolumeProvider remoteVolumeProvider;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -177,7 +164,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         QueryNode queryNode = QueryNode.fromJSON(
                 options.getString(Query.BUNDLE_KEY_QUERY_TREE)
         );
-        LiveData<List<QueryEntry>> entries = musicLibraryService.getSubscriptionEntries(
+        LiveData<List<QueryEntry>> entries = MusicLibraryService.getSubscriptionEntries(
+                this,
                 showField,
                 sortFields,
                 sortOrderAscending,
@@ -233,7 +221,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     @Override
     public void onSearch(@NonNull String query, Bundle extras, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
-        result.sendResult(musicLibraryService.getSearchEntries(query).stream()
+        result.sendResult(MusicLibraryService.getSearchEntries(this, query).stream()
                 .map(e -> generateMediaItem(new QueryEntry(e, e.id, null)))
                 .collect(Collectors.toList())
         );
@@ -299,31 +287,76 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         Log.d(LC, "onCreate");
         playbackControllerStorage = PlaybackControllerStorage.getInstance(this);
 
-        bindService(
-                new Intent(this, MusicLibraryService.class),
-                serviceConnection,
-                Context.BIND_AUTO_CREATE
-        );
-
-        NotificationChannel notificationChannel = new NotificationChannel(
-                NOTIFICATION_CHANNEL_ID,
-                NOTIFICATION_CHANNEL_NAME,
-                NotificationManager.IMPORTANCE_LOW
-        );
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        assert notificationManager != null;
-        notificationManager.createNotificationChannel(notificationChannel);
+        setupAudioFocus();
+        setupMediaSession();
+        setupPlaybackController();
+        playbackController.initialize();
+        setupMediaRouter();
+        setupNotification();
     }
+
+    private final MediaRouter.Callback mediaRouterCallback = new MediaRouter.Callback() {
+        @Override
+        public void onRouteSelected(@NonNull MediaRouter router,
+                                    @NonNull MediaRouter.RouteInfo route,
+                                    int reason) {
+            Log.d(LC, "routeSelected: "
+                    + route.getName()
+                    + " (" + route.getDescription() + ")");
+            switch (route.getPlaybackType()) {
+                case PLAYBACK_TYPE_LOCAL:
+                    remoteVolumeProvider = null;
+                    mediaSession.setPlaybackToLocal(route.getPlaybackStream());
+                    break;
+                case PLAYBACK_TYPE_REMOTE:
+                    remoteVolumeProvider = new RemoteVolumeProvider(route);
+                    mediaSession.setPlaybackToRemote(remoteVolumeProvider);
+                    break;
+            }
+            switch (reason) {
+                case MediaRouter.UNSELECT_REASON_STOPPED:
+                    Log.d(LC, "Previous route unselected because it was stopped");
+                    if (playbackController != null) {
+                        playbackController.pause()
+                                .handle(AudioPlayerService.this::handleControllerResult);
+                    }
+                    break;
+                case MediaRouter.UNSELECT_REASON_DISCONNECTED:
+                    Log.d(LC, "Previous route unselected because it was disconnected");
+                    if (playbackController != null) {
+                        playbackController.pause()
+                                .handle(AudioPlayerService.this::handleControllerResult);
+                    }
+                    break;
+                case MediaRouter.UNSELECT_REASON_ROUTE_CHANGED:
+                    Log.d(LC, "Previous route unselected because it was changed");
+                    // Continue playback
+                    break;
+                default:
+                case MediaRouter.UNSELECT_REASON_UNKNOWN:
+                    Log.e(LC, "Previous route unselected with unknown reasons");
+                    break;
+            }
+        }
+
+        @Override
+        public void onRouteChanged(MediaRouter router, MediaRouter.RouteInfo route) {
+            if (route.isSelected()) {
+                if (remoteVolumeProvider != null) {
+                    remoteVolumeProvider.updateVolumeFromRoute();
+                    mediaSession.setPlaybackToRemote(remoteVolumeProvider);
+                }
+            }
+        }
+    };
 
     @Override
     public void onDestroy() {
         Log.d(LC, "onDestroy");
         if (playbackController != null) {
-            playbackController.onDestroy();
+            playbackController.onDestroy(!casting);
         }
         playbackController = null;
-        unbindService(serviceConnection);
-        musicLibraryService = null;
         if (mediaSession != null) {
             mediaSession.release();
         }
@@ -426,8 +459,12 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         Intent intent = new Intent(this, MainActivity.class);
         intent.putExtra(MainActivity.INTENT_EXTRA_PAGER_SELECTION, MainActivity.PAGER_NOWPLAYING);
-        PendingIntent pi = PendingIntent.getActivity(this, 99 /*request code*/,
-                intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent pi = PendingIntent.getActivity(
+                this,
+                99 /*request code*/,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT
+        );
         mediaSession.setSessionActivity(pi);
         mediaSession.setMetadata(Meta.UNKNOWN_ENTRY.toMediaMetadataCompat());
 
@@ -435,6 +472,107 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         mediaSession.setQueue(new LinkedList<>());
 
         mediaSession.setActive(true);
+    }
+
+    private void setupMediaRouter() {
+        MediaRouter mediaRouter = MediaRouter.getInstance(this);
+        MediaRouteSelector mediaRouteSelector = new MediaRouteSelector.Builder()
+                .addControlCategory(MediaControlIntent.CATEGORY_LIVE_AUDIO)
+                .addControlCategory(MediaControlIntent.CATEGORY_REMOTE_PLAYBACK)
+                .build();
+        mediaRouter.setRouterParams(
+                new MediaRouterParams.Builder()
+                        .setTransferToLocalEnabled(true)
+                        .setOutputSwitcherEnabled(false)
+                        .build()
+        );
+        mediaRouter.addCallback(
+                mediaRouteSelector,
+                mediaRouterCallback,
+                MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY
+        );
+        mediaRouter.setOnPrepareTransferListener((fromRoute, toRoute) -> {
+            Log.d(LC, "prepare route transfer from "
+                    + fromRoute.getName() + " (" + fromRoute.getDescription() + ")"
+                    + " to "
+                    + toRoute.getName() + " (" + toRoute.getDescription() + ")"
+            );
+            ListenableFutureTask<Void> listenableFutureTask = ListenableFutureTask.create(() -> {
+                Log.d(LC, "route transfer preparing...");
+                // TODO: Transfer state here instead of special case for Cast in PlaybackController?
+                //       Not interesting until the Cast framework plays nice with MediaRouter
+                Log.d(LC, "route transfer prepared!");
+            }, null);
+            listenableFutureTask.run();
+            return listenableFutureTask;
+        });
+    }
+
+    private void setupNotification() {
+        NotificationChannel notificationChannel = new NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                NOTIFICATION_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_LOW
+        );
+        NotificationManager notificationManager =
+                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        assert notificationManager != null;
+        notificationManager.createNotificationChannel(notificationChannel);
+    }
+
+    public static class RemoteVolumeProvider extends VolumeProviderCompat {
+        private static final int MAX_STEPS = 50; // Cast devices generally have 50 steps
+        private final float routeVolumePerStep;
+        private final MediaRouter.RouteInfo routeInfo;
+
+        public RemoteVolumeProvider(MediaRouter.RouteInfo routeInfo) {
+            super(
+                    VOLUME_CONTROL_ABSOLUTE,
+                    getMaxSteps(
+                            routeInfo.getVolumeMax()
+                    ),
+                    getSteps(
+                            getMaxSteps(routeInfo.getVolumeMax()),
+                            routeInfo.getVolume(),
+                            routeInfo.getVolumeMax()
+                    )
+            );
+            routeVolumePerStep = (float) routeInfo.getVolumeMax() / getMaxVolume();
+            Log.d(LC, "New RemoteVolumeProvider for route: "
+                    + routeInfo.getName() + "(" + routeInfo.getDescription() + ")"
+                    + " with initial volume of " + getCurrentVolume() + "/" + getMaxVolume()
+            );
+            this.routeInfo = routeInfo;
+        }
+
+        public static int getMaxSteps(int maxVolume) {
+            return Math.max(MAX_STEPS, maxVolume);
+        }
+
+        public static int getSteps(int maxSteps, int routeVolume, int routeMaxVolume) {
+            return (int) (maxSteps * (float) routeVolume / routeMaxVolume);
+        }
+
+        @Override
+        public void onSetVolumeTo(int volume) {
+            setVolume(volume);
+        }
+
+        @Override
+        public void onAdjustVolume(int direction) {
+            int volume = getCurrentVolume() + direction;
+            setVolume(volume);
+        }
+
+        private void setVolume(int volume) {
+            routeInfo.requestSetVolume((int)(volume * routeVolumePerStep));
+            setCurrentVolume(volume);
+        }
+
+        private void updateVolumeFromRoute() {
+            int volume = getSteps(getMaxVolume(), routeInfo.getVolume(), routeInfo.getVolumeMax());
+            setCurrentVolume(volume);
+        }
     }
 
     private boolean isStoppedState() {
@@ -501,7 +639,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                         .setContentTitle(Meta.getTitle(mediaMetadataCompat))
                         .setContentText(Meta.getArtistAlbum(mediaMetadataCompat))
                         .setLargeIcon(controller.getMetadata().getDescription().getIconBitmap())
-                        .setSmallIcon(R.drawable.ic_play)
+                        .setSmallIcon(R.drawable.db_icon_color_96)
                         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                         .setContentIntent(controller.getSessionActivity())
                         .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(
@@ -631,6 +769,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         public void onStop() {
             Log.d(LC, "onStop");
             playOnAudioFocusGain = false;
+            toggleNoiseReceiver(false);
             playbackController.stop()
                     .handle(AudioPlayerService.this::handleControllerResult);
         }
@@ -644,11 +783,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
         @Override
         public void onCustomAction(String action, Bundle extras) {
-            switch (action) {
-                default:
-                    Log.e(LC, "Unhandled MediaSession onCustomAction: " + action);
-                    break;
-            }
+            Log.e(LC, "Unhandled MediaSession onCustomAction: " + action);
         }
 
         @Override
@@ -760,7 +895,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             return;
         }
         Log.d(LC, "play() " + entryIDs.size() + " entryIDs, query: " + queryNode);
-        MusicLibraryService.getSongEntriesOnce(musicLibraryService, entryIDs, queryNode)
+        MusicLibraryService.getSongEntriesOnce(this, entryIDs, queryNode)
                 .thenComposeAsync(songEntryIDs -> {
                     Log.d(LC, "play() total song entries: " + songEntryIDs.size());
                     return playbackController.playNow(songEntryIDs);
@@ -797,7 +932,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             return;
         }
         Log.d(LC, "play() " + queryNodes.size() + " queries");
-        MusicLibraryService.getSongEntriesOnce(musicLibraryService, queryNodes)
+        MusicLibraryService.getSongEntriesOnce(this, queryNodes)
                 .thenComposeAsync(songEntryIDs -> {
                     Log.d(LC, "play() total song entries: " + songEntryIDs.size());
                     return playbackController.playNow(songEntryIDs);
@@ -840,7 +975,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             return;
         }
         Log.d(LC, "queue() adding " + entryIDs.size() + " entryIDs");
-        MusicLibraryService.getSongEntriesOnce(musicLibraryService, entryIDs, queryNode)
+        MusicLibraryService.getSongEntriesOnce(this, entryIDs, queryNode)
                 .thenComposeAsync(songEntryIDs -> {
                     Log.d(LC, "queue() total song entries: " + songEntryIDs.size());
                     return playbackController.queue(songEntryIDs);
@@ -891,7 +1026,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             return;
         }
         Log.d(LC, "queue() " + queryNodes.size() + " queries");
-        MusicLibraryService.getSongEntriesOnce(musicLibraryService, queryNodes)
+        MusicLibraryService.getSongEntriesOnce(this, queryNodes)
                 .thenComposeAsync(songEntryIDs -> {
                     Log.d(LC, "queue() total song entries: " + songEntryIDs.size());
                     return playbackController.queue(songEntryIDs);
@@ -1172,20 +1307,14 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     Log.e(LC, "Unhandled state: " + newPlaybackState);
                     break;
             }
-            if (casting) {
+            if (isStoppedState()) {
                 setMediaSessionActive(false);
-                // The cast framework supplies its own notification
-                stopForeground(true);
             } else {
-                if (isStoppedState()) {
-                    setMediaSessionActive(false);
+                setMediaSessionActive(true);
+                if (isPlayingState()) {
+                    startForeground(SERVICE_NOTIFICATION_ID, setNotification());
                 } else {
-                    setMediaSessionActive(true);
-                    if (isPlayingState()) {
-                        startForeground(SERVICE_NOTIFICATION_ID, setNotification());
-                    } else {
-                        setNotification();
-                    }
+                    setNotification();
                 }
             }
         }

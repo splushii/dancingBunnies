@@ -331,6 +331,21 @@ public class MusicLibraryService extends Service {
         return AudioStorage.getInstance(context).deleteAudioData(context, entryID);
     }
 
+    public static LiveData<List<QueryEntry>> getSubscriptionEntries(Context context,
+                                                                    String showField,
+                                                                    List<String> sortFields,
+                                                                    boolean sortOrderAscending,
+                                                                    QueryNode queryNode) {
+        return MetaStorage.getInstance(context).getQueryEntries(
+                EntryID.TYPE_TRACK,
+                showField,
+                sortFields,
+                sortOrderAscending,
+                queryNode,
+                false
+        );
+    }
+
     public LiveData<List<QueryEntry>> getSubscriptionEntries(String showField,
                                                              List<String> sortFields,
                                                              boolean sortOrderAscending,
@@ -360,11 +375,11 @@ public class MusicLibraryService extends Service {
         return MetaStorage.getInstance(context).getTracksOnce(queryNodes);
     }
 
-    public List<EntryID> getSearchEntries(String query) {
+    public static List<EntryID> getSearchEntries(Context context, String query) {
         ArrayList<EntryID> entries = new ArrayList<>();
         Searcher searcher = Searcher.getInstance();
-        if (!searcher.initialize(this)) {
-            Toast.makeText(this, "Search is not initialized", Toast.LENGTH_SHORT).show();
+        if (!searcher.initialize(context)) {
+            Toast.makeText(context, "Search is not initialized", Toast.LENGTH_SHORT).show();
             return entries;
         }
         TopDocs topDocs = searcher.search(query);
