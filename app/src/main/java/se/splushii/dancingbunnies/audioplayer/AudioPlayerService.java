@@ -50,7 +50,6 @@ import androidx.media.session.MediaButtonReceiver;
 import androidx.mediarouter.media.MediaControlIntent;
 import androidx.mediarouter.media.MediaRouteSelector;
 import androidx.mediarouter.media.MediaRouter;
-import androidx.mediarouter.media.MediaRouterParams;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -121,10 +120,14 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     // TODO: Maybe wrap playbackController with getter (see AudioBrowser.isSessionReady())
     private PlaybackController playbackController;
     private final PlaybackController.Callback audioPlayerManagerCallback = new PlaybackCallback();
+
     private MediaSessionCompat mediaSession;
     private PlaybackStateCompat.Builder playbackStateBuilder;
     private PlaybackStateCompat playbackState;
     private boolean casting = false;
+    private MediaRouter mediaRouter;
+    private MediaRouteSelector mediaRouteSelector;
+    private RemoteVolumeProvider remoteVolumeProvider;
 
     private final IntentFilter intentFilter = new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
     private final MakeSomeNoiseReceiver makeSomeNoiseReceiver = new MakeSomeNoiseReceiver();
@@ -134,11 +137,14 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private AudioFocusRequest audioFocusRequest;
     private boolean playOnAudioFocusGain;
 
-    private RemoteVolumeProvider remoteVolumeProvider;
-
     @Override
     public IBinder onBind(Intent intent) {
         Log.d(LC, "onBind");
+        mediaRouter.addCallback(
+                mediaRouteSelector,
+                mediaRouterCallback,
+                MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY
+        );
         return super.onBind(intent);
     }
 
@@ -244,6 +250,11 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(LC, "onStartCommand");
+        mediaRouter.addCallback(
+                mediaRouteSelector,
+                mediaRouterCallback,
+                MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY
+        );
         if (intent != null && intent.hasExtra(STARTCMD_INTENT_CAST_ACTION)) {
             handleCastIntent(intent);
         } else {
@@ -286,12 +297,11 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         super.onCreate();
         Log.d(LC, "onCreate");
         playbackControllerStorage = PlaybackControllerStorage.getInstance(this);
-
         setupAudioFocus();
         setupMediaSession();
+        setupMediaRouter();
         setupPlaybackController();
         playbackController.initialize();
-        setupMediaRouter();
         setupNotification();
     }
 
@@ -300,19 +310,10 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         public void onRouteSelected(@NonNull MediaRouter router,
                                     @NonNull MediaRouter.RouteInfo route,
                                     int reason) {
-            Log.d(LC, "routeSelected: "
+            Log.d(LC, "route selected: "
                     + route.getName()
                     + " (" + route.getDescription() + ")");
-            switch (route.getPlaybackType()) {
-                case PLAYBACK_TYPE_LOCAL:
-                    remoteVolumeProvider = null;
-                    mediaSession.setPlaybackToLocal(route.getPlaybackStream());
-                    break;
-                case PLAYBACK_TYPE_REMOTE:
-                    remoteVolumeProvider = new RemoteVolumeProvider(route);
-                    mediaSession.setPlaybackToRemote(remoteVolumeProvider);
-                    break;
-            }
+            setVolumeHandling(route, true);
             switch (reason) {
                 case MediaRouter.UNSELECT_REASON_STOPPED:
                     Log.d(LC, "Previous route unselected because it was stopped");
@@ -342,23 +343,47 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         @Override
         public void onRouteChanged(MediaRouter router, MediaRouter.RouteInfo route) {
             if (route.isSelected()) {
-                if (remoteVolumeProvider != null) {
-                    remoteVolumeProvider.updateVolumeFromRoute();
-                    mediaSession.setPlaybackToRemote(remoteVolumeProvider);
-                }
+                Log.d(LC, "selected route changed: "
+                        + route.getName()
+                        + " (" + route.getDescription() + ")");
+                setVolumeHandling(route, false);
             }
         }
     };
+
+    private void setVolumeHandling(MediaRouter.RouteInfo route, boolean force) {
+        switch (route.getPlaybackType()) {
+            case PLAYBACK_TYPE_LOCAL:
+                if (force || remoteVolumeProvider != null) {
+                    remoteVolumeProvider = null;
+                    mediaSession.setPlaybackToLocal(route.getPlaybackStream());
+                }
+                break;
+            case PLAYBACK_TYPE_REMOTE:
+                if (force || remoteVolumeProvider == null) {
+                    remoteVolumeProvider = new RemoteVolumeProvider(route);
+                    mediaSession.setPlaybackToRemote(remoteVolumeProvider);
+                } else {
+                    remoteVolumeProvider.updateVolumeFromRoute();
+                }
+                break;
+        }
+    }
 
     @Override
     public void onDestroy() {
         Log.d(LC, "onDestroy");
         if (playbackController != null) {
             playbackController.onDestroy(!casting);
+            playbackController = null;
         }
-        playbackController = null;
         if (mediaSession != null) {
             mediaSession.release();
+            mediaSession = null;
+        }
+        if (mediaRouter != null) {
+            mediaRouter.removeCallback(mediaRouterCallback);
+            mediaRouter = null;
         }
         super.onDestroy();
     }
@@ -475,22 +500,11 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void setupMediaRouter() {
-        MediaRouter mediaRouter = MediaRouter.getInstance(this);
-        MediaRouteSelector mediaRouteSelector = new MediaRouteSelector.Builder()
+        mediaRouter = MediaRouter.getInstance(this);
+        mediaRouteSelector = new MediaRouteSelector.Builder()
                 .addControlCategory(MediaControlIntent.CATEGORY_LIVE_AUDIO)
                 .addControlCategory(MediaControlIntent.CATEGORY_REMOTE_PLAYBACK)
                 .build();
-        mediaRouter.setRouterParams(
-                new MediaRouterParams.Builder()
-                        .setTransferToLocalEnabled(true)
-                        .setOutputSwitcherEnabled(false)
-                        .build()
-        );
-        mediaRouter.addCallback(
-                mediaRouteSelector,
-                mediaRouterCallback,
-                MediaRouter.CALLBACK_FLAG_REQUEST_DISCOVERY
-        );
         mediaRouter.setOnPrepareTransferListener((fromRoute, toRoute) -> {
             Log.d(LC, "prepare route transfer from "
                     + fromRoute.getName() + " (" + fromRoute.getDescription() + ")"
@@ -639,7 +653,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                         .setContentTitle(Meta.getTitle(mediaMetadataCompat))
                         .setContentText(Meta.getArtistAlbum(mediaMetadataCompat))
                         .setLargeIcon(controller.getMetadata().getDescription().getIconBitmap())
-                        .setSmallIcon(R.drawable.db_icon_color_96)
+                        .setSmallIcon(R.drawable.db_icon_96)
                         .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                         .setContentIntent(controller.getSessionActivity())
                         .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(
@@ -772,6 +786,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             toggleNoiseReceiver(false);
             playbackController.stop()
                     .handle(AudioPlayerService.this::handleControllerResult);
+            mediaRouter.removeCallback(mediaRouterCallback);
         }
 
         @Override
