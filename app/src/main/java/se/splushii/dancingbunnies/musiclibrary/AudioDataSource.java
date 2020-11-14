@@ -272,11 +272,11 @@ public class AudioDataSource extends MediaDataSource {
     public boolean fetchSamples() {
         WaveformEntry waveformEntry = audioStorage.getWaveformSync(entryID);
         if (waveformEntry != null) {
-            Log.d(LC, "getSamples samples already exist");
+            Log.d(LC, "getSamples: samples already exist");
             return true;
         }
         if (!isDataReady()) {
-            Log.e(LC, "getSamples from non-finished source");
+            Log.e(LC, "getSamples: from non-finished source");
             return false;
         }
         MediaExtractor extractor = new MediaExtractor();
@@ -284,34 +284,35 @@ public class AudioDataSource extends MediaDataSource {
             extractor.setDataSource(this);
         } catch (IOException e) {
             e.printStackTrace();
-            Log.e(LC, "getSamples could not set datasource for extractor: " + e.getMessage());
+            Log.e(LC, "getSamples: could not set datasource for extractor: " + e.getMessage());
             return false;
         }
         int numTracks = extractor.getTrackCount();
         if (numTracks > 1) {
-            Log.e(LC, "getSamples NOT HANDLING MORE THAN ONE TRACK. CONTAINS " + numTracks);
+            Log.e(LC, "getSamples: NOT HANDLING MORE THAN ONE TRACK. CONTAINS " + numTracks);
+            return false;
+        }
+        if (numTracks < 1) {
+            Log.e(LC, "getSamples: contains no tracks");
             return false;
         }
         MediaFormat mediaFormat = null;
-        String mime = null;
-loop:   for (int i = 0; i < numTracks; ++i) {
-            mediaFormat = extractor.getTrackFormat(i);
-            mime = mediaFormat.getString(MediaFormat.KEY_MIME);
-            switch (mime) {
-                case MediaFormat.MIMETYPE_AUDIO_RAW:
-                case MediaFormat.MIMETYPE_AUDIO_MPEG:
-                case MediaFormat.MIMETYPE_AUDIO_FLAC:
-                    Log.e(LC, "fetchSamples select track with mime: " + mime);
-                    extractor.selectTrack(i);
-                    break loop;
-                default:
-                    Log.e(LC, "getSamples not supported for mime: " + mime);
-                    return false;
-            }
-        }
+        mediaFormat = extractor.getTrackFormat(0);
+        String mime = mediaFormat.getString(MediaFormat.KEY_MIME);
         if (mime == null) {
-            Log.e(LC, "getSamples contains no tracks");
+            Log.e(LC, "getSamples: can't get track mime");
             return false;
+        }
+        switch (mime) {
+            case MediaFormat.MIMETYPE_AUDIO_RAW:
+            case MediaFormat.MIMETYPE_AUDIO_MPEG:
+            case MediaFormat.MIMETYPE_AUDIO_FLAC:
+                Log.d(LC, "getSamples: select track with mime: " + mime);
+                extractor.selectTrack(0);
+                break;
+            default:
+                Log.d(LC, "getSamples: not supported for mime: " + mime);
+                return false;
         }
         MediaCodec mediaCodec;
         try {
@@ -319,7 +320,7 @@ loop:   for (int i = 0; i < numTracks; ++i) {
             mediaCodec = MediaCodec.createByCodecName(list.findDecoderForFormat(mediaFormat));
         } catch (IOException e) {
             e.printStackTrace();
-            Log.e(LC, "getSamples could not create codec for mime: " + mime);
+            Log.e(LC, "getSamples: could not create codec for mime: " + mime);
             return false;
         }
         mediaCodec.configure(mediaFormat, null, null, 0);
@@ -330,7 +331,7 @@ loop:   for (int i = 0; i < numTracks; ++i) {
         final int downSampledSize = 1024 * 8;
         int downSampleFactor = 1;
         int numSamples = 0;
-         double sumSquareSamples = 0;
+        double sumSquareSamples = 0;
         double sumSquareSamplesNegative = 0;
         double peak = 0;
         double peakNegative = 0;
@@ -374,12 +375,12 @@ loop:   for (int i = 0; i < numTracks; ++i) {
             int outputBufferId = mediaCodec.dequeueOutputBuffer(bufferInfo, timeoutUs);
             if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_PARTIAL_FRAME)
                     == MediaCodec.BUFFER_FLAG_PARTIAL_FRAME) {
-                Log.e(LC, "getSamples NOT HANDLING PARTIAL FRAMES");
+                Log.e(LC, "getSamples: NOT HANDLING PARTIAL FRAMES");
                 return false;
             }
             if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG)
                     == MediaCodec.BUFFER_FLAG_CODEC_CONFIG) {
-                Log.e(LC, "getSamples NOT HANDLING CODEC CONFIG");
+                Log.e(LC, "getSamples: NOT HANDLING CODEC CONFIG");
                 return false;
             }
             if (outputBufferId >= 0) {
@@ -392,7 +393,7 @@ loop:   for (int i = 0; i < numTracks; ++i) {
                 }
                 switch (pcmEncoding) {
                     case AudioFormat.ENCODING_PCM_8BIT:
-                        Log.e(LC, "NOT HANDLING PCM 8 BIT");
+                        Log.e(LC, "getSamples: NOT HANDLING PCM 8 BIT");
                         return false;
                     case AudioFormat.ENCODING_PCM_16BIT:
                         ShortBuffer shortBuffer = outputBuffer.order(ByteOrder.nativeOrder()).asShortBuffer();
@@ -458,7 +459,7 @@ loop:   for (int i = 0; i < numTracks; ++i) {
                         }
                         break;
                     case AudioFormat.ENCODING_PCM_FLOAT:
-                        Log.e(LC, "NOT HANDLING PCM FLOAT");
+                        Log.e(LC, "getSamples: NOT HANDLING PCM FLOAT");
                         return false;
                 }
                 mediaCodec.releaseOutputBuffer(outputBufferId, false);
@@ -520,7 +521,7 @@ loop:   for (int i = 0; i < numTracks; ++i) {
             ));
         } catch (JSONException e) {
             e.printStackTrace();
-            Log.e(LC, "Could not convert samples to JSON");
+            Log.e(LC, "getSamples: Could not convert samples to JSON");
             return false;
         }
         return true;

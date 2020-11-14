@@ -85,7 +85,6 @@ public class Indexer {
                 Log.w(LC, "Could not create lucene index dir " + currentIndexPath.toPath());
             }
         }
-        Log.e(LC, "index path: " + currentIndexPath);
         return currentIndexPath;
     }
 
