@@ -1,7 +1,6 @@
 package se.splushii.dancingbunnies.storage.transactions;
 
 import android.content.Context;
-import android.util.Log;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -41,7 +40,6 @@ public class TransactionPlaylistEntryAdd extends Transaction {
                                        JSONObject args
     ) throws JSONException {
         super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
-        Log.e(LC, args.toString());
         playlistID = EntryID.from(args.getJSONObject(JSON_KEY_PLAYLIST_ID));
         entryID = EntryID.from(args.getJSONObject(JSON_KEY_ENTRY_ID));
         beforePlaylistEntryID = args.has(JSON_KEY_BEFORE_PLAYLIST_ENTRY_ID)

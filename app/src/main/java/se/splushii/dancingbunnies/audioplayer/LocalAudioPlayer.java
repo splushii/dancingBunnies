@@ -81,12 +81,12 @@ class LocalAudioPlayer implements AudioPlayer {
     }
 
     @Override
-    public CompletableFuture<Void> destroy() {
+    public CompletableFuture<Void> destroy(boolean clearState) {
         Log.d(LC, "destroy");
         AudioStorage.getInstance(context).removeDeleteListener(this::onDeleteAudioData);
         callback = AudioPlayer.dummyCallback;
         return stop()
-                .thenCompose(v -> clearState())
+                .thenCompose(v -> clearState ? clearState() : Util.futureResult())
                 .thenRun(() -> Log.d(LC, "destroyed"));
     }
 
@@ -197,10 +197,6 @@ class LocalAudioPlayer implements AudioPlayer {
         setCurrentPlayer(nextPlayer);
         setNextPlayer();
         if (previousPlayer != null) {
-            previousPlayer.pause();
-            previousPlayer.seekTo(0);
-            // TODO: Also cancel the download
-            previousPlayer.release();
             historyPlaybackEntries.addFirst(previousPlayer.playbackEntry);
         }
         CompletableFuture<Void> ret = persistState();
@@ -293,23 +289,41 @@ class LocalAudioPlayer implements AudioPlayer {
             return Util.futureResult();
         }
         HashSet<PlaybackEntry> entries = new HashSet<>(playbackEntries);
-        List<MediaPlayerInstance> mediaPlayersToRemove = new ArrayList<>();
+        List<MediaPlayerInstance> preloadPlayersToRemove = new ArrayList<>();
         for (MediaPlayerInstance mp: preloadPlayers) {
             if (entries.contains(mp.playbackEntry)) {
-                mediaPlayersToRemove.add(mp);
+                preloadPlayersToRemove.add(mp);
             }
         }
-        for (MediaPlayerInstance mp: mediaPlayersToRemove) {
-            preloadPlayers.remove(mp);
-        }
-        setNextPlayer();
-        List<PlaybackEntry> playbackEntriesToRemove = new ArrayList<>();
+        boolean removeCurrentEntry = entries.contains(getCurrentEntry());
+        List<PlaybackEntry> historyEntriesToRemove = new ArrayList<>();
         for (PlaybackEntry p: historyPlaybackEntries) {
             if (entries.contains(p)) {
-                playbackEntriesToRemove.add(p);
+                historyEntriesToRemove.add(p);
             }
         }
-        for (PlaybackEntry p: playbackEntriesToRemove) {
+        Log.d(LC, "dePreload()"
+                + "\nfrom preload: "
+                + preloadPlayersToRemove.size()
+                + ": " + preloadPlayersToRemove.stream()
+                .map(m -> m.playbackEntry.toString())
+                .collect(Collectors.joining(", "))
+                + "\ncurrent: " + (removeCurrentEntry ? getCurrentEntry() : "no")
+                + "\nfrom history: "
+                + historyEntriesToRemove.size()
+                + ": " + historyEntriesToRemove.stream()
+                .map(PlaybackEntry::toString)
+                .collect(Collectors.joining(", ")));
+        for (MediaPlayerInstance mp: preloadPlayersToRemove) {
+            preloadPlayers.remove(mp);
+        }
+        if (removeCurrentEntry) {
+            setCurrentPlayer(preloadPlayers.poll());
+        }
+        if (removeCurrentEntry || !preloadPlayersToRemove.isEmpty()) {
+            setNextPlayer();
+        }
+        for (PlaybackEntry p: historyEntriesToRemove) {
             historyPlaybackEntries.remove(p);
         }
         return persistState()
@@ -327,6 +341,12 @@ class LocalAudioPlayer implements AudioPlayer {
     private void setCurrentPlayer(MediaPlayerInstance mediaPlayerInstance) {
         if (player == mediaPlayerInstance) {
             return;
+        }
+        if (player != null) {
+            player.pause();
+            player.seekTo(0);
+            // TODO: Also cancel the download
+            player.release();
         }
         player = mediaPlayerInstance;
         Log.d(LC, "setCurrentPlayer: " + (player == null ? "null" : player.title()));

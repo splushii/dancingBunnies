@@ -407,7 +407,7 @@ public class CastAudioPlayer implements AudioPlayer {
     }
 
     @Override
-    public CompletableFuture<Void> destroy() {
+    public CompletableFuture<Void> destroy(boolean clearState) {
         Log.d(LC, "destroy");
         callback = AudioPlayer.dummyCallback;
         Log.d(LC, "destroyed");
@@ -653,20 +653,7 @@ public class CastAudioPlayer implements AudioPlayer {
     }
 
     private boolean isInoperable() {
-        Log.e(LC, "castSession: " + castSession);
-        Log.e(LC, "remoteMediaClient: " + remoteMediaClient);
-        Log.e(LC, "waitingForResume: " + waitingForResume);
-        if (castSession != null) {
-            Log.e(LC, "castSession disc: " + castSession.isDisconnected());
-            Log.e(LC, "castSession disc: " + castSession.isSuspended());
-        }
-        if (remoteMediaClient != null) {
-            Log.e(LC, "re" + getStateString(remoteMediaClient.getPlayerState(), remoteMediaClient.getIdleReason()));
-        }
-        if (remoteMediaClient == null && !waitingForResume) {
-            return true;
-        }
-        return false;
+        return remoteMediaClient == null && !waitingForResume;
     }
 
     private CompletableFuture<MediaQueueItem[]> buildMediaQueueItems(

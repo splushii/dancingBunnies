@@ -56,7 +56,7 @@ public interface AudioPlayer {
     CompletableFuture<Void> preload(List<PlaybackEntry> entries, int offset);
     CompletableFuture<Void> dePreload(List<PlaybackEntry> playbackEntries);
     CompletableFuture<Void> initialize();
-    CompletableFuture<Void> destroy();
+    CompletableFuture<Void> destroy(boolean clearState);
 
     interface Callback {
         void onStateChanged(int playBackState);

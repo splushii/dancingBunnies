@@ -246,7 +246,7 @@ public class PlaybackController {
         if (stopPlayer) {
             audioPlayer.stop();
         }
-        audioPlayer.destroy();
+        audioPlayer.destroy(false);
         audioPlayer = null;
         queue.onDestroy();
         playlistItems.onDestroy();
@@ -1568,7 +1568,7 @@ public class PlaybackController {
         }
         AudioPlayer.AudioPlayerState lastState = audioPlayer.getLastState();
         printState("resetController. State:", lastState);
-        audioPlayer.destroy();
+        audioPlayer.destroy(true);
         executor = Executors.newSingleThreadExecutor();
         return lastState;
     }
