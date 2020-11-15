@@ -304,6 +304,9 @@ public class PlaylistEntriesAdapter extends
         initialScrolled = false;
         Transformations.switchMap(model.getUserState(), userState -> {
             if (userState.showPlaylists || userState.browsedPlaylistID == null) {
+                if (getItemCount() != 0) {
+                    model.setNumPlaylistEntries(0);
+                }
                 setDataSet(null, Collections.emptyList());
                 return new MutableLiveData<>();
             }
@@ -313,6 +316,9 @@ public class PlaylistEntriesAdapter extends
             );
         }).observe(fragment.getViewLifecycleOwner(), entries -> {
             PlaylistUserState userState = model.getUserStateValue();
+            if (getItemCount() != entries.size()) {
+                model.setNumPlaylistEntries(entries.size());
+            }
             setDataSet(userState.browsedPlaylistID, entries);
             updateScrollPos(userState, entries);
         });

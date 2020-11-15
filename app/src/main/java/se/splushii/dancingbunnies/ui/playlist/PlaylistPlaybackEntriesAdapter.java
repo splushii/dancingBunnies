@@ -26,6 +26,7 @@ import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.TrackItemView;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
 import se.splushii.dancingbunnies.ui.selection.SmartDiffSelectionRecyclerViewAdapter;
+import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.storage.transactions.Transaction.PLAYLIST_ENTRY_DELETE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_CACHE;
@@ -41,6 +42,8 @@ public class PlaylistPlaybackEntriesAdapter extends
         SmartDiffSelectionRecyclerViewAdapter
                 <PlaybackEntry, PlaylistPlaybackEntriesAdapter.ViewHolder>
 {
+    private static final String LC = Util.getLogContext(PlaylistPlaybackEntriesAdapter.class);
+
     private final PlaylistFragment fragment;
 
     private TrackItemActionsView selectedActionView;
@@ -68,6 +71,9 @@ public class PlaylistPlaybackEntriesAdapter extends
         PlaybackControllerStorage.getInstance(fragment.getContext())
                 .getCurrentPlaylistPlaybackEntries()
                 .observe(fragment.getViewLifecycleOwner(), entries -> {
+                    if (getItemCount() != entries.size()) {
+                        model.setNumPlaylistPlaybackEntries(entries.size());
+                    }
                     setDataSet(entries);
                     updateScrollPos(model);
                 });

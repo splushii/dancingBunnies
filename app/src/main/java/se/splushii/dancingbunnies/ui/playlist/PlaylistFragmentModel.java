@@ -154,4 +154,20 @@ public class PlaylistFragmentModel extends ViewModel {
                 .build()
         );
     }
+
+    public void setNumPlaylistEntries(int numEntries) {
+        getMutableUserState().setValue(new PlaylistUserState.Builder()
+                .fromState(getUserStateValue())
+                .setNumPlaylistEntries(numEntries)
+                .build()
+        );
+    }
+
+    public void setNumPlaylistPlaybackEntries(int numEntries) {
+        getMutableUserState().setValue(new PlaylistUserState.Builder()
+                .fromState(getUserStateValue())
+                .setNumPlaylistPlaybackEntries(numEntries)
+                .build()
+        );
+    }
 }

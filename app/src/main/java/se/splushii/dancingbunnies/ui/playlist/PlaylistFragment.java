@@ -22,6 +22,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -91,6 +92,7 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
     private View playlistContentInfo;
     private View playlistContentInfoExtra;
     private TextView playlistContentInfoName;
+    private TextView playlistContentInfoNumEntries;
 
     private View playlistEntriesRoot;
     private RecyclerView playlistEntriesRecView;
@@ -486,11 +488,21 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
                     playlistShowPlaybackOrderSwitch.setChecked(true);
                     playlistContentInfoExtra.setVisibility(VISIBLE);
                     playlistPlaybackEntriesRoot.setVisibility(VISIBLE);
+                    playlistContentInfoNumEntries.setText(String.format(
+                            Locale.getDefault(),
+                            "%d",
+                            state.numPlaylistPlaybackEntries
+                    ));
                 } else {
                     playlistPlaybackEntriesRoot.setVisibility(GONE);
                     playlistContentInfoExtra.setVisibility(GONE);
                     playlistShowPlaybackOrderSwitch.setChecked(false);
                     playlistEntriesRoot.setVisibility(VISIBLE);
+                    playlistContentInfoNumEntries.setText(String.format(
+                            Locale.getDefault(),
+                            "%d",
+                            state.numPlaylistEntries
+                    ));
                 }
                 playlistSelectSwitch.setChecked(true);
                 playlistShowPlaybackOrderSwitch.setVisibility(VISIBLE);
@@ -500,6 +512,11 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
                 playlistContentInfoExtra.setVisibility(GONE);
                 playlistShowPlaybackOrderSwitch.setChecked(false);
                 playlistEntriesRoot.setVisibility(VISIBLE);
+                playlistContentInfoNumEntries.setText(String.format(
+                        Locale.getDefault(),
+                        "%d",
+                        state.numPlaylistEntries
+                ));
                 playlistShowPlaybackOrderSwitch.setVisibility(INVISIBLE);
             }
             playlistContentRootView.setVisibility(VISIBLE);
@@ -569,12 +586,13 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
             onBackPressed();
         });
         playlistContentInfo = rootView.findViewById(R.id.playlist_content_info);
+        playlistContentInfoName = rootView.findViewById(R.id.playlist_content_info_name);
+        playlistContentInfoNumEntries = rootView.findViewById(R.id.playlist_content_info_num_entries);
         playlistContentInfoExtra = rootView.findViewById(R.id.playlist_content_info_extra);
         playlistSortActionView = rootView.findViewById(R.id.playlist_playback_sort);
         playlistShuffleActionView = rootView.findViewById(R.id.playlist_playback_shuffle);
         playlistRandomActionView = rootView.findViewById(R.id.playlist_playback_random);
         playlistRepeatActionView = rootView.findViewById(R.id.playlist_playback_repeat);
-        playlistContentInfoName = rootView.findViewById(R.id.playlist_content_info_name);
         playlistSelectSwitch = rootView.findViewById(R.id.playlist_select_switch);
         playlistShowPlaybackOrderSwitch = rootView.findViewById(R.id.playlist_show_playback_order_switch);
 
