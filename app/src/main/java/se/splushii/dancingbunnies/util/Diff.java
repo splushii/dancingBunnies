@@ -34,27 +34,29 @@ public class Diff {
         this.added = added;
         this.moved = moved;
         AtomicBoolean diffUtilChanged = new AtomicBoolean();
-        diffUtilResult.dispatchUpdatesTo(new ListUpdateCallback() {
-            @Override
-            public void onInserted(int position, int count) {
-                diffUtilChanged.set(true);
-            }
+        if (diffUtilResult != null) {
+            diffUtilResult.dispatchUpdatesTo(new ListUpdateCallback() {
+                @Override
+                public void onInserted(int position, int count) {
+                    diffUtilChanged.set(true);
+                }
 
-            @Override
-            public void onRemoved(int position, int count) {
-                diffUtilChanged.set(true);
-            }
+                @Override
+                public void onRemoved(int position, int count) {
+                    diffUtilChanged.set(true);
+                }
 
-            @Override
-            public void onMoved(int fromPosition, int toPosition) {
-                diffUtilChanged.set(true);
-            }
+                @Override
+                public void onMoved(int fromPosition, int toPosition) {
+                    diffUtilChanged.set(true);
+                }
 
-            @Override
-            public void onChanged(int position, int count, @Nullable Object payload) {
-                diffUtilChanged.set(true);
-            }
-        });
+                @Override
+                public void onChanged(int position, int count, @Nullable Object payload) {
+                    diffUtilChanged.set(true);
+                }
+            });
+        }
         changed = !(deleted.isEmpty() && added.isEmpty() && moved.isEmpty())
                 || diffUtilChanged.get();
         this.diffUtilResult = diffUtilResult;
@@ -94,19 +96,23 @@ public class Diff {
         return false;
     }
 
-    public static <T> Diff diff(List<T> currentEntries, List<T> newEntries) {
-        return diff(currentEntries, newEntries, Object::equals);
+    public static <T> Diff diff(List<T> currentEntries,
+                                List<T> newEntries,
+                                boolean withDiffUtilDiff,
+                                boolean debug) {
+        return diff(currentEntries, newEntries, Object::equals, withDiffUtilDiff, debug);
     }
 
     public static <T> Diff diff(List<T> currentEntries,
                                 List<T> newEntries,
                                 BiFunction<T, T, Boolean> contentComparator) {
-        return diff(currentEntries, newEntries, contentComparator, false);
+        return diff(currentEntries, newEntries, contentComparator, true, false);
     }
 
     public static <T> Diff diff(List<T> currentEntries,
                                 List<T> newEntries,
                                 BiFunction<T, T, Boolean> contentComparator,
+                                boolean withDiffUtilDiff,
                                 boolean debug) {
         if (debug) {
             Log.d(LC, "calculateDiff start "
@@ -233,12 +239,25 @@ public class Diff {
                     + " Got " + numDiffDeltaEntries + ", but expected " + numExpectedDeltaEntries);
         }
 
+        DiffUtil.DiffResult diffResult = withDiffUtilDiff ? diffUtilDiff(
+                currentEntries,
+                newEntries,
+                contentComparator,
+                debug
+        ) : null;
+        return new Diff(deletedPositions, addedPositions, movedPositions, diffResult);
+    }
+
+    private static <T> DiffUtil.DiffResult diffUtilDiff(List<T> currentEntries,
+                                                        List<T> newEntries,
+                                                        BiFunction<T, T, Boolean> contentComparator,
+                                                        boolean debug) {
         // Calculate DiffUtil diff
         if (debug) {
             Log.d(LC, "calculateDiff DiffUtil start "
                     + "(old: " + currentEntries.size() + ", new: " + newEntries.size() + ")");
         }
-        startTime = System.currentTimeMillis();
+        long startTime = System.currentTimeMillis();
         DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new DiffUtil.Callback() {
             @Override
             public int getOldListSize() {
@@ -264,12 +283,12 @@ public class Diff {
                 return contentComparator.apply(oldItem, newItem);
             }
         }, false);
-        time = System.currentTimeMillis() - startTime;
+        long time = System.currentTimeMillis() - startTime;
         if (debug) {
             Log.d(LC, "calculateDiff DiffUtil finish "
                     + "(old: " + currentEntries.size() + ", new: " + newEntries.size() + ")"
                     + "\ntime: " + time + "ms");
         }
-        return new Diff(deletedPositions, addedPositions, movedPositions, diffResult);
+        return diffResult;
     }
 }

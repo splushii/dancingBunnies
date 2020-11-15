@@ -1082,125 +1082,135 @@ public class PlaybackController {
 
     private void onCurrentPlaylistEntriesChanged(List<PlaylistEntry> newPlaylistEntries) {
         Log.d(LC, "playlistEntriesObserver. Changed for: " + currentPlaylistIDLiveData.getValue());
-        if (newPlaylistEntries.isEmpty()) {
-            Log.d(LC, "playlistEntriesObserver."
-                    + " No playlist entries. Clearing playlist playback entries.");
-            currentPlaylistPlaybackEntries.clear();
-        } else if (currentPlaylistPlaybackEntries.isEmpty()) {
-            Log.d(LC, "playlistEntriesObserver."
-                    + " No playlist playback entries. Initializing from playlist entries.");
-            List<PlaybackEntry> playlistPlaybackEntries = new ArrayList<>();
-            long playbackID = reservePlaybackIDs(newPlaylistEntries.size());
-            for (int i = 0; i < newPlaylistEntries.size(); i++) {
-                PlaylistEntry playlistEntry = newPlaylistEntries.get(i);
-                playlistPlaybackEntries.add(new PlaybackEntry(
-                        playlistEntry,
-                        i,
-                        PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID,
-                        playbackID++
-                ));
-            }
-            playlistPlaybackEntries.forEach(p -> p.setPreloaded(false));
-            currentPlaylistPlaybackEntries.add(0, playlistPlaybackEntries);
-        } else {
-            // Check if playlistEntries have changed.
-            Log.d(LC, "playlistEntriesObserver."
-                    + " Calculating diff between current and new playlist entries.");
-            Diff diff = Diff.diff(
-                    currentPlaylistPlaybackEntries.getEntries()
-                            .stream()
-                            .map(p -> p.entryID)
-                            .collect(Collectors.toList()),
-                    newPlaylistEntries.stream()
-                            .map(PlaylistEntry::entryID)
-                            .collect(Collectors.toList())
-            );
+        synchronized (executorLock) {
+            submitCompletableFuture(() -> {
+                long startTime = System.currentTimeMillis();
+                Log.d(LC, "playlistEntriesObserver. Start...");
+                if (newPlaylistEntries.isEmpty()) {
+                    Log.d(LC, "playlistEntriesObserver."
+                            + " No playlist entries. Clearing playlist playback entries.");
+                    currentPlaylistPlaybackEntries.clear();
+                } else if (currentPlaylistPlaybackEntries.isEmpty()) {
+                    Log.d(LC, "playlistEntriesObserver."
+                            + " No playlist playback entries. Initializing from playlist entries.");
+                    List<PlaybackEntry> playlistPlaybackEntries = new ArrayList<>();
+                    long playbackID = reservePlaybackIDs(newPlaylistEntries.size());
+                    for (int i = 0; i < newPlaylistEntries.size(); i++) {
+                        PlaylistEntry playlistEntry = newPlaylistEntries.get(i);
+                        playlistPlaybackEntries.add(new PlaybackEntry(
+                                playlistEntry,
+                                i,
+                                PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID,
+                                playbackID++
+                        ));
+                    }
+                    playlistPlaybackEntries.forEach(p -> p.setPreloaded(false));
+                    currentPlaylistPlaybackEntries.add(0, playlistPlaybackEntries);
+                } else {
+                    // Check if playlistEntries have changed.
+                    Log.d(LC, "playlistEntriesObserver."
+                            + " Calculating diff between current and new playlist entries.");
+                    Diff diff = Diff.diff(
+                            currentPlaylistPlaybackEntries.getEntries()
+                                    .stream()
+                                    .map(p -> p.entryID)
+                                    .collect(Collectors.toList()),
+                            newPlaylistEntries.stream()
+                                    .map(PlaylistEntry::entryID)
+                                    .collect(Collectors.toList()),
+                            false,
+                            true
+                    );
 
-            List<PlaybackEntry> playbackEntries = currentPlaylistPlaybackEntries.getEntries();
+                    List<PlaybackEntry> playbackEntries = currentPlaylistPlaybackEntries.getEntries();
 
-            // On deletion, remove entries with deleted playlistPos.
-            List<PlaybackEntry> deletedPlaybackEntries = new ArrayList<>();
-            HashSet<Integer> deletedPositionsSet = new HashSet<>(diff.deleted);
-            for (PlaybackEntry e: playbackEntries) {
-                if (deletedPositionsSet.contains((int) e.playlistPos)) {
-                    deletedPlaybackEntries.add(e);
-                }
-            }
+                    // On deletion, remove entries with deleted playlistPos.
+                    List<PlaybackEntry> deletedPlaybackEntries = new ArrayList<>();
+                    HashSet<Integer> deletedPositionsSet = new HashSet<>(diff.deleted);
+                    for (PlaybackEntry e: playbackEntries) {
+                        if (deletedPositionsSet.contains((int) e.playlistPos)) {
+                            deletedPlaybackEntries.add(e);
+                        }
+                    }
 
-            // On addition, add new entries according to shuffle algorithm.
-            List<PlaybackEntry> addedPlaybackEntries = new ArrayList<>();
-            long playbackID = reservePlaybackIDs(diff.added.size());
-            for (int addedPos: diff.added) {
-                PlaylistEntry addedPlaylistEntry = newPlaylistEntries.get(addedPos);
-                boolean alreadyPresent = false;
-                for (PlaybackEntry entry: playbackEntries) {
-                    if (entry.playlistPos == addedPos) {
-                        alreadyPresent = true;
-                        break;
+                    // On addition, add new entries according to shuffle algorithm.
+                    List<PlaybackEntry> addedPlaybackEntries = new ArrayList<>();
+                    long playbackID = reservePlaybackIDs(diff.added.size());
+                    for (int addedPos: diff.added) {
+                        PlaylistEntry addedPlaylistEntry = newPlaylistEntries.get(addedPos);
+                        boolean alreadyPresent = false;
+                        for (PlaybackEntry entry: playbackEntries) {
+                            if (entry.playlistPos == addedPos) {
+                                alreadyPresent = true;
+                                break;
+                            }
+                        }
+                        if (!alreadyPresent) {
+                            addedPlaybackEntries.add(new PlaybackEntry(
+                                    addedPlaylistEntry,
+                                    addedPos,
+                                    PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID,
+                                    playbackID++
+                            ));
+                        }
+                    }
+
+                    // On reorder, update playlistPos.
+                    HashMap<Integer, Integer> movedFromToMap = new HashMap<>();
+                    for (Pair<Integer, Integer> movedPos: diff.moved) {
+                        movedFromToMap.put(movedPos.first, movedPos.second);
+                    }
+                    List<PlaybackEntry> movedPlaybackEntries = new ArrayList<>();
+                    for (PlaybackEntry e: playbackEntries) {
+                        Integer destPos = movedFromToMap.get((int) e.playlistPos);
+                        if (destPos != null) {
+                            PlaybackEntry movedPlaybackEntry = new PlaybackEntry(
+                                    e.entryID,
+                                    e.playbackID,
+                                    e.playbackType,
+                                    destPos,
+                                    e.playlistSelectionID
+                            );
+                            movedPlaybackEntries.add(movedPlaybackEntry);
+                        }
+                    }
+                    Log.d(LC, "onCurrentPlaylistEntriesChanged diff:"
+                            + "\ndeleted: " + diff.deleted
+                            + "\nadded: " + diff.added
+                            + "\nmoved: " + diff.moved
+                            + "\nPlaylist playback del " + deletedPlaybackEntries.size()
+                            + "\nPlaylist playback add " + addedPlaybackEntries.size()
+                            + "\nPlaylist playback mov " + movedPlaybackEntries.size()
+                    );
+                    if (!deletedPlaybackEntries.isEmpty()) {
+                        currentPlaylistPlaybackEntries.remove(deletedPlaybackEntries);
+                    }
+                    // TODO: Shuffle in new entries (if playback order is shuffle)
+                    addedPlaybackEntries.forEach(p -> p.setPreloaded(false));
+                    if (!addedPlaybackEntries.isEmpty()) {
+                        currentPlaylistPlaybackEntries.add(
+                                currentPlaylistPlaybackEntries.size(),
+                                addedPlaybackEntries
+                        );
+                    }
+                    if (!movedPlaybackEntries.isEmpty()) {
+                        currentPlaylistPlaybackEntries.updatePositions(movedPlaybackEntries);
+                    }
+                    if (currentPlaylistPlaybackEntries.size() != newPlaylistEntries.size()) {
+                        Log.e(LC, "Number of playlist playback entries ("
+                                + currentPlaylistPlaybackEntries.size()
+                                + ") differ"
+                                + " from number of playlist entries ("
+                                + newPlaylistEntries.size()
+                                + "). This should never happen..."
+                        );
                     }
                 }
-                if (!alreadyPresent) {
-                    addedPlaybackEntries.add(new PlaybackEntry(
-                            addedPlaylistEntry,
-                            addedPos,
-                            PlaybackEntry.PLAYLIST_SELECTION_ID_INVALID,
-                            playbackID++
-                    ));
-                }
-            }
-
-            // On reorder, update playlistPos.
-            HashMap<Integer, Integer> movedFromToMap = new HashMap<>();
-            for (Pair<Integer, Integer> movedPos: diff.moved) {
-                movedFromToMap.put(movedPos.first, movedPos.second);
-            }
-            List<PlaybackEntry> movedPlaybackEntries = new ArrayList<>();
-            for (PlaybackEntry e: playbackEntries) {
-                Integer destPos = movedFromToMap.get((int) e.playlistPos);
-                if (destPos != null) {
-                    PlaybackEntry movedPlaybackEntry = new PlaybackEntry(
-                            e.entryID,
-                            e.playbackID,
-                            e.playbackType,
-                            destPos,
-                            e.playlistSelectionID
-                    );
-                    movedPlaybackEntries.add(movedPlaybackEntry);
-                }
-            }
-            Log.d(LC, "onCurrentPlaylistEntriesChanged diff:"
-                    + "\ndeleted: " + diff.deleted
-                    + "\nadded: " + diff.added
-                    + "\nmoved: " + diff.moved
-                    + "\nPlaylist playback del " + deletedPlaybackEntries.size()
-                    + "\nPlaylist playback add " + addedPlaybackEntries.size()
-                    + "\nPlaylist playback mov " + movedPlaybackEntries.size()
-            );
-            if (!deletedPlaybackEntries.isEmpty()) {
-                currentPlaylistPlaybackEntries.remove(deletedPlaybackEntries);
-            }
-            // TODO: Shuffle in new entries (if playback order is shuffle)
-            addedPlaybackEntries.forEach(p -> p.setPreloaded(false));
-            if (!addedPlaybackEntries.isEmpty()) {
-                currentPlaylistPlaybackEntries.add(
-                        currentPlaylistPlaybackEntries.size(),
-                        addedPlaybackEntries
-                );
-            }
-            if (!movedPlaybackEntries.isEmpty()) {
-                currentPlaylistPlaybackEntries.updatePositions(movedPlaybackEntries);
-            }
-            if (currentPlaylistPlaybackEntries.size() != newPlaylistEntries.size()) {
-                Log.e(LC, "Number of playlist playback entries ("
-                        + currentPlaylistPlaybackEntries.size()
-                        + ") differ"
-                        + " from number of playlist entries ("
-                        + newPlaylistEntries.size()
-                        + "). This should never happen..."
-                );
-            }
+                long time = System.currentTimeMillis() - startTime;
+                Log.d(LC, "playlistEntriesObserver. Finish! Time: " + time + "ms");
+                return Util.futureResult();
+            }).thenCompose(aVoid -> updateState());
         }
-        submitCompletableFuture(this::updateState);
     }
 
     CompletableFuture<Void> deQueue(List<PlaybackEntry> playbackEntries) {
