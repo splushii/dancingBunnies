@@ -38,12 +38,16 @@ public class MusicLibraryFragmentModel extends ViewModel {
         return userState;
     }
 
+    private void setUserState(MusicLibraryUserState state) {
+        getMutableUserState().setValue(state);
+    }
+
     LiveData<MusicLibraryUserState> getUserState() {
         return getMutableUserState();
     }
 
     void updateUserState(Pair<Integer, Integer> currentPosition) {
-        getMutableUserState().setValue(new MusicLibraryUserState(
+        setUserState(new MusicLibraryUserState(
                 getMusicLibraryQuery(),
                 currentPosition
         ));
@@ -78,37 +82,37 @@ public class MusicLibraryFragmentModel extends ViewModel {
 
     boolean popBackStack() {
         if (getBackStack().size() > 0) {
-            getMutableUserState().setValue(getBackStack().pop());
+            setUserState(getBackStack().pop());
             return true;
         }
         return false;
     }
 
     void reset() {
-        getMutableUserState().setValue(initialUserState());
+        setUserState(initialUserState());
     }
 
     void setQuery(Query query) {
         resetQueryEntries();
-        getMutableUserState().setValue(new MusicLibraryUserState(query, 0 , 0));
+        setUserState(new MusicLibraryUserState(query, 0 , 0));
     }
 
     void displayType(String displayType) {
         Query query = new Query(getMusicLibraryQuery());
         query.setShowField(displayType);
-        getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
+        setUserState(new MusicLibraryUserState(query, 0, 0));
     }
 
     void sortBy(List<String> fields) {
         Query query = new Query(getMusicLibraryQuery());
         query.setSortByFields(new ArrayList<>(fields));
-        getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
+        setUserState(new MusicLibraryUserState(query, 0, 0));
     }
 
     void setSortOrder(boolean ascending) {
         Query query = new Query(getMusicLibraryQuery());
         query.setSortOrder(ascending);
-        getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
+        setUserState(new MusicLibraryUserState(query, 0, 0));
     }
 
     private void setCurrentSubscriptionID(String currentSubscriptionID) {
@@ -140,14 +144,21 @@ public class MusicLibraryFragmentModel extends ViewModel {
     private void showOnly(String filterType, String filter) {
         Query query = new Query();
         query.and(filterType, filter);
-        getMutableUserState().setValue(new MusicLibraryUserState(query, 0, 0));
+        setUserState(new MusicLibraryUserState(query, 0, 0));
     }
 
-    public void search(String query, boolean saveToHistory) {
-        if (!isEmptySearch() && saveToHistory) {
+    public void search(String query, boolean saveLastQuery) {
+        MusicLibraryUserState lastState = getBackStack().peek();
+        if (lastState != null
+                && lastState.query.isSearchQuery()
+                && lastState.query.getSearchQuery().equals(query)) {
+            // No change
+            return;
+        }
+        if (saveLastQuery && !isEmptySearch()) { // No need to save the empty search
             addBackStackHistory(new Pair<>(0, 0));
         }
-        getMutableUserState().setValue(new MusicLibraryUserState(
+        setUserState(new MusicLibraryUserState(
                 new Query(query), 0, 0
         ));
     }

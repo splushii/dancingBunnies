@@ -308,6 +308,8 @@ public class MusicLibraryFragment
         Log.d(LC, "onStop");
         model.updateUserState(Util.getRecyclerViewPosition(browseRecyclerView));
         remote.unregisterCallback(requireActivity(), this);
+        // Otherwise afterTextChanged will get triggered on start which will trigger a search
+        searchQueryEdit.setText("");
         super.onStop();
     }
 
@@ -772,7 +774,7 @@ public class MusicLibraryFragment
         searchQueryEdit.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 String query = searchQueryEdit.getText().toString();
-                model.search(query, true);
+                model.search(query, false);
                 clearFocus();
                 return true;
             }
