@@ -56,7 +56,7 @@ public class ConfirmationDialogFragment extends DialogFragment {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext())
                 .setTitle(title)
                 .setMessage(message)
-                .setPositiveButton(R.string.ok, (dialog, id) ->
+                .setPositiveButton(android.R.string.ok, (dialog, id) ->
                         onClicked(ConfirmationDialogFragment.this.id, true)
                 )
                 .setNegativeButton(R.string.cancel, (dialog, id) ->

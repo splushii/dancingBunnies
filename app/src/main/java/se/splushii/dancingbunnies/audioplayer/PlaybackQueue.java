@@ -94,7 +94,7 @@ class PlaybackQueue {
     }
 
     CompletableFuture<Void> updatePositions(List<PlaybackEntry> movedPlaybackEntries) {
-        Log.d(LC, "update(entries.size: " + movedPlaybackEntries.size() + ")"
+        Log.d(LC, "updatePositions(entries.size: " + movedPlaybackEntries.size() + ")"
                 + " in \"" + PlaybackControllerStorage.getQueueName(queueID) + "\"");
         if (movedPlaybackEntries.isEmpty()) {
             return Util.futureResult();

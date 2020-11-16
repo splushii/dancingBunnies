@@ -264,14 +264,6 @@ class LocalAudioPlayer implements AudioPlayer {
     }
 
     @Override
-    public PlaybackEntry getPreloadEntry(int position) {
-        if (position < 0 || position > preloadPlayers.size()) {
-            return null;
-        }
-        return preloadPlayers.get(position).playbackEntry;
-    }
-
-    @Override
     public List<PlaybackEntry> getPreloadEntries() {
         return preloadPlayers.stream()
                 .map(m -> m.playbackEntry)
@@ -284,7 +276,7 @@ class LocalAudioPlayer implements AudioPlayer {
     }
 
     @Override
-    public CompletableFuture<Void> dePreload(List<PlaybackEntry> playbackEntries) {
+    public CompletableFuture<Void> remove(List<PlaybackEntry> playbackEntries) {
         if (playbackEntries.isEmpty()) {
             return Util.futureResult();
         }

@@ -96,7 +96,7 @@ public class PlaybackController {
     private final PlaybackQueue currentPlaylistPlaybackEntries;
     private long currentPlaylistPosition;
     private long currentPlaylistPlaybackPosition;
-    private HashMap<Long, Long> playbackIDToRandomMap = new HashMap<>();
+    private final HashMap<Long, Long> playbackIDToRandomMap = new HashMap<>();
 
     // History of played items
     private final PlaybackQueue history;
@@ -293,7 +293,7 @@ public class PlaybackController {
     private CompletableFuture<Void> removePlaylistEntries() {
         Log.d(LC, "removePlaylistEntries");
         return playlistItems.clear()
-                .thenCompose(aVoid -> audioPlayer.dePreload(getPlayerPlaylistEntries()));
+                .thenCompose(aVoid -> audioPlayer.remove(getPlayerPlaylistEntries()));
     }
 
     private void setCurrentPlayerType(AudioPlayer.Type type) {
@@ -641,7 +641,7 @@ public class PlaybackController {
             if (playbackIDs.contains(current.playbackID)) {
                 // De-preload and schedule another updateState
                 submitCompletableFuture(this::updateState);
-                return audioPlayer.dePreload(Collections.singletonList(current))
+                return audioPlayer.remove(Collections.singletonList(current))
                         .thenCompose(aVoid -> Util.futureResult(
                                 "cleanDuplicateEntries: Current entry is a duplicate"
                         ));
@@ -653,7 +653,7 @@ public class PlaybackController {
             if (playbackIDs.contains(entry.playbackID)) {
                 // De-preload and schedule another updateState
                 submitCompletableFuture(this::updateState);
-                return audioPlayer.dePreload(Collections.singletonList(entry))
+                return audioPlayer.remove(Collections.singletonList(entry))
                         .thenCompose(aVoid -> Util.futureResult(
                                 "cleanDuplicateEntries: AudioPlayer preload contains a duplicate"
                         ));
@@ -691,7 +691,7 @@ public class PlaybackController {
         List<PlaybackEntry> historyEntries = audioPlayer.getHistory();
         historyEntries.forEach(p -> p.setPreloaded(false));
         Log.d(LC, "updateHistory getting " + historyEntries.size());
-        return audioPlayer.dePreload(historyEntries)
+        return audioPlayer.remove(historyEntries)
                 .thenCompose(aVoid -> history.add(0, historyEntries));
     }
 
@@ -809,6 +809,7 @@ public class PlaybackController {
                     currentPlaylistPlaybackEntries.size(),
                     currentRandomSeed
             );
+            long currentPlaylistPosition = getCurrentPlaylistPosition();
             long currentPlaylistPlaybackPosition = getCurrentPlaylistPlaybackPosition();
             if (currentPlaylistPlaybackPosition != expectedPlaylistPlaybackPosition) {
                 if (!repeatMode
@@ -826,10 +827,13 @@ public class PlaybackController {
                 }
                 long expectedPlaylistPosition = expectedPlaylistPlaybackEntry.playlistPos;
                 Log.d(LC, "syncPlaylistEntries:"
-                        + " Setting current playlist playback pos"
-                        + " (" + currentPlaylistPlaybackPosition + ")"
-                        + " to expected playlist playback pos: "
-                        + expectedPlaylistPlaybackPosition);
+                        + " Setting current playlist pos"
+                        + " " + currentPlaylistPosition
+                        + " (playback: " + currentPlaylistPlaybackPosition + ")"
+                        + " to expected playlist playback pos"
+                        + " " + expectedPlaylistPosition
+                        + " (playback: " + expectedPlaylistPlaybackPosition + ")"
+                );
                 setCurrentPlaylistPosition(
                         expectedPlaylistPosition,
                         expectedPlaylistPlaybackPosition
@@ -1040,7 +1044,7 @@ public class PlaybackController {
                     entriesToDePreload.addAll(queueEntriesToDePreload);
                     entriesToDePreload.addAll(playlistEntriesToDePreload);
                     if (!entriesToDePreload.isEmpty()) {
-                        return audioPlayer.dePreload(
+                        return audioPlayer.remove(
                                 entriesToDePreload
                         ).thenCompose(aVoid -> {
                             if (!playlistEntriesToDePreload.isEmpty()) {
@@ -1110,13 +1114,16 @@ public class PlaybackController {
                     // Check if playlistEntries have changed.
                     Log.d(LC, "playlistEntriesObserver."
                             + " Calculating diff between current and new playlist entries.");
+                    // Compare the new playlist entries to what the list of playlist playback
+                    // entries think the playlist entries look like
                     Diff diff = Diff.diff(
-                            currentPlaylistPlaybackEntries.getEntries()
-                                    .stream()
-                                    .map(p -> p.entryID)
-                                    .collect(Collectors.toList()),
                             newPlaylistEntries.stream()
                                     .map(PlaylistEntry::entryID)
+                                    .collect(Collectors.toList()),
+                            currentPlaylistPlaybackEntries.getEntries()
+                                    .stream()
+                                    .sorted((p1, p2) -> Long.compare(p1.playlistPos, p2.playlistPos))
+                                    .map(p -> p.entryID)
                                     .collect(Collectors.toList()),
                             false,
                             true
@@ -1175,9 +1182,9 @@ public class PlaybackController {
                         }
                     }
                     Log.d(LC, "onCurrentPlaylistEntriesChanged diff:"
-                            + "\ndeleted: " + diff.deleted
-                            + "\nadded: " + diff.added
-                            + "\nmoved: " + diff.moved
+                            + "\ndeleted: " + diff.deleted.size()
+                            + "\nadded: " + diff.added.size()
+                            + "\nmoved: " + diff.moved.size()
                             + "\nPlaylist playback del " + deletedPlaybackEntries.size()
                             + "\nPlaylist playback add " + addedPlaybackEntries.size()
                             + "\nPlaylist playback mov " + movedPlaybackEntries.size()
@@ -1222,14 +1229,14 @@ public class PlaybackController {
     private CompletableFuture<Void> _deQueue(List<PlaybackEntry> playbackEntries, boolean thenUpdateState) {
         Log.d(LC, "deQueue");
         CompletableFuture<Void> result = queue.remove(playbackEntries)
-                .thenCompose(v -> audioPlayer.dePreload(playbackEntries));
+                .thenCompose(v -> audioPlayer.remove(playbackEntries));
         return thenUpdateState ? result.thenCompose(aVoid -> updateState()) : result;
     }
 
     CompletableFuture<Void> clearQueue() {
         synchronized (executorLock) {
             return submitCompletableFuture(() -> queue.clear()
-                    .thenCompose(v -> audioPlayer.dePreload(getPlayerEntries()))
+                    .thenCompose(v -> audioPlayer.remove(getPlayerEntries()))
             );
         }
     }
@@ -1524,7 +1531,7 @@ public class PlaybackController {
         }
 
         @Override
-        public void disconnect() {
+        public void begToBeDisconnected() {
             Log.d(LC, "disconnect");
             onCastDisconnect();
         }

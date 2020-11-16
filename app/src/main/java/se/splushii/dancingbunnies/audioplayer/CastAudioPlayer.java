@@ -331,12 +331,6 @@ public class CastAudioPlayer implements AudioPlayer {
         return getMediaQueueEntry(itemIndex);
     }
 
-    @Override
-    public PlaybackEntry getPreloadEntry(int position) {
-        int itemIndex = getCurrentIndex() + 1 + position;
-        return getMediaQueueEntry(itemIndex);
-    }
-
     private PlaybackEntry getMediaQueueEntry(int mediaQueueItemIndex) {
         int mediaQueueItemId = getItemId(mediaQueueItemIndex);
         return mediaQueueItem2PlaybackEntry(queueItemMap.get(mediaQueueItemId));
@@ -453,7 +447,7 @@ public class CastAudioPlayer implements AudioPlayer {
     }
 
     @Override
-    public CompletableFuture<Void> dePreload(List<PlaybackEntry> playbackEntries) {
+    public CompletableFuture<Void> remove(List<PlaybackEntry> playbackEntries) {
         List<Integer> queueItemIdsToRemove = playbackEntries.stream()
                 .map(playbackEntry -> playbackIDToCastItemIDMap.get(playbackEntry.playbackID))
                 .filter(Objects::nonNull)
@@ -646,7 +640,7 @@ public class CastAudioPlayer implements AudioPlayer {
     private boolean disconnectIfInoperable() {
         if (isInoperable()) {
             Log.e(LC, "CastAudioPlayer is inoperable. Disconnecting...");
-            callback.disconnect();
+            callback.begToBeDisconnected();
             return true;
         }
         return false;

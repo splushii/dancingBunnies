@@ -30,7 +30,7 @@ public interface AudioPlayer {
         }
 
         @Override
-        public void disconnect() {
+        public void begToBeDisconnected() {
             Log.d(LC, "disconnect");
         }
     };
@@ -40,30 +40,38 @@ public interface AudioPlayer {
         CAST
     }
 
+    CompletableFuture<Void> initialize();
     AudioPlayerState getLastState();
-    long getSeekPosition();
-    int getMaxToPreload();
-    int getNumPreloaded();
-    PlaybackEntry getCurrentEntry();
-    PlaybackEntry getPreloadEntry(int position);
-    List<PlaybackEntry> getPreloadEntries();
+    CompletableFuture<Void> destroy(boolean clearState);
+
+    // History entries are chronologically behind the current entry
     List<PlaybackEntry> getHistory();
+
+    // Current entry is current
+    PlaybackEntry getCurrentEntry();
+    long getSeekPosition();
+
+    // Preload entries are chronologically in front of the current entry
+    List<PlaybackEntry> getPreloadEntries();
+    CompletableFuture<Void> preload(List<PlaybackEntry> entries, int offset);
+    int getNumPreloaded();
+    int getMaxToPreload();
+
+    // Used to remove entries no matter if they're history, current or preload
+    CompletableFuture<Void> remove(List<PlaybackEntry> playbackEntries);
+
     CompletableFuture<Void> play();
     CompletableFuture<Void> pause();
     CompletableFuture<Void> stop();
     CompletableFuture<Void> seekTo(long pos);
     CompletableFuture<Void> next();
-    CompletableFuture<Void> preload(List<PlaybackEntry> entries, int offset);
-    CompletableFuture<Void> dePreload(List<PlaybackEntry> playbackEntries);
-    CompletableFuture<Void> initialize();
-    CompletableFuture<Void> destroy(boolean clearState);
 
     interface Callback {
         void onStateChanged(int playBackState);
         void onCurrentEntryChanged(PlaybackEntry entry);
         void onPreloadChanged();
         void onSongEnded();
-        void disconnect();
+        void begToBeDisconnected();
     }
 
     class AudioPlayerState {
