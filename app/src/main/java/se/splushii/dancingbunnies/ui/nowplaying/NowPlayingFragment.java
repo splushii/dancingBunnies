@@ -17,6 +17,7 @@ import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import com.google.android.gms.cast.CastDevice;
 import com.google.android.gms.cast.framework.CastButtonFactory;
 
 import java.util.ArrayList;
@@ -119,13 +120,14 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
             historySelectionTracker;
 
     private NowPlayingFragmentModel model;
-    private MutableLiveData<EntryID> currentPlaylistIDLiveData = new MutableLiveData<>();
+    private final MutableLiveData<EntryID> currentPlaylistIDLiveData = new MutableLiveData<>();
     private View currentPlaylistView;
     private WaveformSeekBar waveformSeekBar;
     private final MediaRouteSelector mediaRouteSelector;
     private MediaRouteButton mediaRouteButton;
-    private ImageButton nextBtn;
     private ImageView mediaRouteIcon;
+    private TextView mediaRouteName;
+    private ImageButton nextBtn;
     private MediaRouter mediaRouter;
     private View nowPlayingActions;
 
@@ -151,8 +153,9 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
                 false
         );
 
-        mediaRouteButton = rootView.findViewById(R.id.nowlaying_mediaroutebutton);
-        mediaRouteIcon = rootView.findViewById(R.id.nowlaying_mediaroute);
+        mediaRouteButton = rootView.findViewById(R.id.nowplaying_mediaroute_button);
+        mediaRouteIcon = rootView.findViewById(R.id.nowplaying_mediaroute_icon);
+        mediaRouteName = rootView.findViewById(R.id.nowplaying_mediaroute_name);
 
         RecyclerView recView = rootView.findViewById(R.id.nowplaying_recyclerview);
         LinearLayoutManager recViewLayoutManager = new LinearLayoutManager(this.getContext());
@@ -548,10 +551,11 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
     private void setSelectedMediaRoute(MediaRouter.RouteInfo selectedRoute) {
         boolean isTargetLocal = selectedRoute.isDeviceSpeaker();
         boolean isTargetBluetooth = selectedRoute.isBluetooth();
+        boolean isTargetCast = false;
         boolean isSpeaker = isTargetLocal;
-        // TODO: replace with selectedRoute.isGroup() when it's working
         boolean isGroup = false;
         boolean isTV = false;
+        String name = selectedRoute.getName();
         switch (selectedRoute.getDeviceType()) {
             case DEVICE_TYPE_TV:
                 isTV = true;
@@ -560,15 +564,22 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
                 isSpeaker = true;
                 break;
         }
+        CastDevice castDevice = CastDevice.getFromBundle(selectedRoute.getExtras());
+        if (castDevice != null) {
+            isTargetCast = true;
+            if (castDevice.hasCapability(CastDevice.CAPABILITY_MULTIZONE_GROUP)) {
+                isGroup = true;
+            }
+        }
 
         int targetDrawable;
         if (isTargetLocal) {
             targetDrawable = R.drawable.ic_phone_android_black_24dp;
         } else if (isTargetBluetooth) {
             targetDrawable = R.drawable.ic_bluetooth_black_24dp;
-        } else {
-            // Assume it's a cast device
+        } else if (isTargetCast) {
             switch (selectedRoute.getConnectionState()) {
+                default:
                 case MediaRouter.RouteInfo.CONNECTION_STATE_DISCONNECTED:
                     targetDrawable = R.drawable.ic_baseline_cast_24;
                     break;
@@ -578,10 +589,9 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
                 case MediaRouter.RouteInfo.CONNECTION_STATE_CONNECTED:
                     targetDrawable = R.drawable.ic_baseline_cast_connected_24;
                     break;
-                default:
-                    targetDrawable = R.drawable.ic_baseline_device_unknown_24;
-                    break;
             }
+        } else {
+            targetDrawable = R.drawable.ic_baseline_device_unknown_24;
         }
 
         int typeDrawable;
@@ -607,6 +617,7 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
             mediaRouteIcon.setImageResource(typeDrawable);
             mediaRouteTypeDrawable = typeDrawable;
         }
+        mediaRouteName.setText(name == null ? "unknown" : name);
     }
 
     private final MediaRouter.Callback mediaRouterCallback = new MediaRouter.Callback() {
