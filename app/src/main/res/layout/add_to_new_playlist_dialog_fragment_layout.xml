@@ -11,7 +11,7 @@
         android:layout_gravity="center_vertical"
         android:padding="16dp"
         android:background="@color/colorAccentDark"
-        android:textColor="@color/colorTextOnSecondary"
+        android:textColor="@color/colorTextOnAccent"
         android:fontFamily="sans-serif"
         android:textSize="18sp"
         android:text="@string/save_to_new_playlist"/>
@@ -45,7 +45,7 @@
             android:textSize="14sp"
             android:singleLine="true"
             android:ellipsize="end"
-            android:textColor="@color/text_primary_color"
+            android:textColor="@color/text_active_on_accent"
             android:text="@string/playlist_new_playlist_backend"
             />
         <TextView
@@ -59,7 +59,7 @@
             android:textStyle="bold"
             android:singleLine="true"
             android:ellipsize="end"
-            android:textColor="@color/text_primary_color"
+            android:textColor="@color/text_active_on_accent"
             android:text="@string/empty"
             android:labelFor="@id/playlist_new_playlist_backend_icon"
             />

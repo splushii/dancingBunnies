@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:color="@color/colorTextSecondaryDisabled"
+        android:state_enabled="false"
+        android:state_activated="false"
+        />
+    <item
+        android:color="@color/colorTextSecondaryOnAccentDisabledSelected"
+        android:state_enabled="false"
+        android:state_activated="true"
+        />
+    <item
+        android:color="@color/colorTextSecondary"
+        android:state_enabled="true"
+        android:state_activated="false"
+        />
+    <item
+        android:color="@color/colorTextSecondaryOnAccentSelected"
+        android:state_enabled="true"
+        android:state_activated="true"
+        />
+</selector>

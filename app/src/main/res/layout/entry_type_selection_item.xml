@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@color/windowBackground">
@@ -15,7 +16,7 @@
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:textColor="@color/text_primary_color"
+            android:textColor="@color/text_active_on_accent"
             android:padding="8dp"/>
         <ImageView
             android:id="@+id/entry_type_selection_item_handle"
@@ -23,7 +24,7 @@
             android:layout_height="wrap_content"
             android:padding="8dp"
             android:src="@drawable/ic_drag_handle_black_24dp"
-            android:tint="@color/icon_on_background"
-            android:contentDescription="@string/drag_handle" />
+            android:contentDescription="@string/drag_handle"
+            app:tint="@color/icon_active" />
     </LinearLayout>
 </LinearLayout>

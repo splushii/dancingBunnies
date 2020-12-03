@@ -60,10 +60,6 @@ public class PlaybackController {
     private static final String LC = Util.getLogContext(PlaybackController.class);
     private static final int MAX_PLAYLIST_ENTRIES_TO_PREFETCH = 3;
 
-    public static final int PLAYBACK_ORDER_SEQUENTIAL = 0;
-    public static final int PLAYBACK_ORDER_SHUFFLE = 1;
-    public static final int PLAYBACK_ORDER_RANDOM = 2;
-
     private final Context context;
     private final Callback callback;
     private final SessionManagerListener<Session> sessionManagerListener = new SessionManagerListenerImpl();
@@ -84,7 +80,7 @@ public class PlaybackController {
     private AudioPlayer.Type currentPlayerType;
     // Current playlist reference
     private long currentPlaylistSelectionID;
-    private int currentPlaylistPlaybackOrderMode;
+    private boolean currentPlaylistPlaybackRandom;
     private boolean currentPlaylistPlaybackRepeatMode;
     private final MutableLiveData<EntryID> currentPlaylistIDLiveData = new MutableLiveData<>();
     private EntryID currentPlaylistID;
@@ -124,7 +120,7 @@ public class PlaybackController {
         currentPlaylistID = storage.getCurrentPlaylist();
         currentPlaylistPosition = storage.getCurrentPlaylistPosition();
         currentPlaylistPlaybackPosition = storage.getCurrentPlaylistPlaybackPosition();
-        currentPlaylistPlaybackOrderMode = storage.getCurrentPlaylistPlaybackOrderMode();
+        currentPlaylistPlaybackRandom = storage.isCurrentPlaylistPlaybackRandom();
         currentPlaylistPlaybackRepeatMode = storage.getCurrentPlaylistPlaybackRepeatMode();
         Log.d(LC, "Construct:"
                 + "\ncurrentPlayerType: " + currentPlayerType.name()
@@ -132,7 +128,7 @@ public class PlaybackController {
                 + "\ncurrentPlaylistSelectionID: " + currentPlaylistSelectionID
                 + "\ncurrentPlaylistID: " + currentPlaylistID
                 + "\ncurrentPlaylistPlaybackPosition: " + currentPlaylistPlaybackPosition
-                + "\ncurrentPlaylistPlaybackOrderMode: " + currentPlaylistPlaybackOrderMode
+                + "\ncurrentPlaylistPlaybackRandom: " + currentPlaylistPlaybackRandom
                 + "\ncurrentPlaylistPlaybackRepeatMode: " + currentPlaylistPlaybackRepeatMode
         );
 
@@ -165,6 +161,7 @@ public class PlaybackController {
                 currentPlaylistPlaybackEntriesLiveData,
                 () -> {
                     Log.d(LC, "playlist playback entries changed");
+                    onCurrentPlaylistPlaybackEntriesChanged();
                     submitCompletableFuture(PlaybackController.this::updateState);
                 }
         );
@@ -227,7 +224,8 @@ public class PlaybackController {
     void initialize() {
         isPlaying = false;
         callback.onPlayerChanged(getCurrentPlayerType());
-        callback.onPlaybackOrderChanged(getCurrentPlaylistPlaybackOrderMode());
+        callback.onPlaybackOrderChanged(isCurrentPlaylistPlaybackOrdered());
+        callback.onPlaybackRandomChanged(isCurrentPlaylistPlaybackRandom());
         callback.onRepeatModeChanged(getCurrentPlaylistPlaybackRepeatMode());
         callback.onPlaylistSelectionChanged(
                 getCurrentPlaylistID(),
@@ -235,6 +233,7 @@ public class PlaybackController {
         );
         onQueueChanged();
         audioPlayer.initialize();
+        onCurrentPlaylistPlaybackEntriesChanged();
         submitCompletableFuture(this::updateState);
     }
 
@@ -315,14 +314,14 @@ public class PlaybackController {
         return currentPlaylistSelectionID;
     }
 
-    private void setCurrentPlaylistPlaybackOrderMode(int playbackOrderMode) {
-        currentPlaylistPlaybackOrderMode = playbackOrderMode;
-        storage.setCurrentPlaylistPlaybackOrderMode(playbackOrderMode);
-        callback.onPlaybackOrderChanged(playbackOrderMode);
+    private void setCurrentPlaylistPlaybackRandom(boolean random) {
+        currentPlaylistPlaybackRandom = random;
+        storage.setCurrentPlaylistPlaybackRandom(random);
+        callback.onPlaybackRandomChanged(random);
     }
 
-    private int getCurrentPlaylistPlaybackOrderMode() {
-        return currentPlaylistPlaybackOrderMode;
+    private boolean isCurrentPlaylistPlaybackRandom() {
+        return currentPlaylistPlaybackRandom;
     }
 
     private void setCurrentPlaylistPlaybackRepeatMode(boolean repeat) {
@@ -367,7 +366,6 @@ public class PlaybackController {
             Collections.sort(playlistPlaybackEntries, (a, b) -> Long.compare(a.playlistPos, b.playlistPos));
             return currentPlaylistPlaybackEntries.replaceWith(playlistPlaybackEntries)
                     .thenRun(() -> {
-                        setCurrentPlaylistPlaybackOrderMode(PLAYBACK_ORDER_SEQUENTIAL);
                         setCurrentPlaylistSelectionID(storage.getNextPlaylistSelectionID());
                         PlaybackEntry entry = currentPlaylistPlaybackEntries.get(0);
                         long playlistPos = entry == null ? 0: entry.playlistPos;
@@ -385,7 +383,6 @@ public class PlaybackController {
             Collections.shuffle(playlistPlaybackEntries);
             return currentPlaylistPlaybackEntries.replaceWith(playlistPlaybackEntries)
                     .thenRun(() -> {
-                        setCurrentPlaylistPlaybackOrderMode(PLAYBACK_ORDER_SHUFFLE);
                         setCurrentPlaylistSelectionID(storage.getNextPlaylistSelectionID());
                         PlaybackEntry entry = currentPlaylistPlaybackEntries.get(0);
                         long playlistPos = entry == null ? 0: entry.playlistPos;
@@ -396,10 +393,10 @@ public class PlaybackController {
         });
     }
 
-    CompletableFuture<Void> setRandomPlayback() {
-        Log.d(LC, "setRandomPlayback");
+    CompletableFuture<Void> toggleRandomPlayback() {
+        Log.d(LC, "toggleRandomPlayback");
         return submitCompletableFuture(() -> {
-            setCurrentPlaylistPlaybackOrderMode(PLAYBACK_ORDER_RANDOM);
+            setCurrentPlaylistPlaybackRandom(!isCurrentPlaylistPlaybackRandom());
             setCurrentPlaylistPlaybackRepeatMode(true);
             return updateState();
         });
@@ -502,9 +499,9 @@ public class PlaybackController {
         List<PlaybackEntry> chosenEntries = new ArrayList<>();
         int nextIndex = (int) getCurrentPlaylistPlaybackPosition();
         PlaybackEntry nextEntry = entries.get(nextIndex);
-        boolean randomOrder = getCurrentPlaylistPlaybackOrderMode() == PLAYBACK_ORDER_RANDOM;
+        boolean random = isCurrentPlaylistPlaybackRandom();
         long nextRandom = 0L;
-        if (randomOrder) {
+        if (random) {
             // Use the last playlist playback entry as seed for random
             PlaybackEntry lastPlaylistPlaybackEntry = getLastPlaylistPlaybackEntry();
             if (lastPlaylistPlaybackEntry != null) {
@@ -521,7 +518,7 @@ public class PlaybackController {
                 nextRandom = getNextRandomSeed(nextEntry.playlistPos);
             }
         }
-        nextRandom = randomOrder ? getNextRandomSeed(nextRandom) : 0L;
+        nextRandom = random ? getNextRandomSeed(nextRandom) : 0L;
         boolean repeat = getCurrentPlaylistPlaybackRepeatMode();
         long playbackID = dummyPlaybackID ?
                 PlaybackEntry.PLAYBACK_ID_INVALID : reservePlaybackIDs(maxEntries);
@@ -544,7 +541,7 @@ public class PlaybackController {
                 return chosenEntries;
             }
             nextEntry = entries.get(nextIndex);
-            nextRandom = randomOrder ? getNextRandomSeed(nextRandom) : 0L;
+            nextRandom = random ? getNextRandomSeed(nextRandom) : 0L;
         }
         return chosenEntries;
     }
@@ -801,9 +798,8 @@ public class PlaybackController {
         if (lastPlaylistPlaybackEntry != null) {
             long prevPlaylistPos = lastPlaylistPlaybackEntry.playlistPos;
             prevPlaylistPlaybackPos = playlistPlaybackPosFromPlaylistPos(prevPlaylistPos);
-            boolean randomPlaybackOrderMode =
-                    getCurrentPlaylistPlaybackOrderMode() == PLAYBACK_ORDER_RANDOM;
-            long currentRandomSeed = randomPlaybackOrderMode ? nextRandom(lastPlaylistPlaybackEntry) : 0L;
+            boolean random = isCurrentPlaylistPlaybackRandom();
+            long currentRandomSeed = random ? nextRandom(lastPlaylistPlaybackEntry) : 0L;
             long expectedPlaylistPlaybackPosition = nextPlaylistPosition(
                     prevPlaylistPlaybackPos,
                     currentPlaylistPlaybackEntries.size(),
@@ -1220,6 +1216,40 @@ public class PlaybackController {
         }
     }
 
+    private void onCurrentPlaylistPlaybackEntriesChanged() {
+        synchronized (executorLock) {
+            submitCompletableFuture(() -> CompletableFuture
+                    .supplyAsync(this::isCurrentPlaylistPlaybackOrdered)
+                    .thenApplyAsync(
+                            ordered -> {
+                                callback.onPlaybackOrderChanged(ordered);
+                                return null;
+                            },
+                            Util.getMainThreadExecutor()
+                    )
+            );
+        }
+    }
+
+    private boolean isCurrentPlaylistPlaybackOrdered() {
+        List<PlaylistEntry> currentPlaylistEntries = currentPlaylistEntriesLiveData.getValue();
+        boolean diff;
+        if (currentPlaylistEntries == null) {
+            diff = false;
+        } else {
+            diff = Diff.fastDiff(
+                    currentPlaylistEntries.stream()
+                            .map(PlaylistEntry::entryID)
+                            .collect(Collectors.toList()),
+                    currentPlaylistPlaybackEntries.getEntries()
+                            .stream()
+                            .map(p -> p.entryID)
+                            .collect(Collectors.toList())
+            );
+        }
+        return !diff;
+    }
+
     CompletableFuture<Void> deQueue(List<PlaybackEntry> playbackEntries) {
         synchronized (executorLock) {
             return submitCompletableFuture(() -> _deQueue(playbackEntries, true));
@@ -1495,7 +1525,8 @@ public class PlaybackController {
         void onQueueChanged(List<PlaybackEntry> queue);
         void onPlaylistSelectionChanged(EntryID playlistID, long pos);
         void onPlayerSeekPositionChanged(long pos);
-        void onPlaybackOrderChanged(int playbackOrder);
+        void onPlaybackOrderChanged(boolean ordered);
+        void onPlaybackRandomChanged(boolean random);
         void onRepeatModeChanged(boolean repeat);
     }
 

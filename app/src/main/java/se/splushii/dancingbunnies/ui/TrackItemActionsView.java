@@ -90,7 +90,7 @@ public class TrackItemActionsView extends LinearLayoutCompat {
                     rootView,
                     this::onAction,
                     visibleAction,
-                    R.color.icon_on_secondary,
+                    R.color.icon_on_accent,
                     !disabled.contains(visibleAction)
             );
         }
@@ -100,7 +100,7 @@ public class TrackItemActionsView extends LinearLayoutCompat {
                     rootView,
                     this::onAction,
                     ACTION_MORE,
-                    R.color.icon_on_secondary,
+                    R.color.icon_on_accent,
                     !disabled.contains(ACTION_MORE)
             );
         }

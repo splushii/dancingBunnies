@@ -41,7 +41,6 @@ import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserCallback;
-import se.splushii.dancingbunnies.audioplayer.PlaybackController;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -118,7 +117,7 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
     private View playlistSortActionView;
     private View playlistShuffleActionView;
     private View playlistRandomActionView;
-    private View playlistRepeatActionView;
+    private ViewGroup playlistRepeatActionView;
 
     private FloatingActionButton newPlaylistFAB;
     private View newPlaylistView;
@@ -190,16 +189,10 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
                 ActionMode.TYPE_PRIMARY,
                 playlistActionModeCallback
         );
-        playlistSortActionView.setOnClickListener(v ->
-                remote.setPlaylistPlaybackOrderMode(PlaybackController.PLAYBACK_ORDER_SEQUENTIAL)
-        );
-        playlistShuffleActionView.setOnClickListener(v ->
-                remote.setPlaylistPlaybackOrderMode(PlaybackController.PLAYBACK_ORDER_SHUFFLE)
-        );
-        playlistRandomActionView.setOnClickListener(v ->
-                remote.setPlaylistPlaybackOrderMode(PlaybackController.PLAYBACK_ORDER_RANDOM)
-        );
-        playlistRepeatActionView.setOnClickListener(v -> remote.toggleRepeat());
+        playlistSortActionView.setOnClickListener(v -> remote.reorderPlaylistPlayback(false));
+        playlistShuffleActionView.setOnClickListener(v -> remote.reorderPlaylistPlayback(true));
+        playlistRandomActionView.setOnClickListener(v -> remote.togglePlaylistPlaybackRandom());
+        playlistRepeatActionView.setOnClickListener(v -> remote.togglePlaylistPlaybackRepeat());
         ActionModeCallback playlistEntriesActionModeCallback = new ActionModeCallback(
                 requireActivity(),
                 remote,
@@ -344,7 +337,7 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
         playlistSelectSwitch.setOnCheckedChangeListener((view, checked) -> {
             if (userSelectedPlaylist.get()) {
                 userSelectedPlaylist.set(false);
-                remote.setPlaylistPlaybackOrderMode(PlaybackController.PLAYBACK_ORDER_SEQUENTIAL);
+                remote.reorderPlaylistPlayback(false);
                 model.showPlaylistPlaybackEntries(checked);
                 if (checked) {
                     PlaylistUserState userState = model.getUserStateValue();
@@ -374,21 +367,24 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
         return remote;
     }
 
-    private void updatePlaylistPlaybackButtons(int playbackOrderMode, boolean repeat) {
+    private void updatePlaylistPlaybackButtons(boolean ordered, boolean random, boolean repeat) {
         if (getView() == null) {
             return;
         }
-        playlistSortActionView.setActivated(playbackOrderMode == PlaybackController.PLAYBACK_ORDER_SEQUENTIAL);
-        playlistShuffleActionView.setActivated(playbackOrderMode == PlaybackController.PLAYBACK_ORDER_SHUFFLE);
-        playlistRandomActionView.setActivated(playbackOrderMode == PlaybackController.PLAYBACK_ORDER_RANDOM);
-        playlistRepeatActionView.setEnabled(playbackOrderMode != PlaybackController.PLAYBACK_ORDER_RANDOM);
+        playlistSortActionView.setActivated(ordered);
+        playlistShuffleActionView.setActivated(!ordered);
+        playlistRandomActionView.setActivated(random);
+        playlistRepeatActionView.setEnabled(!random);
+        for (int i = 0; i < playlistRepeatActionView.getChildCount(); i++) {
+            playlistRepeatActionView.getChildAt(i).setEnabled(!random);
+        }
         playlistRepeatActionView.setActivated(repeat);
     }
 
     @Override
     public void onStart() {
         super.onStart();
-        remote.registerCallback(requireActivity(), this);
+        remote.registerCallback(this);
     }
 
     @Override
@@ -397,7 +393,7 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
         model.savePlaylistScroll(Util.getRecyclerViewPosition(playlistRecView));
         model.savePlaylistEntriesScroll(Util.getRecyclerViewPosition(playlistEntriesRecView));
         model.savePlaylistPlaybackEntriesScroll(Util.getRecyclerViewPosition(playlistPlaybackEntriesRecView));
-        remote.unregisterCallback(requireActivity(), this);
+        remote.unregisterCallback(this);
         super.onStop();
     }
 
@@ -410,7 +406,11 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
 
     @Override
     public void onSessionReady() {
-        updatePlaylistPlaybackButtons(remote.getPlaylistPlaybackOrderMode(), remote.isRepeat());
+        updatePlaylistPlaybackButtons(
+                remote.isPlaylistPlaybackOrdered(),
+                remote.isPlaylistPlaybackRandom(),
+                remote.isPlaylistPlaybackRepeat()
+        );
         if (model != null) {
             model.setCurrentPlaylist(remote.getCurrentPlaylist());
             model.setCurrentPlaylistPos(remote.getCurrentPlaylistPos());
@@ -429,13 +429,30 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
     }
 
     @Override
-    public void onPlaylistPlaybackOrderModeChanged(int shuffleMode) {
-        updatePlaylistPlaybackButtons(shuffleMode, remote.isRepeat());
+    public void onPlaylistPlaybackOrderChanged(boolean ordered) {
+        updatePlaylistPlaybackButtons(
+                ordered,
+                remote.isPlaylistPlaybackRandom(),
+                remote.isPlaylistPlaybackRepeat()
+        );
     }
 
     @Override
-    public void onRepeatModeChanged(boolean repeat) {
-        updatePlaylistPlaybackButtons(remote.getPlaylistPlaybackOrderMode(), repeat);
+    public void onPlaylistPlaybackRandomChanged(boolean random) {
+        updatePlaylistPlaybackButtons(
+                remote.isPlaylistPlaybackOrdered(),
+                random,
+                remote.isPlaylistPlaybackRepeat()
+        );
+    }
+
+    @Override
+    public void onPlaylistPlaybackRepeatModeChanged(boolean repeat) {
+        updatePlaylistPlaybackButtons(
+                remote.isPlaylistPlaybackOrdered(),
+                remote.isPlaylistPlaybackRandom(),
+                repeat
+        );
     }
 
     @Override
@@ -481,8 +498,9 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
             if (model.isBrowsedCurrent()) {
                 if (state.showPlaybackEntries) {
                     updatePlaylistPlaybackButtons(
-                            remote.getPlaylistPlaybackOrderMode(),
-                            remote.isRepeat()
+                            remote.isPlaylistPlaybackOrdered(),
+                            remote.isPlaylistPlaybackRandom(),
+                            remote.isPlaylistPlaybackRepeat()
                     );
                     playlistEntriesRoot.setVisibility(GONE);
                     playlistShowPlaybackOrderSwitch.setChecked(true);

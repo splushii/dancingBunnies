@@ -140,7 +140,7 @@ public class MenuActions {
                     menu,
                     i,
                     moreActions[i],
-                    R.color.icon_on_background,
+                    R.color.icon_active,
                     !disabled.contains(moreActions[i])
             );
         }

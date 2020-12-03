@@ -204,7 +204,7 @@ public class MusicLibraryFilterGroup extends LinearLayout {
         newChip.setChipBackgroundColorResource(R.color.accent_active_accentdark);
         newChip.setTextColor(ContextCompat.getColorStateList(
                 getContext(),
-                R.color.white_active_accent_extra_light
+                R.color.white_active_accent_light
         ));
         newChip.setChipIconResource(iconResource);
         newChip.setChipIconTintResource(negated ? R.color.red : R.color.black);

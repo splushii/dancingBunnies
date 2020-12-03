@@ -300,14 +300,14 @@ public class MusicLibraryFragment
     @Override
     public void onStart() {
         super.onStart();
-        remote.registerCallback(requireActivity(), this);
+        remote.registerCallback(this);
     }
 
     @Override
     public void onStop() {
         Log.d(LC, "onStop");
         model.updateUserState(Util.getRecyclerViewPosition(browseRecyclerView));
-        remote.unregisterCallback(requireActivity(), this);
+        remote.unregisterCallback(this);
         // Otherwise afterTextChanged will get triggered on start which will trigger a search
         searchQueryEdit.setText("");
         super.onStop();
@@ -342,10 +342,13 @@ public class MusicLibraryFragment
     public void onPlaylistSelectionChanged(EntryID playlistID, long pos) {}
 
     @Override
-    public void onPlaylistPlaybackOrderModeChanged(int playbackOrderMode) {}
+    public void onPlaylistPlaybackOrderChanged(boolean ordered) {}
 
     @Override
-    public void onRepeatModeChanged(boolean repeat) {}
+    public void onPlaylistPlaybackRandomChanged(boolean random) {}
+
+    @Override
+    public void onPlaylistPlaybackRepeatModeChanged(boolean repeat) {}
 
     @Override
     public void onCurrentEntryChanged(PlaybackEntry entry) {
@@ -679,7 +682,7 @@ public class MusicLibraryFragment
             }
             tv.setTextColor(ContextCompat.getColorStateList(
                     requireContext(),
-                    R.color.text_primary_color
+                    R.color.text_active_on_accent
             ));
             tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, isHeader ? 14 : 12);
             tv.setSingleLine();
@@ -880,7 +883,7 @@ public class MusicLibraryFragment
         ).setIcon(
                 R.drawable.ic_edit_black_24dp
         ).setIconTintList(
-                ContextCompat.getColorStateList(requireContext(), R.color.text_primary_color)
+                ContextCompat.getColorStateList(requireContext(), R.color.text_active_on_accent)
         );
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             browseHeaderSortedByMenu.setGroupDividerEnabled(true);
@@ -1042,7 +1045,7 @@ public class MusicLibraryFragment
             item.setIcon(!isSortedAscending() ?
                     R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp
             ).setIconTintList(
-                    ContextCompat.getColorStateList(requireContext(), R.color.text_primary_color)
+                    ContextCompat.getColorStateList(requireContext(), R.color.text_active_on_accent)
             );
             setSortOrder(!isSortedAscending());
             return true;
@@ -1086,7 +1089,7 @@ public class MusicLibraryFragment
         ).setIcon(isSortedAscending() ?
                 R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp
         ).setIconTintList(
-                ContextCompat.getColorStateList(requireContext(), R.color.text_primary_color)
+                ContextCompat.getColorStateList(requireContext(), R.color.text_active_on_accent)
         );
     }
 

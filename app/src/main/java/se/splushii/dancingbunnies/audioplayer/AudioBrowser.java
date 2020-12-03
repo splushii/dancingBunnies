@@ -134,8 +134,7 @@ public class AudioBrowser {
         return mediaController != null && mediaController.isSessionReady();
     }
 
-    public void registerCallback(FragmentActivity activity,
-                                                    AudioBrowserCallback callback) {
+    public void registerCallback(AudioBrowserCallback callback) {
         MediaControllerCallback mediaControllerCallback = new MediaControllerCallback(callback);
         if (callbackMap.putIfAbsent(callback, mediaControllerCallback) != null) {
             Log.w(LC, "registerCallback: callback already registered");
@@ -146,7 +145,7 @@ public class AudioBrowser {
         }
     }
 
-    public void unregisterCallback(FragmentActivity activity, AudioBrowserCallback callback) {
+    public void unregisterCallback(AudioBrowserCallback callback) {
         MediaControllerCallback mediaControllerCallback = callbackMap.remove(callback);
         if (mediaControllerCallback != null && mediaController != null) {
             mediaController.unregisterCallback(mediaControllerCallback);
@@ -366,55 +365,63 @@ public class AudioBrowser {
         mediaController.getTransportControls().seekTo(position);
     }
 
-    public void toggleRepeat() {
-        mediaController.getTransportControls().setRepeatMode(isRepeat() ?
+    public void togglePlaylistPlaybackRepeat() {
+        mediaController.getTransportControls().setRepeatMode(isPlaylistPlaybackRepeat() ?
                 PlaybackStateCompat.REPEAT_MODE_NONE : PlaybackStateCompat.REPEAT_MODE_ALL
         );
     }
 
-    public boolean isRepeat() {
-        return isRepeat(mediaController.getRepeatMode());
+    public boolean isPlaylistPlaybackRepeat() {
+        return isPlaylistPlaybackRepeat(mediaController.getRepeatMode());
     }
 
-    private boolean isRepeat(int repeatMode) {
+    private boolean isPlaylistPlaybackRepeat(int repeatMode) {
         return repeatMode == PlaybackStateCompat.REPEAT_MODE_ALL;
     }
 
-    public void setPlaylistPlaybackOrderMode(int playbackOrderMode) {
-        int shuffleMode;
-        switch (playbackOrderMode) {
-            default:
-            case PlaybackController.PLAYBACK_ORDER_SEQUENTIAL:
-                shuffleMode = PlaybackStateCompat.SHUFFLE_MODE_NONE;
-                break;
-            case PlaybackController.PLAYBACK_ORDER_SHUFFLE:
-                shuffleMode = PlaybackStateCompat.SHUFFLE_MODE_ALL;
-                break;
-            case PlaybackController.PLAYBACK_ORDER_RANDOM:
-                shuffleMode = PlaybackStateCompat.SHUFFLE_MODE_GROUP;
-                break;
-        }
+    public void reorderPlaylistPlayback(boolean shuffle) {
+        int shuffleMode = shuffle
+                ? PlaybackStateCompat.SHUFFLE_MODE_ALL
+                : PlaybackStateCompat.SHUFFLE_MODE_NONE;
         mediaController.getTransportControls().setShuffleMode(shuffleMode);
     }
 
-    public int getPlaylistPlaybackOrderMode() {
+    public boolean isPlaylistPlaybackOrdered() {
         if (mediaController == null) {
-            return PlaybackStateCompat.SHUFFLE_MODE_NONE;
+            return true;
         }
-        return getPlaylistPlaybackOrderMode(mediaController.getShuffleMode());
+        return isPlaylistPlaybackOrdered(mediaController.getShuffleMode());
     }
 
-    private int getPlaylistPlaybackOrderMode(int shuffleMode) {
+    private boolean isPlaylistPlaybackOrdered(int shuffleMode) {
         switch (shuffleMode) {
             default:
             case PlaybackStateCompat.SHUFFLE_MODE_INVALID:
             case PlaybackStateCompat.SHUFFLE_MODE_NONE:
-                return PlaybackController.PLAYBACK_ORDER_SEQUENTIAL;
+                return true;
             case PlaybackStateCompat.SHUFFLE_MODE_ALL:
-                return PlaybackController.PLAYBACK_ORDER_SHUFFLE;
             case PlaybackStateCompat.SHUFFLE_MODE_GROUP:
-                return PlaybackController.PLAYBACK_ORDER_RANDOM;
+                return false;
         }
+    }
+
+    public CompletableFuture<Boolean> togglePlaylistPlaybackRandom() {
+        return AudioPlayerService.toggleRandom(
+                mediaController
+        ).thenApply(success -> {
+            if (!success) {
+                Log.e(LC, "toggle random failed");
+            }
+            return success;
+        });
+    }
+
+    public boolean isPlaylistPlaybackRandom() {
+        Bundle extras = mediaController.getExtras();
+        if (extras == null) {
+            return false;
+        }
+        return extras.getBoolean(AudioPlayerService.BUNDLE_KEY_RANDOM, false);
     }
 
     public void downloadAudioData(Context context,
@@ -454,14 +461,12 @@ public class AudioBrowser {
 
         @Override
         public void onShuffleModeChanged(int shuffleMode) {
-            callback.onPlaylistPlaybackOrderModeChanged(
-                    getPlaylistPlaybackOrderMode(shuffleMode)
-            );
+            callback.onPlaylistPlaybackOrderChanged(isPlaylistPlaybackOrdered(shuffleMode));
         }
 
         @Override
         public void onRepeatModeChanged(int repeatMode) {
-            callback.onRepeatModeChanged(isRepeat(repeatMode));
+            callback.onPlaylistPlaybackRepeatModeChanged(isPlaylistPlaybackRepeat(repeatMode));
         }
 
         @Override
@@ -478,17 +483,20 @@ public class AudioBrowser {
         public void onSessionEvent(String event, Bundle extras) {
             switch (event) {
                 case AudioPlayerService.SESSION_EVENT_PLAYLIST_SELECTION_CHANGED:
-                    EntryID playlistID = extras.getParcelable(
-                            AudioPlayerService.BUNDLE_KEY_PLAYLIST_ID
+                    callback.onPlaylistSelectionChanged(
+                            extras.getParcelable(AudioPlayerService.BUNDLE_KEY_PLAYLIST_ID),
+                            extras.getLong(AudioPlayerService.BUNDLE_KEY_CURRENT_PLAYLIST_POS)
                     );
-                    long pos = extras.getLong(AudioPlayerService.BUNDLE_KEY_CURRENT_PLAYLIST_POS);
-                    callback.onPlaylistSelectionChanged(playlistID, pos);
                     break;
                 case AudioPlayerService.SESSION_EVENT_CURRENT_ENTRY_CHANGED:
-                    PlaybackEntry entry = extras.getParcelable(
-                            AudioPlayerService.BUNDLE_KEY_PLAYBACK_ENTRY
+                    callback.onCurrentEntryChanged(
+                            extras.getParcelable(AudioPlayerService.BUNDLE_KEY_PLAYBACK_ENTRY)
                     );
-                    callback.onCurrentEntryChanged(entry);
+                    break;
+                case AudioPlayerService.SESSION_EVENT_RANDOM_CHANGED:
+                    callback.onPlaylistPlaybackRandomChanged(
+                            extras.getBoolean(AudioPlayerService.BUNDLE_KEY_RANDOM, false)
+                    );
                     break;
             }
         }

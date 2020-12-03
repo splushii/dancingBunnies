@@ -63,7 +63,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="2"
                     android:text="@string/transactions_dialog_error_count"
-                    android:textColor="@color/text_secondary_color"
+                    android:textColor="@color/text_secondary_active"
                     />
                 <TextView
                     android:id="@+id/transactions_dialog_error_count"
@@ -81,7 +81,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="2"
                     android:text="@string/transactions_dialog_last_error"
-                    android:textColor="@color/text_secondary_color"
+                    android:textColor="@color/text_secondary_active"
                     />
                 <TextView
                     android:id="@+id/transactions_dialog_error_msg"

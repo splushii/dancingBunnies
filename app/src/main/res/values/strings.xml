@@ -102,7 +102,7 @@
     <string name="pref_key_playbackcontroller_playlist_position">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_position</string>
     <string name="pref_key_playbackcontroller_playlist_playback_position">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_playback_position</string>
     <string name="pref_key_playbackcontroller_playlist_selection_id">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_selection_id</string>
-    <string name="pref_key_playbackcontroller_playlist_playback_order">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_playback_order</string>
+    <string name="pref_key_playbackcontroller_playlist_playback_random">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_playback_random</string>
     <string name="pref_key_playbackcontroller_playlist_playback_repeat">se.splushii.dancingbunnies.pref_playbackcontroller_playlist_playback_repeat</string>
     <!--  Preference keys: LocalAudioPlayer  -->
     <string name="pref_key_localaudioplayer_current_src">se.splushii.dancingbunnies.pref_localaudioplayer_current_src</string>

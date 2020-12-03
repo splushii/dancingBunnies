@@ -50,7 +50,7 @@ public class PlaybackControllerStorage {
     private final String playlist_position_key;
     private final String playlist_playback_position_key;
     private final String playlist_selection_id_key;
-    private final String playlist_playback_order_key;
+    private final String playlist_playback_random_key;
     private final String playlist_playback_repeat_key;
     private final String localaudioplayer_current_src_key;
     private final String localaudioplayer_current_id_key;
@@ -81,7 +81,7 @@ public class PlaybackControllerStorage {
         playlist_position_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_position);
         playlist_playback_position_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_playback_position);
         playlist_selection_id_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_selection_id);
-        playlist_playback_order_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_playback_order);
+        playlist_playback_random_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_playback_random);
         playlist_playback_repeat_key = context.getResources().getString(R.string.pref_key_playbackcontroller_playlist_playback_repeat);
         localaudioplayer_current_src_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_src);
         localaudioplayer_current_id_key = context.getResources().getString(R.string.pref_key_localaudioplayer_current_id);
@@ -376,16 +376,13 @@ public class PlaybackControllerStorage {
         }
     }
 
-    public int getCurrentPlaylistPlaybackOrderMode() {
-        return preferences.getInt(
-                playlist_playback_order_key,
-                PlaybackController.PLAYBACK_ORDER_SEQUENTIAL
-        );
+    public boolean isCurrentPlaylistPlaybackRandom() {
+        return preferences.getBoolean(playlist_playback_random_key, false);
     }
 
-    public void setCurrentPlaylistPlaybackOrderMode(int playbackOrderMode) {
+    public void setCurrentPlaylistPlaybackRandom(boolean random) {
         preferences.edit()
-                .putInt(playlist_playback_order_key, playbackOrderMode)
+                .putBoolean(playlist_playback_random_key, random)
                 .apply();
     }
 

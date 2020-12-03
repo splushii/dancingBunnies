@@ -26,40 +26,56 @@
     
     <color name="colorLogo">#ccf2ff</color>
 
+    <!-- Primary -->
     <color name="colorPrimary">#4CAF50</color>
     <color name="colorPrimaryDark">#087f23</color>
     <color name="colorPrimaryLight">#80e27e</color>
     <color name="colorPrimaryAlmostWindowBackground">#dbffd8</color>
 
+    <!-- Accent -->
     <color name="colorAccent">#03A9F4</color>
     <color name="colorAccentDark">#007ac1</color>
     <color name="colorAccentLight">#67daff</color>
     <color name="colorAccentAlmostWindowBackground">#ccf2ff</color>
+    <color name="colorAccentContrast">@color/colorAccent</color>
 
-    <color name="colorPrimaryText">@color/bluegrey900</color>
-    <color name="colorPrimaryTextSelected">@color/white</color>
-    <color name="colorPrimaryTextDisabled">@color/grey500</color>
-
-    <color name="colorSecondaryText">@color/grey500</color>
-    <color name="colorSecondaryTextSelected">@color/colorAccentLight</color>
-    <color name="colorSecondaryTextDisabled">@color/grey300</color>
-
+    <!-- Text -->
+    <color name="colorText">@color/bluegrey900</color>
+    <color name="colorTextSelected">@color/white</color>
+    <color name="colorTextDisabled">@color/grey500</color>
+    <color name="colorTextDisabledSelected">@color/grey700</color>
+    <!-- Text on primary -->
     <color name="colorTextOnPrimary">@color/white</color>
-    <color name="colorTextOnPrimaryDynamic">@color/white</color>
+    <!-- Text on accent -->
+    <color name="colorTextOnAccent">@color/white</color>
+    <color name="colorTextOnAccentSecondary">@color/grey300</color>
+    <!-- Text secondary -->
+    <color name="colorTextSecondary">@color/grey500</color>
+    <color name="colorTextSecondarySelected">@color/colorAccent</color>
+    <color name="colorTextSecondaryDisabled">@color/grey300</color>
+    <color name="colorTextSecondaryDisabledSelected">@color/colorAccentLight</color>
+    <!-- Text secondary on accent -->
+    <color name="colorTextSecondaryOnAccentSelected">@color/colorAccentLight</color>
+    <color name="colorTextSecondaryOnAccentDisabledSelected">@color/colorAccentAlmostWindowBackground</color>
+
+    <!-- Icon -->
+    <color name="colorIcon">@color/black</color>
+    <color name="colorIconSelected">@color/colorAccent</color>
+    <color name="colorIconDisabled">@color/grey500</color>
+    <color name="colorIconDisabledSelected">@color/colorAccentLight</color>
+    <!-- Icon on primary -->
     <color name="colorIconOnPrimary">@color/white</color>
     <color name="colorIconOnPrimaryDisabled">@color/colorPrimaryLight</color>
-
-    <color name="colorTextOnSecondary">@color/white</color>
-    <color name="colorTextOnSecondarySecondary">@color/grey300</color>
-    <color name="colorIconOnSecondary">@color/white</color>
-    <color name="colorIconOnSecondaryDisabled">@color/colorAccentLight</color>
-
-    <color name="colorIcon">@color/black</color>
-    <color name="colorIconDisabled">@color/grey500</color>
+    <!-- Icon on accent -->
+    <color name="colorIconOnAccent">@color/white</color>
+    <color name="colorIconOnAccentDisabled">@color/colorAccentLight</color>
+    <!-- Icon secondary -->
     <color name="colorIconSecondary">@color/grey500</color>
-    <color name="colorIconSecondaryDisabled">@color/colorAccentAlmostWindowBackground</color>
-    <color name="colorIconSecondarySelected">@color/colorAccentLight</color>
+    <color name="colorIconSecondarySelected">@color/colorAccent</color>
+    <color name="colorIconSecondaryDisabled">@color/grey300</color>
+    <color name="colorIconSecondaryDisabledSelected">@color/colorAccentLight</color>
 
+    <!-- Background -->
     <color name="windowBackground">@color/white</color>
     <color name="windowBackgroundAlternate">@color/grey50</color>
     <color name="windowBackgroundError">@color/red100</color>
@@ -68,6 +84,7 @@
     <color name="popupBackground">@color/white</color>
     <color name="overlayBackground">@color/grey100</color>
 
+    <!-- Waveform -->
     <color name="waveFormRMS">@color/colorAccentAlmostWindowBackground</color>
     <color name="waveFormPeak">@color/grey500</color>
     <color name="waveFormRMSProgress">@color/colorAccentLight</color>

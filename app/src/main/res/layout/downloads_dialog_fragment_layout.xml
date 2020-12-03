@@ -24,7 +24,7 @@
             android:layout_weight="1"
             android:layout_gravity="center_vertical"
             android:padding="16dp"
-            android:textColor="@color/colorTextOnSecondary"
+            android:textColor="@color/colorTextOnAccent"
             android:fontFamily="sans-serif"
             android:textSize="18sp"
             android:text="@string/downloads"/>
@@ -42,7 +42,7 @@
             <TextView
                 android:layout_height="wrap_content"
                 android:layout_width="wrap_content"
-                android:textColor="@color/colorTextOnSecondarySecondary"
+                android:textColor="@color/colorTextOnAccentSecondary"
                 android:text="@string/downloads_clear_all"/>
             <ImageView
                 android:layout_width="wrap_content"
@@ -51,7 +51,7 @@
                 android:layout_marginStart="8dp"
                 android:layout_gravity="center_vertical"
                 android:contentDescription="@string/downloads_clear_all"
-                app:tint="@color/colorTextOnSecondarySecondary" />
+                app:tint="@color/colorTextOnAccentSecondary" />
         </LinearLayout>
     </LinearLayout>
     <LinearLayout
@@ -82,7 +82,7 @@
         android:gravity="center_horizontal|center_vertical"
         android:text="@string/downloads_empty_queue"
         android:textSize="24sp"
-        android:textColor="@color/text_secondary_color"
+        android:textColor="@color/text_secondary_active"
         android:padding="8dp"
         />
 </LinearLayout>

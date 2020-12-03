@@ -56,12 +56,6 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="end"
                     />
-                <include
-                    layout="@layout/playlist_fragment_playlist_content_playback_random_layout"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="end"
-                    />
             </LinearLayout>
             <View
                 android:layout_width="match_parent"
@@ -69,12 +63,23 @@
                 android:layout_marginTop="4dp"
                 android:layout_marginBottom="4dp"
                 android:background="@color/grey500" />
-            <include
-                layout="@layout/playlist_fragment_playlist_content_playback_repeat_layout"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="end"
-                />
+                android:orientation="horizontal">
+                <include
+                    layout="@layout/playlist_fragment_playlist_content_playback_random_layout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    />
+                <include
+                    layout="@layout/playlist_fragment_playlist_content_playback_repeat_layout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 </LinearLayout>

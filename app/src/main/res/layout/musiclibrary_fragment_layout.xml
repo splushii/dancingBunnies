@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -53,7 +54,7 @@
                         android:autofillHints=""
                         android:textSize="16sp"
                         android:textStyle="bold"
-                        android:textColor="@color/colorPrimaryText"
+                        android:textColor="@color/colorText"
                         android:paddingTop="8dp"
                         android:paddingBottom="8dp"
                         android:paddingStart="16dp"
@@ -73,16 +74,16 @@
                     <TextView
                         android:layout_height="wrap_content"
                         android:layout_width="wrap_content"
-                        android:textColor="@color/colorPrimaryText"
+                        android:textColor="@color/colorText"
                         android:text="@string/musiclibrary_home"/>
                     <ImageView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:src="@drawable/ic_home_black_24dp"
-                        android:tint="@color/colorPrimaryText"
                         android:layout_marginStart="8dp"
                         android:layout_gravity="center_vertical"
-                        android:contentDescription="@string/musiclibrary_home"/>
+                        android:contentDescription="@string/musiclibrary_home"
+                        app:tint="@color/colorText" />
                 </LinearLayout>
             </LinearLayout>
             <LinearLayout
@@ -109,16 +110,16 @@
                         <TextView
                             android:layout_height="wrap_content"
                             android:layout_width="wrap_content"
-                            android:textColor="@color/colorPrimaryText"
+                            android:textColor="@color/colorText"
                             android:text="@string/musiclibrary_query"/>
                         <ImageView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:src="@drawable/ic_filter_tilt_shift_black_24dp"
-                            android:tint="@color/icon_active_accent"
                             android:layout_marginStart="8dp"
                             android:layout_gravity="center_vertical"
-                            android:contentDescription="@string/musiclibrary_query"/>
+                            android:contentDescription="@string/musiclibrary_query"
+                            app:tint="@color/icon_active" />
                     </LinearLayout>
                     <View
                         android:layout_width="0dp"
@@ -138,16 +139,16 @@
                         <TextView
                             android:layout_height="wrap_content"
                             android:layout_width="wrap_content"
-                            android:textColor="@color/colorPrimaryText"
+                            android:textColor="@color/colorText"
                             android:text="@string/musiclibrary_query_save"/>
                         <ImageView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:src="@drawable/ic_save_black_24dp"
-                            android:tint="@color/colorPrimaryText"
                             android:layout_marginStart="8dp"
                             android:layout_gravity="center_vertical"
-                            android:contentDescription="@string/musiclibrary_query_save"/>
+                            android:contentDescription="@string/musiclibrary_query_save"
+                            app:tint="@color/colorText" />
                     </LinearLayout>
                     <LinearLayout
                         android:id="@+id/musiclibrary_browse_home"
@@ -163,16 +164,16 @@
                         <TextView
                             android:layout_height="wrap_content"
                             android:layout_width="wrap_content"
-                            android:textColor="@color/colorPrimaryText"
+                            android:textColor="@color/colorText"
                             android:text="@string/musiclibrary_home"/>
                         <ImageView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:src="@drawable/ic_home_black_24dp"
-                            android:tint="@color/colorPrimaryText"
                             android:layout_marginStart="8dp"
                             android:layout_gravity="center_vertical"
-                            android:contentDescription="@string/musiclibrary_home"/>
+                            android:contentDescription="@string/musiclibrary_home"
+                            app:tint="@color/colorText" />
                     </LinearLayout>
                 </LinearLayout>
                 <LinearLayout
@@ -202,7 +203,7 @@
                     android:textStyle="bold"
                     android:singleLine="true"
                     android:ellipsize="end"
-                    android:textColor="@color/text_primary_color"/>
+                    android:textColor="@color/text_active_on_accent"/>
                 <LinearLayout
                     android:id="@+id/musiclibrary_browse_header_sortedby"
                     android:layout_width="0dp"
@@ -222,8 +223,8 @@
                         android:layout_height="match_parent"
                         android:gravity="center_vertical"
                         android:src="@drawable/ic_arrow_drop_down_black_24dp"
-                        android:tint="@color/colorPrimaryText"
-                        android:contentDescription="@string/musiclibrary_sort_order" />
+                        android:contentDescription="@string/musiclibrary_sort_order"
+                        app:tint="@color/colorText" />
                 </LinearLayout>
                 <TextView
                     android:id="@+id/musiclibrary_browse_header_num"
@@ -234,7 +235,7 @@
                     android:layout_marginEnd="@dimen/musiclibrary_column_mend_num"
                     android:paddingTop="4dp"
                     android:paddingBottom="4dp"
-                    android:textColor="@color/text_secondary_color"
+                    android:textColor="@color/text_secondary_active"
                     android:textSize="14sp"
                     android:singleLine="true"
                     android:ellipsize="end"

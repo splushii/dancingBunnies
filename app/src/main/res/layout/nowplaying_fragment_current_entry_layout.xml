@@ -34,21 +34,21 @@
                 android:id="@+id/nowplaying_artist"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/colorSecondaryText"
+                android:textColor="@color/colorTextSecondary"
                 android:textSize="16sp"
                 android:gravity="center_horizontal"/>
             <TextView
                 android:id="@+id/nowplaying_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/colorPrimaryText"
+                android:textColor="@color/colorText"
                 android:textSize="24sp"
                 android:gravity="center_horizontal"/>
             <TextView
                 android:id="@+id/nowplaying_album"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/colorSecondaryText"
+                android:textColor="@color/colorTextSecondary"
                 android:paddingTop="2dp"
                 android:gravity="center_horizontal"/>
         </LinearLayout>
@@ -71,7 +71,7 @@
             android:layout_width="32dp"
             android:layout_height="wrap_content"
             android:gravity="start"
-            android:textColor="@color/colorSecondaryText"
+            android:textColor="@color/colorTextSecondary"
             android:layout_marginStart="16dp"/>
         <View
             android:layout_width="0dp"
@@ -81,13 +81,13 @@
             android:id="@+id/nowplaying_media_info"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/colorSecondaryText"
+            android:textColor="@color/colorTextSecondary"
             android:layout_marginStart="16dp"/>
         <TextView
             android:id="@+id/nowplaying_size"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/colorSecondaryText"
+            android:textColor="@color/colorTextSecondary"
             android:layout_marginStart="8dp"
             android:layout_marginEnd="16dp"/>
         <View
@@ -99,7 +99,7 @@
             android:layout_width="32dp"
             android:layout_height="wrap_content"
             android:gravity="end"
-            android:textColor="@color/colorSecondaryText"
+            android:textColor="@color/colorTextSecondary"
             android:layout_marginEnd="16dp"/>
     </LinearLayout>
 </LinearLayout>

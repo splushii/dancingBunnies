@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:gravity="center_vertical"
@@ -16,9 +17,8 @@
             android:layout_height="match_parent"
             android:padding="4dp"
             android:src="@drawable/ic_drag_handle_black_24dp"
-            android:tint="@color/icon_secondary"
             android:contentDescription="@string/drag_handle"
-            />
+            app:tint="@color/icon_secondary_active" />
         <View
             android:id="@+id/track_item_handle_touch_area"
             android:layout_width="16dp"
@@ -34,7 +34,7 @@
         android:layout_width="32dp"
         android:layout_height="match_parent"
         android:gravity="center_horizontal|center_vertical"
-        android:textColor="@color/text_secondary_color"/>
+        android:textColor="@color/text_secondary_active_on_accent"/>
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -53,7 +53,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="4dp"
                 android:singleLine="true"
-                android:textColor="@color/text_secondary_color"/>
+                android:textColor="@color/text_secondary_active_on_accent"/>
             <TextView
                 android:id="@+id/track_item_title"
                 android:layout_width="0dp"
@@ -61,7 +61,7 @@
                 android:layout_height="wrap_content"
                 android:singleLine="true"
                 android:layout_marginEnd="4dp"
-                android:textColor="@color/text_primary_color"
+                android:textColor="@color/text_active_on_accent"
                 android:textSize="16sp"/>
             <TextView
                 android:id="@+id/track_item_duration"
@@ -69,7 +69,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="4dp"
                 android:singleLine="true"
-                android:textColor="@color/text_secondary_color"/>
+                android:textColor="@color/text_secondary_active_on_accent"/>
         </LinearLayout>
         <LinearLayout
             android:orientation="horizontal"
@@ -82,7 +82,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="4dp"
                 android:singleLine="true"
-                android:textColor="@color/text_secondary_color"/>
+                android:textColor="@color/text_secondary_active_on_accent"/>
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_weight="1"
@@ -95,7 +95,7 @@
                     android:layout_marginEnd="4dp"
                     android:singleLine="true"
                     android:gravity="end"
-                    android:textColor="@color/text_secondary_color"/>
+                    android:textColor="@color/text_secondary_active_on_accent"/>
                 <TextView
                     android:id="@+id/track_item_album_disc"
                     android:layout_width="wrap_content"
@@ -103,7 +103,7 @@
                     android:layout_marginEnd="4dp"
                     android:singleLine="true"
                     android:gravity="end"
-                    android:textColor="@color/text_secondary_color"/>
+                    android:textColor="@color/text_secondary_active_on_accent"/>
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
@@ -128,7 +128,7 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="4dp"
             android:layout_gravity="end|center_vertical"
-            android:textColor="@color/text_secondary_color"
+            android:textColor="@color/text_secondary_active_on_accent"
             android:visibility="gone"/>
         <ImageView
             android:id="@+id/track_item_cached"

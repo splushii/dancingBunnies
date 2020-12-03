@@ -49,7 +49,6 @@ import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowserCallback;
-import se.splushii.dancingbunnies.audioplayer.PlaybackController;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
@@ -110,8 +109,8 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
             <PlaybackEntry, NowPlayingEntriesAdapter.ViewHolder, NowPlayingEntriesAdapter>
             selectionTracker;
     private TextView currentPlaylistName;
-    private ImageView currentPlaylistOrder;
-    private ImageView currentPlaylistRepeat;
+    private ImageView currentPlaylistOrdered;
+    private ImageView currentPlaylistMode;
     private View currentPlaylistDeselectBtn;
     private NowPlayingHistoryEntriesAdapter historyRecViewAdapter;
     private FastScroller historyFastScroller;
@@ -232,8 +231,8 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
                 rootView.findViewById(R.id.nowplaying_current_playlist_info_layout);
         currentPlaylistNameLayout.setOnClickListener(v -> goToPlaylistEntry());
         currentPlaylistName = rootView.findViewById(R.id.nowplaying_current_playlist_name);
-        currentPlaylistOrder = rootView.findViewById(R.id.nowplaying_current_order);
-        currentPlaylistRepeat = rootView.findViewById(R.id.nowplaying_current_repeat);
+        currentPlaylistOrdered = rootView.findViewById(R.id.nowplaying_current_ordered);
+        currentPlaylistMode = rootView.findViewById(R.id.nowplaying_current_mode);
 
         currentPlaylistDeselectBtn =
                 rootView.findViewById(R.id.nowplaying_current_playlist_deselect);
@@ -534,7 +533,7 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
     @Override
     public void onStart() {
         super.onStart();
-        remote.registerCallback(requireActivity(), this);
+        remote.registerCallback(this);
     }
 
     @Override
@@ -647,7 +646,7 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
     public void onStop() {
         super.onStop();
         Log.d(LC, "onStop");
-        remote.unregisterCallback(requireActivity(), this);
+        remote.unregisterCallback(this);
     }
 
     @Override
@@ -680,7 +679,11 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
         model.setCurrentPlaylist(remote.getCurrentPlaylist());
         model.setCurrentPlaylistPos(remote.getCurrentPlaylistPos());
         model.setQueue(remote.getQueue());
-        updatePlaylistPlaybackMode(remote.getPlaylistPlaybackOrderMode(), remote.isRepeat());
+        updatePlaylistPlaybackMode(
+                remote.isPlaylistPlaybackOrdered(),
+                remote.isPlaylistPlaybackRandom(),
+                remote.isPlaylistPlaybackRepeat()
+        );
         refreshView(model.getState().getValue());
     }
 
@@ -901,29 +904,46 @@ public class NowPlayingFragment extends Fragment implements AudioBrowserCallback
     }
 
     @Override
-    public void onPlaylistPlaybackOrderModeChanged(int playbackOrderMode) {
-        updatePlaylistPlaybackMode(playbackOrderMode, remote.isRepeat());
+    public void onPlaylistPlaybackOrderChanged(boolean ordered) {
+        updatePlaylistPlaybackMode(
+                ordered,
+                remote.isPlaylistPlaybackRandom(),
+                remote.isPlaylistPlaybackRepeat()
+        );
     }
 
     @Override
-    public void onRepeatModeChanged(boolean repeat) {
-        updatePlaylistPlaybackMode(remote.getPlaylistPlaybackOrderMode(), repeat);
+    public void onPlaylistPlaybackRandomChanged(boolean random) {
+        updatePlaylistPlaybackMode(
+                remote.isPlaylistPlaybackOrdered(),
+                random,
+                remote.isPlaylistPlaybackRepeat()
+        );
     }
 
-    private void updatePlaylistPlaybackMode(int playbackOrderMode, boolean repeat) {
-        switch (playbackOrderMode) {
-            default:
-            case PlaybackController.PLAYBACK_ORDER_SEQUENTIAL:
-                currentPlaylistOrder.setImageResource(R.drawable.ic_sort_black_24dp);
-                break;
-            case PlaybackController.PLAYBACK_ORDER_SHUFFLE:
-                currentPlaylistOrder.setImageResource(R.drawable.ic_shuffle_black_24dp);
-                break;
-            case PlaybackController.PLAYBACK_ORDER_RANDOM:
-                currentPlaylistOrder.setImageResource(R.drawable.ic_gesture_black_24dp);
-                break;
+    @Override
+    public void onPlaylistPlaybackRepeatModeChanged(boolean repeat) {
+        updatePlaylistPlaybackMode(
+                remote.isPlaylistPlaybackOrdered(),
+                remote.isPlaylistPlaybackRandom(),
+                repeat
+        );
+    }
+
+    private void updatePlaylistPlaybackMode(boolean ordered,
+                                            boolean random,
+                                            boolean repeat) {
+        currentPlaylistOrdered.setImageResource(ordered
+                ? R.drawable.ic_sort_black_24dp
+                : R.drawable.ic_shuffle_black_24dp
+        );
+        if (random) {
+            currentPlaylistMode.setImageResource(R.drawable.ic_gesture_black_24dp);
+        } else if (repeat) {
+            currentPlaylistMode.setImageResource(R.drawable.ic_repeat_black_24dp);
+        } else {
+            currentPlaylistMode.setImageResource(0);
         }
-        currentPlaylistRepeat.setVisibility(repeat ? VISIBLE : INVISIBLE);
     }
 
     public void clearSelection() {

@@ -38,13 +38,21 @@
             android:gravity="center_vertical">
             <include layout="@layout/playlist_fragment_playlist_content_playback_sort_layout" />
             <include layout="@layout/playlist_fragment_playlist_content_playback_shuffle_layout" />
-            <include layout="@layout/playlist_fragment_playlist_content_playback_random_layout" />
+            <View
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="1dp" />
             <View
                 android:layout_width="1dp"
                 android:layout_marginTop="4dp"
                 android:layout_marginBottom="4dp"
                 android:layout_height="match_parent"
                 android:background="@color/grey500" />
+            <View
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="1dp" />
+            <include layout="@layout/playlist_fragment_playlist_content_playback_random_layout" />
             <include layout="@layout/playlist_fragment_playlist_content_playback_repeat_layout" />
         </LinearLayout>
     </LinearLayout>

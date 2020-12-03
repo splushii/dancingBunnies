@@ -15,6 +15,7 @@ public interface AudioBrowserCallback {
     void onSessionReady();
     void onQueueChanged(List<PlaybackEntry> queue);
     void onPlaylistSelectionChanged(EntryID playlistID, long pos);
-    void onPlaylistPlaybackOrderModeChanged(int playbackOrderMode);
-    void onRepeatModeChanged(boolean repeat);
+    void onPlaylistPlaybackOrderChanged(boolean ordered);
+    void onPlaylistPlaybackRandomChanged(boolean random);
+    void onPlaylistPlaybackRepeatModeChanged(boolean repeat);
 }

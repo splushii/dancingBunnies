@@ -65,9 +65,6 @@ import se.splushii.dancingbunnies.util.Util;
 
 import static androidx.mediarouter.media.MediaRouter.RouteInfo.PLAYBACK_TYPE_LOCAL;
 import static androidx.mediarouter.media.MediaRouter.RouteInfo.PLAYBACK_TYPE_REMOTE;
-import static se.splushii.dancingbunnies.audioplayer.PlaybackController.PLAYBACK_ORDER_RANDOM;
-import static se.splushii.dancingbunnies.audioplayer.PlaybackController.PLAYBACK_ORDER_SEQUENTIAL;
-import static se.splushii.dancingbunnies.audioplayer.PlaybackController.PLAYBACK_ORDER_SHUFFLE;
 
 // TODO: Handle incoming call. PhoneStateListener.LISTEN_CALL_STATE.
 public class AudioPlayerService extends MediaBrowserServiceCompat {
@@ -83,6 +80,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             "se.splushii.dancingbunnies.session_event.playlist_selection_changed";
     public static final String SESSION_EVENT_CURRENT_ENTRY_CHANGED =
             "se.splushii.dancingbunnies.session_event.current_entry_changed";
+    public static final String SESSION_EVENT_RANDOM_CHANGED =
+            "se.splushii.dancingbunnies.session_event.random_changed";
 
     private static final String COMMAND_SET_CURRENT_PLAYLIST = "SET_CURRENT_PLAYLIST";
     private static final String COMMAND_PLAY_ENTRYIDS = "PLAY_ENTRYIDS";
@@ -94,6 +93,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private static final String COMMAND_SORT_QUEUE_ITEMS = "SORT_QUEUE_ITEMS";
     private static final String COMMAND_PLAY_QUERY_BUNDLES = "PLAY_QUERY_BUNDLES";
     private static final String COMMAND_QUEUE_QUERY_BUNDLES = "QUEUE_QUERY_BUNDLES";
+    private static final String COMMAND_TOGGLE_RANDOM = "TOGGLE_RANDOM";
 
     public static final String BUNDLE_KEY_CURRENT_PLAYBACK_ENTRY_BUNDLE =
             "dancingbunnies.bundle.key.audioplayerservice.playback_entry_bundle";
@@ -105,6 +105,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
             "dancingbunnies.bundle.key.audioplayerservice.playback_entry";
     static final String BUNDLE_KEY_PLAYLIST_ID =
             "dancingbunnies.bundle.key.audioplayerservice.playlist_id";
+    public static final String BUNDLE_KEY_RANDOM =
+            "dancingbunnies.bundle.key.audioplayerservice.random";
 
     private final Object mediaSessionExtrasLock = new Object();
 
@@ -809,10 +811,6 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                     playbackController.resetPlaybackOrder();
                     break;
                 case PlaybackStateCompat.SHUFFLE_MODE_GROUP:
-                    // TODO: Use proper action and constant for enabling/disabling random playback
-                    Log.w(LC, "SHUFFLE_MODE_GROUP currently used for random playback");
-                    playbackController.setRandomPlayback();
-                    break;
                 case PlaybackStateCompat.SHUFFLE_MODE_ALL:
                     playbackController.shufflePlaybackOrder();
                     break;
@@ -875,6 +873,8 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 case COMMAND_QUEUE_QUERY_BUNDLES:
                     queueQueryBundles(cb, extras);
                     break;
+                case COMMAND_TOGGLE_RANDOM:
+                    toggleRandom(cb, extras);
                 default:
                     Log.e(LC, "Unhandled MediaSession onCommand: " + command);
                     break;
@@ -1215,6 +1215,29 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 .thenRunAsync(() -> cb.send(0, null), Util.getMainThreadExecutor());
     }
 
+    public static CompletableFuture<Boolean> toggleRandom(MediaControllerCompat mediaController) {
+        Bundle params = new Bundle();
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        mediaController.sendCommand(
+                COMMAND_TOGGLE_RANDOM,
+                params,
+                new ResultReceiver(null) {
+                    @Override
+                    protected void onReceiveResult(int resultCode, Bundle resultData) {
+                        future.complete(resultCode == 0);
+                    }
+                }
+        );
+        return future;
+    }
+
+    private void toggleRandom(ResultReceiver cb, Bundle extras) {
+        playbackController.toggleRandomPlayback().handle((r, t) -> {
+            cb.send(t == null ? 0 : 1, null);
+            return handleControllerResult(r, t);
+        });
+    }
+
     private class PlaybackCallback implements PlaybackController.Callback {
         @Override
         public void onPlayerChanged(AudioPlayer.Type audioPlayerType) {
@@ -1415,20 +1438,28 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
         }
 
         @Override
-        public void onPlaybackOrderChanged(int playbackOrderMode) {
-            Log.d(LC, "onPlaybackOrderChanged: " + playbackOrderMode);
-            switch (playbackOrderMode) {
-                default:
-                case PLAYBACK_ORDER_SEQUENTIAL:
-                    mediaSession.setShuffleMode(PlaybackStateCompat.SHUFFLE_MODE_NONE);
-                    break;
-                case PLAYBACK_ORDER_SHUFFLE:
-                    mediaSession.setShuffleMode(PlaybackStateCompat.SHUFFLE_MODE_ALL);
-                    break;
-                case PLAYBACK_ORDER_RANDOM:
-                    mediaSession.setShuffleMode(PlaybackStateCompat.SHUFFLE_MODE_GROUP);
-                    break;
+        public void onPlaybackOrderChanged(boolean ordered) {
+            Log.d(LC, "onPlaybackOrderChanged, ordered: " + ordered);
+            mediaSession.setShuffleMode(ordered
+                    ? PlaybackStateCompat.SHUFFLE_MODE_NONE
+                    : PlaybackStateCompat.SHUFFLE_MODE_ALL
+            );
+        }
+
+        @Override
+        public void onPlaybackRandomChanged(boolean random) {
+            Log.d(LC, "onPlaybackRandomChanged, random: " + random);
+            synchronized (mediaSessionExtrasLock) {
+                Bundle extras = mediaSession.getController().getExtras();
+                if (extras == null) {
+                    extras = new Bundle();
+                }
+                extras.putBoolean(BUNDLE_KEY_RANDOM, random);
+                mediaSession.setExtras(extras);
             }
+            Bundle eventBundle = new Bundle();
+            eventBundle.putBoolean(BUNDLE_KEY_RANDOM, random);
+            mediaSession.sendSessionEvent(SESSION_EVENT_RANDOM_CHANGED, eventBundle);
         }
 
         @Override

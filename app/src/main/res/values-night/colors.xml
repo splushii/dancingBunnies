@@ -1,35 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Primary -->
     <color name="colorPrimary">#087f23</color>
     <color name="colorPrimaryDark">#005100</color>
     <color name="colorPrimaryLight">#4caf50</color>
     <color name="colorPrimaryAlmostWindowBackground">#002800</color>
+
+    <!-- Accent -->
     <color name="colorAccent">#007ac1</color>
     <color name="colorAccentDark">#004f90</color>
     <color name="colorAccentLight">#59a9f4</color>
     <color name="colorAccentAlmostWindowBackground">#002862</color>
+    <color name="colorAccentContrast">@color/colorAccentLight</color>
 
-    <color name="colorPrimaryText">@color/grey100</color>
-
-    <color name="colorSecondaryText">@color/grey500</color>
-    <color name="colorSecondaryTextSelected">@color/colorAccentLight</color>
-    <color name="colorSecondaryTextDisabled">@color/grey700</color>
-
+    <!-- Text -->
+    <color name="colorText">@color/grey100</color>
+    <!-- Text on primary -->
     <color name="colorTextOnPrimary">@color/white</color>
-    <color name="colorTextOnPrimaryDynamic">@color/grey_active_black</color>
+    <!-- Text on accent -->
+    <color name="colorTextOnAccent">@color/white</color>
+    <color name="colorTextOnAccentSecondary">@color/grey400</color>
+    <!-- Text secondary -->
+    <color name="colorTextSecondary">@color/grey500</color>
+    <color name="colorTextSecondarySelected">@color/colorAccentLight</color>
+    <color name="colorTextSecondaryDisabled">@color/grey700</color>
+    <color name="colorTextSecondaryDisabledSelected">@color/colorAccentDark</color>
+    <!-- Text secondary on accent -->
+
+    <!-- Icon -->
+    <color name="colorIcon">@color/white</color>
+    <color name="colorIconSelected">@color/colorAccent</color>
+    <color name="colorIconDisabled">@color/grey500</color>
+    <color name="colorIconDisabledSelected">@color/colorAccentDark</color>
+
+    <!-- Icon on primary -->
     <color name="colorIconOnPrimary">@color/white</color>
     <color name="colorIconOnPrimaryDisabled">@color/colorPrimaryLight</color>
-
-    <color name="colorTextOnSecondary">@color/white</color>
-    <color name="colorTextOnSecondarySecondary">@color/grey400</color>
-    <color name="colorIconOnSecondary">@color/black</color>
-    <color name="colorIconOnSecondaryDisabled">@color/colorAccentLight</color>
-
-    <color name="colorIcon">@color/white</color>
-    <color name="colorIconDisabled">@color/grey500</color>
+    <!-- Icon on accent -->
+    <color name="colorIconOnAccent">@color/black</color>
+    <color name="colorIconOnAccentDisabled">@color/colorAccentLight</color>
+    <!-- Icon secondary -->
     <color name="colorIconSecondary">@color/grey500</color>
+    <color name="colorIconSecondarySelected">@color/colorAccentLight</color>
     <color name="colorIconSecondaryDisabled">@color/grey600</color>
+    <color name="colorIconSecondaryDisabledSelected">@color/colorAccentDark</color>
 
+    <!-- Background -->
     <color name="windowBackground">@color/grey950</color>
     <color name="windowBackgroundAlternate">@color/grey900</color>
     <color name="windowBackgroundError">@color/red800</color>
@@ -38,6 +54,7 @@
     <color name="popupBackground">@color/grey800</color>
     <color name="overlayBackground">@color/grey850</color>
 
+    <!-- Waveform -->
     <color name="waveFormRMS">@color/grey500</color>
     <color name="waveFormPeak">@color/grey700</color>
     <color name="waveFormRMSProgress">@color/colorAccentLight</color>

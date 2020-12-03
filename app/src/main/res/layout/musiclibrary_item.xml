@@ -21,7 +21,7 @@
             android:paddingEnd="0dp"
             android:singleLine="true"
             android:gravity="center_vertical"
-            android:textColor="@color/text_primary_color"
+            android:textColor="@color/text_active_on_accent"
             android:fontFamily="sans-serif"
             android:textStyle="bold"
             android:textSize="12sp" />
@@ -52,7 +52,7 @@
             android:layout_marginStart="@dimen/musiclibrary_column_mstart_num"
             android:layout_marginEnd="@dimen/musiclibrary_column_mend_num"
             android:textSize="12sp"
-            android:textColor="@color/text_secondary_color"/>
+            android:textColor="@color/text_secondary_active"/>
     </LinearLayout>
     <se.splushii.dancingbunnies.ui.TrackItemActionsView
         android:id="@+id/library_entry_actions"

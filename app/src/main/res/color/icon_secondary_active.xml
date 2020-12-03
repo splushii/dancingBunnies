@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:color="@color/colorIconSecondaryDisabled"
+        android:state_enabled="false"
+        android:state_activated="false"
+        />
+    <item
+        android:color="@color/colorIconSecondaryDisabledSelected"
+        android:state_enabled="false"
+        android:state_activated="true"
+        />
+    <item
+        android:color="@color/colorIconSecondary"
+        android:state_enabled="true"
+        android:state_activated="false"
+        />
+    <item
+        android:color="@color/colorIconSecondarySelected"
+        android:state_enabled="true"
+        android:state_activated="true"
+        />
+</selector>

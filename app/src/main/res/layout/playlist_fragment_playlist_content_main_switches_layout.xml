@@ -11,13 +11,13 @@
         android:id="@+id/playlist_select_switch"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="@color/text_primary_color"
+        android:textColor="@color/text_active_on_accent"
         android:text="@string/playlist_select"/>
     <androidx.appcompat.widget.SwitchCompat
         android:id="@+id/playlist_show_playback_order_switch"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="invisible"
-        android:textColor="@color/text_primary_color"
+        android:textColor="@color/text_active_on_accent"
         android:text="@string/playlist_show_playback_order"/>
 </LinearLayout>
