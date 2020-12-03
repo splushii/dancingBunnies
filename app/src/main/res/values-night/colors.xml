@@ -4,7 +4,7 @@
     <color name="colorPrimary">#087f23</color>
     <color name="colorPrimaryDark">#005100</color>
     <color name="colorPrimaryLight">#4caf50</color>
-    <color name="colorPrimaryAlmostWindowBackground">#002800</color>
+    <color name="colorPrimaryAlmostWindowBackground">@color/colorPrimaryDark</color>
 
     <!-- Accent -->
     <color name="colorAccent">#007ac1</color>
