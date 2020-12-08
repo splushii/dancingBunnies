@@ -372,7 +372,7 @@ public class PlaybackController {
                         setCurrentPlaylistPosition(playlistPos, 0);
                         callback.onPlaylistSelectionChanged(getCurrentPlaylistID(), playlistPos);
                     })
-                    .thenRun(this::updateState);
+                    .thenRun(() -> submitCompletableFuture(this::updateState));
         });
     }
 
@@ -389,7 +389,7 @@ public class PlaybackController {
                         setCurrentPlaylistPosition(playlistPos, 0);
                         callback.onPlaylistSelectionChanged(getCurrentPlaylistID(), playlistPos);
                     })
-                    .thenRun(this::updateState);
+                    .thenRun(() -> submitCompletableFuture(this::updateState));
         });
     }
 
@@ -398,14 +398,16 @@ public class PlaybackController {
         return submitCompletableFuture(() -> {
             setCurrentPlaylistPlaybackRandom(!isCurrentPlaylistPlaybackRandom());
             setCurrentPlaylistPlaybackRepeatMode(true);
-            return updateState();
+            submitCompletableFuture(this::updateState);
+            return Util.futureResult();
         });
     }
 
     CompletableFuture<Void> setRepeat(boolean repeat) {
         return submitCompletableFuture(() -> {
             setCurrentPlaylistPlaybackRepeatMode(repeat);
-            return updateState();
+            submitCompletableFuture(this::updateState);
+            return Util.futureResult();
         });
     }
 
@@ -852,8 +854,7 @@ public class PlaybackController {
 
         // Update playlist entries
         return CompletableFuture.supplyAsync(this::isCurrentPlaylistCorrect)
-                .thenCompose(correct -> correct ? Util.futureResult() :
-                        removePlaylistEntries())
+                .thenCompose(correct -> correct ? Util.futureResult() : removePlaylistEntries())
                 .thenApply(aVoid -> {
                     // Fill up with playlist entries
                     int numPlaylistEntriesToFetch =
@@ -1071,7 +1072,7 @@ public class PlaybackController {
                     }
                     return Util.futureResult();
                 })
-                .thenCompose(v -> updateState());
+                .thenRun(() -> submitCompletableFuture(this::updateState));
     }
 
     private void onQueueChanged() {
@@ -1212,7 +1213,7 @@ public class PlaybackController {
                 long time = System.currentTimeMillis() - startTime;
                 Log.d(LC, "playlistEntriesObserver. Finish! Time: " + time + "ms");
                 return Util.futureResult();
-            }).thenCompose(aVoid -> updateState());
+            }).thenRun(() -> submitCompletableFuture(this::updateState));
         }
     }
 
@@ -1252,15 +1253,17 @@ public class PlaybackController {
 
     CompletableFuture<Void> deQueue(List<PlaybackEntry> playbackEntries) {
         synchronized (executorLock) {
-            return submitCompletableFuture(() -> _deQueue(playbackEntries, true));
+            return submitCompletableFuture(() ->
+                    _deQueue(playbackEntries)
+                    .thenRun(() -> submitCompletableFuture(this::updateState))
+            );
         }
     }
 
-    private CompletableFuture<Void> _deQueue(List<PlaybackEntry> playbackEntries, boolean thenUpdateState) {
+    private CompletableFuture<Void> _deQueue(List<PlaybackEntry> playbackEntries) {
         Log.d(LC, "deQueue");
-        CompletableFuture<Void> result = queue.remove(playbackEntries)
+        return queue.remove(playbackEntries)
                 .thenCompose(v -> audioPlayer.remove(playbackEntries));
-        return thenUpdateState ? result.thenCompose(aVoid -> updateState()) : result;
     }
 
     CompletableFuture<Void> clearQueue() {
@@ -1283,7 +1286,7 @@ public class PlaybackController {
         Log.d(LC, "moveQueueItems(" + playbackEntries
                 + ", beforePlaybackID: " + beforePlaybackID + ")");
         silenceOnQueueChanged.set(true);
-        return _deQueue(playbackEntries, false)
+        return _deQueue(playbackEntries)
                 .thenCompose(v -> queuePlaybackEntries(playbackEntries, beforePlaybackID))
                 .thenRun(() -> {
                     silenceOnQueueChanged.set(false);
@@ -1600,7 +1603,7 @@ public class PlaybackController {
                 .thenCompose(aVoid -> queue.add(0, queueEntries))
                 .thenCompose(aVoid -> playlistItems.add(0, playlistEntries))
                 .thenCompose(aVoid -> history.add(0, state.history))
-                .thenCompose(aVoid -> updateState());
+                .thenRun(() -> submitCompletableFuture(this::updateState));
     }
 
     private AudioPlayer.AudioPlayerState resetController() {

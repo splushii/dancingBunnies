@@ -259,7 +259,7 @@ public class CastAudioPlayer implements AudioPlayer {
                 desc,
                 errorMsg + ": " + getResultString(r)
         ));
-        remoteMediaClientResultCallbackTimeout(result);
+        remoteMediaClientResultCallbackTimeout(desc, errorMsg, result);
         return result;
     }
 
@@ -454,7 +454,7 @@ public class CastAudioPlayer implements AudioPlayer {
                 .distinct()
                 .collect(Collectors.toList());
         logCurrentQueue();
-        Log.d(LC, "dePreload()"
+        Log.d(LC, "remove()"
                 + "\nqueueItemIdsToRemove: "
                 + queueItemIdsToRemove.size()
                 + ": " + queueItemIdsToRemove);
@@ -465,7 +465,7 @@ public class CastAudioPlayer implements AudioPlayer {
                 .thenComposeAsync(aVoid -> getRemote(), Util.getMainThreadExecutor())
                 .thenComposeAsync(remote -> {
                     return handleMediaClientQueueRequest(
-                            "dePreload() queueRemoveItems",
+                            "remove() queueRemoveItems",
                             "Could not remove queue items",
                             remote.queueRemoveItems(
                                     queueItemIdsToRemove.stream().mapToInt(i -> i).toArray(),
@@ -506,7 +506,10 @@ public class CastAudioPlayer implements AudioPlayer {
                 });
     }
 
-    private void remoteMediaClientResultCallbackTimeout(CompletableFuture<Void> result) {
+    private void remoteMediaClientResultCallbackTimeout(
+            String desc,
+            String errorMsg,
+            CompletableFuture<Void> result) {
         // Sometimes remoteMediaClient errors with:
         //   E/RemoteMediaClient: Result already set when calling onRequestCompleted
         //   java.lang.IllegalStateException: Results have already been set
@@ -519,7 +522,11 @@ public class CastAudioPlayer implements AudioPlayer {
             }
             if (!result.isDone()) {
                 result.completeExceptionally(
-                        new Util.FutureException("Timeout while waiting for Cast action result")
+                        new Util.FutureException(
+                                "Timeout while waiting for Cast action result"
+                                        + "\ndesc: " + desc
+                                        + "\nerrorMsg:" + errorMsg
+                        )
                 );
             }
         });
