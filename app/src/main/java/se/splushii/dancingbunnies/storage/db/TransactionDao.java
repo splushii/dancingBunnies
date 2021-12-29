@@ -45,5 +45,27 @@ public abstract class TransactionDao {
             + " SET " + Transaction.COLUMN_ERROR + " = :error"
             + ", " + Transaction.COLUMN_ERROR_NUM + " = " + Transaction.COLUMN_ERROR_NUM + " + 1"
             + " WHERE " + Transaction.COLUMN_ROW_ID + " = :id;")
-    public abstract void setError(long id, String error);
+    abstract void setError(long id, String error);
+    @androidx.room.Transaction
+    public void setErrors(List<Long> ids, List<String> errors) {
+        for (int i = 0; i < ids.size() && i < errors.size(); i++) {
+            setError(ids.get(i), errors.get(i));
+        }
+    }
+
+    @Query("UPDATE " + DB.TABLE_LIBRARY_TRANSACTIONS
+            + " SET " + Transaction.COLUMN_APPLIED_LOCALLY + " = :appliedLocally"
+            + " WHERE " + Transaction.COLUMN_ROW_ID + " = :id;")
+    abstract void markAppliedLocally(long id, boolean appliedLocally);
+    @androidx.room.Transaction
+    public void markAppliedLocally(List<Long> ids, boolean appliedLocally) {
+        for (long id: ids) {
+            markAppliedLocally(id, appliedLocally);
+        }
+    }
+    @Query("UPDATE " + DB.TABLE_LIBRARY_TRANSACTIONS
+            + " SET " + Transaction.COLUMN_APPLIED_LOCALLY + " = :appliedLocally"
+            + " WHERE " + Transaction.COLUMN_SRC + " = :src"
+            + " AND " + Transaction.COLUMN_GROUP + " = :group;")
+    public abstract void markAppliedLocally(String src, String group, boolean appliedLocally);
 }

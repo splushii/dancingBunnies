@@ -7,11 +7,9 @@ import org.json.JSONObject;
 
 import java.util.Date;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.util.Util;
 
 public class TransactionPlaylistAdd extends Transaction {
@@ -33,9 +31,10 @@ public class TransactionPlaylistAdd extends Transaction {
                                   Date date,
                                   long errorCount,
                                   String errorMessage,
+                                  boolean appliedLocally,
                                   JSONObject args
     ) throws JSONException {
-        super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
+        super(id, src, date, errorCount, errorMessage, appliedLocally, GROUP, ACTION);
         playlistID = EntryID.from(args.getJSONObject(JSON_KEY_PLAYLIST_ID));
         name = args.getString(JSON_KEY_NAME);
         query = args.has(JSON_KEY_QUERY)
@@ -48,11 +47,12 @@ public class TransactionPlaylistAdd extends Transaction {
                                   Date date,
                                   long errorCount,
                                   String errorMessage,
+                                  boolean appliedLocally,
                                   EntryID playlistID,
                                   String name,
                                   String query
     ) {
-        super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
+        super(id, src, date, errorCount, errorMessage, appliedLocally, GROUP, ACTION);
         this.playlistID = playlistID;
         this.name = name;
         this.query = query;
@@ -105,18 +105,8 @@ public class TransactionPlaylistAdd extends Transaction {
     }
 
     @Override
-    public CompletableFuture<Void> applyLocally(Context context) {
-        return MetaStorage.getInstance(context)
-                .addPlaylist(
-                        playlistID,
-                        name,
-                        query
-                );
-    }
-
-    @Override
-    public void addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
-        batch.addPlaylist(
+    public boolean addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
+        return batch.addPlaylist(
                 context,
                 playlistID,
                 name,

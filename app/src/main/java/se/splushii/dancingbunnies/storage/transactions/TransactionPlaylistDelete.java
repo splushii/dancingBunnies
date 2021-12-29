@@ -5,14 +5,11 @@ import android.content.Context;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.Collections;
 import java.util.Date;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.util.Util;
 
 public class TransactionPlaylistDelete extends Transaction {
@@ -30,9 +27,10 @@ public class TransactionPlaylistDelete extends Transaction {
                                      Date date,
                                      long errorCount,
                                      String errorMessage,
+                                     boolean appliedLocally,
                                      JSONObject args
     ) throws JSONException {
-        super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
+        super(id, src, date, errorCount, errorMessage, appliedLocally, GROUP, ACTION);
         playlistID = EntryID.from(args.getJSONObject(JSON_KEY_PLAYLIST_ID));
     }
 
@@ -41,9 +39,10 @@ public class TransactionPlaylistDelete extends Transaction {
                                      Date date,
                                      long errorCount,
                                      String errorMessage,
+                                     boolean appliedLocally,
                                      EntryID playlistID
     ) {
-        super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
+        super(id, src, date, errorCount, errorMessage, appliedLocally, GROUP, ACTION);
         this.playlistID = playlistID;
     }
 
@@ -92,13 +91,7 @@ public class TransactionPlaylistDelete extends Transaction {
     }
 
     @Override
-    public CompletableFuture<Void> applyLocally(Context context) {
-        return MetaStorage.getInstance(context)
-                .deletePlaylists(Collections.singletonList(playlistID));
-    }
-
-    @Override
-    public void addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
-        batch.deletePlaylist(context, playlistID);
+    public boolean addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
+        return batch.deletePlaylist(context, playlistID);
     }
 }

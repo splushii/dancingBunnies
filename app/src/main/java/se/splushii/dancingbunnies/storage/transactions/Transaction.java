@@ -9,7 +9,6 @@ import org.json.JSONObject;
 
 import java.util.Date;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.util.Util;
@@ -31,11 +30,8 @@ public abstract class Transaction implements Parcelable {
     // Playlist group actions
     public static final String PLAYLIST_ADD = "playlist_add";
     public static final String PLAYLIST_DELETE = "playlist_delete";
-    // PLAYLIST_META_ADD(playlist_id, key, value)
     public static final String PLAYLIST_META_ADD = "playlist_meta_add";
-    // PLAYLIST_META_DELETE(playlist_id, key, value)
     public static final String PLAYLIST_META_DELETE = "playlist_meta_delete";
-    // PLAYLIST_META_EDIT(playlist_id, key, oldValue, newValue) -> PLAYLIST_META_DELETE(playlist_id, key, oldValue) + PLAYLIST_META_ADD(playlist_id, key, newValue)
     public static final String PLAYLIST_META_EDIT = "playlist_meta_edit";
     public static final String PLAYLIST_ENTRY_ADD = "playlist_entry_add";
     public static final String PLAYLIST_ENTRY_DELETE = "playlist_entry_delete";
@@ -48,12 +44,14 @@ public abstract class Transaction implements Parcelable {
     private final String errorMessage;
     private final String group;
     private final String action;
+    private final boolean appliedLocally;
 
     public Transaction(long id,
                        String src,
                        Date date,
                        long errorCount,
                        String errorMessage,
+                       boolean appliedLocally,
                        String group,
                        String action
     ) {
@@ -64,6 +62,7 @@ public abstract class Transaction implements Parcelable {
         this.errorMessage = errorMessage;
         this.group = group;
         this.action = action;
+        this.appliedLocally = appliedLocally;
     }
 
     public static Transaction from(long id,
@@ -71,12 +70,13 @@ public abstract class Transaction implements Parcelable {
                                    Date date,
                                    long errorCount,
                                    String errorMessage,
+                                   boolean appliedLocally,
                                    String group,
                                    String action,
                                    String args
     ) {
         Transaction transaction = new TransactionUnknown(
-                id, src, date, group, action, args, errorCount, errorMessage
+                id, src, date, group, action, args, errorCount, errorMessage, appliedLocally
         );
         JSONObject jsonArgs;
         try {
@@ -89,42 +89,57 @@ public abstract class Transaction implements Parcelable {
             switch (action) {
                 case META_ADD:
                     transaction = new TransactionMetaAdd(
-                            id, src, date, errorCount, errorMessage, jsonArgs
+                            id, src, date, errorCount, errorMessage, appliedLocally, jsonArgs
                     );
                     break;
                 case META_EDIT:
                     transaction = new TransactionMetaEdit(
-                            id, src, date, errorCount, errorMessage, jsonArgs
+                            id, src, date, errorCount, errorMessage, appliedLocally, jsonArgs
                     );
                     break;
                 case META_DELETE:
                     transaction = new TransactionMetaDelete(
-                            id, src, date, errorCount, errorMessage, jsonArgs
+                            id, src, date, errorCount, errorMessage, appliedLocally, jsonArgs
                     );
                     break;
                 case PLAYLIST_ADD:
                     transaction = new TransactionPlaylistAdd(
-                            id, src, date, errorCount, errorMessage, jsonArgs
+                            id, src, date, errorCount, errorMessage, appliedLocally, jsonArgs
                     );
                     break;
                 case PLAYLIST_DELETE:
                     transaction = new TransactionPlaylistDelete(
-                            id, src, date, errorCount, errorMessage, jsonArgs
+                            id, src, date, errorCount, errorMessage, appliedLocally, jsonArgs
                     );
                     break;
                 case PLAYLIST_ENTRY_ADD:
                     transaction = new TransactionPlaylistEntryAdd(
-                            id, src, date, errorCount, errorMessage, jsonArgs
+                            id, src, date, errorCount, errorMessage, appliedLocally, jsonArgs
                     );
                     break;
                 case PLAYLIST_ENTRY_DELETE:
                     transaction = new TransactionPlaylistEntryDelete(
-                            id, src, date, errorCount, errorMessage, jsonArgs
+                            id, src, date, errorCount, errorMessage, appliedLocally, jsonArgs
                     );
                     break;
                 case PLAYLIST_ENTRY_MOVE:
                     transaction = new TransactionPlaylistEntryMove(
-                            id, src, date, errorCount, errorMessage, jsonArgs
+                            id, src, date, errorCount, errorMessage, appliedLocally, jsonArgs
+                    );
+                    break;
+                case PLAYLIST_META_ADD:
+                    transaction = new TransactionPlaylistMetaAdd(
+                            id, src, date, errorCount, errorMessage, appliedLocally, jsonArgs
+                    );
+                    break;
+                case PLAYLIST_META_DELETE:
+                    transaction = new TransactionPlaylistMetaDelete(
+                            id, src, date, errorCount, errorMessage, appliedLocally, jsonArgs
+                    );
+                    break;
+                case PLAYLIST_META_EDIT:
+                    transaction = new TransactionPlaylistMetaEdit(
+                            id, src, date, errorCount, errorMessage, appliedLocally, jsonArgs
                     );
                     break;
             }
@@ -170,6 +185,10 @@ public abstract class Transaction implements Parcelable {
 
     public abstract String getArgsSource();
 
+    public boolean isAppliedLocally() {
+        return appliedLocally;
+    }
+
     @Override
     public abstract boolean equals(Object o);
 
@@ -186,10 +205,11 @@ public abstract class Transaction implements Parcelable {
             Date date = new Date(in.readLong());
             long errorCount = in.readLong();
             String errorMessage = in.readString();
+            boolean appliedLocally = in.readInt() == 1;
             String group = in.readString();
             String action = in.readString();
             String args = in.readString();
-            return Transaction.from(id, src, date, errorCount, errorMessage, group, action, args);
+            return Transaction.from(id, src, date, errorCount, errorMessage, appliedLocally, group, action, args);
         }
 
         @Override
@@ -210,6 +230,7 @@ public abstract class Transaction implements Parcelable {
         parcel.writeLong(date.getTime());
         parcel.writeLong(getErrorCount());
         parcel.writeString(getErrorMessage());
+        parcel.writeInt(appliedLocally ? 1 : 0);
         parcel.writeString(getGroup());
         parcel.writeString(getAction());
         parcel.writeString(getArgs());
@@ -219,9 +240,10 @@ public abstract class Transaction implements Parcelable {
     public abstract String getDisplayableDetails();
 
     // Optimistically apply changes locally
-    public abstract CompletableFuture<Void> applyLocally(Context context);
+//    public abstract CompletableFuture<Void> applyLocally(Context context);
 
     // Batch changes to be applied to the actual backend
-    public abstract void addToBatch(Context context, APIClient.Batch batch)
+    // Returns true iff transaction could be added to current transaction batch
+    public abstract boolean addToBatch(Context context, APIClient.Batch batch)
             throws APIClient.BatchException;
 }

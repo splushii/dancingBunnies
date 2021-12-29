@@ -57,6 +57,22 @@ public class MetaStorage {
         return insertEntriesAndMetas(EntryID.TYPE_TRACK, metaList, allowLocalKeys, progressHandler);
     }
 
+    public CompletableFuture<Void> addPlaylists(List<EntryID> playlistIDs,
+                                                List<String> names,
+                                                List<String> queries) {
+        List<Meta> metas = new ArrayList<>();
+        for (int i = 0; i < playlistIDs.size() && i < names.size() && i < queries.size(); i++) {
+            Meta meta = new Meta(playlistIDs.get(i));
+            meta.addString(Meta.FIELD_TITLE, names.get(i));
+            String query = queries.get(i);
+            if (query != null) {
+                meta.addString(Meta.FIELD_QUERY, query);
+            }
+            metas.add(meta);
+        }
+        return insertPlaylistsAndMetas(metas, false, null);
+    }
+
     public CompletableFuture<Void> addPlaylist(EntryID playlistID,
                                                String name,
                                                String query) {

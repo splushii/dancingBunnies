@@ -8,11 +8,14 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
+import androidx.annotation.NonNull;
 import androidx.arch.core.util.Function;
 import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
+import androidx.room.migration.Migration;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 
 @Database(
         entities = {
@@ -35,7 +38,7 @@ import androidx.room.TypeConverters;
                 PlaybackControllerEntry.class,
                 Transaction.class
         },
-        version = 1
+        version = 2
 )
 @TypeConverters(Converters.class)
 public abstract class DB extends RoomDatabase {
@@ -73,7 +76,9 @@ public abstract class DB extends RoomDatabase {
 
     public static DB getDB(Context context) {
         if (instance == null) {
-            instance = Room.databaseBuilder(context, DB.class, DB_NAME).build();
+            instance = Room.databaseBuilder(context, DB.class, DB_NAME)
+                    .addMigrations(MIGRATTION_1_2)
+                    .build();
         }
         return instance;
     }
@@ -127,4 +132,15 @@ public abstract class DB extends RoomDatabase {
             move.accept(sourcePosition, sourceToTargetMap.get(sourcePosition));
         }
     }
+
+    static final Migration MIGRATTION_1_2 = new Migration(1, 2) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                    "ALTER TABLE `library_transactions`"
+                    + " ADD COLUMN `locally` INTEGER"
+                    + " NOT NULL DEFAULT 0"
+            );
+        }
+    };
 }

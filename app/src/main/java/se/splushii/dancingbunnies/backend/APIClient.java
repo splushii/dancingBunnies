@@ -8,12 +8,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import se.splushii.dancingbunnies.musiclibrary.AudioDataSource;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -149,61 +149,135 @@ public abstract class APIClient {
             Context context,
             List<Transaction> transactions
     ) {
-        Batch batch;
-        try {
-            batch = startBatch(context);
-        } catch (BatchException e) {
-            return Util.futureResult("Could not start transaction batch: " + e.getMessage());
-        }
-        List<TransactionResult> transactionResults = new ArrayList<>();
-        TransactionResult failedToBatchTransactionResult = null;
-        for (Transaction t: transactions) {
+        CompletableFuture<List<TransactionResult>> ret =
+                CompletableFuture.completedFuture(new ArrayList<>());
+
+        List<TransactionResult> transactionResults = transactions.stream()
+                .map(t -> new TransactionResult(t, null))
+                .collect(Collectors.toList());
+
+        Batch batch = null;
+        for (int i = 0; i < transactions.size(); i++) {
+            Transaction t = transactions.get(i);
             if (!supports(t.getAction(), t.getArgsSource())) {
-                failedToBatchTransactionResult = new TransactionResult(
+                transactionResults.set(i, new TransactionResult(
                         t,
                         "Transaction " + t.getAction()
                                 + " with arg source " + t.getArgsSource()
                                 + " not supported for " + getSource()
-                );
+                ));
                 break;
             }
+            if (batch == null) {
+                try {
+                    batch = startBatch(context);
+                } catch (BatchException e) {
+                    transactionResults.set(i, new TransactionResult(
+                            t,
+                            "Could not start transaction batch: " + e.getMessage()
+                    ));
+                    break;
+                }
+            }
             try {
-                t.addToBatch(context, batch);
-                transactionResults.add(new TransactionResult(t, null));
+                if (!t.addToBatch(context, batch)) {
+                    // Could not add another transaction to batch
+                    if (batch.isEmpty()) {
+                        // Could not add another transaction to an empty batch
+                        throw new BatchException("Could not add transaction to empty batch");
+                    } else {
+                        // Apply current batch and start a new batch
+                        ret = applyTransactionsBatch(context, ret, transactionResults, batch);
+                        batch = null;
+                        i--; // Retry current transaction in new batch
+                        continue;
+                    }
+                }
+                // Transaction successfully added to batch
             } catch (BatchException e) {
-                failedToBatchTransactionResult = new TransactionResult(
+                transactionResults.set(i, new TransactionResult(
                         t,
                         "Could not add transaction "
                                 + "(" + t.getDisplayableAction() + ")"
                                 + ": " + e.getMessage()
-                );
+                ));
                 break;
             }
         }
-        if (failedToBatchTransactionResult != null) {
-            if (transactionResults.size() <= 0) {
-                // There are no successfully batched transactions to commit
-                return Util.futureResult(Collections.singletonList(failedToBatchTransactionResult));
-            }
-            transactionResults.add(failedToBatchTransactionResult);
+        // Apply any batch tail
+        if (batch != null && !batch.isEmpty()) {
+            ret = applyTransactionsBatch(context, ret, transactionResults, batch);
         }
-        return batch.commit()
-                .handle((aVoid, throwable) -> {
-                    if (throwable != null) {
-                        // Add error messages to all affected transactions if the commit failed
-                        return transactionResults.stream()
-                                .map(t -> {
-                                    if (t.error != null) {
-                                        // Keep existing error messages
-                                        return t;
-                                    }
-                                    return new TransactionResult(t.transaction, throwable.getMessage());
-                                })
-                                .collect(Collectors.toList());
+
+        return ret.thenApply(results -> {
+            boolean encounteredError = false;
+            for (int i = 0; i < transactionResults.size(); i++) {
+                TransactionResult tr = transactionResults.get(i);
+                if (i >= results.size()) {
+                    transactionResults.set(i, new TransactionResult(
+                            tr.transaction,
+                            "Earlier transaction failed"
+                    ));
+                    continue;
+                }
+                String error = results.get(i).error;
+                if (error != null) {
+                    encounteredError = true;
+                    if (tr.error == null) {
+                        // Only replace if there is no error
+                        transactionResults.set(i, new TransactionResult(
+                                tr.transaction,
+                                error
+                        ));
                     }
-                    // Just return the transaction results if the commit succeeded
-                    return transactionResults;
-                });
+                    continue;
+                }
+                // Mark all transactions after a failed transaction as failed
+                if (encounteredError) {
+                    transactionResults.set(i, new TransactionResult(
+                            tr.transaction,
+                            "Earlier transaction failed"
+                    ));
+                }
+            }
+            return transactionResults;
+        });
+    }
+
+    private CompletableFuture<List<TransactionResult>> applyTransactionsBatch(
+            Context context,
+            CompletableFuture<List<TransactionResult>> ret,
+            List<TransactionResult> transactionResults,
+            Batch batch
+    ) {
+        return ret.thenCompose(results -> {
+            if (results.stream().anyMatch(r -> r.error != null)) {
+                // There are errors, do not apply next transaction batch
+                return CompletableFuture.completedFuture(results);
+            }
+            // No previous errors, apply next transaction batch
+            return CompletableFuture.completedFuture(results).thenCombine(
+                    batch.commit(context).handle((aVoid, throwable) -> {
+                        if (throwable != null) {
+                            Log.e(LC, "TransactionBatch error: " + throwable.getMessage());
+                            // Add error messages to all affected transactions if the commit failed
+                            return transactionResults.stream()
+                                    .map(t -> {
+                                        if (t.error != null) {
+                                            // Keep existing error messages
+                                            return t;
+                                        }
+                                        return new TransactionResult(t.transaction, throwable.getMessage());
+                                    })
+                                    .collect(Collectors.toList());
+                        }
+                        // Just return the transaction results if the commit succeeded
+                        return transactionResults;
+                    }),
+                    (a, b) -> Stream.concat(a.stream(), b.stream())
+                            .collect(Collectors.toList())
+            );
+        });
     }
 
     public abstract Batch startBatch(Context context) throws BatchException;
@@ -215,8 +289,18 @@ public abstract class APIClient {
     }
 
     public abstract static class Batch {
+        static class AddMetaParams {
+            final EntryID entryID;
+            final String key;
+            final String value;
+            AddMetaParams(EntryID entryID, String key, String value) {
+                this.entryID = entryID;
+                this.key = key;
+                this.value = value;
+            }
+        }
 
-        public void addMeta(
+        public boolean addMeta(
                 Context context,
                 EntryID entryID,
                 String key,
@@ -225,7 +309,18 @@ public abstract class APIClient {
             throw new BatchException("Not implemented");
         }
 
-        public void deleteMeta(
+        static class DeleteMetaParams {
+            final EntryID entryID;
+            final String key;
+            final String value;
+            DeleteMetaParams(EntryID entryID, String key, String value) {
+                this.entryID = entryID;
+                this.key = key;
+                this.value = value;
+            }
+        }
+
+        public boolean deleteMeta(
                 Context context,
                 EntryID entryID,
                 String key,
@@ -234,7 +329,20 @@ public abstract class APIClient {
             throw new BatchException("Not implemented");
         }
 
-        public void editMeta(
+        static class EditMetaParams {
+            final EntryID entryID;
+            final String key;
+            final String oldValue;
+            final String newValue;
+            EditMetaParams(EntryID entryID, String key, String oldValue, String newValue) {
+                this.entryID = entryID;
+                this.key = key;
+                this.oldValue = oldValue;
+                this.newValue = newValue;
+            }
+        }
+
+        public boolean editMeta(
                 Context context,
                 EntryID entryID,
                 String key,
@@ -244,7 +352,18 @@ public abstract class APIClient {
             throw new BatchException("Not implemented");
         }
 
-        public void addPlaylist(
+        static class AddPlaylistParams {
+            final EntryID playlistID;
+            final String name;
+            final String query;
+            AddPlaylistParams(EntryID playlistID, String name, String query) {
+                this.playlistID = playlistID;
+                this.name = name;
+                this.query = query;
+            }
+        }
+
+        public boolean addPlaylist(
                 Context context,
                 EntryID playlistID,
                 String name,
@@ -253,14 +372,32 @@ public abstract class APIClient {
             throw new BatchException("Not implemented");
         }
 
-        public void deletePlaylist(
+        static class DeletePlaylistParams {
+            final EntryID playlistID;
+            DeletePlaylistParams(EntryID playlistID) {
+                this.playlistID = playlistID;
+            }
+        }
+
+        public boolean deletePlaylist(
                 Context context,
                 EntryID playlistID
         ) throws BatchException {
             throw new BatchException("Not implemented");
         }
 
-        public void addPlaylistMeta(
+        static class AddPlaylistMetaParams {
+            final EntryID playlistID;
+            final String key;
+            final String value;
+            AddPlaylistMetaParams(EntryID playlistID, String key, String value) {
+                this.playlistID = playlistID;
+                this.key = key;
+                this.value = value;
+            }
+        }
+
+        public boolean addPlaylistMeta(
                 Context context,
                 EntryID playlistID,
                 String key,
@@ -269,7 +406,69 @@ public abstract class APIClient {
             throw new BatchException("Not implemented");
         }
 
-        public void addPlaylistEntry(
+        static class DeletePlaylistMetaParams {
+            final EntryID playlistID;
+            final String key;
+            final String value;
+            DeletePlaylistMetaParams(EntryID playlistID, String key, String value) {
+                this.playlistID = playlistID;
+                this.key = key;
+                this.value = value;
+            }
+        }
+
+        public boolean deletePlaylistMeta(
+                Context context,
+                EntryID playlistID,
+                String key,
+                String value
+        ) throws BatchException {
+            throw new BatchException("Not implemented");
+        }
+
+        static class EditPlaylistMetaParams {
+            final EntryID playlistID;
+            final String key;
+            final String oldValue;
+            final String newValue;
+            EditPlaylistMetaParams(EntryID playlistID,
+                                   String key,
+                                   String oldValue,
+                                   String newValue) {
+                this.playlistID = playlistID;
+                this.key = key;
+                this.oldValue = oldValue;
+                this.newValue = newValue;
+            }
+        }
+
+        public boolean editPlaylistMeta(
+                Context context,
+                EntryID playlistID,
+                String key,
+                String oldValue,
+                String newValue
+        ) throws BatchException {
+            throw new BatchException("Not implemented");
+        }
+
+        static class AddPlaylistEntryParams {
+            final EntryID playlistID;
+            final EntryID entryID;
+            final String beforePlaylistEntryID;
+            final Meta metaSnapshot;
+            AddPlaylistEntryParams(EntryID playlistID,
+                                   EntryID entryID,
+                                   String beforePlaylistEntryID,
+                                   Meta metaSnapshot) {
+                this.playlistID = playlistID;
+                this.entryID = entryID;
+                this.beforePlaylistEntryID = beforePlaylistEntryID;
+                this.metaSnapshot = metaSnapshot;
+            }
+        }
+
+        public boolean addPlaylistEntry(
                 Context context,
                 EntryID playlistID,
                 EntryID entryID,
@@ -279,7 +478,20 @@ public abstract class APIClient {
             throw new BatchException("Not implemented");
         }
 
-        public void deletePlaylistEntry(
+        static class DeletePlaylistEntryParams {
+            final EntryID playlistID;
+            final String playlistEntryID;
+            final EntryID entryID;
+            DeletePlaylistEntryParams(EntryID playlistID,
+                                      String playlistEntryID,
+                                      EntryID entryID) {
+                this.playlistID = playlistID;
+                this.playlistEntryID = playlistEntryID;
+                this.entryID = entryID;
+            }
+        }
+
+        public boolean deletePlaylistEntry(
                 Context context,
                 EntryID playlistID,
                 String playlistEntryID,
@@ -288,7 +500,23 @@ public abstract class APIClient {
             throw new BatchException("Not implemented");
         }
 
-        public void movePlaylistEntry(
+        static class MovePlaylistEntryParams {
+            final EntryID playlistID;
+            final String playlistEntryID;
+            final EntryID entryID;
+            final String beforePlaylistEntryID;
+            MovePlaylistEntryParams(EntryID playlistID,
+                                    String playlistEntryID,
+                                    EntryID entryID,
+                                    String beforePlaylistEntryID) {
+                this.playlistID = playlistID;
+                this.playlistEntryID = playlistEntryID;
+                this.entryID = entryID;
+                this.beforePlaylistEntryID = beforePlaylistEntryID;
+            }
+        }
+
+        public boolean movePlaylistEntry(
                 Context context,
                 EntryID playlistID,
                 String playlistEntryID,
@@ -298,6 +526,8 @@ public abstract class APIClient {
             throw new BatchException("Not implemented");
         }
 
-        abstract CompletableFuture<Void> commit();
+        abstract CompletableFuture<Void> commit(Context context);
+
+        public abstract boolean isEmpty();
     }
 }

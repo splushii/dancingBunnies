@@ -5,14 +5,11 @@ import android.content.Context;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.Collections;
 import java.util.Date;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
-import se.splushii.dancingbunnies.storage.PlaylistStorage;
 import se.splushii.dancingbunnies.util.Util;
 
 public class TransactionPlaylistEntryMove extends Transaction {
@@ -36,9 +33,10 @@ public class TransactionPlaylistEntryMove extends Transaction {
                                         Date date,
                                         long errorCount,
                                         String errorMessage,
+                                        boolean appliedLocally,
                                         JSONObject args
     ) throws JSONException {
-        super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
+        super(id, src, date, errorCount, errorMessage, appliedLocally, GROUP, ACTION);
         playlistID = EntryID.from(args.getJSONObject(JSON_KEY_PLAYLIST_ID));
         playlistEntryID = args.getString(JSON_KEY_PLAYLIST_ENTRY_ID);
         entryID = EntryID.from(args.getJSONObject(JSON_KEY_ENTRY_ID));
@@ -52,12 +50,13 @@ public class TransactionPlaylistEntryMove extends Transaction {
                                         Date date,
                                         long errorCount,
                                         String errorMessage,
+                                        boolean appliedLocally,
                                         EntryID playlistID,
                                         String playlistEntryID,
                                         EntryID entryID,
                                         String beforePlaylistEntryID
     ) {
-        super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
+        super(id, src, date, errorCount, errorMessage, appliedLocally, GROUP, ACTION);
         this.playlistID = playlistID;
         this.playlistEntryID = playlistEntryID;
         this.entryID = entryID;
@@ -130,18 +129,8 @@ public class TransactionPlaylistEntryMove extends Transaction {
     }
 
     @Override
-    public CompletableFuture<Void> applyLocally(Context context) {
-        return PlaylistStorage.getInstance(context)
-                .movePlaylistEntries(
-                        playlistID,
-                        Collections.singletonList(playlistEntryID),
-                        beforePlaylistEntryID
-                );
-    }
-
-    @Override
-    public void addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
-        batch.movePlaylistEntry(
+    public boolean addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
+        return batch.movePlaylistEntry(
                 context,
                 playlistID,
                 playlistEntryID,

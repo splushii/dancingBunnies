@@ -10,8 +10,6 @@ import androidx.preference.DialogPreference;
 
 public class TimePreference extends DialogPreference {
     public static final String DEFAULT = "00:00";
-    private int hour = 0;
-    private int minute = 0;
 
     public TimePreference(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
@@ -68,29 +66,13 @@ public class TimePreference extends DialogPreference {
         return a.getString(index);
     }
 
-    @Override
-    protected void onSetInitialValue(Object defaultValue) {
-        String value = defaultValue == null ?
-                timeToString(0, 0) : defaultValue.toString();
-        hour = parseHour(value);
-        minute = parseMinute(value);
-    }
-
     void persistStringValue(String value) {
         persistString(value);
         notifyChanged();
     }
 
-    public void setHour(int hour) {
-        this.hour = hour;
-    }
-
     public int getHour() {
         return parseHour(getPersistedString(timeToString(0, 0)));
-    }
-
-    public void setMinute(int minute) {
-        this.minute = minute;
     }
 
     public int getMinute() {

@@ -56,13 +56,12 @@ public class TransactionStorage {
                 new Date(),
                 0,
                 null,
+                false,
                 entryID,
                 key,
                 value
         );
-        return addTransaction(context, t).thenRun(() ->
-                TransactionsWorker.requeue(context, true)
-        );
+        return addTransaction(context, t);
     }
 
     public CompletableFuture<Void> editMeta(Context context,
@@ -78,14 +77,13 @@ public class TransactionStorage {
                 new Date(),
                 0,
                 null,
+                false,
                 entryID,
                 key,
                 oldValue,
                 newValue
         );
-        return addTransaction(context, t).thenRun(() ->
-                TransactionsWorker.requeue(context, true)
-        );
+        return addTransaction(context, t);
     }
 
     public CompletableFuture<Void> deleteMeta(Context context,
@@ -99,13 +97,12 @@ public class TransactionStorage {
                 new Date(),
                 0,
                 null,
+                false,
                 entryID,
                 key,
                 value
         );
-        return addTransaction(context, t).thenRun(() ->
-                TransactionsWorker.requeue(context, true)
-        );
+        return addTransaction(context, t);
     }
 
     public CompletableFuture<Void> addPlaylist(Context context,
@@ -118,13 +115,12 @@ public class TransactionStorage {
                 new Date(),
                 0,
                 null,
+                false,
                 playlistID,
                 name,
                 query
         );
-        return addTransaction(context, t).thenRun(() ->
-                TransactionsWorker.requeue(context, true)
-        );
+        return addTransaction(context, t);
     }
 
     public CompletableFuture<Void> deletePlaylists(Context context,
@@ -139,8 +135,10 @@ public class TransactionStorage {
                             new Date(),
                             0,
                             null,
+                            false,
                             playlistID
-                    )
+                    ),
+                    false
             ));
         }
         return future.thenRun(() ->
@@ -167,11 +165,13 @@ public class TransactionStorage {
                                     new Date(),
                                     0,
                                     null,
+                                    false,
                                     playlistID,
                                     entryID,
                                     beforePlaylistEntryID,
                                     meta
-                            )
+                            ),
+                            false
                     ));
         }
         return future.thenRun(() ->
@@ -205,10 +205,12 @@ public class TransactionStorage {
                             new Date(),
                             0,
                             null,
+                            false,
                             playlistID,
                             playlistEntry.playlistEntryID(),
                             playlistEntry.entryID()
-                    )
+                    ),
+                    false
             ));
         }
         return future.thenRun(() ->
@@ -231,11 +233,13 @@ public class TransactionStorage {
                             new Date(),
                             0,
                             null,
+                            false,
                             playlistID,
                             playlistEntry.playlistEntryID(),
                             playlistEntry.entryID(),
                             beforePlaylistEntryID
-                    )
+                    ),
+                    false
             ));
         }
         return future.thenRun(() ->
@@ -244,6 +248,11 @@ public class TransactionStorage {
     }
 
     private CompletableFuture<Void> addTransaction(Context context, Transaction t) {
+        return addTransaction(context, t, true);
+    }
+    private CompletableFuture<Void> addTransaction(Context context,
+                                                   Transaction t,
+                                                   boolean requeueTransactionsWorker) {
         return CompletableFuture.runAsync(() ->
                 transactionDao.insert(se.splushii.dancingbunnies.storage.db.Transaction.from(
                         t.getSrc(),
@@ -252,7 +261,11 @@ public class TransactionStorage {
                         t.getAction(),
                         t.getArgs()
                 ))
-        ).thenCompose(aVoid -> t.applyLocally(context));
+        ).thenRun(() -> {
+            if (requeueTransactionsWorker) {
+                TransactionsWorker.requeue(context, true);
+            }
+        });
     }
 
     private List<Transaction> dbTransactionsToTransactions(
@@ -265,6 +278,7 @@ public class TransactionStorage {
                         dbTransaction.date,
                         dbTransaction.numErrors,
                         dbTransaction.error,
+                        dbTransaction.appliedLocally,
                         dbTransaction.group,
                         dbTransaction.action,
                         dbTransaction.args
@@ -301,9 +315,29 @@ public class TransactionStorage {
         );
     }
 
-    public CompletableFuture<Void> setError(Transaction transaction, String error) {
-        return CompletableFuture.runAsync(() -> {
-            transactionDao.setError(transaction.getID(), error);
-        });
+    public CompletableFuture<Void> setErrors(List<Transaction> transactions, List<String> errors) {
+        return CompletableFuture.runAsync(() ->
+                transactionDao.setErrors(
+                        transactions.stream().map(Transaction::getID).collect(Collectors.toList()),
+                        errors
+                )
+        );
+    }
+
+    public CompletableFuture<Void> markTransactionsAppliedLocally(List<Transaction> transactions) {
+        return CompletableFuture.runAsync(() ->
+                transactionDao.markAppliedLocally(
+                        transactions.stream().map(Transaction::getID).collect(Collectors.toList()),
+                        true
+                )
+        );
+    }
+
+    public CompletableFuture<Void> markTransactionsAppliedLocally(String src,
+                                                                  String group,
+                                                                  boolean applied) {
+        return CompletableFuture.runAsync(() ->
+                transactionDao.markAppliedLocally(src, group, applied)
+        );
     }
 }

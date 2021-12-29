@@ -22,6 +22,7 @@ public class Transaction {
     private static final String COLUMN_ARGS = "args";
     static final String COLUMN_ERROR = "err";
     static final String COLUMN_ERROR_NUM = "errnum";
+    static final String COLUMN_APPLIED_LOCALLY = "locally";
 
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = DB.COLUMN_ROW_ID)
@@ -45,8 +46,17 @@ public class Transaction {
     @NonNull
     @ColumnInfo(name = COLUMN_ERROR_NUM, defaultValue = "0")
     public long numErrors;
+    @NonNull
+    @ColumnInfo(name = COLUMN_APPLIED_LOCALLY, defaultValue = "0")
+    public boolean appliedLocally;
 
-    public static Transaction from(String src, Date date, String group, String action, String args) {
+    public static Transaction from(
+            String src,
+            Date date,
+            String group,
+            String action,
+            String args
+    ) {
         Transaction transaction = new Transaction();
         transaction.date = date;
         transaction.src = src;

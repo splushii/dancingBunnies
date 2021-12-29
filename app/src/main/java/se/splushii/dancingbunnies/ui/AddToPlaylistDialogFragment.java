@@ -118,7 +118,7 @@ public class AddToPlaylistDialogFragment
         });
         recViewAdapter.setModel(
                 model,
-                new QueryLeaf(Meta.FIELD_QUERY, QueryLeaf.Op.EXISTS, null, false),
+                new QueryLeaf(Meta.FIELD_QUERY, QueryLeaf.Op.EXISTS, null, true),
                 playlistIDs -> {
                     List<EntryID> applicablePlaylists = new ArrayList<>();
                     for (EntryID playlistID: playlistIDs) {

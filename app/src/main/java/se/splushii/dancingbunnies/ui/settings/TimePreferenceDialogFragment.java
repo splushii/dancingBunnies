@@ -38,9 +38,10 @@ public class TimePreferenceDialogFragment extends PreferenceDialogFragmentCompat
     public void onDialogClosed(boolean positiveResult) {
         if (positiveResult) {
             TimePreference pref = (TimePreference) getPreference();
-            pref.setHour(timePicker.getHour());
-            pref.setMinute(timePicker.getMinute());
-            String value = TimePreference.timeToString(pref.getHour(), pref.getMinute());
+            String value = TimePreference.timeToString(
+                    timePicker.getHour(),
+                    timePicker.getMinute()
+            );
             if (pref.callChangeListener(value)) {
                 pref.persistStringValue(value);
             }

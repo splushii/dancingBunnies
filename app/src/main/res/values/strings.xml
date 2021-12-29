@@ -29,7 +29,9 @@
     <string name="pref_backend_config_db_id_dialog_message">The default ID does not need to be changed unless there is a special use case. Leave blank to use the default ID.\n\nWhen changing the ID you must:\n- Manually clear the local data for the old ID.\n- Sync the backend for changes to take effect.</string>
     <string name="pref_backend_config_db_enabled">Enabled</string>
     <string name="pref_backend_config_db_tag_delim">Tag delimiter</string>
-    <string name="pref_backend_config_db_sync">Sync</string>
+    <string name="pref_backend_config_db_fetch_library">Fetch library</string>
+    <string name="pref_backend_config_db_fetch_playlists">Fetch playlists</string>
+    <string name="pref_backend_config_db_index_library">Index library</string>
     <string name="pref_backend_config_db_click_to_abort">Click to abort…</string>
     <string name="pref_backend_config_db_sync_scheduled_enabled">Enable scheduled sync</string>
     <string name="pref_backend_config_db_sync_scheduled_time">Scheduled sync time</string>
@@ -78,10 +80,15 @@
     <string name="pref_key_backend_config_suffix_db_id">id</string>
     <string name="pref_key_backend_config_suffix_db_enabled">enabled</string>
     <string name="pref_key_backend_config_suffix_db_tag_delim">tag_delim</string>
-    <string name="pref_key_backend_config_suffix_db_sync">sync</string>
+    <string name="pref_key_backend_config_suffix_db_fetch_library">fetch_library</string>
+    <string name="pref_key_backend_config_suffix_db_fetch_playlists">fetch_playlists</string>
+    <string name="pref_key_backend_config_suffix_db_index_library">index_library</string>
+    <string name="pref_key_backend_config_suffix_db_last_run_fetch_library">last_run_fetch_library</string>
+    <string name="pref_key_backend_config_suffix_db_last_run_fetch_playlists">last_run_fetch_playlists</string>
+    <string name="pref_key_backend_config_suffix_db_last_run_index_library">last_run_index_library</string>
     <string name="pref_key_backend_config_suffix_db_sync_scheduled_enabled">sync_scheduled_enabled</string>
     <string name="pref_key_backend_config_suffix_db_sync_scheduled_time">sync_scheduled_time</string>
-    <string name="pref_key_backend_config_suffix_db_sync_complete_last_run">sync_scheduled_last_run</string>
+    <string name="pref_key_backend_config_suffix_db_sync_scheduled_time_next">sync_scheduled_time_next</string>
     <string name="pref_key_backend_config_suffix_db_delete">delete</string>
     <!--  Preference keys: backend subsonic  -->
     <string name="pref_key_backend_config_suffix_subsonic_url">url</string>

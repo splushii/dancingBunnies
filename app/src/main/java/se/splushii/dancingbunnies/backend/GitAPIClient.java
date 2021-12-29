@@ -344,7 +344,7 @@ public class GitAPIClient extends APIClient {
             playlistPaths = walk
                     .filter(Files::isRegularFile)
                     .filter(path -> HiddenFileFilter.VISIBLE.accept(path.toFile()))
-                    .filter(path -> FilenameUtils.isExtension(path.toString(), ".yaml"))
+                    .filter(path -> FilenameUtils.isExtension(path.toString(), "yaml"))
                     .collect(Collectors.toList());
         } catch (IOException e) {
             return "Could not traverse repository"
@@ -390,6 +390,11 @@ public class GitAPIClient extends APIClient {
             updatePlaylistPaths(context, true);
         }
 
+        @Override
+        public boolean isEmpty() {
+            return commitMessages.isEmpty();
+        }
+
         private void updatePlaylistPaths(Context context, boolean fetch) throws BatchException {
             playlistPaths.clear();
             String error = api.getPlaylists(
@@ -411,10 +416,10 @@ public class GitAPIClient extends APIClient {
         }
 
         @Override
-        public void addPlaylist(Context context,
-                                EntryID playlistID,
-                                String name,
-                                String query
+        public boolean addPlaylist(Context context,
+                                   EntryID playlistID,
+                                   String name,
+                                   String query
         ) throws BatchException {
             if (playlistPaths.containsKey(playlistID)) {
                 throw new BatchException(
@@ -449,15 +454,17 @@ public class GitAPIClient extends APIClient {
                     null,
                     0,
                     null,
+                    false,
                     playlistID,
                     name,
                     query
             ).getDisplayableDetails());
             updatePlaylistPaths(context, false);
+            return true;
         }
 
         @Override
-        public void deletePlaylist(Context context, EntryID playlistID) throws BatchException {
+        public boolean deletePlaylist(Context context, EntryID playlistID) throws BatchException {
             if (!playlistPaths.containsKey(playlistID)) {
                 throw new BatchException("Can not find playlist "
                         + playlistID.getDisplayableString());
@@ -482,17 +489,19 @@ public class GitAPIClient extends APIClient {
                     null,
                     0,
                     null,
+                    false,
                     playlistID
             ).getDisplayableDetails());
             updatePlaylistPaths(context, false);
+            return true;
         }
 
         @Override
-        public void addPlaylistEntry(Context context,
-                                     EntryID playlistID,
-                                     EntryID entryID,
-                                     String beforePlaylistEntryID,
-                                     Meta metaSnapshot
+        public boolean addPlaylistEntry(Context context,
+                                        EntryID playlistID,
+                                        EntryID entryID,
+                                        String beforePlaylistEntryID,
+                                        Meta metaSnapshot
         ) throws BatchException {
             String error = StupidPlaylist.addEntryInFile(
                     context,
@@ -510,18 +519,20 @@ public class GitAPIClient extends APIClient {
                     null,
                     0,
                     null,
+                    false,
                     playlistID,
                     entryID,
                     beforePlaylistEntryID,
                     metaSnapshot
             ).getDisplayableDetails());
+            return true;
         }
 
         @Override
-        public void deletePlaylistEntry(Context context,
-                                        EntryID playlistID,
-                                        String playlistEntryID,
-                                        EntryID entryID
+        public boolean deletePlaylistEntry(Context context,
+                                           EntryID playlistID,
+                                           String playlistEntryID,
+                                           EntryID entryID
         ) throws BatchException {
             String error = StupidPlaylist.deleteEntryInFile(
                     context,
@@ -537,18 +548,20 @@ public class GitAPIClient extends APIClient {
                     null,
                     0,
                     null,
+                    false,
                     playlistID,
                     playlistEntryID,
                     entryID
             ).getDisplayableDetails());
+            return true;
         }
 
         @Override
-        public void movePlaylistEntry(Context context,
-                                      EntryID playlistID,
-                                      String playlistEntryID,
-                                      EntryID entryID,
-                                      String beforePlaylistEntryID
+        public boolean movePlaylistEntry(Context context,
+                                         EntryID playlistID,
+                                         String playlistEntryID,
+                                         EntryID entryID,
+                                         String beforePlaylistEntryID
         ) throws BatchException {
             String error = StupidPlaylist.moveEntryInFile(
                     context,
@@ -565,15 +578,17 @@ public class GitAPIClient extends APIClient {
                     null,
                     0,
                     null,
+                    false,
                     playlistID,
                     playlistEntryID,
                     entryID,
                     beforePlaylistEntryID
             ).getDisplayableDetails());
+            return true;
         }
 
         @Override
-        CompletableFuture<Void> commit() {
+        CompletableFuture<Void> commit(Context context) {
             if (commitMessages.isEmpty()) {
                 return Util.futureResult();
             }
@@ -615,9 +630,7 @@ public class GitAPIClient extends APIClient {
                     .setRemote(gitURI)
                     .setTransportConfigCallback(transportConfigCallback)
                     .call();
-
         } catch (IOException | GitAPIException e) {
-            e.printStackTrace();
             return e.getMessage();
         }
         return null;

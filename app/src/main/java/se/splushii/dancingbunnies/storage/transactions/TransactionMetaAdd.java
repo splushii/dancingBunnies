@@ -7,12 +7,10 @@ import org.json.JSONObject;
 
 import java.util.Date;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
-import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.util.Util;
 
 public class TransactionMetaAdd extends Transaction {
@@ -34,9 +32,10 @@ public class TransactionMetaAdd extends Transaction {
                               Date date,
                               long errorCount,
                               String errorMessage,
+                              boolean appliedLocally,
                               JSONObject args
     ) throws JSONException {
-        super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
+        super(id, src, date, errorCount, errorMessage, appliedLocally, GROUP, ACTION);
         entryID = EntryID.from(args.getJSONObject(JSON_KEY_ENTRYID));
         key = args.getString(JSON_KEY_KEY);
         value = args.getString(JSON_KEY_VALUE);
@@ -47,11 +46,12 @@ public class TransactionMetaAdd extends Transaction {
                               Date date,
                               long errorCount,
                               String errorMessage,
+                              boolean appliedLocally,
                               EntryID entryID,
                               String key,
                               String value
     ) {
-        super(id, src, date, errorCount, errorMessage, GROUP, ACTION);
+        super(id, src, date, errorCount, errorMessage, appliedLocally, GROUP, ACTION);
         this.entryID = entryID;
         this.key = key;
         this.value = value;
@@ -108,13 +108,7 @@ public class TransactionMetaAdd extends Transaction {
     }
 
     @Override
-    public CompletableFuture<Void> applyLocally(Context context) {
-        return MetaStorage.getInstance(context)
-                .insertTrackMeta(entryID, key, value);
-    }
-
-    @Override
-    public void addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
-        batch.addMeta(context, entryID, key, value);
+    public boolean addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
+        return batch.addMeta(context, entryID, key, value);
     }
 }

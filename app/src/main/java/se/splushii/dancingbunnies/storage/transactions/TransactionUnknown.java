@@ -6,10 +6,8 @@ import org.json.JSONObject;
 
 import java.util.Date;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 
 import se.splushii.dancingbunnies.backend.APIClient;
-import se.splushii.dancingbunnies.util.Util;
 
 public class TransactionUnknown extends Transaction {
     private final String args;
@@ -21,9 +19,19 @@ public class TransactionUnknown extends Transaction {
                               String action,
                               String args,
                               long errorCount,
-                              String errorMessage
+                              String errorMessage,
+                              boolean appliedLocally
     ) {
-        super(id, src, date, errorCount, errorMessage, "unknown: " + group, "unknown: " + action);
+        super(
+                id,
+                src,
+                date,
+                errorCount,
+                errorMessage,
+                appliedLocally,
+                "unknown: " + group,
+                "unknown: " + action
+        );
         this.args = args;
     }
 
@@ -58,12 +66,7 @@ public class TransactionUnknown extends Transaction {
     }
 
     @Override
-    public CompletableFuture<Void> applyLocally(Context context) {
-        return Util.futureResult("Unknown");
-    }
-
-    @Override
-    public void addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
+    public boolean addToBatch(Context context, APIClient.Batch batch) throws APIClient.BatchException {
         throw new APIClient.BatchException("Unknown transaction");
     }
 }

@@ -511,7 +511,7 @@ public class MusicLibraryService extends Service {
                             .collect(Collectors.toList())
                     );
         }).thenCompose(data -> {
-            Log.d(LC, "Saved library to local meta storage.");
+            Log.d(LC, "Got all meta to index from local meta storage.");
             return CompletableFuture.supplyAsync(() -> {
                 handler.onProgress("Clearing old search index...");
                 if (!clearIndex(context, src, 10000)) {
