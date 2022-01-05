@@ -490,7 +490,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
                 this,
                 99 /*request code*/,
                 intent,
-                PendingIntent.FLAG_UPDATE_CURRENT
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
         mediaSession.setSessionActivity(pi);
         mediaSession.setMetadata(Meta.UNKNOWN_ENTRY.toMediaMetadataCompat());

@@ -12,6 +12,8 @@ import com.google.android.gms.cast.MediaInfo;
 import com.google.android.gms.cast.MediaMetadata;
 import com.google.android.gms.cast.MediaQueueItem;
 import com.google.android.gms.cast.MediaStatus;
+import com.google.android.gms.cast.framework.CastContext;
+import com.google.android.gms.cast.framework.CastReasonCodes;
 import com.google.android.gms.cast.framework.CastSession;
 import com.google.android.gms.cast.framework.media.MediaQueue;
 import com.google.android.gms.cast.framework.media.RemoteMediaClient;
@@ -30,6 +32,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.StampedLock;
 import java.util.stream.Collectors;
 
+import androidx.annotation.NonNull;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
@@ -745,8 +748,12 @@ public class CastAudioPlayer implements AudioPlayer {
     private void logResult(String action, RemoteMediaClient.MediaChannelResult result) {
         Log.d(LC, action + " smooth? " + result.getStatus().isSuccess());
         if (!result.getStatus().isSuccess()) {
-            String code = CastStatusCodes.getStatusCodeString(result.getStatus().getStatusCode());
-            String msg = code + ": "
+            int castStatusCode = result.getStatus().getStatusCode();
+            String code = CastStatusCodes.getStatusCodeString(castStatusCode);
+            int castReasonCode = CastContext.getSharedInstance(context)
+                    .getCastReasonCodeForCastStatusCode(castStatusCode);
+            String reason = getCastReason(castReasonCode);
+            String msg = code + " (" + reason + "): "
                     + result.getStatus().toString() + " "
                     + result.getStatus().getStatusMessage();
             MediaError mediaError = result.getMediaError();
@@ -763,6 +770,35 @@ public class CastAudioPlayer implements AudioPlayer {
             }
             Log.e(LC, msg);
             logCurrentQueue();
+        }
+    }
+
+    private String getCastReason(int castReasonCode) {
+        switch (castReasonCode) {
+            case CastReasonCodes.UNKNOWN_REASON:
+                return "UNKNOWN_REASON";
+            case CastReasonCodes.CAST_INTERNAL_ERROR:
+                return "CAST_INTERNAL_ERROR";
+            case CastReasonCodes.CASTING_STOPPED:
+                return "CASTING_STOPPED";
+            case CastReasonCodes.RECEIVER_APP_NOT_RUNNING:
+                return "RECEIVER_APP_NOT_RUNNING";
+            case CastReasonCodes.SESSION_START_FAILED:
+                return "SESSION_START_FAILED";
+            case CastReasonCodes.SESSION_RESUME_FAILED:
+                return "SESSION_RESUME_FAILED";
+            case CastReasonCodes.CAST_SOCKET_ERROR:
+                return "CAST_SOCKET_ERROR";
+            case CastReasonCodes.CAST_TIMEOUT:
+                return "CAST_TIMEOUT";
+            case CastReasonCodes.NETWORK_ERROR:
+                return "NETWORK_ERROR";
+            case CastReasonCodes.CASTING_ROUTE_CHANGED:
+                return "CASTING_ROUTE_CHANGED";
+            case CastReasonCodes.APPLICATION_LAUNCH_ERROR:
+                return "APPLICATION_LAUNCH_ERROR";
+            default:
+                return "<unhandled cast reason code>";
         }
     }
 
@@ -878,6 +914,14 @@ public class CastAudioPlayer implements AudioPlayer {
                 }
             }
             cleanQueueItemMap();
+            logCurrentQueue();
+        }
+
+        @Override
+        public void itemsReorderedAtIndexes(@NonNull List<Integer> indexes, int insertBeforeIndex) {
+            Log.d(LC, "MediaQueue: itemsReorderedAtIndexes("
+                    + indexes + ", " + insertBeforeIndex
+                    + ")");
             logCurrentQueue();
         }
 
