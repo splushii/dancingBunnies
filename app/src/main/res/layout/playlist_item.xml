@@ -26,32 +26,47 @@
             android:layout_marginBottom="8dp"
             android:orientation="vertical"
             android:layout_marginEnd="8dp">
-            <TextView
-                android:id="@+id/playlist_name"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
-                android:singleLine="true"
-                android:gravity="center_vertical"
-                android:textColor="@color/text_active_on_accent"
-                android:fontFamily="sans-serif"
-                android:textSize="18sp" />
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
                 <TextView
-                    android:id="@+id/playlist_type"
+                    android:id="@+id/playlist_name"
                     android:layout_width="0dp"
                     android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="4dp"
-                    android:textColor="@color/text_secondary_active" />
+                    android:layout_gravity="center_vertical"
+                    android:singleLine="true"
+                    android:gravity="center_vertical"
+                    android:textColor="@color/text_active_on_accent"
+                    android:fontFamily="sans-serif"
+                    android:textSize="18sp" />
                 <TextView
                     android:id="@+id/playlist_num_entries"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/text_secondary_active" />
+                    android:layout_gravity="center_vertical"
+                    android:textColor="@color/text_secondary_active_on_accent" />
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:id="@+id/playlist_backend"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:singleLine="true"
+                    android:gravity="center_vertical"
+                    android:textColor="@color/text_secondary_active_on_accent" />
+                <TextView
+                    android:id="@+id/playlist_type"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:textColor="@color/text_secondary_active_on_accent" />
             </LinearLayout>
         </LinearLayout>
         <ImageView

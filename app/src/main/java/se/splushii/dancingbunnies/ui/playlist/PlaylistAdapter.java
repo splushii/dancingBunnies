@@ -13,7 +13,6 @@ import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.arch.core.util.Function;
-import androidx.core.content.ContextCompat;
 import androidx.core.util.Consumer;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.LiveData;
@@ -174,6 +173,7 @@ public class PlaylistAdapter extends
         private final View highlightView;
         private final TextView nameTextView;
         private final ImageView srcImageView;
+        private final TextView backendTextView;
         private final TextView typeTextView;
         private final TextView numEntriesTextView;
 
@@ -187,6 +187,7 @@ public class PlaylistAdapter extends
             entry = v.findViewById(R.id.playlist);
             nameTextView = v.findViewById(R.id.playlist_name);
             srcImageView = v.findViewById(R.id.playlist_src);
+            backendTextView = v.findViewById(R.id.playlist_backend);
             highlightView = v.findViewById(R.id.playlist_highlight);
             typeTextView = v.findViewById(R.id.playlist_type);
             numEntriesTextView = v.findViewById(R.id.playlist_num_entries);
@@ -206,10 +207,7 @@ public class PlaylistAdapter extends
             boolean highlighted = playlistID != null
                     && playlistID.equals(currentPlaylistID);
             if (highlighted) {
-                highlightView.setBackgroundColor(ContextCompat.getColor(
-                        fragment.requireContext(),
-                        R.color.colorAccent
-                ));
+                highlightView.setBackgroundResource(R.color.accent_active_accentdark);
             } else {
                 setDefaultHighlightBackground();
             }
@@ -227,6 +225,7 @@ public class PlaylistAdapter extends
 
         void setPlaylistID(EntryID playlistID) {
             playlistIDLiveData.setValue(playlistID);
+            backendTextView.setText(MusicLibraryService.getAPIInstanceIDFromSource(playlistID.src));
         }
 
         void setType(String type) {
@@ -257,14 +256,13 @@ public class PlaylistAdapter extends
                 fragment.getViewLifecycleOwner(),
                 holder::setName
         );
-        holder.numPlaylistEntriesLiveData = Transformations.switchMap(
+        Transformations.switchMap(
                 holder.playlistIDLiveData,
                 playlistID -> MusicLibraryService.getNumPlaylistEntries(
                         fragment.requireContext(),
                         playlistID
                 )
-        );
-        holder.numPlaylistEntriesLiveData.observe(
+        ).observe(
                 fragment.getViewLifecycleOwner(),
                 holder::setNumEntries
         );
