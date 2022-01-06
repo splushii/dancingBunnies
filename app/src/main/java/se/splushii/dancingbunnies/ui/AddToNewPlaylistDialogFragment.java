@@ -20,8 +20,6 @@ import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.view.menu.MenuBuilder;
-import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
@@ -129,12 +127,7 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             newPlaylistBackendMenu.setGroupDividerEnabled(true);
         }
-        MenuPopupHelper newPlaylistBackendPopupHelper = new MenuPopupHelper(
-                requireContext(),
-                (MenuBuilder) newPlaylistBackendMenu,
-                newPlaylistBackend
-        );
-        newPlaylistBackendPopupHelper.setForceShowIcon(true);
+        newPlaylistBackendPopup.setForceShowIcon(true);
         List<String> sources = new ArrayList<>();
         String defaultNewPlaylistBackendSource = MusicLibraryService.API_SRC_DANCINGBUNNIES_LOCAL;
         newPlaylistBackendId.setText(defaultNewPlaylistBackendSource);
@@ -169,7 +162,7 @@ public class AddToNewPlaylistDialogFragment extends DialogFragment {
                 );
                 menuItem.setIcon(MusicLibraryService.getAPIIconResourceFromSource(src));
             }
-            newPlaylistBackendPopupHelper.show();
+            newPlaylistBackendPopup.show();
         });
 
         return rootView;

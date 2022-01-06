@@ -33,8 +33,6 @@ import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.view.menu.MenuBuilder;
-import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
@@ -857,17 +855,12 @@ public class MusicLibraryFragment
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             browseHeaderShowMenu.setGroupDividerEnabled(true);
         }
-        MenuPopupHelper browseHeaderShowPopupHelper = new MenuPopupHelper(
-                requireContext(),
-                (MenuBuilder) browseHeaderShowMenu,
-                browseHeaderShow
-        );
-        browseHeaderShowPopupHelper.setForceShowIcon(true);
+        browseHeaderShowPopup.setForceShowIcon(true);
         browseHeaderShowPopup.setOnMenuItemClickListener(item -> {
             clearSelection();
             return onShowSelected(item, metaKeysForDisplay);
         });
-        browseHeaderShow.setOnClickListener(view -> browseHeaderShowPopupHelper.show());
+        browseHeaderShow.setOnClickListener(view -> browseHeaderShowPopup.show());
         browseHeaderNum = rootView.findViewById(R.id.musiclibrary_browse_header_num);
 
         browseHeaderSortedBy = rootView.findViewById(R.id.musiclibrary_browse_header_sortedby);
@@ -888,19 +881,14 @@ public class MusicLibraryFragment
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             browseHeaderSortedByMenu.setGroupDividerEnabled(true);
         }
-        MenuPopupHelper browseHeaderSortedByPopupHelper = new MenuPopupHelper(
-                requireContext(),
-                (MenuBuilder) browseHeaderSortedByMenu,
-                browseHeaderSortedBy
-        );
-        browseHeaderSortedByPopupHelper.setForceShowIcon(true);
+        browseHeaderSortedByPopup.setForceShowIcon(true);
         browseHeaderSortedByPopup.setOnMenuItemClickListener(item -> {
             clearSelection();
             return onSortedBySelected(item, metaKeysForDisplay);
         });
         browseHeaderSortedByKeys = rootView.findViewById(R.id.musiclibrary_browse_header_sortedby_keys);
         browseHeaderSortedByOrder = rootView.findViewById(R.id.musiclibrary_browse_header_sortedby_order);
-        browseHeaderSortedBy.setOnClickListener(view -> browseHeaderSortedByPopupHelper.show());
+        browseHeaderSortedBy.setOnClickListener(view -> browseHeaderSortedByPopup.show());
 
         View browseHomeBtn = rootView.findViewById(R.id.musiclibrary_browse_home);
         browseHomeBtn.setOnClickListener(v -> {

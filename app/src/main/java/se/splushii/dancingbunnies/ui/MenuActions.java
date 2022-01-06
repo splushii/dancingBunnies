@@ -16,8 +16,6 @@ import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
-import androidx.appcompat.view.menu.MenuBuilder;
-import androidx.appcompat.view.menu.MenuPopupHelper;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentManager;
@@ -144,14 +142,9 @@ public class MenuActions {
                     !disabled.contains(moreActions[i])
             );
         }
-        MenuPopupHelper menuPopupHelper = new MenuPopupHelper(
-                context,
-                (MenuBuilder) popup.getMenu(),
-                anchor
-        );
-        menuPopupHelper.setForceShowIcon(true);
+        popup.setForceShowIcon(true);
         popup.setOnMenuItemClickListener(onMenuItemClickListener);
-        menuPopupHelper.show();
+        popup.show();
     }
 
     public static boolean doAction(int action,
