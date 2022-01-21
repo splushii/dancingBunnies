@@ -23,11 +23,11 @@ import org.eclipse.jgit.api.errors.InvalidRemoteException;
 import org.eclipse.jgit.api.errors.TransportException;
 import org.eclipse.jgit.errors.RepositoryNotFoundException;
 import org.eclipse.jgit.transport.HttpTransport;
-import org.eclipse.jgit.transport.JschConfigSessionFactory;
-import org.eclipse.jgit.transport.OpenSshConfig;
 import org.eclipse.jgit.transport.SshTransport;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
+import org.eclipse.jgit.transport.ssh.jsch.JschConfigSessionFactory;
+import org.eclipse.jgit.transport.ssh.jsch.OpenSshConfig;
 import org.eclipse.jgit.util.FS;
 
 import java.io.File;
@@ -187,6 +187,29 @@ public class GitAPIClient extends APIClient {
             protected void configure(OpenSshConfig.Host hc, Session session) {
                 // TODO: Enable if possible (use Android bundled CA:s?)
                 session.setConfig("StrictHostKeyChecking", "no");
+                session.setConfig(
+                        "KexAlgorithms", ""
+                                + "sntrup761x25519-sha512@openssh.com"
+                                + ",curve25519-sha256,curve25519-sha256@libssh.org"
+                                + ",ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521"
+                                + ",diffie-hellman-group-exchange-sha256"
+                                + ",diffie-hellman-group16-sha512"
+                                + ",diffie-hellman-group18-sha512"
+                                + ",diffie-hellman-group14-sha256"
+                );
+                session.setConfig(
+                        "MACs", ""
+                                + "umac-64-etm@openssh.com,umac-128-etm@openssh.com"
+                                + ",hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com"
+                                + ",umac-64@openssh.com,umac-128@openssh.com"
+                                + ",hmac-sha2-256,hmac-sha2-512"
+                );
+                session.setConfig(
+                        "Ciphers", ""
+                                + "chacha20-poly1305@openssh.com"
+                                + ",aes128-ctr,aes192-ctr,aes256-ctr"
+                                + ",aes128-gcm@openssh.com,aes256-gcm@openssh.com"
+                );
                 if (password != null) {
                     session.setPassword(password);
                 }

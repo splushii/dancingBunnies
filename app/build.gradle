@@ -11,6 +11,11 @@ android {
 //        jvmTarget = "11"
 //    }
 
+    packagingOptions {
+        // From the JGit jars
+        exclude 'plugin.properties'
+    }
+
     defaultConfig {
         applicationId "se.splushii.dancingbunnies"
         minSdkVersion 26
@@ -59,6 +64,14 @@ android {
     }
 }
 
+configurations.all {
+    resolutionStrategy.eachDependency { DependencyResolveDetails depDetails ->
+        if (depDetails.requested.group == "com.jcraft" && depDetails.requested.name == "jsch") {
+            depDetails.useTarget("com.github.mwiede:jsch:0.2.2")
+        }
+    }
+}
+
 repositories {
     mavenCentral()
 }
@@ -89,7 +102,12 @@ dependencies {
     implementation "com.networknt:json-schema-validator:1.0.40"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.11.0"
 
-    implementation "org.eclipse.jgit:org.eclipse.jgit:5.7.0.202003110725-r"
+    implementation "org.eclipse.jgit:org.eclipse.jgit:6.2.0.202206071550-r"
+    implementation "org.eclipse.jgit:org.eclipse.jgit.ssh.jsch:6.2.0.202206071550-r"
+
+    implementation 'com.github.mwiede:jsch:0.2.2'
+
+    implementation "org.bouncycastle:bcpkix-jdk15on:1.70"
 
     implementation 'commons-io:commons-io:2.7'
 
