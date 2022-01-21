@@ -23,11 +23,11 @@ import org.eclipse.jgit.api.errors.InvalidRemoteException;
 import org.eclipse.jgit.api.errors.TransportException;
 import org.eclipse.jgit.errors.RepositoryNotFoundException;
 import org.eclipse.jgit.transport.HttpTransport;
-import org.eclipse.jgit.transport.JschConfigSessionFactory;
-import org.eclipse.jgit.transport.OpenSshConfig;
 import org.eclipse.jgit.transport.SshTransport;
 import org.eclipse.jgit.transport.Transport;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
+import org.eclipse.jgit.transport.ssh.jsch.JschConfigSessionFactory;
+import org.eclipse.jgit.transport.ssh.jsch.OpenSshConfig;
 import org.eclipse.jgit.util.FS;
 
 import java.io.File;
@@ -187,6 +187,8 @@ public class GitAPIClient extends APIClient {
             protected void configure(OpenSshConfig.Host hc, Session session) {
                 // TODO: Enable if possible (use Android bundled CA:s?)
                 session.setConfig("StrictHostKeyChecking", "no");
+                // Disallow SHA-1
+                session.setConfig("KexAlgorithms", "diffie-hellman-group-exchange-sha256,ecdh-sha2-nistp256,ecdh-sha2-nistp384,ecdh-sha2-nistp521");
                 if (password != null) {
                     session.setPassword(password);
                 }

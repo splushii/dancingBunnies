@@ -89,7 +89,8 @@ dependencies {
     implementation "com.networknt:json-schema-validator:1.0.40"
     implementation "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.11.0"
 
-    implementation "org.eclipse.jgit:org.eclipse.jgit:5.7.0.202003110725-r"
+    implementation "org.eclipse.jgit:org.eclipse.jgit:6.0.0.202111291000-r"
+    implementation "org.eclipse.jgit:org.eclipse.jgit.ssh.jsch:6.0.0.202111291000-r"
 
     implementation 'commons-io:commons-io:2.7'
 
