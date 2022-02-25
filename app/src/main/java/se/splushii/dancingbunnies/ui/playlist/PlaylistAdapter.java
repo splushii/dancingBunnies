@@ -24,6 +24,7 @@ import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
+import se.splushii.dancingbunnies.musiclibrary.QueryEntry;
 import se.splushii.dancingbunnies.musiclibrary.QueryNode;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
@@ -35,7 +36,7 @@ import static se.splushii.dancingbunnies.storage.transactions.Transaction.PLAYLI
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_DELETE_MULTIPLE;
 
 public class PlaylistAdapter extends
-        SmartDiffSelectionRecyclerViewAdapter<EntryID, PlaylistAdapter.PlaylistHolder> {
+        SmartDiffSelectionRecyclerViewAdapter<QueryEntry, PlaylistAdapter.PlaylistHolder> {
     private static final String LC = Util.getLogContext(PlaylistAdapter.class);
 
     private final Fragment fragment;
@@ -52,15 +53,15 @@ public class PlaylistAdapter extends
     protected void onSelectionChanged() {}
 
     @Override
-    public void onSelectionDrop(Collection<EntryID> selection,
+    public void onSelectionDrop(Collection<QueryEntry> selection,
                                 int targetPos,
-                                EntryID idAfterTargetPos) {
+                                QueryEntry idAfterTargetPos) {
         throw new RuntimeException("Not supported");
     }
 
     @Override
     public void onUseViewHolderForDrag(PlaylistHolder dragViewHolder,
-                                       Collection<EntryID> selection) {
+                                       Collection<QueryEntry> selection) {
         throw new RuntimeException("Not supported");
     }
 
@@ -70,11 +71,11 @@ public class PlaylistAdapter extends
     }
 
     private void updateActionModeView(ActionModeCallback actionModeCallback,
-                                      Selection<EntryID> selection) {
+                                      Selection<QueryEntry> selection) {
         actionModeCallback.getActionMode().setTitle(selection.size() + " entries");
         boolean showDelete = true;
-        for (EntryID playlistID: selection) {
-            String src = playlistID.src;
+        for (QueryEntry queryEntry: selection) {
+            String src = queryEntry.entryID.src;
             if (!APIClient.getAPIClient(fragment.requireContext(), src)
                     .supports(PLAYLIST_DELETE, src)) {
                 showDelete = false;
@@ -91,13 +92,13 @@ public class PlaylistAdapter extends
 
     @Override
     public void onActionModeStarted(ActionModeCallback actionModeCallback,
-                                    Selection<EntryID> selection) {
+                                    Selection<QueryEntry> selection) {
         updateActionModeView(actionModeCallback, selection);
     }
 
     @Override
     public void onActionModeSelectionChanged(ActionModeCallback actionModeCallback,
-                                             Selection<EntryID> selection) {
+                                             Selection<QueryEntry> selection) {
         updateActionModeView(actionModeCallback, selection);
     }
 
@@ -105,12 +106,12 @@ public class PlaylistAdapter extends
     public void onActionModeEnding(ActionModeCallback actionModeCallback) {}
 
     @Override
-    public boolean validDrag(Selection<EntryID> selection) {
+    public boolean validDrag(Selection<QueryEntry> selection) {
         return false;
     }
 
     @Override
-    public boolean validSelect(EntryID key) {
+    public boolean validSelect(QueryEntry key) {
         return true;
     }
 
@@ -129,28 +130,27 @@ public class PlaylistAdapter extends
         return getItem(position).hashCode();
     }
 
-    private void setPlaylists(List<EntryID> playlistIDs) {
-        Log.d(LC, "setPlaylists: " + playlistIDs.size());
-        setDataSet(playlistIDs);
+    private void setPlaylists(List<QueryEntry> queryEntries) {
+        Log.d(LC, "setPlaylists: " + queryEntries.size());
+        setDataSet(queryEntries);
     }
 
     private boolean initialScrolled;
     public void setModel(PlaylistFragmentModel model,
                          QueryNode query,
-                         Function<List<EntryID>, List<EntryID>> playlistFilter) {
+                         Function<List<QueryEntry>, List<QueryEntry>> playlistFilter) {
         initialScrolled = false;
-        LiveData<List<EntryID>> playlistIDsLiveData = query == null
-                ? MetaStorage.getInstance(fragment.requireContext()).getPlaylists()
-                : MetaStorage.getInstance(fragment.requireContext()).getPlaylists(query);
-        playlistIDsLiveData
-                .observe(fragment.getViewLifecycleOwner(), entries -> {
-                    setPlaylists(playlistFilter.apply(entries));
-                    updateScrollPos(model.getUserStateValue(), !entries.isEmpty());
-                });
-        model.getUserState().observe(
-                fragment.getViewLifecycleOwner(),
-                userState -> updateScrollPos(userState, !isEmpty())
-        );
+        Transformations.switchMap(model.getUserState(), userState ->
+                MetaStorage.getInstance(fragment.requireContext()).getPlaylists(
+                        // Use static query if supplied, otherwise get query from model state
+                        query == null ? userState.getQuery() : query,
+                        userState.sortByFields,
+                        userState.sortOrderAscending
+                )
+        ).observe(fragment.getViewLifecycleOwner(), entries -> {
+            setPlaylists(playlistFilter.apply(entries));
+            updateScrollPos(model.getUserStateValue(), !entries.isEmpty());
+        });
         currentPlaylistIDLiveData = model.getCurrentPlaylistID();
     }
 
@@ -164,7 +164,7 @@ public class PlaylistAdapter extends
         }
     }
 
-    class PlaylistHolder extends ItemDetailsViewHolder<EntryID> {
+    class PlaylistHolder extends ItemDetailsViewHolder<QueryEntry> {
         MutableLiveData<EntryID> playlistIDLiveData;
         LiveData<Integer> numPlaylistEntriesLiveData;
         LiveData<String> playlistNameLiveData;
@@ -194,7 +194,7 @@ public class PlaylistAdapter extends
         }
 
         @Override
-        protected EntryID getSelectionKeyOf() {
+        protected QueryEntry getSelectionKeyOf() {
             return getItem(getPos());
         }
 
@@ -285,8 +285,8 @@ public class PlaylistAdapter extends
 
     @Override
     public void onBindViewHolder(@NonNull PlaylistHolder holder, int position) {
-        EntryID playlistID = getItem(position);
-        holder.setPlaylistID(playlistID);
+        QueryEntry queryEntry = getItem(position);
+        holder.setPlaylistID(queryEntry.entryID);
         holder.entry.setOnClickListener(view -> {
             if (hasSelection()) {
                 return;
@@ -294,12 +294,12 @@ public class PlaylistAdapter extends
             if (fragment instanceof PlaylistFragment) {
                 ((PlaylistFragment) fragment).clearFocus();
             }
-            onItemClickListener.accept(playlistID);
+            onItemClickListener.accept(queryEntry.entryID);
         });
         holder.setSourceResourceID(MusicLibraryService.getAPIIconResourceFromSource(
-                playlistID.src
+                queryEntry.entryID.src
         ));
         holder.updateHighlight(currentPlaylistIDLiveData.getValue());
-        holder.entry.setActivated(isSelected(playlistID));
+        holder.entry.setActivated(isSelected(queryEntry));
     }
 }

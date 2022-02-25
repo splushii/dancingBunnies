@@ -28,18 +28,18 @@
         <LinearLayout
             android:id="@+id/library_entry_sortedby"
             android:layout_width="0dp"
-            android:layout_weight="@dimen/musiclibrary_column_weight_sortedby"
+            android:layout_weight="@dimen/browse_sort_weight"
             android:layout_height="wrap_content">
             <LinearLayout
                 android:id="@+id/library_entry_sortedby_keys"
                 android:layout_width="0dp"
-                android:layout_weight="@dimen/musiclibrary_column_weight_sortedby_keys"
+                android:layout_weight="@dimen/browse_sort_keys_weight"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:orientation="horizontal" />
             <View
                 android:id="@+id/library_entry_sortedby_order"
-                android:layout_width="@dimen/musiclibrary_column_width_sortedby_order"
+                android:layout_width="@dimen/browse_sort_order_width"
                 android:layout_height="match_parent" />
         </LinearLayout>
         <TextView

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/browse_sort_root"
+    android:layout_width="0dp"
+    android:layout_weight="@dimen/browse_sort_weight"
+    android:layout_height="wrap_content"
+    android:background="?android:selectableItemBackground">
+    <LinearLayout
+        android:id="@+id/browse_sort_keys"
+        android:layout_width="0dp"
+        android:layout_weight="@dimen/browse_sort_keys_weight"
+        android:layout_height="36dp"
+        android:orientation="horizontal"
+        android:layout_marginStart="4dp"/>
+    <ImageView
+        android:id="@+id/browse_sort_order"
+        android:layout_width="@dimen/browse_sort_order_width"
+        android:layout_height="match_parent"
+        android:gravity="center_vertical"
+        android:src="@drawable/ic_arrow_drop_down_black_24dp"
+        android:contentDescription="@string/sort_order"
+        app:tint="@color/colorText" />
+</LinearLayout>

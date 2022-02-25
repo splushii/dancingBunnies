@@ -44,12 +44,15 @@ import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
+import se.splushii.dancingbunnies.musiclibrary.QueryEntry;
 import se.splushii.dancingbunnies.musiclibrary.QueryNode;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.TransactionStorage;
 import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
+import se.splushii.dancingbunnies.ui.BrowseSortView;
+import se.splushii.dancingbunnies.ui.EntryTypeSelectionDialogFragment;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.selection.RecyclerViewActionModeSelectionTracker;
 import se.splushii.dancingbunnies.ui.settings.SettingsActivityFragment;
@@ -66,7 +69,8 @@ import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAYLIST_PLAYBACK
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_PLAY_MULTIPLE;
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_QUEUE_ADD_MULTIPLE;
 
-public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
+public class PlaylistFragment extends Fragment
+        implements AudioBrowserCallback, EntryTypeSelectionDialogFragment.ConfigHandler {
 
     private static final String LC = Util.getLogContext(PlaylistFragment.class);
 
@@ -81,11 +85,12 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
     private LinearLayoutManager playlistRecViewLayoutManager;
     private FastScroller playlistFastScroller;
     private RecyclerViewActionModeSelectionTracker
-            <EntryID, PlaylistAdapter.PlaylistHolder, PlaylistAdapter>
+            <QueryEntry, PlaylistAdapter.PlaylistHolder, PlaylistAdapter>
             playlistSelectionTracker;
 
+    private BrowseSortView browseSortView;
+
     private View playlistContentRootView;
-    private ImageButton playlistContentBackBtn;
     private View playlistContentInfo;
     private View playlistContentInfoExtra;
     private TextView playlistContentInfoName;
@@ -104,7 +109,6 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
     private RecyclerView playlistPlaybackEntriesRecView;
     private LinearLayoutManager playlistPlaybackEntriesRecViewLayoutManager;
     private PlaylistPlaybackEntriesAdapter playlistPlaybackEntriesRecViewAdapter;
-    private FastScroller playlistPlaybackEntriesFastScroller;
     private RecyclerViewActionModeSelectionTracker
             <PlaybackEntry, PlaylistPlaybackEntriesAdapter.ViewHolder, PlaylistPlaybackEntriesAdapter>
             playlistPlaybackEntriesSelectionTracker;
@@ -126,6 +130,9 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
 
     private AudioBrowser remote;
     private PlaylistFragmentModel model;
+
+    private ArrayList<String> metaKeys;
+    private ArrayList<String> metaKeysForDisplay;
 
     @SuppressLint("ClickableViewAccessibility")
     @Override
@@ -154,7 +161,9 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
 
                     @Override
                     public List<EntryID> getPlaylistSelection() {
-                        return playlistSelectionTracker.getSelection();
+                        return playlistSelectionTracker.getSelection().stream()
+                                .map(queryEntry -> queryEntry.entryID)
+                                .collect(Collectors.toList());
                     }
 
                     @Override
@@ -489,6 +498,8 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
             playlistSelectSwitch.setChecked(false);
             playlistShowPlaybackOrderSwitch.setVisibility(INVISIBLE);
             playlistRootView.setVisibility(VISIBLE);
+            browseSortView.onSortedBy(state.sortByFields);
+            browseSortView.onSortedByAscending(state.sortOrderAscending);
         } else {
             EntryID playlistID = state.browsedPlaylistID;
             newPlaylistFAB.hide();
@@ -578,7 +589,7 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
                 MainActivity.SELECTION_ID_PLAYLIST,
                 playlistRecView,
                 playlistRecViewAdapter,
-                StorageStrategy.createParcelableStorage(EntryID.class),
+                StorageStrategy.createParcelableStorage(QueryEntry.class),
                 savedInstanceState
         );
 
@@ -595,8 +606,74 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
         playlistFastScroller = rootView.findViewById(R.id.playlist_fastscroller);
         playlistFastScroller.setRecyclerView(playlistRecView);
 
+        metaKeys = new ArrayList<>();
+        MetaStorage.getInstance(requireContext())
+                .getPlaylistMetaKeys()
+                .observe(getViewLifecycleOwner(), metaKeys -> {
+                    this.metaKeys.clear();
+                    this.metaKeys.addAll(metaKeys);
+                });
+        metaKeysForDisplay = new ArrayList<>();
+        MetaStorage.getInstance(requireContext())
+                .getPlaylistMetaKeysForDisplay()
+                .observe(getViewLifecycleOwner(), metaKeysForDisplay -> {
+                    this.metaKeysForDisplay.clear();
+                    this.metaKeysForDisplay.addAll(metaKeysForDisplay);
+                    browseSortView.onMetaKeyForDisplayChanged(metaKeysForDisplay);
+                });
+
+        browseSortView = rootView.findViewById(R.id.playlist_browse_sort);
+        browseSortView.setCallback(new BrowseSortView.Callback() {
+            @Override
+            public void setSortOrder(boolean ascending) {
+                PlaylistFragment.this.sortBy(getSortByMetaKeys(), ascending);
+            }
+
+            @Override
+            public void sortBy(List<String> metaKeys) {
+                PlaylistFragment.this.sortBy(metaKeys, true);
+            }
+
+            @Override
+            public Fragment getTargetFragment() {
+                return PlaylistFragment.this;
+            }
+
+            @Override
+            public String getShowMetaKey() {
+                return Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST;
+            }
+
+            @Override
+            public List<String> getSortByMetaKeys() {
+                PlaylistUserState state = model.getUserStateValue();
+                return state == null ? null : state.sortByFields;
+            }
+
+            @Override
+            public boolean isSortedAscending() {
+                PlaylistUserState state = model.getUserStateValue();
+                return state == null || state.sortOrderAscending;
+            }
+
+            @Override
+            public String getMetaKey(int i) {
+                return metaKeys.get(i);
+            }
+
+            @Override
+            public String getMetaKeyForDisplay(int i) {
+                return metaKeysForDisplay.get(i);
+            }
+
+            @Override
+            public String getEntryType() {
+                return EntryID.TYPE_PLAYLIST;
+            }
+        });
+
         playlistContentRootView = rootView.findViewById(R.id.playlist_content_rootview);
-        playlistContentBackBtn = rootView.findViewById(R.id.playlist_content_info_back_btn);
+        ImageButton playlistContentBackBtn = rootView.findViewById(R.id.playlist_content_info_back_btn);
         playlistContentBackBtn.setOnClickListener(v -> {
             clearSelection();
             onBackPressed();
@@ -663,7 +740,7 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
                 }
             }
         });
-        playlistPlaybackEntriesFastScroller = rootView.findViewById(R.id.playlist_playback_entries_fastscroller);
+        FastScroller playlistPlaybackEntriesFastScroller = rootView.findViewById(R.id.playlist_playback_entries_fastscroller);
         playlistPlaybackEntriesFastScroller.setRecyclerView(playlistPlaybackEntriesRecView);
 
         newPlaylistView = rootView.findViewById(R.id.playlist_new_playlist);
@@ -751,6 +828,12 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
         return rootView;
     }
 
+    private void sortBy(List<String> fields, boolean ascending) {
+        clearSelection();
+        model.sortBy(fields);
+        model.setSortOrder(ascending);
+    }
+
     private boolean onNewPlaylistBackendMenuSelected(MenuItem item, List<String> sources) {
         int position = item.getItemId();
         int groupId = item.getGroupId();
@@ -830,5 +913,12 @@ public class PlaylistFragment extends Fragment implements AudioBrowserCallback {
             return true;
         }
         return false;
+    }
+
+    @Override
+    public void onEntryTypeSelection(List<String> keys) {
+        if (keys != null && !keys.isEmpty()) {
+            sortBy(keys, true);
+        }
     }
 }

@@ -22,6 +22,7 @@ import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.backend.APIClient;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.musiclibrary.QueryEntry;
 import se.splushii.dancingbunnies.musiclibrary.QueryLeaf;
 import se.splushii.dancingbunnies.musiclibrary.QueryNode;
 import se.splushii.dancingbunnies.storage.MetaStorage;
@@ -119,18 +120,18 @@ public class AddToPlaylistDialogFragment
         recViewAdapter.setModel(
                 model,
                 new QueryLeaf(Meta.FIELD_QUERY, QueryLeaf.Op.EXISTS, null, true),
-                playlistIDs -> {
-                    List<EntryID> applicablePlaylists = new ArrayList<>();
-                    for (EntryID playlistID: playlistIDs) {
+                queryEntries -> {
+                    List<QueryEntry> applicablePlaylists = new ArrayList<>();
+                    for (QueryEntry queryEntry: queryEntries) {
                         boolean applicable = true;
                         for (EntryID entryID: tracks) {
-                            if (!canBeAdded(entryID, playlistID)) {
+                            if (!canBeAdded(entryID, queryEntry.entryID)) {
                                 applicable = false;
                                 break;
                             }
                         }
                         if (applicable) {
-                            applicablePlaylists.add(playlistID);
+                            applicablePlaylists.add(queryEntry);
                         }
                     }
                     return applicablePlaylists;

@@ -1,11 +1,14 @@
 package se.splushii.dancingbunnies.ui.playlist;
 
+import java.util.List;
+
 import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.QueryNode;
 import se.splushii.dancingbunnies.util.Util;
 
 public class PlaylistFragmentModel extends ViewModel {
@@ -167,6 +170,30 @@ public class PlaylistFragmentModel extends ViewModel {
         getMutableUserState().setValue(new PlaylistUserState.Builder()
                 .fromState(getUserStateValue())
                 .setNumPlaylistPlaybackEntries(numEntries)
+                .build()
+        );
+    }
+
+    public void sortBy(List<String> fields) {
+        getMutableUserState().setValue(new PlaylistUserState.Builder()
+                .fromState(getUserStateValue())
+                .setSortByFields(fields)
+                .build()
+        );
+    }
+
+    public void setSortOrder(boolean ascending) {
+        getMutableUserState().setValue(new PlaylistUserState.Builder()
+                .fromState(getUserStateValue())
+                .setSortOrderAscending(ascending)
+                .build()
+        );
+    }
+
+    public void setQuery(QueryNode query) {
+        getMutableUserState().setValue(new PlaylistUserState.Builder()
+                .fromState(getUserStateValue())
+                .setQuery(query)
                 .build()
         );
     }

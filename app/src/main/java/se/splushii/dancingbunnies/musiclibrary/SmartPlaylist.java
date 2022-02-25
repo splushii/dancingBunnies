@@ -8,8 +8,8 @@ public class SmartPlaylist extends Playlist {
 
     public SmartPlaylist(Meta meta, QueryNode queryNode) {
         super(meta);
-        meta.addString(Meta.FIELD_QUERY, getJSONQueryString());
         this.queryNode = queryNode;
+        meta.addString(Meta.FIELD_QUERY, getJSONQueryString());
     }
 
     public String getJSONQueryString() {

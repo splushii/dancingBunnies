@@ -167,11 +167,13 @@ public class MusicLibraryService extends Service {
     ) {
         return Transformations.map(
                 MetaStorage.getInstance(context).getTracks(query),
-                entryIDs -> {
+                queryEntries -> {
                     // Generate mock ID:s for smart playlist entries
                     return PlaylistEntry.generatePlaylistEntries(
                             playlistID,
-                            entryIDs.toArray(new EntryID[0])
+                            queryEntries.stream()
+                                    .map(queryEntry -> queryEntry.entryID)
+                                    .toArray(EntryID[]::new)
                     );
                 }
         );
@@ -336,27 +338,11 @@ public class MusicLibraryService extends Service {
                                                                     List<String> sortFields,
                                                                     boolean sortOrderAscending,
                                                                     QueryNode queryNode) {
-        return MetaStorage.getInstance(context).getQueryEntries(
-                EntryID.TYPE_TRACK,
+        return MetaStorage.getInstance(context).getTracks(
                 showField,
-                sortFields,
-                sortOrderAscending,
                 queryNode,
-                false
-        );
-    }
-
-    public LiveData<List<QueryEntry>> getSubscriptionEntries(String showField,
-                                                             List<String> sortFields,
-                                                             boolean sortOrderAscending,
-                                                             QueryNode queryNode) {
-        return metaStorage.getQueryEntries(
-                EntryID.TYPE_TRACK,
-                showField,
                 sortFields,
-                sortOrderAscending,
-                queryNode,
-                false
+                sortOrderAscending
         );
     }
 
@@ -400,13 +386,11 @@ public class MusicLibraryService extends Service {
         query.setSortByFields(new ArrayList<>(Collections.singletonList(Meta.FIELD_TITLE)));
         query.and(Meta.FIELD_LOCAL_CACHED, Meta.FIELD_LOCAL_CACHED_VALUE_YES);
         return Transformations.map(
-                MetaStorage.getInstance(context).getQueryEntries(
-                        EntryID.TYPE_TRACK,
+                MetaStorage.getInstance(context).getTracks(
                         query.getShowField(),
-                        query.getSortByFields(),
-                        query.isSortOrderAscending(),
                         query.getQueryTree(),
-                        false
+                        query.getSortByFields(),
+                        query.isSortOrderAscending()
                 ),
                 queryEntries -> queryEntries.stream()
                         .map(EntryID::from)

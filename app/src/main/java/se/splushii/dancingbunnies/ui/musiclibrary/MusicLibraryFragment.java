@@ -4,12 +4,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.text.Editable;
-import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.ActionMode;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -18,9 +15,7 @@ import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.TableLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -34,7 +29,6 @@ import java.util.stream.Collectors;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.PopupMenu;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
@@ -59,6 +53,7 @@ import se.splushii.dancingbunnies.storage.db.PlaylistEntry;
 import se.splushii.dancingbunnies.storage.transactions.Transaction;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
 import se.splushii.dancingbunnies.ui.AddToNewPlaylistDialogFragment;
+import se.splushii.dancingbunnies.ui.BrowseSortView;
 import se.splushii.dancingbunnies.ui.EntryTypeSelectionDialogFragment;
 import se.splushii.dancingbunnies.ui.FastScroller;
 import se.splushii.dancingbunnies.ui.FastScrollerBubble;
@@ -82,13 +77,6 @@ public class MusicLibraryFragment
         extends Fragment
         implements AudioBrowserCallback, EntryTypeSelectionDialogFragment.ConfigHandler {
     private static final String LC = Util.getLogContext(MusicLibraryFragment.class);
-    private static final int MENU_ITEM_ID_SORT_BY_HEADER = 1;
-    private static final int MENU_GROUP_ID_SORT_BY_HEADER = 0;
-    private static final int MENU_GROUP_ID_SORT_BY_CUSTOM = 1;
-    private static final int MENU_GROUP_ID_SORT_BY_SINGLE = 2;
-    private static final int MENU_GROUP_ORDER_SORT_BY_HEADER = Menu.FIRST;
-    private static final int MENU_GROUP_ORDER_SORT_BY_CUSTOM = Menu.FIRST + 1;
-    private static final int MENU_GROUP_ORDER_SORT_BY_SINGLE = Menu.FIRST + 2;
 
     private static final int MENU_GROUP_ID_SHOW_HEADER = 0;
     private static final int MENU_GROUP_ID_SHOW_SINGLE = 1;
@@ -108,10 +96,7 @@ public class MusicLibraryFragment
     private LinearLayout browseHeader;
     private TextView browseHeaderShow;
     private Menu browseHeaderShowMenu;
-    private LinearLayout browseHeaderSortedBy;
-    private Menu browseHeaderSortedByMenu;
-    private LinearLayout browseHeaderSortedByKeys;
-    private ImageView browseHeaderSortedByOrder;
+    private BrowseSortView browseSortView;
     private View browseHeaderNum;
 
     private View browseContentView;
@@ -382,13 +367,11 @@ public class MusicLibraryFragment
             browseFastScroller.enableBubble(true);
             browseHeaderShow.setText(showDisplayField);
             setShowMenuHeader(newUserState.query.getShowField());
-            setSortByMenuHeader(getSortedByDisplayString(null, true, false));
             boolean browsable = isBrowsable(showField);
             browseHeaderNum.setVisibility(browsable ? VISIBLE : GONE);
-            addSortedByColumns(browseHeaderSortedBy, browseHeaderSortedByKeys, null, true);
-            int sortOrderResource = isSortedAscending() ?
-                    R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp;
-            browseHeaderSortedByOrder.setImageResource(sortOrderResource);
+            browseSortView.setSortedByColumns(newUserState.query.getSortByFields());
+            browseSortView.onSortedBy(newUserState.query.getSortByFields());
+            browseSortView.onSortedByAscending(newUserState.query.isSortOrderAscending());
 
             queryRootView.removeAllViews();
             QueryTree queryTree = newUserState.query.getQueryTree();
@@ -615,95 +598,6 @@ public class MusicLibraryFragment
         return removedViews;
     }
 
-    String getSortedByDisplayString(List<String> sortValues,
-                                    boolean showKeys,
-                                    boolean excludeShowKey) {
-        String showKey = getCurrentQuery().getShowField();
-        List<String> sortKeys = getCurrentQuery().getSortByFields();
-        if (sortKeys == null) {
-            return "";
-        }
-        StringBuilder sb = new StringBuilder();
-        boolean first = true;
-        for (int i = 0; i < sortKeys.size(); i++) {
-            String key = sortKeys.get(i);
-            if (excludeShowKey && showKey.equals(key)) {
-                continue;
-            }
-            if (first) {
-                first = false;
-            } else {
-                sb.append("; ");
-            }
-            if (showKeys) {
-                sb.append(Meta.getDisplayKey(key));
-            } else {
-                String value = sortValues == null || i >= sortValues.size() ?
-                        "" : sortValues.get(i);
-                sb.append(value == null ? "" : Meta.getDisplayValue(key, value));
-            }
-        }
-        return sb.toString();
-    }
-
-    void addSortedByColumns(LinearLayout root,
-                            LinearLayout columnRoot,
-                            List<String> sortValues,
-                            boolean isHeader) {
-        columnRoot.removeAllViews();
-        String showKey = getCurrentQuery().getShowField();
-        List<String> sortKeys = getCurrentQuery().getSortByFields();
-        TableLayout.LayoutParams textViewLayoutParams = new TableLayout.LayoutParams(
-                0,
-                TableLayout.LayoutParams.MATCH_PARENT,
-                1f
-        );
-        int columnCount = 0;
-        for (int i = 0; i < sortKeys.size(); i++) {
-            String key = sortKeys.get(i);
-            if (showKey.equals(key)
-                    || Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(showKey)
-                    && Meta.FIELD_TITLE.equals(key)) {
-                continue;
-            }
-            TextView tv = new TextView(requireContext());
-            tv.setLayoutParams(textViewLayoutParams);
-            switch (Meta.getType(key)) {
-                default:
-                case STRING:
-                    tv.setGravity(Gravity.CENTER_VERTICAL);
-                    break;
-                case LONG:
-                case DOUBLE:
-                    tv.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-                    break;
-            }
-            tv.setTextColor(ContextCompat.getColorStateList(
-                    requireContext(),
-                    R.color.text_active_on_accent
-            ));
-            tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, isHeader ? 14 : 12);
-            tv.setSingleLine();
-            tv.setEllipsize(TextUtils.TruncateAt.END);
-            if (isHeader) {
-                tv.setText(Meta.getDisplayKey(key));
-            } else {
-                String value = sortValues == null || i >= sortValues.size() ?
-                        "" : sortValues.get(i);
-                tv.setText(value == null ? "" : Meta.getDisplayValue(key, value));
-            }
-            int padding = Util.dpToPixels(requireContext(), 4);
-            tv.setPadding(padding, 0, padding, 0);
-            columnRoot.addView(tv);
-            columnCount++;
-        }
-        LinearLayout.LayoutParams rootLayoutParams = (LinearLayout.LayoutParams) root.getLayoutParams();
-        rootLayoutParams.weight = columnCount;
-        rootLayoutParams.width = columnCount == 0 && isHeader ?
-                Util.dpToPixels(requireContext(), 32) : 0;
-        root.setLayoutParams(rootLayoutParams);
-    }
-
     private boolean isBrowsable(String field) {
         return !Meta.FIELD_SPECIAL_ENTRY_ID_TRACK.equals(field);
     }
@@ -862,33 +756,55 @@ public class MusicLibraryFragment
         });
         browseHeaderShow.setOnClickListener(view -> browseHeaderShowPopup.show());
         browseHeaderNum = rootView.findViewById(R.id.musiclibrary_browse_header_num);
-
-        browseHeaderSortedBy = rootView.findViewById(R.id.musiclibrary_browse_header_sortedby);
         browseHeader = rootView.findViewById(R.id.musiclibrary_browse_header);
         setShowMenuHeader("");
-        final PopupMenu browseHeaderSortedByPopup = new PopupMenu(requireContext(), browseHeaderSortedBy);
-        browseHeaderSortedByMenu = browseHeaderSortedByPopup.getMenu();
-        browseHeaderSortedByMenu.add(
-                MENU_GROUP_ID_SORT_BY_CUSTOM,
-                Menu.NONE,
-                MENU_GROUP_ORDER_SORT_BY_CUSTOM,
-                "Custom sort"
-        ).setIcon(
-                R.drawable.ic_edit_black_24dp
-        ).setIconTintList(
-                ContextCompat.getColorStateList(requireContext(), R.color.text_active_on_accent)
-        );
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            browseHeaderSortedByMenu.setGroupDividerEnabled(true);
-        }
-        browseHeaderSortedByPopup.setForceShowIcon(true);
-        browseHeaderSortedByPopup.setOnMenuItemClickListener(item -> {
-            clearSelection();
-            return onSortedBySelected(item, metaKeysForDisplay);
+        browseSortView = rootView.findViewById(R.id.musiclibrary_browse_sort);
+        browseSortView.setCallback(new BrowseSortView.Callback() {
+            @Override
+            public void setSortOrder(boolean ascending) {
+                MusicLibraryFragment.this.setSortOrder(ascending);
+            }
+
+            @Override
+            public void sortBy(List<String> metaKeys) {
+                MusicLibraryFragment.this.sortBy(metaKeys);
+            }
+
+            @Override
+            public Fragment getTargetFragment() {
+                return MusicLibraryFragment.this;
+            }
+
+            @Override
+            public String getShowMetaKey() {
+                return getCurrentQuery().getShowField();
+            }
+
+            @Override
+            public List<String> getSortByMetaKeys() {
+                return querySortedByKeys();
+            }
+
+            @Override
+            public boolean isSortedAscending() {
+                return MusicLibraryFragment.this.isSortedAscending();
+            }
+
+            @Override
+            public String getMetaKey(int i) {
+                return metaKeys.get(i);
+            }
+
+            @Override
+            public String getMetaKeyForDisplay(int i) {
+                return metaKeysForDisplay.get(i);
+            }
+
+            @Override
+            public String getEntryType() {
+                return EntryID.TYPE_TRACK;
+            }
         });
-        browseHeaderSortedByKeys = rootView.findViewById(R.id.musiclibrary_browse_header_sortedby_keys);
-        browseHeaderSortedByOrder = rootView.findViewById(R.id.musiclibrary_browse_header_sortedby_order);
-        browseHeaderSortedBy.setOnClickListener(view -> browseHeaderSortedByPopup.show());
 
         View browseHomeBtn = rootView.findViewById(R.id.musiclibrary_browse_home);
         browseHomeBtn.setOnClickListener(v -> {
@@ -927,51 +843,16 @@ public class MusicLibraryFragment
 
         MetaStorage.getInstance(requireContext())
                 .getTrackMetaKeys()
-                .observe(getViewLifecycleOwner(), newFields -> {
-                    newFields.add(Meta.FIELD_SPECIAL_ENTRY_ID_TRACK);
-                    newFields.add(Meta.FIELD_SPECIAL_ENTRY_SRC);
-                    Collections.sort(newFields, (f1, f2) -> {
-                        if (f1.equals(f2)) {
-                            return 0;
-                        }
-                        for (String field: Meta.FIELD_ORDER) {
-                            if (f1.equals(field)) {
-                                return -1;
-                            }
-                            if (f2.equals(field)) {
-                                return 1;
-                            }
-                        }
-                        return f1.compareTo(f2);
-                    });
-                    metaKeys.clear();
-                    metaKeys.addAll(newFields);
-                    metaKeysForDisplay.clear();
-                    metaKeysForDisplay.addAll(newFields.stream()
-                            .map(Meta::getDisplayKey)
-                            .collect(Collectors.toList())
-                    );
-                    browseFilterTypeAdapter.clear();
-                    browseFilterTypeAdapter.addAll(metaKeysForDisplay);
-                    browseHeaderShowMenu.removeGroup(MENU_GROUP_ID_SHOW_SINGLE);
-                    for (int i = 0; i < metaKeysForDisplay.size(); i++) {
-                        browseHeaderShowMenu.add(
-                                MENU_GROUP_ID_SHOW_SINGLE,
-                                i,
-                                MENU_GROUP_ORDER_SHOW_SINGLE,
-                                metaKeysForDisplay.get(i)
-                        );
-                    }
-                    browseHeaderSortedByMenu.removeGroup(MENU_GROUP_ID_SORT_BY_SINGLE);
-                    for (int i = 0; i < metaKeysForDisplay.size(); i++) {
-                        browseHeaderSortedByMenu.add(
-                                MENU_GROUP_ID_SORT_BY_SINGLE,
-                                i,
-                                MENU_GROUP_ORDER_SORT_BY_SINGLE,
-                                metaKeysForDisplay.get(i)
-                        );
-                    }
-                    browseFilterTypeAdapter.notifyDataSetChanged();
+                .observe(getViewLifecycleOwner(), metaKeys -> {
+                    this.metaKeys.clear();
+                    this.metaKeys.addAll(metaKeys);
+                });
+        MetaStorage.getInstance(requireContext())
+                .getTrackMetaKeysForDisplay()
+                .observe(getViewLifecycleOwner(), metaKeysForDisplay -> {
+                    this.metaKeysForDisplay.clear();
+                    this.metaKeysForDisplay.addAll(metaKeysForDisplay);
+                    onMetaKeysForDisplayChanged();
                 });
 
         browseView = rootView.findViewById(R.id.musiclibrary_browse);
@@ -990,6 +871,22 @@ public class MusicLibraryFragment
         queryRootView = rootView.findViewById(R.id.musiclibrary_query_root);
 
         return rootView;
+    }
+
+    private void onMetaKeysForDisplayChanged() {
+        browseFilterTypeAdapter.clear();
+        browseFilterTypeAdapter.addAll(metaKeysForDisplay);
+        browseHeaderShowMenu.removeGroup(MENU_GROUP_ID_SHOW_SINGLE);
+        for (int i = 0; i < metaKeysForDisplay.size(); i++) {
+            browseHeaderShowMenu.add(
+                    MENU_GROUP_ID_SHOW_SINGLE,
+                    i,
+                    MENU_GROUP_ORDER_SHOW_SINGLE,
+                    metaKeysForDisplay.get(i)
+            );
+        }
+        browseSortView.onMetaKeyForDisplayChanged(metaKeysForDisplay);
+        browseFilterTypeAdapter.notifyDataSetChanged();
     }
 
     private boolean onShowSelected(MenuItem item, List<String> displayedFields) {
@@ -1026,61 +923,6 @@ public class MusicLibraryFragment
         ).setEnabled(false);
     }
 
-    private boolean onSortedBySelected(MenuItem item, List<String> displayedFields) {
-        int groupId = item.getGroupId();
-        int itemId = item.getItemId();
-        if (groupId == MENU_GROUP_ID_SORT_BY_HEADER && itemId == MENU_ITEM_ID_SORT_BY_HEADER) {
-            item.setIcon(!isSortedAscending() ?
-                    R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp
-            ).setIconTintList(
-                    ContextCompat.getColorStateList(requireContext(), R.color.text_active_on_accent)
-            );
-            setSortOrder(!isSortedAscending());
-            return true;
-        }
-        if (groupId == MENU_GROUP_ID_SORT_BY_CUSTOM) {
-            Query query = getCurrentQuery();
-            EntryTypeSelectionDialogFragment.showDialogForSortConfig(
-                    this,
-                    query.getSortByFields()
-            );
-            return true;
-        }
-        if (groupId != MENU_GROUP_ID_SORT_BY_SINGLE) {
-            return false;
-        }
-        String field = metaKeys.get(itemId);
-        String displayedField = displayedFields.get(itemId);
-        Log.d(LC, "Sorting by: " + displayedField);
-        Toast.makeText(
-                requireContext(),
-                "Sorting by: " + displayedField,
-                Toast.LENGTH_SHORT
-        ).show();
-        sortBy(Collections.singletonList(field));
-        return true;
-    }
-
-    private void setSortByMenuHeader(String header) {
-        browseHeaderSortedByMenu.removeGroup(MENU_GROUP_ID_SORT_BY_HEADER);
-        browseHeaderSortedByMenu.add(
-                MENU_GROUP_ID_SORT_BY_HEADER,
-                Menu.NONE,
-                MENU_GROUP_ORDER_SORT_BY_HEADER,
-                "Sorting shown entries by:"
-        ).setEnabled(false);
-        browseHeaderSortedByMenu.add(
-                MENU_GROUP_ID_SORT_BY_HEADER,
-                MENU_ITEM_ID_SORT_BY_HEADER,
-                MENU_GROUP_ORDER_SORT_BY_HEADER,
-                header
-        ).setIcon(isSortedAscending() ?
-                R.drawable.ic_arrow_drop_down_black_24dp : R.drawable.ic_arrow_drop_up_black_24dp
-        ).setIconTintList(
-                ContextCompat.getColorStateList(requireContext(), R.color.text_active_on_accent)
-        );
-    }
-
     public boolean onBackPressed() {
         return model.popBackStack();
     }
@@ -1093,6 +935,7 @@ public class MusicLibraryFragment
     }
 
     private void sortBy(List<String> fields) {
+        clearSelection();
         model.addBackStackHistory(Util.getRecyclerViewPosition(browseRecyclerView));
         model.sortBy(fields);
         model.setSortOrder(true);

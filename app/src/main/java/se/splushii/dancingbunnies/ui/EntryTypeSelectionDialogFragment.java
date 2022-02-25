@@ -6,7 +6,6 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
@@ -15,6 +14,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
+import androidx.lifecycle.LiveData;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -22,7 +22,7 @@ import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.audioplayer.PlaybackEntry;
-import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.PlaybackControllerStorage;
 import se.splushii.dancingbunnies.storage.db.MetaValueEntry;
@@ -39,6 +39,7 @@ public class EntryTypeSelectionDialogFragment extends DialogFragment {
     private static final String BUNDLE_KEY_SORT_TARGET = "dancingbunnies.bundle.key.entrytypeselection.sort_target";
     private static final String BUNDLE_KEY_ONLY_RETURN_CONFIG = "dancingbunnies.bundle.key.entrytypeselection.only_return_config";
     private static final String BUNDLE_KEY_INITIAL_SELECTION = "dancingbunnies.bundle.key.entrytypeselection.initial_selection";
+    private static final String BUNDLE_KEY_ENTRY_TYPE = "dancingbunnies.bundle.key.entrytypeselection.entry_type";
 
     private ArrayList<PlaybackEntry> entries;
     private String sortTarget;
@@ -48,11 +49,14 @@ public class EntryTypeSelectionDialogFragment extends DialogFragment {
     private EntryTypeSelectionDialogAdapter availableItemsRecyclerViewAdapter;
     private ItemTouchHelper touchHelper;
     private HashSet<String> chosenKeys;
+    private String entryType;
 
     public static void showDialogForSortConfig(Fragment targetFragment,
-                                               List<String> initialSelection) {
+                                               List<String> initialSelection,
+                                               String entryType) {
         Bundle args = new Bundle();
         args.putStringArrayList(BUNDLE_KEY_INITIAL_SELECTION, new ArrayList<>(initialSelection));
+        args.putString(BUNDLE_KEY_ENTRY_TYPE, entryType);
         showDialog(
                 targetFragment.requireActivity().getSupportFragmentManager(),
                 targetFragment,
@@ -106,6 +110,7 @@ public class EntryTypeSelectionDialogFragment extends DialogFragment {
             this.entries = entries == null ? new ArrayList<>() : entries;
             sortTarget = args.getString(BUNDLE_KEY_SORT_TARGET);
         }
+        entryType = args.getString(BUNDLE_KEY_ENTRY_TYPE, EntryID.TYPE_TRACK);
         super.onCreate(savedInstanceState);
     }
 
@@ -153,27 +158,19 @@ public class EntryTypeSelectionDialogFragment extends DialogFragment {
         );
         availableItemsRecyclerView.setAdapter(availableItemsRecyclerViewAdapter);
 
-        MetaStorage.getInstance(requireContext())
-                .getTrackMetaKeys()
-                .observe(getViewLifecycleOwner(), newFields -> {
-                    newFields.add(Meta.FIELD_SPECIAL_ENTRY_ID_TRACK);
-                    newFields.add(Meta.FIELD_SPECIAL_ENTRY_SRC);
-                    Collections.sort(newFields, (f1, f2) -> {
-                        if (f1.equals(f2)) {
-                            return 0;
-                        }
-                        for (String field: Meta.FIELD_ORDER) {
-                            if (f1.equals(field)) {
-                                return -1;
-                            }
-                            if (f2.equals(field)) {
-                                return 1;
-                            }
-                        }
-                        return f1.compareTo(f2);
-                    });
-                    availableItemsRecyclerViewAdapter.setDataset(newFields);
-                });
+        LiveData<List<String>> metaKeysLiveData;
+        switch (entryType) {
+            default:
+            case EntryID.TYPE_TRACK:
+                metaKeysLiveData = MetaStorage.getInstance(requireContext()).getTrackMetaKeys();
+                break;
+            case EntryID.TYPE_PLAYLIST:
+                metaKeysLiveData = MetaStorage.getInstance(requireContext()).getPlaylistMetaKeys();
+                break;
+        }
+        metaKeysLiveData.observe(getViewLifecycleOwner(), keys ->
+                        availableItemsRecyclerViewAdapter.setDataset(keys)
+        );
 
         rootView.findViewById(R.id.entry_type_selection_dialog_submit).setOnClickListener(view -> {
             processSelection(selectedItemsRecyclerViewAdapter.getSelection());

@@ -13,7 +13,6 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.LinearLayoutCompat;
 import androidx.fragment.app.FragmentManager;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
@@ -26,7 +25,7 @@ import se.splushii.dancingbunnies.util.Util;
 
 import static se.splushii.dancingbunnies.ui.MenuActions.ACTION_MORE;
 
-public class TrackItemActionsView extends LinearLayoutCompat {
+public class TrackItemActionsView extends LinearLayout {
     private static final String LC = Util.getLogContext(TrackItemActionsView.class);
 
     private AudioBrowser remote;

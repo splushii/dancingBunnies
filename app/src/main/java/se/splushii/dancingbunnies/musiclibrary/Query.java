@@ -179,8 +179,7 @@ public class Query {
         return queryTree.toJSON().toString();
     }
 
-    public String query(MediaBrowserCompat mediaBrowser,
-                        QueryCallback queryCallback) {
+    public String query(MediaBrowserCompat mediaBrowser, QueryCallback queryCallback) {
         if (isSubscription()) {
             return subscribe(mediaBrowser, queryCallback);
         } else {

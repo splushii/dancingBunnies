@@ -110,7 +110,8 @@ public class Meta {
             Meta.FIELD_BITRATE,
             Meta.FIELD_SPECIAL_ENTRY_SRC,
             Meta.FIELD_MEDIA_ROOT,
-            Meta.FIELD_SPECIAL_ENTRY_ID_TRACK
+            Meta.FIELD_SPECIAL_ENTRY_ID_TRACK,
+            Meta.FIELD_SPECIAL_ENTRY_ID_PLAYLIST
     );
 
     public enum Type {

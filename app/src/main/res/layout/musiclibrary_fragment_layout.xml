@@ -204,28 +204,12 @@
                     android:singleLine="true"
                     android:ellipsize="end"
                     android:textColor="@color/text_active_on_accent"/>
-                <LinearLayout
-                    android:id="@+id/musiclibrary_browse_header_sortedby"
+                <se.splushii.dancingbunnies.ui.BrowseSortView
+                    android:id="@+id/musiclibrary_browse_sort"
                     android:layout_width="0dp"
-                    android:layout_weight="@dimen/musiclibrary_column_weight_sortedby"
+                    android:layout_weight="@dimen/browse_sort_weight"
                     android:layout_height="wrap_content"
-                    android:background="?android:selectableItemBackground">
-                    <LinearLayout
-                        android:id="@+id/musiclibrary_browse_header_sortedby_keys"
-                        android:layout_width="0dp"
-                        android:layout_weight="@dimen/musiclibrary_column_weight_sortedby_keys"
-                        android:layout_height="36dp"
-                        android:orientation="horizontal"
-                        android:layout_marginStart="4dp"/>
-                    <ImageView
-                        android:id="@+id/musiclibrary_browse_header_sortedby_order"
-                        android:layout_width="@dimen/musiclibrary_column_width_sortedby_order"
-                        android:layout_height="match_parent"
-                        android:gravity="center_vertical"
-                        android:src="@drawable/ic_arrow_drop_down_black_24dp"
-                        android:contentDescription="@string/musiclibrary_sort_order"
-                        app:tint="@color/colorText" />
-                </LinearLayout>
+                    android:background="?android:selectableItemBackground"/>
                 <TextView
                     android:id="@+id/musiclibrary_browse_header_num"
                     android:layout_width="@dimen/musiclibrary_column_width_num"

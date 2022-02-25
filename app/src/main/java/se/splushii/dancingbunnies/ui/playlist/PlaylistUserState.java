@@ -1,6 +1,13 @@
 package se.splushii.dancingbunnies.ui.playlist;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
+import se.splushii.dancingbunnies.musiclibrary.Meta;
+import se.splushii.dancingbunnies.musiclibrary.Query;
+import se.splushii.dancingbunnies.musiclibrary.QueryNode;
 import se.splushii.dancingbunnies.util.Util;
 
 class PlaylistUserState {
@@ -18,6 +25,9 @@ class PlaylistUserState {
     final boolean scrollPlaylistPlaybackToPlaylistPos;
     final int numPlaylistEntries;
     final int numPlaylistPlaybackEntries;
+    final List<String> sortByFields;
+    final boolean sortOrderAscending;
+    private final QueryNode query;
 
     private PlaylistUserState(boolean showPlaylists,
                               boolean showPlaybackEntries,
@@ -30,7 +40,10 @@ class PlaylistUserState {
                               int playlistPlaybackEntriesPad,
                               boolean scrollPlaylistPlaybackToPlaylistPos,
                               int numPlaylistEntries,
-                              int numPlaylistPlaybackEntries) {
+                              int numPlaylistPlaybackEntries,
+                              List<String> sortByFields,
+                              boolean sortOrderAscending,
+                              QueryNode query) {
         this.showPlaylists = showPlaylists;
         this.showPlaybackEntries = showPlaybackEntries;
         this.browsedPlaylistID = browsedPlaylistID;
@@ -43,6 +56,10 @@ class PlaylistUserState {
         this.scrollPlaylistPlaybackToPlaylistPos = scrollPlaylistPlaybackToPlaylistPos;
         this.numPlaylistEntries = numPlaylistEntries;
         this.numPlaylistPlaybackEntries = numPlaylistPlaybackEntries;
+        this.sortByFields = sortByFields == null ?
+                new ArrayList<>(Collections.singletonList(Meta.FIELD_TITLE)) : sortByFields;
+        this.sortOrderAscending = sortOrderAscending;
+        this.query = query;
     }
 
     boolean isBrowsedCurrent(EntryID currentPlaylistID) {
@@ -50,6 +67,10 @@ class PlaylistUserState {
             return false;
         }
         return browsedPlaylistID.equals(currentPlaylistID);
+    }
+
+    public QueryNode getQuery() {
+        return query == null ? null : query.deepCopy();
     }
 
     static class Builder {
@@ -65,6 +86,9 @@ class PlaylistUserState {
         private boolean scrollPlaylistPlaybackToPlaylistPos;
         private int numPlaylistEntries;
         private int numPlaylistPlaybackEntries;
+        private List<String> sortByFields;
+        private boolean sortOrderAscending = true;
+        private QueryNode query;
 
         Builder() {}
 
@@ -81,6 +105,8 @@ class PlaylistUserState {
             scrollPlaylistPlaybackToPlaylistPos = state.scrollPlaylistPlaybackToPlaylistPos;
             numPlaylistEntries = state.numPlaylistEntries;
             numPlaylistPlaybackEntries = state.numPlaylistPlaybackEntries;
+            sortByFields = state.sortByFields;
+            sortOrderAscending = state.sortOrderAscending;
             return this;
         }
 
@@ -123,13 +149,28 @@ class PlaylistUserState {
             return this;
         }
 
-        public Builder setNumPlaylistEntries(int numEntries) {
+        Builder setNumPlaylistEntries(int numEntries) {
             this.numPlaylistEntries = numEntries;
             return this;
         }
 
-        public Builder setNumPlaylistPlaybackEntries(int numEntries) {
+        Builder setNumPlaylistPlaybackEntries(int numEntries) {
             this.numPlaylistPlaybackEntries = numEntries;
+            return this;
+        }
+
+        Builder setSortByFields(List<String> sortByFields) {
+            this.sortByFields = sortByFields == null ? Query.DEFAULT_SORT_FIELDS : sortByFields;
+            return this;
+        }
+
+        Builder setSortOrderAscending(boolean sortOrderAscending) {
+            this.sortOrderAscending = sortOrderAscending;
+            return this;
+        }
+
+        Builder setQuery(QueryNode query) {
+            this.query = query;
             return this;
         }
 
@@ -146,7 +187,10 @@ class PlaylistUserState {
                     playlistPlaybackEntriesPad,
                     scrollPlaylistPlaybackToPlaylistPos,
                     numPlaylistEntries,
-                    numPlaylistPlaybackEntries
+                    numPlaylistPlaybackEntries,
+                    sortByFields,
+                    sortOrderAscending,
+                    query
             );
         }
     }

@@ -14,9 +14,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:src="@drawable/ic_gesture_black_24dp"
-        app:tint="@color/icon_secondary_active"
         android:layout_gravity="center_vertical"
-        android:contentDescription="@string/playlist_random"/>
+        android:contentDescription="@string/playlist_random"
+        app:tint="@color/icon_secondary_active" />
     <TextView
         android:layout_height="wrap_content"
         android:layout_width="wrap_content"

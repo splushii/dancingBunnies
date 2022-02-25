@@ -26,6 +26,7 @@ import se.splushii.dancingbunnies.musiclibrary.Query;
 import se.splushii.dancingbunnies.musiclibrary.QueryEntry;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.ui.ActionModeCallback;
+import se.splushii.dancingbunnies.ui.BrowseSortView;
 import se.splushii.dancingbunnies.ui.FastScrollerBubble;
 import se.splushii.dancingbunnies.ui.TrackItemActionsView;
 import se.splushii.dancingbunnies.ui.selection.ItemDetailsViewHolder;
@@ -63,14 +64,12 @@ public class MusicLibraryAdapter extends
     }
 
     private String getFastScrollerText(SongViewHolder holder) {
-        String title = holder == null ? "" : fragment.getSortedByDisplayString(
+        String title = holder == null ? "" : BrowseSortView.getSortedByDisplayString(
+                fragment.querySortedByKeys(),
                 holder.entry.sortedByValues(),
-                false,
+                fragment.getCurrentQuery().getShowField(),
                 false
         );
-        if (title == null) {
-            return "";
-        }
         String firstChar = title.length() >= 1 ? title.substring(0, 1).toUpperCase() : "";
         String secondChar = title.length() >= 2 ? title.substring(1, 2).toLowerCase() : "";
         return firstChar + secondChar;
@@ -205,7 +204,15 @@ public class MusicLibraryAdapter extends
         void update(QueryEntry queryEntry, boolean browsable) {
             entry = queryEntry;
             this.browsable = browsable;
-            fragment.addSortedByColumns(queryEntrySortedBy, queryEntrySortedByKeys, entry.sortedByValues(), false);
+            BrowseSortView.setSortedByColumns(
+                    fragment.requireContext(),
+                    queryEntrySortedBy,
+                    queryEntrySortedByKeys,
+                    fragment.querySortedByKeys(),
+                    entry.sortedByValues(),
+                    fragment.getCurrentQuery().getShowField(),
+                    false
+            );
             queryEntryShow.setText(getShowDisplayValue(entry.name()));
             queryEntryNum.setVisibility(browsable ? View.VISIBLE : View.GONE);
             entryIDLiveData.setValue(queryEntry.entryID);
