@@ -60,7 +60,7 @@ public class PlaylistFetchWorker extends Worker {
 
                         @Override
                         public void onProgress(String status) {
-                            String msg = "Playlist fetch progress: " + status;
+                            String msg = "Progress: " + status;
                             setProgress(msg);
                         }
                     }

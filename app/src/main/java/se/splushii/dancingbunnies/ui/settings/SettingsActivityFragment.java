@@ -468,7 +468,7 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                         switch (workInfo.getState()) {
                             case ENQUEUED:
                             case BLOCKED:
-                                status = "Enqueued.";
+                                status = "Enqueued...";
                                 backendSyncingMap.put(backendID, true);
                                 workerRunningMap.put(workerType, true);
                                 break;
@@ -480,7 +480,7 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                                 break;
                             case SUCCEEDED:
                                 // Don't show any status
-                                status = "SUCCESS!";
+                                status = "Success!";
                                 break;
                             case FAILED:
                                 data = workInfo.getOutputData();
@@ -1122,51 +1122,41 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
             prefSettingsCat.addPreference(prefSettingsActionsCat);
             prefSettingsActionsCat.setTitle("Actions");
 
-            addPref(sp,
-                    prefSettingsActionsCat,
-                    prefKeyEnabled,
-                    backendID,
-                    R.string.pref_key_backend_config_suffix_db_fetch_library,
-                    R.string.pref_backend_config_db_fetch_library,
-                    true,
-                    true
-            );
-            addPref(sp,
-                    prefSettingsActionsCat,
-                    prefKeyEnabled,
-                    backendID,
-                    R.string.pref_key_backend_config_suffix_db_fetch_playlists,
-                    R.string.pref_backend_config_db_fetch_playlists,
-                    true,
-                    true
-            );
-            addPref(sp,
-                    prefSettingsActionsCat,
-                    prefKeyEnabled,
-                    backendID,
-                    R.string.pref_key_backend_config_suffix_db_index_library,
-                    R.string.pref_backend_config_db_index_library,
-                    true,
-                    true
-            );
             APIClient apiClient = APIClient.getAPIClient(
                     requireContext(),
                     getSourceFromConfig(requireContext(), backendID),
                     false
             );
-            List<CharSequence> syncPrefEntries = new ArrayList<>();
-            List<CharSequence> syncPrefEntryValues = new ArrayList<>();
-            if (!(apiClient instanceof DummyAPIClient)) {
-                if (apiClient.hasLibrary()) {
-                    syncPrefEntries.add("Sync library");
-                    syncPrefEntryValues.add(BACKEND_SYNC_LIBRARY);
-                    syncPrefEntries.add("Reindex library");
-                    syncPrefEntryValues.add(BACKEND_REINDEX_LIBRARY);
-                }
-                if (apiClient.hasPlaylists()) {
-                    syncPrefEntries.add("Sync playlists");
-                    syncPrefEntryValues.add(BACKEND_SYNC_PLAYLISTS);
-                }
+            if (apiClient.hasLibrary()) {
+                addPref(sp,
+                        prefSettingsActionsCat,
+                        prefKeyEnabled,
+                        backendID,
+                        R.string.pref_key_backend_config_suffix_db_fetch_library,
+                        R.string.pref_backend_config_db_fetch_library,
+                        true,
+                        true
+                );
+                addPref(sp,
+                        prefSettingsActionsCat,
+                        prefKeyEnabled,
+                        backendID,
+                        R.string.pref_key_backend_config_suffix_db_index_library,
+                        R.string.pref_backend_config_db_index_library,
+                        true,
+                        true
+                );
+            }
+            if (apiClient.hasPlaylists()) {
+                addPref(sp,
+                        prefSettingsActionsCat,
+                        prefKeyEnabled,
+                        backendID,
+                        R.string.pref_key_backend_config_suffix_db_fetch_playlists,
+                        R.string.pref_backend_config_db_fetch_playlists,
+                        true,
+                        true
+                );
             }
 
             addPref(sp,

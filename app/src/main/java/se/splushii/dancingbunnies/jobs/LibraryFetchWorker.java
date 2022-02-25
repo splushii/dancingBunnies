@@ -60,7 +60,7 @@ public class LibraryFetchWorker extends Worker {
 
                         @Override
                         public void onProgress(String status) {
-                            String msg = "Library fetch progress: " + status;
+                            String msg = "Progress: " + status;
                             setProgress(msg);
                         }
                     }

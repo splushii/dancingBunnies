@@ -57,7 +57,7 @@ public class LibraryIndexWorker extends Worker {
 
                     @Override
                     public void onProgress(String status) {
-                        String msg = "Library index progress: " + status;
+                        String msg = "Progress: " + status;
                         setProgress(msg);
                     }
                 }
