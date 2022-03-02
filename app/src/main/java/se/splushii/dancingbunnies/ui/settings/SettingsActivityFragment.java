@@ -81,11 +81,6 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
     private static final String BACKEND_CONFIG_PREF_KEY_PATTERN_GROUP_SUFFIX = "suffix";
     private static final String BACKEND_CONFIG_PREF_KEY_DELIM = "/";
 
-    // If changed, update backend_sync_values_array in arrays.xml
-    private static final String BACKEND_SYNC_LIBRARY = "sync_library";
-    private static final String BACKEND_REINDEX_LIBRARY = "reindex_library";
-    private static final String BACKEND_SYNC_PLAYLISTS = "sync_playlists";
-
     private Pattern backendConfigPrefKeyPattern;
 
     private final HashMap<Long, CompletableFuture<Void>> currentHeartbeatMap = new HashMap<>();
@@ -230,7 +225,9 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
             return "Never run";
         }
         long lastRun = getLastRun(backendID, workerType);
-        return lastRun > 0L ? "Last run: " + new Date(lastRun) : "Never run";
+        return lastRun > 0L
+                ? "Last success: " + DateFormat.getInstance().format(new Date(lastRun))
+                : "Never run";
     }
 
     public static void setScheduledSyncTimeNext(Context context,
@@ -432,6 +429,10 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
     @Override
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
+
+        renderBackendPreferences(PreferenceManager.getDefaultSharedPreferences(requireContext()));
+        setDivider(null);
+
         WorkManager.getInstance(requireContext())
                 .pruneWork();
         WorkManager.getInstance(requireContext())
@@ -439,7 +440,6 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                 .observe(getViewLifecycleOwner(), workInfos -> {
                     HashMap<Long, HashMap<Jobs.WorkerType, StringBuilder>> backendWorkerStatusMap = new HashMap<>();
                     HashMap<Long, HashMap<Jobs.WorkerType, Boolean>> backendWorkerRunningMap = new HashMap<>();
-                    HashMap<Long, Boolean> backendSyncingMap = new HashMap<>();
                     for (WorkInfo workInfo: workInfos) {
                         long backendID = Jobs.getBackendIDFromTags(
                                 Jobs.WORK_NAME_BACKEND_SYNC_TAG,
@@ -448,7 +448,6 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                         if (backendID == BACKEND_ID_INVALID) {
                             continue;
                         }
-                        backendSyncingMap.putIfAbsent(backendID, false);
                         Jobs.WorkerType workerType = Jobs.getWorkerType(workInfo);
                         HashMap<Jobs.WorkerType, StringBuilder> workerStatusMap =
                                 backendWorkerStatusMap.get(backendID);
@@ -464,32 +463,35 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                         }
                         workerRunningMap.putIfAbsent(workerType, false);
                         Data data;
-                        String status = null;
+                        String status;
                         switch (workInfo.getState()) {
                             case ENQUEUED:
                             case BLOCKED:
                                 status = "Enqueued...";
-                                backendSyncingMap.put(backendID, true);
                                 workerRunningMap.put(workerType, true);
                                 break;
                             case RUNNING:
                                 data = workInfo.getProgress();
                                 status = data.getString(Jobs.DATA_KEY_STATUS);
-                                backendSyncingMap.put(backendID, true);
                                 workerRunningMap.put(workerType, true);
                                 break;
                             case SUCCEEDED:
-                                // Don't show any status
-                                status = "Success!";
+                                status = "Success!"
+                                        + "\n" + getLastRunSummary(backendID, workerType);
+                                workerRunningMap.put(workerType, false);
                                 break;
                             case FAILED:
                                 data = workInfo.getOutputData();
                                 status = "Sync failed (" + workInfo.getRunAttemptCount() + " attempts): "
-                                        + data.getString(Jobs.DATA_KEY_STATUS);
+                                        + data.getString(Jobs.DATA_KEY_STATUS)
+                                        + "\n" + getLastRunSummary(backendID, workerType);
+                                workerRunningMap.put(workerType, false);
                                 break;
                             case CANCELLED:
                             default:
                                 // Don't show any status
+                                status = "Kalle!";
+                                workerRunningMap.put(workerType, false);
                                 break;
                         }
                         StringBuilder workerStatus = workerStatusMap.get(workerType);
@@ -511,13 +513,9 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                         for (Jobs.WorkerType workerType : workerRunningMap.keySet()) {
                             boolean workerRunning = workerRunningMap.get(workerType);
                             StringBuilder workerStatusSB = workerStatusMap.get(workerType);
-                            if (workerStatusSB == null) {
-                                continue;
-                            }
-                            String workerStatus = workerStatusSB
-                                    .append("\n")
-                                    .append(getLastRunSummary(backendID, workerType))
-                                    .toString();
+                            String workerStatus = workerStatusSB != null
+                                    ? workerStatusSB.toString()
+                                    : "<No status available>";
                             int prefKeySuffixID = -1;
                             switch (workerType) {
                                 case LIBRARY_FETCH:
@@ -696,8 +694,6 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                     pendingTransactions = transactions.size();
                     setShowTransactionsSummary(pendingTransactions, transactionsWorkMsg);
                 });
-        renderBackendPreferences(PreferenceManager.getDefaultSharedPreferences(requireContext()));
-        setDivider(null);
     }
 
     private void setShowTransactionsSummary(int pendingTransactions, String transactionsWorkMsg) {
@@ -1137,6 +1133,16 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                         true,
                         true
                 );
+                setBackendPrefEnabled(
+                        backendID,
+                        R.string.pref_key_backend_config_suffix_db_fetch_library,
+                        true
+                );
+                setBackendPrefSummary(
+                        backendID,
+                        R.string.pref_key_backend_config_suffix_db_fetch_library,
+                        getLastRunSummary(backendID, Jobs.WorkerType.LIBRARY_FETCH)
+                );
                 addPref(sp,
                         prefSettingsActionsCat,
                         prefKeyEnabled,
@@ -1145,6 +1151,16 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                         R.string.pref_backend_config_db_index_library,
                         true,
                         true
+                );
+                setBackendPrefEnabled(
+                        backendID,
+                        R.string.pref_key_backend_config_suffix_db_index_library,
+                        true
+                );
+                setBackendPrefSummary(
+                        backendID,
+                        R.string.pref_key_backend_config_suffix_db_index_library,
+                        getLastRunSummary(backendID, Jobs.WorkerType.LIBRARY_INDEX)
                 );
             }
             if (apiClient.hasPlaylists()) {
@@ -1156,6 +1172,16 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                         R.string.pref_backend_config_db_fetch_playlists,
                         true,
                         true
+                );
+                setBackendPrefEnabled(
+                        backendID,
+                        R.string.pref_key_backend_config_suffix_db_fetch_playlists,
+                        true
+                );
+                setBackendPrefSummary(
+                        backendID,
+                        R.string.pref_key_backend_config_suffix_db_fetch_playlists,
+                        getLastRunSummary(backendID, Jobs.WorkerType.PLAYLIST_FETCH)
                 );
             }
 
