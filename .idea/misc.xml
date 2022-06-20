@@ -3,6 +3,8 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="app/src/main/res/layout/browse_sort_view_layout.xml" value="0.21808510638297873" />
+        <entry key="app/src/main/res/layout/musiclibrary_item.xml" value="0.1" />
         <entry key="app/src/main/res/layout/settings_activity_layout.xml" value="0.25" />
         <entry key="app/src/main/res/layout/settings_content_layout.xml" value="0.25" />
         <entry key="app/src/main/res/layout/settings_fragment_layout.xml" value="0.25" />
