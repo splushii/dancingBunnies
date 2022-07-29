@@ -34,12 +34,29 @@ public class PlaybackEntry implements Parcelable {
 
     public PlaybackEntry(MediaMetadata metadata) {
         this.entryID = EntryID.from(metadata);
-        // TODO: try/catch NumberFormatException (from CastAudioPlayer onMetadataUpdated crash)
-        this.playbackID = Long.parseLong(metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYBACK_ID));
+        long playbackIDTmp;
+        try {
+            playbackIDTmp = Long.parseLong(Objects.requireNonNull(metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYBACK_ID)));
+        } catch (NumberFormatException e) {
+            playbackIDTmp = PLAYBACK_ID_INVALID;
+        }
+        this.playbackID = playbackIDTmp;
         String playbackType = metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYBACK_TYPE);
         this.playbackType = playbackType != null ? playbackType : PlaybackEntry.USER_TYPE_EXTERNAL;
-        this.playlistPos = Long.parseLong(metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYLIST_POS));
-        this.playlistSelectionID = Long.parseLong(metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYLIST_SELECTION_ID));
+        long playlistPosTmp;
+        try {
+            playlistPosTmp = Long.parseLong(Objects.requireNonNull(metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYLIST_POS)));
+        } catch (NumberFormatException e) {
+            playlistPosTmp = PLAYLIST_POS_NONE;
+        }
+        this.playlistPos = playlistPosTmp;
+        long playlistSelectionIDTmp;
+        try {
+            playlistSelectionIDTmp = Long.parseLong(Objects.requireNonNull(metadata.getString(CastAudioPlayer.CASTMETA_KEY_PLAYLIST_SELECTION_ID)));
+        } catch (NumberFormatException e) {
+            playlistSelectionIDTmp = PLAYLIST_SELECTION_ID_INVALID;
+        }
+        this.playlistSelectionID = playlistSelectionIDTmp;
     }
 
     public PlaybackEntry(PlaylistEntry playlistEntry,
