@@ -50,6 +50,7 @@ import androidx.media.session.MediaButtonReceiver;
 import androidx.mediarouter.media.MediaControlIntent;
 import androidx.mediarouter.media.MediaRouteSelector;
 import androidx.mediarouter.media.MediaRouter;
+import androidx.mediarouter.media.MediaRouterParams;
 import se.splushii.dancingbunnies.MainActivity;
 import se.splushii.dancingbunnies.R;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
@@ -162,6 +163,7 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
     private final HashMap<String, List<MediaBrowserCompat.MediaItem>> subscriptionResults = new HashMap<>();
     private final HashMap<String, Observer<List<QueryEntry>>> subscriptionObservers = new HashMap<>();
     private final HashMap<String, LiveData<List<QueryEntry>>> subscriptionLiveData = new HashMap<>();
+
     @Override
     public void onSubscribe(String id, Bundle options) {
         subscriptionIDs.add(id);
@@ -503,6 +505,25 @@ public class AudioPlayerService extends MediaBrowserServiceCompat {
 
     private void setupMediaRouter() {
         mediaRouter = MediaRouter.getInstance(this);
+        MediaRouterParams mediaRouterParams = mediaRouter.getRouterParams();
+        if (mediaRouterParams != null) {
+            Log.d(LC, "Original mediaRouterParams:"
+                    + "\nMediaTransferReceiver: " + mediaRouterParams.isMediaTransferReceiverEnabled()
+                    + "\nOutputSwitcher: " + mediaRouterParams.isOutputSwitcherEnabled()
+                    + "\nTransferToLocal: " + mediaRouterParams.isTransferToLocalEnabled()
+            );
+            mediaRouter.setRouterParams(new MediaRouterParams.Builder(mediaRouterParams)
+                    .setTransferToLocalEnabled(true)
+                    .setOutputSwitcherEnabled(true)
+                    .build()
+            );
+            mediaRouterParams = mediaRouter.getRouterParams();
+            Log.d(LC, "Current mediaRouterParams:"
+                    + "\nMediaTransferReceiver: " + mediaRouterParams.isMediaTransferReceiverEnabled()
+                    + "\nOutputSwitcher: " + mediaRouterParams.isOutputSwitcherEnabled()
+                    + "\nTransferToLocal: " + mediaRouterParams.isTransferToLocalEnabled()
+            );
+        }
         mediaRouteSelector = new MediaRouteSelector.Builder()
                 .addControlCategory(MediaControlIntent.CATEGORY_LIVE_AUDIO)
                 .addControlCategory(MediaControlIntent.CATEGORY_REMOTE_PLAYBACK)
