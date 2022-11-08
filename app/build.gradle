@@ -39,7 +39,7 @@ android {
             keyAlias "releaseKey"
             keyPassword System.getenv("KEYPWD")
             storeFile file(System.getenv("KEYSTOREPATH") ?: "release.jks")
-            storePassword System.getenv("KEYSTOREPWD")
+            storePassword System.getenv("KEYSTOREPWD") ?: System.getenv("KEYPWD")
         }
     }
     buildTypes {
