@@ -2,7 +2,48 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="se.splushii.dancingbunnies">
 
+    <!-- UPDATE "PRIVACY_POLICY.md" WHEN ADDING/REMOVING PERMISSIONS -->
+    <!--
+    For reference, all available Android permissions with descriptions available at:
+      https://github.com/aosp-mirror/platform_frameworks_base/blob/master/core/res/AndroidManifest.xml
+    User visible "permission descriptions" available in English at:
+      https://github.com/aosp-mirror/platform_frameworks_base/blob/master/core/res/res/values/strings.xml
+    -->
+
+    <!--
+    "run foreground service":
+      https://developer.android.com/reference/android/Manifest.permission.html#FOREGROUND_SERVICE
+    Needed to run audio player with notifications
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+
+    <!--
+    "have full network access":
+      https://developer.android.com/reference/android/Manifest.permission.html#INTERNET
+    Needed to communicate with backends and cast audio tracks
+    -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+    "view network connections":
+      https://developer.android.com/reference/android/Manifest.permission.html#ACCESS_NETWORK_STATE
+    Needed to communicate with backends and cast audio tracks
+    -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!--
+    "prevent phone from sleeping":
+      https://developer.android.com/reference/android/Manifest.permission#WAKE_LOCK
+    Needed to run audio player with notifications
+    -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!--
+    "run at startup":
+      https://developer.android.com/reference/android/Manifest.permission#RECEIVE_BOOT_COMPLETED
+    Needed to schedule/run tasks (such as backend syncs)
+    -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="true"
