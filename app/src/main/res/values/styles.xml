@@ -38,6 +38,7 @@
 
     <style name="AppTheme.Base" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="android:windowBackground">@color/windowBackground</item>
+        <item name="android:navigationBarColor">@color/overlayBackground</item>
         <item name="android:textColorPrimary">@color/text_active_on_accent</item>
         <item name="android:textColorSecondary">@color/text_secondary_active</item>
         <item name="android:textColorHint">@color/grey500</item>
