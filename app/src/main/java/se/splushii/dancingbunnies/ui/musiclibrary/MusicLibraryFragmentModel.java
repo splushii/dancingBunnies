@@ -64,31 +64,43 @@ public class MusicLibraryFragmentModel extends ViewModel {
     private LinkedList<MusicLibraryUserState> getBackStack() {
         if (backStack == null) {
             backStack = new LinkedList<>();
-            backStack.push(initialUserState());
         }
         return backStack;
     }
 
     void addBackStackHistory(Pair<Integer, Integer> currentPosition) {
-        getBackStack().push(new MusicLibraryUserState(getMusicLibraryQuery(), currentPosition));
+        addBackStackHistory(getMusicLibraryQuery(), currentPosition);
     }
 
-    public void addBackStackHistory(Pair<Integer, Integer> currentPosition,
-                                    QueryTree queryTree) {
+    public void addBackStackHistory(Pair<Integer, Integer> currentPosition, QueryTree queryTree) {
         Query query = getMusicLibraryQuery();
         query.setQueryTree(queryTree);
-        getBackStack().push(new MusicLibraryUserState(query, currentPosition));
+        addBackStackHistory(query, currentPosition);
+    }
+
+    private void addBackStackHistory(Query query, Pair<Integer, Integer> currentPosition) {
+        MusicLibraryUserState lastState = getBackStack().peekLast();
+        if (getBackStack().size() > 0 && lastState != null && lastState.query.equals(query)) {
+            // Pop to replace the last history entry when the query is the same
+            getBackStack().removeLast();
+        }
+        getBackStack().addLast(new MusicLibraryUserState(query, currentPosition));
     }
 
     boolean popBackStack() {
-        if (getBackStack().size() > 0) {
-            setUserState(getBackStack().pop());
-            return true;
+        Query currentQuery = getMusicLibraryQuery();
+        while (getBackStack().size() > 0) {
+            MusicLibraryUserState lastState = getBackStack().removeLast();
+            if (!lastState.query.equals(currentQuery)) {
+                setUserState(lastState);
+                return true;
+            }
         }
+        setUserState(initialUserState());
         return false;
     }
 
-    void reset() {
+    void setInitialUserState() {
         setUserState(initialUserState());
     }
 
@@ -141,6 +153,17 @@ public class MusicLibraryFragmentModel extends ViewModel {
         displayType(Meta.FIELD_SPECIAL_ENTRY_ID_TRACK);
     }
 
+    public void goHome(MusicLibraryFragment musicLibraryFragment) {
+        Query currentQuery = getMusicLibraryQuery();
+        addBackStackHistory(
+                currentQuery,
+                currentQuery.isSearchQuery()
+                        ? musicLibraryFragment.getSearchRecyclerViewPos()
+                        : musicLibraryFragment.getBrowseRecyclerViewPos()
+        );
+        setInitialUserState();
+    }
+
     private void showOnly(String filterType, String filter) {
         Query query = new Query();
         query.and(filterType, filter);
@@ -158,9 +181,7 @@ public class MusicLibraryFragmentModel extends ViewModel {
         if (saveLastQuery && !isEmptySearch()) { // No need to save the empty search
             addBackStackHistory(new Pair<>(0, 0));
         }
-        setUserState(new MusicLibraryUserState(
-                new Query(query), 0, 0
-        ));
+        setUserState(new MusicLibraryUserState(new Query(query), 0, 0));
     }
 
     private boolean isEmptySearch() {

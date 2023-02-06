@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.widget.PopupMenu;
+import androidx.core.util.Pair;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
@@ -114,6 +115,7 @@ public class MusicLibraryFragment
     private FloatingActionButton searchFAB;
 
     private View searchContentView;
+    private RecyclerView searchRecyclerView;
     private MusicLibrarySearchAdapter searchRecyclerViewAdapter;
     private LinearLayoutManager searchRecyclerViewLayoutManager;
     private RecyclerViewActionModeSelectionTracker
@@ -669,7 +671,7 @@ public class MusicLibraryFragment
         searchQueryEdit.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 String query = searchQueryEdit.getText().toString();
-                model.search(query, false);
+                model.search(query, true);
                 clearFocus();
                 return true;
             }
@@ -677,7 +679,7 @@ public class MusicLibraryFragment
         });
 
         searchContentView = rootView.findViewById(R.id.musiclibrary_search_content);
-        RecyclerView searchRecyclerView = rootView.findViewById(R.id.musiclibrary_search_recyclerview);
+        searchRecyclerView = rootView.findViewById(R.id.musiclibrary_search_recyclerview);
         searchRecyclerViewLayoutManager = new LinearLayoutManager(requireContext());
         searchRecyclerView.setLayoutManager(searchRecyclerViewLayoutManager);
         searchRecyclerViewAdapter = new MusicLibrarySearchAdapter(this);
@@ -698,14 +700,6 @@ public class MusicLibraryFragment
                     clearFocus();
                 }
             }
-        });
-
-        View searchHomeBtn = rootView.findViewById(R.id.musiclibrary_search_home);
-        searchHomeBtn.setOnClickListener(v -> {
-            clearSelection();
-            clearFocus();
-            model.addBackStackHistory(Util.getRecyclerViewPosition(searchRecyclerView));
-            model.reset();
         });
 
         browseContentView = rootView.findViewById(R.id.musiclibrary_browse_content);
@@ -804,14 +798,6 @@ public class MusicLibraryFragment
             public String getEntryType() {
                 return EntryID.TYPE_TRACK;
             }
-        });
-
-        View browseHomeBtn = rootView.findViewById(R.id.musiclibrary_browse_home);
-        browseHomeBtn.setOnClickListener(v -> {
-            clearSelection();
-            clearFocus();
-            model.addBackStackHistory(Util.getRecyclerViewPosition(browseRecyclerView));
-            model.reset();
         });
 
         browseFilterTypeAdapter = new ArrayAdapter<>(
@@ -1045,6 +1031,9 @@ public class MusicLibraryFragment
             searchRecyclerViewAdapter.hideTrackItemActions();
         }
         if (searchQueryEdit != null && searchQueryEdit.hasFocus()) {
+            if (isSearchQuery()) {
+                model.addBackStackHistory(Util.getRecyclerViewPosition(searchRecyclerView));
+            }
             searchQueryEdit.clearFocus();
             Util.hideSoftInput(requireActivity(), searchQueryEdit);
         }
@@ -1077,5 +1066,13 @@ public class MusicLibraryFragment
         if (!keys.isEmpty()) {
             sortBy(keys);
         }
+    }
+
+    public Pair<Integer, Integer> getBrowseRecyclerViewPos() {
+        return Util.getRecyclerViewPosition(browseRecyclerView);
+    }
+
+    public Pair<Integer, Integer> getSearchRecyclerViewPos() {
+        return Util.getRecyclerViewPosition(searchRecyclerView);
     }
 }

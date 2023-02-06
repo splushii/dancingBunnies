@@ -4,25 +4,21 @@
     <PreferenceCategory
         app:iconSpaceReserved="false"
         app:allowDividerBelow="true"
-        android:title="Backends"
-        android:key="@string/pref_key_backend"
-        >
-        <ListPreference
-            android:key="@string/pref_key_backend_new"
-            android:title="@string/pref_backend_new"
-            android:icon="@drawable/settings_backends_add"
-            android:dialogTitle="@string/pref_backend_new_dialog_title"
-            android:entries="@array/empty_array"
-            android:entryValues="@array/empty_array"
-            android:defaultValue="@array/empty_array"
-            />
-    </PreferenceCategory>
-    <PreferenceCategory
-        app:iconSpaceReserved="false"
-        app:allowDividerBelow="true"
         android:title="Global"
         android:key="@string/pref_key_global"
         >
+        <Preference
+            app:iconSpaceReserved="false"
+            android:key="@string/pref_key_library_show_transactions"
+            android:title="@string/pref_library_show_transactions"
+            app:allowDividerBelow="true"
+            />
+        <Preference
+            app:iconSpaceReserved="false"
+            android:key="@string/pref_key_library_show_downloads"
+            android:title="@string/pref_library_show_downloads"
+            app:allowDividerBelow="true"
+            />
         <MultiSelectListPreference
             app:iconSpaceReserved="false"
             android:key="@string/pref_key_library_clear"
@@ -56,17 +52,27 @@
             android:defaultValue="@array/empty_array"
             app:allowDividerBelow="true"
             />
-        <Preference
-            app:iconSpaceReserved="false"
-            android:key="@string/pref_key_library_show_transactions"
-            android:title="@string/pref_library_show_transactions"
-            app:allowDividerBelow="true"
-            />
     <Preference
         app:iconSpaceReserved="false"
         android:key="@string/pref_key_about"
         android:title="@string/pref_about"
         app:allowDividerAbove="true"
         />
+    </PreferenceCategory>
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:allowDividerBelow="true"
+        android:title="Backends"
+        android:key="@string/pref_key_backend"
+        >
+        <ListPreference
+            android:key="@string/pref_key_backend_new"
+            android:title="@string/pref_backend_new"
+            android:icon="@drawable/settings_backends_add"
+            android:dialogTitle="@string/pref_backend_new_dialog_title"
+            android:entries="@array/empty_array"
+            android:entryValues="@array/empty_array"
+            android:defaultValue="@array/empty_array"
+            />
     </PreferenceCategory>
 </androidx.preference.PreferenceScreen>

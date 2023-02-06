@@ -7,6 +7,7 @@ import android.util.Log;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import androidx.annotation.NonNull;
 import se.splushii.dancingbunnies.util.Util;
@@ -104,6 +105,43 @@ public class Query {
 
     public boolean isSortOrderAscending() {
         return sortOrderAscending;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Query query = (Query) o;
+        if (type != query.type) {
+            return false;
+        }
+        switch (type) {
+            case SEARCH:
+                return searchQuery.equals(query.searchQuery);
+            default:
+            case SUBSCRIPTION:
+                return sortOrderAscending == query.sortOrderAscending
+                        && showField.equals(query.showField)
+                        && sortByFields.equals(query.sortByFields)
+                        && queryTree.toJSON().toString().equals(query.queryTree.toJSON().toString());
+        }
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(type, queryTree, searchQuery, showField, sortByFields, sortOrderAscending);
+    }
+
+    @Override
+    public String toString() {
+        return "Query{" +
+                "type=" + type +
+                ", searchQuery='" + searchQuery + '\'' +
+                ", showField='" + showField + '\'' +
+                ", sortByFields=" + sortByFields +
+                ", sortOrderAscending=" + sortOrderAscending +
+                ", queryTree=" + queryTree.toJSON().toString() +
+                '}';
     }
 
     public boolean querySortedByShow() {

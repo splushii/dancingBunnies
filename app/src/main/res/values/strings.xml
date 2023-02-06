@@ -18,7 +18,8 @@
     <string name="pref_library_clear_search_index">Clear search index</string>
     <string name="pref_library_clear_search_index_summary">Clear local search index from selected library sources</string>
     <string name="pref_library_clear_search_index_dialog_title">Clear local search index</string>
-    <string name="pref_library_show_transactions">Show pending transactions</string>
+    <string name="pref_library_show_transactions">Transactions</string>
+    <string name="pref_library_show_downloads">Downloads</string>
     <string name="pref_about">About</string>
     <!--  Preference strings backend -->
     <string name="pref_backend_new">Add new backend</string>
@@ -68,6 +69,7 @@
     <string name="pref_key_library_clear_playlists">se.splushii.dancingbunnies.pref_library_clear_playlists</string>
     <string name="pref_key_library_clear_search_index">se.splushii.dancingbunnies.pref_library_clear_search_index</string>
     <string name="pref_key_library_show_transactions">se.splushii.dancingbunnies.pref_library_show_transactions</string>
+    <string name="pref_key_library_show_downloads">se.splushii.dancingbunnies.pref_library_show_downloads</string>
     <string name="pref_key_about">se.splushii.dancingbunnies.pref_about</string>
     <!--  Preference keys: backend  -->
     <string name="pref_key_backend_id_counter">se.splushii.dancingbunnies.pref_backend_id_counter</string>

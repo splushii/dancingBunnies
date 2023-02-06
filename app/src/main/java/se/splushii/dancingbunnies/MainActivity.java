@@ -27,7 +27,6 @@ import se.splushii.dancingbunnies.audioplayer.AudioBrowser;
 import se.splushii.dancingbunnies.musiclibrary.EntryID;
 import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.DownloadEntry;
-import se.splushii.dancingbunnies.ui.downloads.DownloadsDialogFragment;
 import se.splushii.dancingbunnies.ui.musiclibrary.MusicLibraryFragment;
 import se.splushii.dancingbunnies.ui.musiclibrary.MusicLibraryFragmentModel;
 import se.splushii.dancingbunnies.ui.nowplaying.NowPlayingFragment;
@@ -73,7 +72,7 @@ public final class MainActivity extends AppCompatActivity {
     private MusicLibraryFragmentModel musicLibraryModel;
     private PlaylistFragmentModel playlistModel;
 
-    private View logoDLImg;
+    private View downloadsImage;
     private LiveData<List<DownloadEntry>> downloadQueueLiveData;
 
     @Override
@@ -90,22 +89,26 @@ public final class MainActivity extends AppCompatActivity {
         mViewPager = findViewById(R.id.main_container);
         mViewPager.setAdapter(mSectionsPagerAdapter);
 
+        View logoView = findViewById(R.id.main_appbar_logo);
+        logoView.setOnClickListener(view -> {
+            mViewPager.setCurrentItem(PAGER_MUSICLIBRARY);
+            mSectionsPagerAdapter.goHome();
+        });
+
         ImageButton settingsBtn = findViewById(R.id.main_settings);
         settingsBtn.setOnClickListener(view -> showSettings());
+
+        downloadsImage = findViewById(R.id.main_appbar_logo_dl);
+        downloadQueueLiveData = AudioStorage.getInstance(this).getDownloads();
+        downloadQueueLiveData.observe(this, downloadQueue ->
+                downloadsImage.setVisibility(downloadQueue.isEmpty() ? View.GONE : View.VISIBLE)
+        );
 
         TabLayout tabLayout = findViewById(R.id.main_tabs);
         tabLayout.setupWithViewPager(mViewPager);
 
         MediaRouteButton mediaRouteButton = findViewById(R.id.media_route_button);
         CastButtonFactory.setUpMediaRouteButton(getApplicationContext(), mediaRouteButton);
-
-        View logoView = findViewById(R.id.main_appbar_logo);
-        logoView.setOnClickListener(view -> DownloadsDialogFragment.showDialog(this));
-        logoDLImg = findViewById(R.id.main_appbar_logo_dl);
-        downloadQueueLiveData = AudioStorage.getInstance(this).getDownloads();
-        downloadQueueLiveData.observe(this, downloadQueue -> {
-            logoDLImg.setVisibility(downloadQueue.isEmpty() ? View.GONE : View.VISIBLE);
-        });
 
         audioBrowser = AudioBrowser.getInstance(this);
 
@@ -298,6 +301,10 @@ public final class MainActivity extends AppCompatActivity {
                 default:
                     return false;
             }
+        }
+
+        void goHome() {
+            musicLibraryModel.goHome(musicLibraryFragment);
         }
     }
 }

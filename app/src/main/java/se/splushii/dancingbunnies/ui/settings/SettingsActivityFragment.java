@@ -53,9 +53,11 @@ import se.splushii.dancingbunnies.musiclibrary.Meta;
 import se.splushii.dancingbunnies.musiclibrary.MusicLibraryService;
 import se.splushii.dancingbunnies.musiclibrary.QueryLeaf;
 import se.splushii.dancingbunnies.search.Searcher;
+import se.splushii.dancingbunnies.storage.AudioStorage;
 import se.splushii.dancingbunnies.storage.MetaStorage;
 import se.splushii.dancingbunnies.storage.TransactionStorage;
 import se.splushii.dancingbunnies.ui.ConfirmationDialogFragment;
+import se.splushii.dancingbunnies.ui.downloads.DownloadsDialogFragment;
 import se.splushii.dancingbunnies.ui.transactions.TransactionsDialogFragment;
 import se.splushii.dancingbunnies.util.Util;
 
@@ -101,6 +103,7 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
     private MultiSelectListPreference libraryClearPlaylistsPref;
     private MultiSelectListPreference libraryClearSearchIndexPref;
     private Preference showTransactionsPref;
+    private Preference showDownloadsPref;
 
     public SettingsActivityFragment() {}
 
@@ -424,6 +427,17 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
             );
             return false;
         });
+
+        String showDownloadsKey = getResources().getString(R.string.pref_key_library_show_downloads);
+        showDownloadsPref = findPreference(showDownloadsKey);
+        setShowDownloadsSummary(0);
+        showDownloadsPref.setOnPreferenceClickListener(preference -> {
+            onSharedPreferenceChanged(
+                    getPreferenceManager().getSharedPreferences(),
+                    preference.getKey()
+            );
+            return false;
+        });
     }
 
     @Override
@@ -606,6 +620,11 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
                     transactionsWorkMsg = msg.toString();
                     setShowTransactionsSummary(pendingTransactions, transactionsWorkMsg);
                 });
+        AudioStorage.getInstance(requireContext())
+                .getDownloads()
+                .observe(getViewLifecycleOwner(), downloads ->
+                        setShowDownloadsSummary(downloads.size())
+                );
         MetaStorage.getInstance(requireContext())
                 .getTrackSources()
                 .observe(getViewLifecycleOwner(), sources -> {
@@ -702,6 +721,11 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
             summary += "\nStatus:" + transactionsWorkMsg;
         }
         showTransactionsPref.setSummary(summary);
+    }
+
+    private void setShowDownloadsSummary(int pendingDownloads) {
+        String summary = "Pending downloads: " + pendingDownloads;
+        showDownloadsPref.setSummary(summary);
     }
 
     private void clearBackendIDToNumIndexedMap() {
@@ -913,6 +937,8 @@ public class SettingsActivityFragment extends PreferenceFragmentCompat
             }
         } else if (key.equals(Util.getString(requireContext(), R.string.pref_key_library_show_transactions))) {
             TransactionsDialogFragment.showDialog(this);
+        } else if (key.equals(Util.getString(requireContext(), R.string.pref_key_library_show_downloads))) {
+            DownloadsDialogFragment.showDialog(this);
         } else if (key.equals(Util.getString(requireContext(), R.string.pref_key_backend_id_counter))) {
             // No-op
         } else {

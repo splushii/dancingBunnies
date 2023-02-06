@@ -13,9 +13,9 @@ import java.util.stream.Collectors;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
 import androidx.recyclerview.selection.StorageStrategy;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -50,10 +50,9 @@ public class DownloadsDialogFragment extends DialogFragment {
             <DownloadEntry, ViewHolder, DownloadsDialogAdapter>
             selectionTracker;
 
-    public static void showDialog(AppCompatActivity activity) {
+    public static void showDialog(Fragment fragment) {
         Util.showDialog(
-                activity.getSupportFragmentManager(),
-                null,
+                fragment,
                 TAG,
                 MainActivity.REQUEST_CODE_NONE,
                 new DownloadsDialogFragment(),

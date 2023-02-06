@@ -60,31 +60,6 @@
                         android:paddingStart="16dp"
                         android:paddingEnd="2dp"/>
                 </LinearLayout>
-                <LinearLayout
-                    android:id="@+id/musiclibrary_search_home"
-                    android:background="?android:selectableItemBackground"
-                    android:layout_gravity="center_vertical"
-                    android:gravity="center_vertical"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
-                    android:paddingStart="8dp"
-                    android:paddingEnd="8dp"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content">
-                    <TextView
-                        android:layout_height="wrap_content"
-                        android:layout_width="wrap_content"
-                        android:textColor="@color/colorText"
-                        android:text="@string/musiclibrary_home"/>
-                    <ImageView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:src="@drawable/ic_home_black_24dp"
-                        android:layout_marginStart="8dp"
-                        android:layout_gravity="center_vertical"
-                        android:contentDescription="@string/musiclibrary_home"
-                        app:tint="@color/colorText" />
-                </LinearLayout>
             </LinearLayout>
             <LinearLayout
                 android:id="@+id/musiclibrary_browse"
@@ -148,31 +123,6 @@
                             android:layout_marginStart="8dp"
                             android:layout_gravity="center_vertical"
                             android:contentDescription="@string/musiclibrary_query_save"
-                            app:tint="@color/colorText" />
-                    </LinearLayout>
-                    <LinearLayout
-                        android:id="@+id/musiclibrary_browse_home"
-                        android:background="?android:selectableItemBackground"
-                        android:layout_gravity="center_vertical"
-                        android:gravity="center_vertical"
-                        android:paddingTop="8dp"
-                        android:paddingBottom="4dp"
-                        android:paddingStart="8dp"
-                        android:paddingEnd="8dp"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content">
-                        <TextView
-                            android:layout_height="wrap_content"
-                            android:layout_width="wrap_content"
-                            android:textColor="@color/colorText"
-                            android:text="@string/musiclibrary_home"/>
-                        <ImageView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:src="@drawable/ic_home_black_24dp"
-                            android:layout_marginStart="8dp"
-                            android:layout_gravity="center_vertical"
-                            android:contentDescription="@string/musiclibrary_home"
                             app:tint="@color/colorText" />
                     </LinearLayout>
                 </LinearLayout>
